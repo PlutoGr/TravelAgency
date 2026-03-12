@@ -1,0 +1,68 @@
+import type { Destination } from '@/types';
+
+export const mockDestinations: Destination[] = [
+  {
+    id: 'dest-1',
+    name: 'Анталия',
+    country: 'Турция',
+    photo: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+    tourCount: 45,
+    description: 'Лазурное побережье Средиземного моря, всё включено и тёплый приём',
+  },
+  {
+    id: 'dest-2',
+    name: 'Хургада',
+    country: 'Египет',
+    photo: 'https://images.unsplash.com/photo-1539768942893-daf53e736b68?w=800&q=80',
+    tourCount: 32,
+    description: 'Коралловые рифы Красного моря и древние пирамиды',
+  },
+  {
+    id: 'dest-3',
+    name: 'Пхукет',
+    country: 'Таиланд',
+    photo: 'https://images.unsplash.com/photo-1504214208698-ea1916a2195a?w=800&q=80',
+    tourCount: 28,
+    description: 'Тропические острова, храмы и экзотическая кухня',
+  },
+  {
+    id: 'dest-4',
+    name: 'Мале',
+    country: 'Мальдивы',
+    photo: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800&q=80',
+    tourCount: 15,
+    description: 'Водные виллы, белоснежный песок и бирюзовый океан',
+  },
+  {
+    id: 'dest-5',
+    name: 'Рим',
+    country: 'Италия',
+    photo: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800&q=80',
+    tourCount: 22,
+    description: 'Вечный город с тысячелетней историей и великолепной кухней',
+  },
+  {
+    id: 'dest-6',
+    name: 'Санторини',
+    country: 'Греция',
+    photo: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80',
+    tourCount: 18,
+    description: 'Белоснежные домики, закаты и вулканические пляжи',
+  },
+  {
+    id: 'dest-7',
+    name: 'Дубай',
+    country: 'ОАЭ',
+    photo: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&q=80',
+    tourCount: 35,
+    description: 'Небоскрёбы, роскошный шопинг и сафари по пустыне',
+  },
+  {
+    id: 'dest-8',
+    name: 'Тбилиси',
+    country: 'Грузия',
+    photo: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&q=80',
+    tourCount: 20,
+    description: 'Гостеприимство, вино, хинкали и горные пейзажи',
+  },
+];
