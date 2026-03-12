@@ -1,7 +1,95 @@
+# Build & output
 bin/
 obj/
+out/
+[Dd]ebug/
+[Rr]elease/
+[Bb]uild/
+[Aa]rtifacts/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.nupkg
+*.snupkg
+
+# NuGet
 /packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Rider / ReSharper
+.idea/
+*.iml
 riderModule.iml
 /_ReSharper.Caches/
+*.DotSettings.user
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# .NET
+*.log
+*.vspscc
+*.vssscc
+.build/
+[Dd]ebugPublic/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+[Tt]est[Rr]esult*/
+*.VisualState.xml
+TestResult/
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coveragexml
+*.DotSettings.user
+
+# User secrets & env (never commit)
+*.env
+.env
+.env.*
+!.env.example
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+secrets.json
+**/secrets/
+
+# Docker
+.docker/
+*.dockerfile.bak
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# IDE / editor
 .cursor/
 .DS_Store
+*.sublime-workspace
+*.sublime-project
