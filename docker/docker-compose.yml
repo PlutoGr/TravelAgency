@@ -1,0 +1,144 @@
+services:
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: travel_admin
+      POSTGRES_PASSWORD: travel_secret
+      POSTGRES_DB: travel_identity
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel_admin"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: src/Gateway/TravelAgency.Gateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      identity-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+
+  identity-service:
+    build:
+      context: ..
+      dockerfile: src/Services/Identity/TravelAgency.Identity.API/Dockerfile
+    ports:
+      - "5010:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_identity;Username=travel_admin;Password=travel_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  catalog-service:
+    build:
+      context: ..
+      dockerfile: src/Services/Catalog/TravelAgency.Catalog.API/Dockerfile
+    ports:
+      - "5020:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_catalog;Username=travel_admin;Password=travel_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  booking-service:
+    build:
+      context: ..
+      dockerfile: src/Services/Booking/TravelAgency.Booking.API/Dockerfile
+    ports:
+      - "5030:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_booking;Username=travel_admin;Password=travel_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  chat-service:
+    build:
+      context: ..
+      dockerfile: src/Services/Chat/TravelAgency.Chat.API/Dockerfile
+    ports:
+      - "5040:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_chat;Username=travel_admin;Password=travel_secret
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - full
+
+  media-service:
+    build:
+      context: ..
+      dockerfile: src/Services/Media/TravelAgency.Media.API/Dockerfile
+    ports:
+      - "5050:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - S3__ServiceUrl=http://minio:9000
+      - S3__AccessKey=minioadmin
+      - S3__SecretKey=minioadmin
+    depends_on:
+      minio:
+        condition: service_started
+    profiles:
+      - full
+
+  frontend:
+    build:
+      context: ../src/Frontend/travel-agency-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      gateway:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  minio-data:

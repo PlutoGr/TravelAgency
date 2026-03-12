@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TravelAgency.Catalog.Application\TravelAgency.Catalog.Application.csproj" />
+    <ProjectReference Include="..\TravelAgency.Catalog.Infrastructure\TravelAgency.Catalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.14" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.11.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
+</Project>
