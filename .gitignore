@@ -1,3 +1,7 @@
+# =========================
+# .NET / C#
+# =========================
+
 # Build & output
 bin/
 obj/
@@ -15,9 +19,71 @@ out/
 
 # NuGet
 /packages/
-*.nupkg
 project.lock.json
 project.fragment.lock.json
+
+# .NET misc
+*.log
+*.vspscc
+*.vssscc
+.build/
+[Dd]ebugPublic/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# Test results & coverage
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+TestResult/
+*.VisualState.xml
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# EF Core migrations artifacts
+*.mdf
+*.ldf
+
+# =========================
+# Node.js / Frontend (React + Vite)
+# =========================
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+*.local
+.eslintcache
+
+# =========================
+# Docker
+# =========================
+.docker/
+*.dockerfile.bak
+
+# =========================
+# Secrets & env (never commit)
+# =========================
+*.env
+.env
+.env.*
+!.env.example
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+secrets.json
+**/secrets/
+
+# =========================
+# IDE / Editor
+# =========================
 
 # Visual Studio
 .vs/
@@ -42,54 +108,17 @@ riderModule.iml
 !.vscode/extensions.json
 *.code-workspace
 
-# .NET
-*.log
-*.vspscc
-*.vssscc
-.build/
-[Dd]ebugPublic/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-[Tt]est[Rr]esult*/
-*.VisualState.xml
-TestResult/
-[Tt]est[Rr]esults/
-*.trx
-*.coverage
-*.coveragexml
-*.DotSettings.user
+# Cursor
+.cursor/
 
-# User secrets & env (never commit)
-*.env
-.env
-.env.*
-!.env.example
-appsettings.*.json
-!appsettings.json
-!appsettings.Development.json
-secrets.json
-**/secrets/
+# Sublime
+*.sublime-workspace
+*.sublime-project
 
-# Docker
-.docker/
-*.dockerfile.bak
-
+# =========================
 # OS
+# =========================
 .DS_Store
 Thumbs.db
 *.swp
 *~
-
-# IDE / editor
-.cursor/
-.DS_Store
-*.sublime-workspace
-*.sublime-project
