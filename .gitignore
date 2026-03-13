@@ -122,3 +122,8 @@ riderModule.iml
 Thumbs.db
 *.swp
 *~
+
+# =========================
+# Wiki
+# =========================
+TravelAgency.wiki/
