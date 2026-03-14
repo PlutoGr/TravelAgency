@@ -13,10 +13,11 @@ public static class AuthenticationExtensions
         var jwtSettings = configuration.GetSection("JwtSettings");
 
         var signingKey = jwtSettings["SigningKey"]
-            ?? throw new InvalidOperationException("JwtSettings:SigningKey is not configured.");
+            ?? throw new InvalidOperationException(
+                "JWT SigningKey must be configured via environment variable JwtSettings__SigningKey");
 
         if (signingKey.Length < 32)
-            throw new InvalidOperationException("JwtSettings:SigningKey must be at least 32 characters.");
+            throw new InvalidOperationException("JWT SigningKey must be at least 32 characters");
 
         services.AddAuthentication(options =>
         {

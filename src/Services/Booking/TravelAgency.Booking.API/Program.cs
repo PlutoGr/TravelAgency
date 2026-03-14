@@ -1,41 +1,40 @@
+using Serilog;
+using TravelAgency.Booking.API.Extensions;
+using TravelAgency.Booking.API.Middleware;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Host.AddBookingSerilog();
+
+builder.Services.AddControllers();
+builder.Services.AddBookingAuthentication(builder.Configuration);
+builder.Services.AddBookingAuthorization();
+builder.Services.AddBookingInfrastructure(builder.Configuration);
+builder.Services.AddBookingCors(builder.Configuration);
+builder.Services.AddBookingHealthChecks();
+builder.Services.AddBookingSwagger();
+builder.Services.AddBookingTracing();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseBookingMigrations();
+app.UseBookingCors();
+
+app.UseSerilogRequestLogging();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseBookingSwagger();
 }
 
-app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
+app.MapBookingHealthChecks();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public partial class Program { }

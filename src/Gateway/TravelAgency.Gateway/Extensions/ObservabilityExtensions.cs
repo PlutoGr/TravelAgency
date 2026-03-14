@@ -1,3 +1,4 @@
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -16,14 +17,24 @@ public static class ObservabilityExtensions
         return hostBuilder;
     }
 
-    public static IServiceCollection AddGatewayTracing(this IServiceCollection services)
+    public static IServiceCollection AddGatewayTracing(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddOpenTelemetry()
             .ConfigureResource(resource =>
                 resource.AddService("TravelAgency.Gateway"))
             .WithTracing(tracing =>
             {
-                tracing.AddAspNetCoreInstrumentation();
+                tracing
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation();
+
+                if (!environment.IsEnvironment("Testing"))
+                {
+                    tracing.AddOtlpExporter(o =>
+                    {
+                        o.Endpoint = new Uri(configuration["Otel:Endpoint"] ?? "http://otel-collector:4317");
+                    });
+                }
             });
 
         return services;

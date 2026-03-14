@@ -3,8 +3,8 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: travel_admin
-      POSTGRES_PASSWORD: travel_secret
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: travel_identity
     ports:
       - "5432:5432"
@@ -12,7 +12,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U travel_admin"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -31,8 +31,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -63,7 +63,10 @@ services:
       - "5010:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_identity;Username=travel_admin;Password=travel_secret
+      - ASPNETCORE_RUN_MIGRATIONS=true
+      - ConnectionStrings__IdentityDb=Host=postgres;Port=5432;Database=travel_identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # REQUIRED for gRPC service-to-service auth. Set GRPC_INTERNAL_SERVICE_TOKEN in your .env file.
+      - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,7 +79,7 @@ services:
       - "5020:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_catalog;Username=travel_admin;Password=travel_secret
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_catalog;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,7 +92,7 @@ services:
       - "5030:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_booking;Username=travel_admin;Password=travel_secret
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_booking;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +105,7 @@ services:
       - "5040:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_chat;Username=travel_admin;Password=travel_secret
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_chat;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - ConnectionStrings__Redis=redis:6379
     depends_on:
       postgres:
@@ -121,8 +124,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - S3__ServiceUrl=http://minio:9000
-      - S3__AccessKey=minioadmin
-      - S3__SecretKey=minioadmin
+      - S3__AccessKey=${MINIO_ROOT_USER}
+      - S3__SecretKey=${MINIO_ROOT_PASSWORD}
     depends_on:
       minio:
         condition: service_started

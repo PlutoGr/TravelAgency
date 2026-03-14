@@ -80,6 +80,7 @@ appsettings.*.json
 !appsettings.Development.json
 secrets.json
 **/secrets/
+**/UserSecrets/**
 
 # =========================
 # IDE / Editor

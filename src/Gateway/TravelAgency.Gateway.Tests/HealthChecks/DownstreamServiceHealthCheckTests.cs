@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
 using TravelAgency.Gateway.HealthChecks;
@@ -30,13 +31,15 @@ public class DownstreamServiceHealthCheckTests
         return (factory, handler);
     }
 
+    private static TestLogger CreateLogger() => new();
+
     [Fact]
     public async Task CheckHealthAsync_WhenHttpClientReturns2xx_ReturnsHealthy_WithMessageContainingRegistrationNameAndReachable()
     {
         // Arrange
         var (factory, handler) = CreateHttpClientFactory();
         handler.SetResponse(new HttpResponseMessage(HttpStatusCode.OK));
-        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl);
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, CreateLogger());
         var context = CreateContext();
 
         // Act
@@ -55,7 +58,7 @@ public class DownstreamServiceHealthCheckTests
         // Arrange
         var (factory, handler) = CreateHttpClientFactory();
         handler.SetResponse(new HttpResponseMessage(HttpStatusCode.NotFound));
-        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl);
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, CreateLogger());
         var context = CreateContext();
 
         // Act
@@ -77,7 +80,7 @@ public class DownstreamServiceHealthCheckTests
         // Arrange
         var (factory, handler) = CreateHttpClientFactory();
         handler.SetResponse(new HttpResponseMessage(statusCode));
-        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl);
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, CreateLogger());
         var context = CreateContext();
 
         // Act
@@ -89,13 +92,12 @@ public class DownstreamServiceHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealthAsync_WhenHttpCallThrowsHttpRequestException_ReturnsDegraded_WithUnreachableAndExceptionMessage()
+    public async Task CheckHealthAsync_WhenHttpCallThrowsHttpRequestException_ReturnsDegraded_WithUnreachableDescription()
     {
         // Arrange
         var (factory, handler) = CreateHttpClientFactory();
-        var exceptionMessage = "Connection refused.";
-        handler.SetException(new HttpRequestException(exceptionMessage));
-        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl);
+        handler.SetException(new HttpRequestException("Connection refused."));
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, CreateLogger());
         var context = CreateContext();
 
         // Act
@@ -106,7 +108,6 @@ public class DownstreamServiceHealthCheckTests
         Assert.NotNull(result.Description);
         Assert.Contains(ServiceName, result.Description);
         Assert.Contains("unreachable", result.Description, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(exceptionMessage, result.Description);
     }
 
     [Fact]
@@ -115,7 +116,7 @@ public class DownstreamServiceHealthCheckTests
         // Arrange
         var (factory, handler) = CreateHttpClientFactory();
         handler.SetException(new TaskCanceledException("Timeout"));
-        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl);
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, CreateLogger());
         var context = CreateContext();
 
         // Act
@@ -124,6 +125,45 @@ public class DownstreamServiceHealthCheckTests
         // Assert
         Assert.Equal(HealthStatus.Degraded, result.Status);
         Assert.Contains("unreachable", result.Description!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenHttpCallThrowsException_LogsWarningWithException()
+    {
+        // Arrange
+        var (factory, handler) = CreateHttpClientFactory();
+        var expectedException = new HttpRequestException("Connection refused.");
+        handler.SetException(expectedException);
+        var logger = CreateLogger();
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, logger);
+        var context = CreateContext();
+
+        // Act
+        await healthCheck.CheckHealthAsync(context);
+
+        // Assert
+        Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, logger.Entries[0].Level);
+        Assert.Same(expectedException, logger.Entries[0].Exception);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_WhenHttpCallThrowsException_ExceptionMessageNotLeakedIntoDescription()
+    {
+        // Arrange
+        var (factory, handler) = CreateHttpClientFactory();
+        var internalDetails = "internal connection string details";
+        handler.SetException(new HttpRequestException(internalDetails));
+        var healthCheck = new DownstreamServiceHealthCheck(factory, ServiceUrl, CreateLogger());
+        var context = CreateContext();
+
+        // Act
+        var result = await healthCheck.CheckHealthAsync(context);
+
+        // Assert — description must not expose internal error details
+        Assert.NotNull(result.Description);
+        Assert.DoesNotContain(internalDetails, result.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Same(result.Exception, result.Exception); // exception is captured on the result, not in description
     }
 
     /// <summary>
@@ -145,5 +185,27 @@ public class DownstreamServiceHealthCheckTests
                 return Task.FromException<HttpResponseMessage>(_exception);
             return Task.FromResult(_response ?? new HttpResponseMessage(HttpStatusCode.OK));
         }
+    }
+
+    /// <summary>
+    /// Captures log entries for assertion in tests.
+    /// </summary>
+    private sealed class TestLogger : ILogger<DownstreamServiceHealthCheck>
+    {
+        public record LogEntry(LogLevel Level, Exception? Exception);
+
+        public List<LogEntry> Entries { get; } = [];
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add(new LogEntry(logLevel, exception));
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     }
 }
