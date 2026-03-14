@@ -1,41 +1,54 @@
+using TravelAgency.Catalog.API.Extensions;
+using TravelAgency.Catalog.API.Middleware;
+using TravelAgency.Catalog.Infrastructure.Extensions;
+using TravelAgency.Catalog.Infrastructure.GrpcServices;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Host.AddCatalogSerilog();
+
+Program.ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+Program.ConfigurePipeline(app);
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+public partial class Program
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddCatalogInfrastructure(configuration);
+        services.AddCatalogAuthentication(configuration);
+        services.AddCatalogTracing();
+        services.AddCatalogCors();
+        services.AddCatalogHealthChecks(configuration);
+        services.AddCatalogSwagger();
+        services.AddControllers();
+        services.AddEndpointsApiExplorer();
+        services.AddGrpc();
+    }
+
+    public static void ConfigurePipeline(WebApplication app)
+    {
+        app.UseMiddleware<CorrelationIdMiddleware>();
+        app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+        app.UseCors("AllowAll");
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+            app.UseCatalogMigrations();
+        }
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllers();
+        app.MapGrpcService<CatalogGrpcService>();
+        app.MapHealthChecks("/health/live");
+        app.MapHealthChecks("/health/ready");
+    }
 }
+

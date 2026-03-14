@@ -1,41 +1,59 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using Serilog;
+using TravelAgency.Identity.API.Extensions;
+using TravelAgency.Identity.API.Middleware;
+using TravelAgency.Identity.Infrastructure.GrpcServices;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Host.AddIdentitySerilog();
+
+builder.Services.AddControllers();
+builder.Services.AddSingleton<GrpcAuthInterceptor>();
+builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcAuthInterceptor>());
+builder.Services.AddIdentityAuthentication(builder.Configuration);
+builder.Services.AddIdentityAuthorization();
+builder.Services.AddIdentityInfrastructure(builder.Configuration);
+builder.Services.AddIdentityCors(builder.Configuration);
+builder.Services.AddIdentityHealthChecks();
+builder.Services.AddIdentitySwagger();
+builder.Services.AddIdentityTracing();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromSeconds(60),
+                SegmentsPerWindow = 6,
+                PermitLimit = 5,
+                QueueLimit = 0
+            }));
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseIdentityMigrations();
+app.UseIdentityCors();
+
+app.UseSerilogRequestLogging();
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseIdentitySwagger();
 }
 
-app.UseHttpsRedirection();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
+app.MapGrpcService<IdentityGrpcService>();
+app.MapIdentityHealthChecks();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+option csharp_namespace = "TravelAgency.Booking.Infrastructure.GrpcClients";
+package catalog;
+
+service CatalogGrpc {
+  rpc GetTourSnapshot (GetTourSnapshotRequest) returns (TourSnapshotResponse);
+}
+
+message GetTourSnapshotRequest {
+  string tour_id = 1;
+}
+
+message TourSnapshotResponse {
+  string tour_id = 1;
+  string title = 2;
+  string description = 3;
+  double price = 4;
+  string currency = 5;
+  int32 duration_days = 6;
+  string snapshot_taken_at = 7;
+}

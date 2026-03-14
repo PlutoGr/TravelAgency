@@ -9,7 +9,10 @@ public static class HealthCheckExtensions
     public static IServiceCollection AddGatewayHealthChecks(
         this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddHttpClient("HealthChecks");
+        services.AddHttpClient("HealthChecks", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
 
         var healthCheckBuilder = services.AddHealthChecks();
 
@@ -28,7 +31,8 @@ public static class HealthCheckExtensions
                 sp =>
                 {
                     var factory = sp.GetRequiredService<IHttpClientFactory>();
-                    return new DownstreamServiceHealthCheck(factory, serviceUrl);
+                    var logger = sp.GetRequiredService<ILogger<DownstreamServiceHealthCheck>>();
+                    return new DownstreamServiceHealthCheck(factory, serviceUrl, logger);
                 },
                 failureStatus: HealthStatus.Degraded,
                 tags: ["ready"]));

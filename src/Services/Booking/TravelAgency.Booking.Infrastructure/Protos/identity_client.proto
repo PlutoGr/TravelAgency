@@ -1,0 +1,19 @@
+syntax = "proto3";
+option csharp_namespace = "TravelAgency.Booking.Infrastructure.GrpcClients";
+package identity;
+
+service IdentityGrpc {
+  rpc GetUserSummary (GetUserSummaryRequest) returns (UserSummaryResponse);
+}
+
+message GetUserSummaryRequest {
+  string user_id = 1;
+}
+
+message UserSummaryResponse {
+  string user_id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string role = 5;
+}
