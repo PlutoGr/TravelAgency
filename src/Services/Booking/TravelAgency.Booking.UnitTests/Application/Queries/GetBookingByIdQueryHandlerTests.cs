@@ -11,6 +11,7 @@ public class GetBookingByIdQueryHandlerTests
 {
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IBookingRepository> _bookingRepoMock = new();
+    private readonly Mock<IIdentityGrpcClient> _identityGrpcClientMock = new();
     private readonly GetBookingByIdQueryHandler _handler;
 
     private static readonly Guid ClientId = Guid.NewGuid();
@@ -20,7 +21,8 @@ public class GetBookingByIdQueryHandlerTests
     {
         _handler = new GetBookingByIdQueryHandler(
             _currentUserMock.Object,
-            _bookingRepoMock.Object);
+            _bookingRepoMock.Object,
+            _identityGrpcClientMock.Object);
     }
 
     private BookingEntity CreateBookingForClient(Guid clientId) =>

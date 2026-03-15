@@ -10,7 +10,8 @@ namespace TravelAgency.Booking.Application.Features.Bookings.Queries.GetBookingB
 
 public sealed class GetBookingByIdQueryHandler(
     ICurrentUserService currentUser,
-    IBookingRepository bookingRepository)
+    IBookingRepository bookingRepository,
+    IIdentityGrpcClient identityGrpcClient)
     : IRequestHandler<GetBookingByIdQuery, BookingDto>
 {
     public async Task<BookingDto> Handle(GetBookingByIdQuery query, CancellationToken cancellationToken)
@@ -21,6 +22,20 @@ public sealed class GetBookingByIdQueryHandler(
         if (currentUser.Role == AppRoles.Client && booking.ClientId != currentUser.UserId)
             throw new ForbiddenException("Clients can only view their own bookings.");
 
-        return booking.ToDto();
+        string? clientName = null;
+        string? clientEmail = null;
+        string? clientPhone = null;
+
+        if (currentUser.Role is AppRoles.Manager or AppRoles.Admin)
+        {
+            var summary = await identityGrpcClient.GetUserSummaryAsync(booking.ClientId, cancellationToken);
+            if (summary != null)
+            {
+                clientName = $"{summary.FirstName} {summary.LastName}".Trim();
+                clientEmail = summary.Email;
+            }
+        }
+
+        return booking.ToDto(clientName, clientEmail, clientPhone);
     }
 }

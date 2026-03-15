@@ -6,7 +6,7 @@ namespace TravelAgency.Booking.Application.Mapping;
 
 public static class BookingMapper
 {
-    public static BookingDto ToDto(this Domain.Entities.Booking booking) =>
+    public static BookingDto ToDto(this Domain.Entities.Booking booking, string? clientName = null, string? clientEmail = null, string? clientPhone = null) =>
         new(
             booking.Id,
             booking.ClientId,
@@ -15,7 +15,10 @@ public static class BookingMapper
             booking.Status,
             booking.CreatedAt,
             booking.UpdatedAt,
-            booking.Proposals.Select(p => p.ToDto()).ToList().AsReadOnly());
+            booking.Proposals.Select(p => p.ToDto()).ToList().AsReadOnly(),
+            clientName,
+            clientEmail,
+            clientPhone);
 
     public static ProposalDto ToDto(this Proposal proposal) =>
         new(

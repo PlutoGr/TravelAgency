@@ -109,6 +109,40 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
     }
 
     [Fact]
+    public async Task GetManagerBookings_AsManager_ShouldReturn200WithAllBookings()
+    {
+        await CreateBookingAsClientAsync();
+        AuthorizeAsManager();
+
+        var response = await _client.GetAsync("/bookings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<BookingDto>>();
+        result.Should().NotBeNull();
+        result!.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetManagerBookings_AsClient_ShouldReturn403()
+    {
+        AuthorizeAsClient();
+
+        var response = await _client.GetAsync("/bookings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetManagerBookings_Unauthenticated_ShouldReturn401()
+    {
+        ClearAuthorization();
+
+        var response = await _client.GetAsync("/bookings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task GetBookingById_AsOwnerClient_ShouldReturn200()
     {
         var created = await CreateBookingAsClientAsync();

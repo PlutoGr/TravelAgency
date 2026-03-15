@@ -14,24 +14,20 @@ import {
   CreditCard,
   ExternalLink,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import clsx from 'clsx';
+import toast from 'react-hot-toast';
 import type { Booking, BookingStatus } from '@/types';
-import { getBookingById, updateBookingStatus } from '@/api/bookings';
+import {
+  getBookingById,
+  updateBookingStatus,
+  confirmProposal,
+} from '@/api/bookings';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { BookingStatusBadge, ChatWindow } from '@/components/booking';
 import { Card, Button, Skeleton, StarRating } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-
-function formatDate(dateStr: string): string {
-  return format(parseISO(dateStr), 'd MMMM yyyy', { locale: ru });
-}
-
-function formatBudget(amount: number): string {
-  return `от ${amount.toLocaleString('ru-RU')} ₽`;
-}
+import { formatDateFull, formatBudgetFrom } from '@/utils/format';
 
 function InfoRow({
   icon: Icon,
@@ -111,7 +107,9 @@ function TourPreview({ booking }: { booking: Booking }) {
               {tour.title}
             </h4>
             <p className="mt-1 text-sm text-warm-gray">
-              {tour.city}, {tour.country} · {tour.duration} дн.
+              {[tour.city, tour.country].filter(Boolean).join(', ')}
+              {[tour.city, tour.country].some(Boolean) ? ' · ' : ''}
+              {tour.duration} дн.
             </p>
           </div>
 
@@ -167,7 +165,9 @@ export default function BookingDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => { fetchBooking(); }, [fetchBooking]);
+  useEffect(() => {
+    fetchBooking();
+  }, [fetchBooking]);
 
   const handleStatusUpdate = async (status: BookingStatus) => {
     if (!id || isUpdating) return;
@@ -175,6 +175,21 @@ export default function BookingDetailPage() {
     try {
       const updated = await updateBookingStatus(id, status);
       setBooking(updated);
+    } catch {
+      toast.error('Не удалось обновить статус. Попробуйте ещё раз.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleConfirmProposal = async () => {
+    if (!id || !booking?.proposalId || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const updated = await confirmProposal(booking.id, booking.proposalId);
+      setBooking(updated);
+    } catch {
+      toast.error('Не удалось подтвердить предложение. Попробуйте ещё раз.');
     } finally {
       setIsUpdating(false);
     }
@@ -239,13 +254,13 @@ export default function BookingDetailPage() {
                     {booking.destination}, {booking.country}
                   </InfoRow>
                   <InfoRow icon={Calendar} label="Даты">
-                    {formatDate(booking.dateFrom)} — {formatDate(booking.dateTo)}
+                    {formatDateFull(booking.dateFrom)} — {formatDateFull(booking.dateTo)}
                   </InfoRow>
                   <InfoRow icon={Users} label="Путешественники">
                     {booking.travelers}
                   </InfoRow>
                   <InfoRow icon={Wallet} label="Бюджет">
-                    {formatBudget(booking.budget)}
+                    {formatBudgetFrom(booking.budget)}
                   </InfoRow>
                   <InfoRow icon={UserCircle} label="Менеджер">
                     {booking.managerName ?? 'Не назначен'}
@@ -256,7 +271,7 @@ export default function BookingDetailPage() {
                     </InfoRow>
                   )}
                   <InfoRow icon={Clock} label="Дата создания">
-                    {formatDate(booking.createdAt)}
+                    {formatDateFull(booking.createdAt)}
                   </InfoRow>
                 </Card>
               </motion.div>
@@ -269,6 +284,17 @@ export default function BookingDetailPage() {
                 transition={{ delay: 0.3 }}
                 className="flex flex-col gap-3 sm:flex-row"
               >
+                {booking.status === 'proposal_sent' &&
+                  booking.proposalId && (
+                    <Button
+                      variant="primary"
+                      leftIcon={<CheckCircle size={18} />}
+                      isLoading={isUpdating}
+                      onClick={handleConfirmProposal}
+                    >
+                      Подтвердить предложение
+                    </Button>
+                  )}
                 {booking.status === 'confirmed' && (
                   <Button
                     variant="primary"

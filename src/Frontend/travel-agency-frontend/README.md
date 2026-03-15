@@ -28,17 +28,15 @@ npm run dev
 
 ## Environment Variables
 
-Сейчас фронтенд не использует переменные окружения Vite. URL API задаётся через proxy в `vite.config.ts`:
+| Variable             | Required | Description                                                                 |
+|----------------------|----------|-----------------------------------------------------------------------------|
+| *(none)*             | No       | **Dev**: No env vars needed. Vite proxy forwards `/api` to `localhost:5000` |
+| `VITE_API_URL`       | No       | **Production**: API base URL when frontend and API run on different origins. Default: `/api/v1` (relative). Example: `http://localhost:5000/api/v1` for Docker when frontend is on port 3000 and Gateway on 5000. Pass as build arg: `docker build --build-arg VITE_API_URL=...` |
+| `VITE_CHAT_HUB_URL`  | No       | **SignalR hub override**: If Gateway does not proxy WebSockets, set to direct Chat service hub URL (e.g. `http://localhost:5040/hubs/chat`). Default: `/api/v1/chat/hubs/chat` (relative). |
 
-```ts
-server: {
-  proxy: {
-    '/api': { target: 'http://localhost:5000', changeOrigin: true }
-  }
-}
-```
+**Dev**: `vite.config.ts` proxies `/api` → `http://localhost:5000`. No env vars required.
 
-Для production можно добавить `VITE_API_URL` и использовать его в axios/fetch.
+**Production**: Set `VITE_API_URL` at build time when frontend and API are on different origins. The API client uses `import.meta.env.VITE_API_URL || '/api/v1'`.
 
 ## Docker
 
@@ -56,9 +54,17 @@ Frontend: `http://localhost:3000`. Запускается вместе с Gatewa
 ```bash
 # Линтинг
 npm run lint
+
+# Unit-тесты (Vitest)
+npm run test        # watch mode
+npm run test:run    # single run
 ```
 
-Unit/E2E тесты в проекте не настроены. Рекомендуется добавить Vitest/Jest и Playwright при необходимости.
+**FE-001 config verification** (из корня репозитория):
+
+```bash
+./scripts/verify-fe001-config.sh
+```
 
 ## Scripts
 
@@ -68,5 +74,7 @@ Unit/E2E тесты в проекте не настроены. Рекоменд�
 | `npm run build` | Сборка для production |
 | `npm run preview` | Просмотр production-сборки |
 | `npm run lint` | ESLint |
+| `npm run test` | Vitest (watch) |
+| `npm run test:run` | Vitest (single run) |
 
 Полная инструкция по бэкенду — в [README репозитория](../../../README.md).

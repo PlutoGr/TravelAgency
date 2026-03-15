@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import type { RegisterRequest, User } from '@/types';
 import * as authApi from '@/api/auth';
-
-const TOKEN_KEY = 'auth_token';
+import { AUTH_TOKEN_KEY } from '@/api/client';
 
 type AuthState = {
   user: User | null;
@@ -11,7 +10,7 @@ type AuthState = {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   setUser: (user: User) => void;
   checkAuth: () => void;
 };
@@ -26,7 +25,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const { user, tokens } = await authApi.login({ email, password });
-      localStorage.setItem(TOKEN_KEY, tokens.accessToken);
       set({ user, token: tokens.accessToken, isAuthenticated: true });
     } finally {
       set({ isLoading: false });
@@ -37,30 +35,38 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const { user, tokens } = await authApi.register(data);
-      localStorage.setItem(TOKEN_KEY, tokens.accessToken);
       set({ user, token: tokens.accessToken, isAuthenticated: true });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  logout: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    set({ user: null, token: null, isAuthenticated: false });
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      set({ user: null, token: null, isAuthenticated: false });
+    }
   },
 
   setUser: (user) => set({ user }),
 
   checkAuth: () => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    // SECURITY: Token read from localStorage (XSS-vulnerable). Migration to httpOnly cookies planned.
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (token) {
       set({ token, isAuthenticated: true, isLoading: true });
       authApi
         .getMe()
         .then((user) => set({ user, isLoading: false }))
-        .catch(() => {
-          localStorage.removeItem(TOKEN_KEY);
-          set({ token: null, isAuthenticated: false, isLoading: false });
+        .catch((error) => {
+          const isAuthFailure = error?.response?.status === 401;
+          if (isAuthFailure) {
+            void authApi.logout();
+            set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+          } else {
+            set({ isLoading: false });
+          }
         });
     }
   },

@@ -6,13 +6,10 @@ import clsx from 'clsx';
 import type { Tour } from '@/types';
 import { Card, Badge, StarRating, Button } from '@/components/ui';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { formatPrice } from '@/utils/format';
 
 interface TourCardProps {
   tour: Tour;
-}
-
-function formatPrice(price: number): string {
-  return price.toLocaleString('ru-RU') + ' ₽';
 }
 
 export default function TourCard({ tour }: TourCardProps) {
@@ -52,7 +49,7 @@ export default function TourCard({ tour }: TourCardProps) {
           whileTap={{ scale: 0.8 }}
           onClick={(e) => {
             e.preventDefault();
-            toggleFavorite(tour.id);
+            toggleFavorite(tour.id, tour);
           }}
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm transition-colors hover:bg-white"
         >

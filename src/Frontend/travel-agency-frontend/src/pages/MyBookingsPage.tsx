@@ -6,6 +6,7 @@ import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { Tabs, Button, Skeleton, Modal } from '@/components/ui';
 import { BookingCard, BookingForm } from '@/components/booking';
+import toast from 'react-hot-toast';
 import { getMyBookings } from '@/api/bookings';
 
 const STATUS_TABS = [
@@ -33,6 +34,9 @@ export default function MyBookingsPage() {
     const statusFilter = activeTab === 'all' ? undefined : (activeTab as BookingStatus);
     getMyBookings(statusFilter)
       .then(setBookings)
+      .catch(() => {
+        toast.error('Не удалось загрузить бронирования');
+      })
       .finally(() => setIsLoading(false));
   }
 

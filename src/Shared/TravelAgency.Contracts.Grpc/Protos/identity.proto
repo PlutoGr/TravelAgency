@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "TravelAgency.Identity.Infrastructure.GrpcServices";
+option csharp_namespace = "TravelAgency.Contracts.Grpc.Identity";
 
 package identity;
 

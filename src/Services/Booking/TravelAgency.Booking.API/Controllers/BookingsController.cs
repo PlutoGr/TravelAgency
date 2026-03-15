@@ -8,6 +8,7 @@ using TravelAgency.Booking.Application.Features.Bookings.Commands.ConfirmProposa
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateBooking;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateProposal;
 using TravelAgency.Booking.Application.Features.Bookings.Queries.GetBookingById;
+using TravelAgency.Booking.Application.Features.Bookings.Queries.GetManagerBookings;
 using TravelAgency.Booking.Application.Features.Bookings.Queries.GetMyBookings;
 using TravelAgency.Shared.Contracts.Authorization;
 
@@ -33,6 +34,15 @@ public class BookingsController : ControllerBase
     {
         var result = await _mediator.Send(new CreateBookingCommand(request), ct);
         return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = AuthPolicies.RequireManager)]
+    [ProducesResponseType(typeof(IReadOnlyList<BookingDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetManagerBookings(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetManagerBookingsQuery(), ct);
+        return Ok(result);
     }
 
     [HttpGet("my")]

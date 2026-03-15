@@ -32,6 +32,12 @@ public class GlobalExceptionHandlerMiddleware
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        if (context.Response.HasStarted)
+        {
+            _logger.LogWarning("Response already started, cannot write ProblemDetails for exception.");
+            return;
+        }
+
         var (statusCode, problemDetails) = exception switch
         {
             NotFoundException notFound => (

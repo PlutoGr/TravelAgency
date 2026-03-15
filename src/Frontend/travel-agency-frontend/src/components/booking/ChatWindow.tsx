@@ -4,9 +4,15 @@ import { Send, Paperclip, MessageSquare } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import clsx from 'clsx';
+import toast from 'react-hot-toast';
 import type { ChatMessage } from '@/types';
 import { Avatar } from '@/components/ui';
-import { getMessages, sendMessage } from '@/api/chat';
+import {
+  getMessages,
+  sendMessage,
+  subscribeToMessages,
+  disconnectChat,
+} from '@/api/chat';
 
 interface ChatWindowProps {
   bookingId: string;
@@ -78,9 +84,45 @@ export default function ChatWindow({
         }
       })
       .catch(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+          toast.error('Не удалось загрузить сообщения');
+        }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, scrollToBottom]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToMessages(bookingId, (msg) => {
+      setMessages((prev) => {
+        const replaceIdx = prev.findIndex(
+          (m) =>
+            m.id.startsWith('temp-') &&
+            m.text === msg.text &&
+            m.senderId === msg.senderId,
+        );
+        if (replaceIdx >= 0) {
+          const next = [...prev];
+          next[replaceIdx] = msg;
+          return next.sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+          );
+        }
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+      });
+      scrollToBottom();
+    });
+    return () => {
+      unsubscribe();
+      disconnectChat(bookingId);
+    };
   }, [bookingId, scrollToBottom]);
 
   const handleSend = async () => {
@@ -104,12 +146,13 @@ export default function ChatWindow({
 
     setIsSending(true);
     try {
-      const saved = await sendMessage(bookingId, text);
+      const saved = await sendMessage(bookingId, text, currentUserId);
       setMessages((prev) =>
         prev.map((m) => (m.id === optimisticMsg.id ? saved : m)),
       );
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+      toast.error('Не удалось отправить сообщение');
     } finally {
       setIsSending(false);
     }
@@ -239,8 +282,9 @@ export default function ChatWindow({
         <div className="flex items-end gap-2">
           <button
             type="button"
-            className="mb-1 shrink-0 rounded-lg p-2 text-warm-gray transition-colors hover:bg-sand hover:text-primary"
-            title="Прикрепить файл"
+            disabled
+            className="mb-1 shrink-0 cursor-not-allowed rounded-lg p-2 text-warm-gray/60"
+            title="Скоро"
           >
             <Paperclip size={20} />
           </button>

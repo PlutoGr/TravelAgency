@@ -11,12 +11,15 @@ namespace TravelAgency.Booking.Application.Features.Bookings.Commands.CreateBook
 public sealed class CreateBookingCommandHandler(
     ICurrentUserService currentUser,
     IBookingRepository bookingRepository,
+    ICatalogGrpcClient catalogGrpcClient,
     IOutboxMessageRepository outboxRepository,
     IUnitOfWork unitOfWork)
     : IRequestHandler<CreateBookingCommand, BookingDto>
 {
     public async Task<BookingDto> Handle(CreateBookingCommand command, CancellationToken cancellationToken)
     {
+        _ = await catalogGrpcClient.GetTourSnapshotAsync(command.Request.TourId, cancellationToken);
+
         var booking = TravelAgency.Booking.Domain.Entities.Booking.Create(
             currentUser.UserId,
             command.Request.TourId,

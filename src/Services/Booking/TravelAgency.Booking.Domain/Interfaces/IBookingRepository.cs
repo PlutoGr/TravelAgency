@@ -6,5 +6,6 @@ public interface IBookingRepository
 {
     Task<BookingEntity?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<BookingEntity>> GetByClientIdAsync(Guid clientId, CancellationToken ct = default);
+    Task<IReadOnlyList<BookingEntity>> GetAllForManagersAsync(CancellationToken ct = default);
     void Stage(BookingEntity booking);
 }

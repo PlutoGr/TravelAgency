@@ -30,6 +30,14 @@ public class BookingRepository : IBookingRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Domain.Entities.Booking>> GetAllForManagersAsync(CancellationToken ct = default)
+    {
+        return await _context.Bookings
+            .Include(b => b.Proposals)
+            .OrderByDescending(b => b.CreatedAt)
+            .ToListAsync(ct);
+    }
+
     public void Stage(Domain.Entities.Booking booking)
     {
         _context.Bookings.Add(booking);

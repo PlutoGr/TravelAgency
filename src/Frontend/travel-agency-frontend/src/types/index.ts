@@ -47,6 +47,7 @@ export type User = {
   firstName: string;
   lastName: string;
   phone: string;
+  /** Optional. Not populated by backend UserProfileDto; reserved for future use. */
   avatar?: string;
   passport?: string;
   role: 'client' | 'manager' | 'admin';
@@ -58,12 +59,17 @@ export type BookingStatus =
   | 'in_progress'
   | 'proposal_sent'
   | 'confirmed'
-  | 'closed';
+  | 'closed'
+  | 'cancelled';
 
 export type Booking = {
   id: string;
   clientId: string;
   clientName: string;
+  /** Optional; from Identity enrichment when manager views booking */
+  clientEmail?: string | null;
+  /** Optional; from Identity enrichment when manager views booking */
+  clientPhone?: string | null;
   destination: string;
   country: string;
   dateFrom: string;
@@ -75,6 +81,7 @@ export type Booking = {
   managerName?: string;
   tourId?: string;
   tour?: Tour;
+  proposalId?: string;
   notes: string;
   createdAt: string;
   updatedAt: string;
@@ -106,7 +113,13 @@ export type RegisterRequest = {
   password: string;
   firstName: string;
   lastName: string;
-  phone: string;
+  phone?: string;
+};
+
+export type UpdateProfileRequest = {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 };
 
 export type TourFilters = {

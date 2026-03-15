@@ -8,6 +8,7 @@ import { BookingCard, BookingForm } from '@/components/booking';
 import TourCard from '@/components/tour/TourCard';
 import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import toast from 'react-hot-toast';
 import { getMyBookings } from '@/api/bookings';
 import { mockTours } from '@/mocks/tours';
 import { mockUser } from '@/mocks/users';
@@ -44,17 +45,25 @@ export default function DashboardPage() {
   const suggestedTours = useMemo(() => getRandomTours(4), []);
 
   useEffect(() => {
-    getMyBookings().then((all) => {
-      const active = all.filter((b) => b.status !== 'closed').slice(0, 3);
-      setBookings(active);
-    });
+    getMyBookings()
+      .then((all) => {
+        const active = all.filter((b) => b.status !== 'closed').slice(0, 3);
+        setBookings(active);
+      })
+      .catch(() => {
+        toast.error('Не удалось загрузить бронирования');
+      });
   }, []);
 
   function handleBookingCreated() {
     setShowForm(false);
-    getMyBookings().then((all) => {
-      setBookings(all.filter((b) => b.status !== 'closed').slice(0, 3));
-    });
+    getMyBookings()
+      .then((all) => {
+        setBookings(all.filter((b) => b.status !== 'closed').slice(0, 3));
+      })
+      .catch(() => {
+        toast.error('Не удалось обновить список бронирований');
+      });
   }
 
   return (

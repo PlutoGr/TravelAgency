@@ -23,6 +23,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     private readonly SqliteConnection _connection;
 
     public Mock<ICatalogGrpcClient> CatalogGrpcClientMock { get; } = new();
+    public Mock<IIdentityGrpcClient> IdentityGrpcClientMock { get; } = new();
 
     public CustomWebApplicationFactory()
     {
@@ -38,6 +39,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid tourId, CancellationToken _) => new TourSnapshotDto(
                 tourId, "Test Tour", "A great tour", 999.99m, "USD", 7, DateTime.UtcNow));
+
+        // Default: return null for Identity (client details not enriched in tests unless explicitly set up)
+        IdentityGrpcClientMock
+            .Setup(c => c.GetUserSummaryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserSummary?)null);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -80,6 +86,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             // Replace gRPC client adapters with mocks so no real gRPC calls are made
             services.RemoveAll<ICatalogGrpcClient>();
             services.AddSingleton<ICatalogGrpcClient>(_ => CatalogGrpcClientMock.Object);
+            services.RemoveAll<IIdentityGrpcClient>();
+            services.AddSingleton<IIdentityGrpcClient>(_ => IdentityGrpcClientMock.Object);
 
             // Override JWT validation parameters after all service configuration runs.
             // AddBookingAuthentication reads config values eagerly, so PostConfigure is

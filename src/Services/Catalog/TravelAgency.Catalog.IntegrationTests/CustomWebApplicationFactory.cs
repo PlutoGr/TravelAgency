@@ -34,7 +34,16 @@ public class CustomWebApplicationFactory : IAsyncDisposable
         _connection.Open();
     }
 
-    public async Task InitializeAsync()
+    /// <summary>
+    /// Initializes the test server with default configuration.
+    /// </summary>
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    /// <summary>
+    /// Initializes the test server, optionally customizing config before startup.
+    /// Used by startup validation tests to verify SigningKey requirements.
+    /// </summary>
+    public async Task InitializeAsync(Action<Dictionary<string, string?>>? configureConfig)
     {
         var testSettings = new Dictionary<string, string?>
         {
@@ -44,6 +53,8 @@ public class CustomWebApplicationFactory : IAsyncDisposable
             ["ConnectionStrings:CatalogDb"] = "DataSource=:memory:",
             ["Serilog:MinimumLevel:Default"] = "Warning"
         };
+
+        configureConfig?.Invoke(testSettings);
 
         // Set environment in options; UseEnvironment("Testing") after CreateBuilder causes
         // "The environment changed from "" to "Testing"" error.

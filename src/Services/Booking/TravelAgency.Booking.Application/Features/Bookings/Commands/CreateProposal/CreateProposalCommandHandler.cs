@@ -19,8 +19,8 @@ public sealed class CreateProposalCommandHandler(
 {
     public async Task<ProposalDto> Handle(CreateProposalCommand command, CancellationToken cancellationToken)
     {
-        if (currentUser.Role != AppRoles.Manager)
-            throw new ForbiddenException("Only managers can create proposals.");
+        if (currentUser.Role is not AppRoles.Manager and currentUser.Role is not AppRoles.Admin)
+            throw new ForbiddenException("Only managers or admins can create proposals.");
 
         var booking = await bookingRepository.GetByIdAsync(command.BookingId, cancellationToken)
             ?? throw new NotFoundException($"Booking '{command.BookingId}' was not found.");

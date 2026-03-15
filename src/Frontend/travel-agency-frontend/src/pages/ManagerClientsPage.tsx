@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -8,15 +8,14 @@ import {
   Briefcase,
   Calendar,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import clsx from 'clsx';
 import type { Booking } from '@/types';
-import { mockBookings } from '@/mocks/bookings';
-import { Card, Avatar } from '@/components/ui';
+import { getAllBookings } from '@/api/bookings';
+import { Card, Avatar, Skeleton } from '@/components/ui';
 import { BookingCard } from '@/components/booking';
 import { Breadcrumbs } from '@/components/layout';
 import { PageTransition } from '@/components/common';
+import { formatDate } from '@/utils/format';
 
 const BREADCRUMBS = [
   { label: 'Панель менеджера', path: '/manager' },
@@ -33,28 +32,10 @@ interface ClientInfo {
   lastBookingDate: string;
 }
 
-const MOCK_CLIENT_EMAILS: Record<string, string> = {
-  'user-1': 'ivan.ivanov@mail.ru',
-  'user-2': 'maria.lebedeva@gmail.com',
-  'user-3': 'alexey.novikov@yandex.ru',
-  'user-4': 'elena.smirnova@mail.ru',
-  'user-5': 'dmitry.kozlov@gmail.com',
-  'user-6': 'natalia.sokolova@yandex.ru',
-};
-
-const MOCK_CLIENT_PHONES: Record<string, string> = {
-  'user-1': '+7 (999) 123-45-67',
-  'user-2': '+7 (916) 555-12-34',
-  'user-3': '+7 (903) 777-88-99',
-  'user-4': '+7 (926) 333-44-55',
-  'user-5': '+7 (905) 111-22-33',
-  'user-6': '+7 (917) 666-77-88',
-};
-
-function buildClients(): ClientInfo[] {
+function buildClientsFromBookings(bookings: Booking[]): ClientInfo[] {
   const clientMap = new Map<string, ClientInfo>();
 
-  for (const booking of mockBookings) {
+  for (const booking of bookings) {
     const existing = clientMap.get(booking.clientId);
     if (existing) {
       existing.bookings.push(booking);
@@ -64,9 +45,9 @@ function buildClients(): ClientInfo[] {
     } else {
       clientMap.set(booking.clientId, {
         id: booking.clientId,
-        name: booking.clientName,
-        email: MOCK_CLIENT_EMAILS[booking.clientId] ?? `${booking.clientId}@email.com`,
-        phone: MOCK_CLIENT_PHONES[booking.clientId] ?? '+7 (900) 000-00-00',
+        name: booking.clientName || booking.clientId,
+        email: booking.clientEmail ?? '—',
+        phone: booking.clientPhone ?? '—',
         bookings: [booking],
         lastBookingDate: booking.createdAt,
       });
@@ -80,14 +61,22 @@ function buildClients(): ClientInfo[] {
   );
 }
 
-function formatDate(dateStr: string): string {
-  return format(new Date(dateStr), 'd MMM yyyy', { locale: ru });
-}
-
 export default function ManagerClientsPage() {
-  const clients = useMemo(buildClients, []);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAllBookings()
+      .then(setBookings)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const clients = useMemo(
+    () => buildClientsFromBookings(bookings),
+    [bookings],
+  );
 
   const filteredClients = useMemo(() => {
     if (!searchQuery) return clients;
@@ -102,6 +91,23 @@ export default function ManagerClientsPage() {
   const toggleExpanded = (clientId: string) => {
     setExpandedId((prev) => (prev === clientId ? null : clientId));
   };
+
+  if (isLoading) {
+    return (
+      <PageTransition>
+        <div className="space-y-6">
+          <Breadcrumbs items={BREADCRUMBS} />
+          <Skeleton width={200} height={28} />
+          <Skeleton height={120} variant="rectangular" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} height={100} variant="rectangular" />
+            ))}
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>

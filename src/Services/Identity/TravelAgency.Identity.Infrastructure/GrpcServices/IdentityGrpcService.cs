@@ -1,4 +1,5 @@
 using Grpc.Core;
+using TravelAgency.Contracts.Grpc.Identity;
 using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Domain.Interfaces;
 
@@ -23,8 +24,8 @@ public sealed class IdentityGrpcService(IUserRepository userRepository)
         {
             UserId = user.Id.ToString(),
             Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
+            FirstName = user.FirstName ?? string.Empty,
+            LastName = user.LastName ?? string.Empty,
             Role = user.Role.ToRoleString()
         };
     }

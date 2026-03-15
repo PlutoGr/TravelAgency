@@ -16,6 +16,7 @@ import { mockTours } from '@/mocks/tours';
 import { Card, Button, Modal, Tabs, Badge, Select } from '@/components/ui';
 import { Breadcrumbs } from '@/components/layout';
 import { PageTransition } from '@/components/common';
+import { formatPrice } from '@/utils/format';
 
 const BREADCRUMBS = [
   { label: 'Панель менеджера', path: '/manager' },
@@ -60,10 +61,6 @@ const EMPTY_TOUR: Tour = {
   isHot: false,
   maxTravelers: 4,
 };
-
-function formatPrice(price: number): string {
-  return price.toLocaleString('ru-RU') + ' ₽';
-}
 
 export default function ManagerToursPage() {
   const [tours, setTours] = useState<Tour[]>(mockTours);

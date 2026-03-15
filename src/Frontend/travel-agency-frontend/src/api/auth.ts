@@ -1,51 +1,113 @@
-import type { AuthTokens, LoginRequest, RegisterRequest, User } from '@/types';
-import { mockUser } from '@/mocks/users';
+import { apiClient, applyTokens, AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY } from './client';
+import { mapAuthTokensDtoToAuthTokens, type AuthTokensDto } from './dto';
+import type {
+  AuthTokens,
+  LoginRequest,
+  RegisterRequest,
+  UpdateProfileRequest,
+  User,
+} from '@/types';
 
-const delay = () => new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
+/** Backend DTO: user profile */
+type UserProfileDto = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  role: string;
+  createdAt: string;
+};
+
+export type UserRole = 'client' | 'manager' | 'admin';
+
+/** Maps backend UserProfileDto to User. Note: avatar is not in backend DTO; reserved for future use. */
+function mapUserProfileDtoToUser(dto: UserProfileDto): User {
+  return {
+    id: dto.id,
+    email: dto.email,
+    firstName: dto.firstName,
+    lastName: dto.lastName,
+    phone: dto.phone ?? '',
+    role: dto.role as UserRole,
+    createdAt: dto.createdAt,
+  };
+}
 
 export async function login(
-  _data: LoginRequest,
+  data: LoginRequest,
 ): Promise<{ user: User; tokens: AuthTokens }> {
-  await delay();
-  return {
-    user: mockUser,
-    tokens: {
-      accessToken: 'mock-access-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now(),
-    },
-  };
+  const { data: tokensDto } = await apiClient.post<AuthTokensDto>(
+    '/auth/login',
+    data,
+  );
+  const tokens = mapAuthTokensDtoToAuthTokens(tokensDto);
+  applyTokens(tokens);
+
+  const user = await getMe();
+  return { user, tokens };
 }
 
 export async function register(
   data: RegisterRequest,
 ): Promise<{ user: User; tokens: AuthTokens }> {
-  await delay();
-  return {
-    user: {
-      ...mockUser,
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
-      createdAt: new Date().toISOString(),
-    },
-    tokens: {
-      accessToken: 'mock-access-token-' + Date.now(),
-      refreshToken: 'mock-refresh-token-' + Date.now(),
-    },
-  };
+  const { data: tokensDto } = await apiClient.post<AuthTokensDto>(
+    '/auth/register',
+    data,
+  );
+  const tokens = mapAuthTokensDtoToAuthTokens(tokensDto);
+  applyTokens(tokens);
+
+  const user = await getMe();
+  return { user, tokens };
 }
 
 export async function logout(): Promise<void> {
-  await delay();
+  // SECURITY: Tokens read from localStorage (XSS-vulnerable). Migration to httpOnly cookies planned.
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  try {
+    if (refreshToken) {
+      await apiClient.post('/auth/logout', { refreshToken });
+    }
+  } finally {
+    // Always clear local state even if API call fails
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    delete apiClient.defaults.headers.common.Authorization;
+  }
 }
 
 export async function getMe(): Promise<User> {
-  await delay();
-  return mockUser;
+  const { data } = await apiClient.get<UserProfileDto>('/auth/me');
+  return mapUserProfileDtoToUser(data);
 }
 
-export async function updateProfile(data: Partial<User>): Promise<User> {
-  await delay();
-  return { ...mockUser, ...data };
+export async function updateProfile(data: UpdateProfileRequest): Promise<User> {
+  const payload: UpdateProfileRequest = {};
+  if (data.firstName !== undefined) payload.firstName = data.firstName;
+  if (data.lastName !== undefined) payload.lastName = data.lastName;
+  if (data.phone !== undefined) payload.phone = data.phone;
+
+  const { data: dto } = await apiClient.patch<UserProfileDto>(
+    '/auth/me',
+    payload,
+  );
+  return mapUserProfileDtoToUser(dto);
+}
+
+export async function refresh(): Promise<AuthTokens> {
+  // SECURITY: Tokens read from localStorage (XSS-vulnerable). Migration to httpOnly cookies planned.
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const { data: tokensDto } = await apiClient.post<AuthTokensDto>(
+    '/auth/refresh',
+    { refreshToken },
+  );
+  const tokens = mapAuthTokensDtoToAuthTokens(tokensDto);
+  applyTokens(tokens);
+
+  return tokens;
 }

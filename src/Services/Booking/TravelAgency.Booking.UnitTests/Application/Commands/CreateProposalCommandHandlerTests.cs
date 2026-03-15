@@ -70,7 +70,31 @@ public class CreateProposalCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NonManager_ShouldThrowForbiddenException()
+    public async Task Handle_Admin_CanCreateProposal()
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Admin);
+
+        var booking = CreateInProgressBooking();
+        var bookingId = booking.Id;
+
+        _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(booking.TourId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateSnapshotDto(booking.TourId));
+
+        var command = new CreateProposalCommand(bookingId, new CreateProposalRequest("admin notes"));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.ManagerId.Should().Be(ManagerId);
+        result.Notes.Should().Be("admin notes");
+    }
+
+    [Fact]
+    public async Task Handle_NonManagerOrAdmin_ShouldThrowForbiddenException()
     {
         _currentUserMock.Setup(u => u.UserId).Returns(ClientId);
         _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Client);
@@ -80,7 +104,7 @@ public class CreateProposalCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("*managers*");
+            .WithMessage("*managers or admins*");
     }
 
     [Fact]

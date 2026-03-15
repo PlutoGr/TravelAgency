@@ -10,14 +10,13 @@ import {
   Calendar,
   MapPin,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import type { BookingStatus } from '@/types';
 import { mockBookings } from '@/mocks/bookings';
 import { useAuthStore } from '@/store/authStore';
 import { Card, Button } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
 import { PageTransition } from '@/components/common';
+import { formatDate, formatBookingId } from '@/utils/format';
 
 const KPI_CONFIG: {
   key: BookingStatus;
@@ -65,10 +64,6 @@ const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
-
-function formatDate(dateStr: string): string {
-  return format(new Date(dateStr), 'd MMM yyyy', { locale: ru });
-}
 
 export default function ManagerDashboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -182,7 +177,7 @@ export default function ManagerDashboardPage() {
                       className="border-b border-sand/60 transition-colors last:border-0 hover:bg-cream/40"
                     >
                       <td className="px-5 py-3.5 font-mono text-xs text-warm-gray">
-                        #BK-{booking.id.split('-')[1]?.padStart(3, '0')}
+                        {formatBookingId(booking.id)}
                       </td>
                       <td className="px-5 py-3.5 font-medium text-dark">
                         {booking.clientName}
@@ -225,7 +220,7 @@ export default function ManagerDashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-xs text-warm-gray">
-                        #BK-{booking.id.split('-')[1]?.padStart(3, '0')}
+                        {formatBookingId(booking.id)}
                       </p>
                       <p className="mt-1 font-heading text-sm font-semibold text-dark">
                         {booking.clientName}

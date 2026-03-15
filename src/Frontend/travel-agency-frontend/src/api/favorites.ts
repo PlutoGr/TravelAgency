@@ -1,42 +1,33 @@
 import type { Tour } from '@/types';
-import { mockTours } from '@/mocks/tours';
+import { apiClient } from './client';
+import { getTourById } from './catalog';
 
-const delay = () => new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
-
-const STORAGE_KEY = 'favorite_tours';
-
-function getStoredIds(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+interface FavoriteDto {
+  id: string;
+  userId: string;
+  tourId: string;
+  addedAt: string;
 }
 
-function storeIds(ids: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-}
-
+/**
+ * Fetches favorite tours for the current user.
+ * Fetches favorite IDs from /favorites, then getTourById for each (N+1 pattern).
+ * A batch endpoint would require a backend change to avoid N+1 requests.
+ */
 export async function getFavorites(): Promise<Tour[]> {
-  await delay();
-
-  const ids = getStoredIds();
-  return mockTours.filter((t) => ids.includes(t.id));
+  const { data } = await apiClient.get<FavoriteDto[]>('/favorites');
+  const results = await Promise.allSettled(
+    (data ?? []).map((f) => getTourById(f.tourId)),
+  );
+  return results
+    .filter((r): r is PromiseFulfilledResult<Tour> => r.status === 'fulfilled')
+    .map((r) => r.value);
 }
 
 export async function addFavorite(tourId: string): Promise<void> {
-  await delay();
-
-  const ids = getStoredIds();
-  if (!ids.includes(tourId)) {
-    storeIds([...ids, tourId]);
-  }
+  await apiClient.post(`/favorites/${tourId}`);
 }
 
 export async function removeFavorite(tourId: string): Promise<void> {
-  await delay();
-
-  const ids = getStoredIds();
-  storeIds(ids.filter((id) => id !== tourId));
+  await apiClient.delete(`/favorites/${tourId}`);
 }

@@ -66,6 +66,7 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
             {
                 ["ConnectionStrings:Redis"] = string.Empty, // Disable Redis for tests
                 ["ASPNETCORE_RUN_MIGRATIONS"] = "true",
+                ["JwtSettings:SigningKey"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
             });
         });
 

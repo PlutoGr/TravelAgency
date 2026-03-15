@@ -10,4 +10,7 @@ public record BookingDto(
     BookingStatus Status,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    IReadOnlyList<ProposalDto> Proposals);
+    IReadOnlyList<ProposalDto> Proposals,
+    string? ClientName = null,
+    string? ClientEmail = null,
+    string? ClientPhone = null);
