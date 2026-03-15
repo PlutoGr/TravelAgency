@@ -18,6 +18,7 @@ public class LoginCommandHandlerTests
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepoMock = new();
     private readonly Mock<IJwtTokenService> _jwtServiceMock = new();
     private readonly Mock<IPasswordHasher> _passwordHasherMock = new();
+    private readonly Mock<ILockoutService> _lockoutMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly LoginCommandHandler _handler;
 
@@ -32,11 +33,13 @@ public class LoginCommandHandlerTests
 
     public LoginCommandHandlerTests()
     {
+        _lockoutMock.Setup(l => l.IsLockedOut(It.IsAny<string>())).Returns(false);
         _handler = new LoginCommandHandler(
             _userRepoMock.Object,
             _refreshTokenRepoMock.Object,
             _jwtServiceMock.Object,
             _passwordHasherMock.Object,
+            _lockoutMock.Object,
             _unitOfWorkMock.Object,
             Options.Create(_jwtSettings));
     }
@@ -77,6 +80,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>();
+        _lockoutMock.Verify(l => l.RecordFailedAttempt("notfound@example.com"), Times.Once);
     }
 
     [Fact]
@@ -92,6 +96,7 @@ public class LoginCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>();
+        _lockoutMock.Verify(l => l.RecordFailedAttempt("user@example.com"), Times.Once);
     }
 
     [Fact]
@@ -109,5 +114,20 @@ public class LoginCommandHandlerTests
         await _handler.Handle(command, CancellationToken.None);
 
         _refreshTokenRepoMock.Verify(r => r.Stage(It.IsAny<RefreshToken>()), Times.Once);
+        _lockoutMock.Verify(l => l.ResetFailedAttempts("user@example.com"), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenLockedOut_ThrowsUnauthorizedException()
+    {
+        _lockoutMock.Setup(l => l.IsLockedOut("locked@example.com")).Returns(true);
+
+        var command = new LoginCommand(new LoginRequest("locked@example.com", "password"));
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedException>();
+        _userRepoMock.Verify(r => r.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _lockoutMock.Verify(l => l.RecordFailedAttempt(It.IsAny<string>()), Times.Never);
     }
 }

@@ -40,7 +40,6 @@ public sealed class MediaController(IMediator mediator) : ControllerBase
     /// Download a file by its ID. Returns the raw file content.
     /// </summary>
     [HttpGet("{id:guid}")]
-    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)

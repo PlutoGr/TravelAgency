@@ -13,6 +13,7 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
     private readonly string _keyPrefix;
     private readonly int _permitLimit;
     private readonly TimeSpan _window;
+    private readonly bool _failOpen;
     private static readonly string LuaScript = """
         local current = redis.call('INCR', KEYS[1])
         if current == 1 then
@@ -25,13 +26,15 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
         IConnectionMultiplexer redis,
         string partitionKey,
         int permitLimit,
-        TimeSpan window)
+        TimeSpan window,
+        bool failOpen = true)
     {
         _redis = redis;
         var safeKey = string.Join("_", partitionKey.Split([':', '.', ' '], StringSplitOptions.RemoveEmptyEntries));
         _keyPrefix = $"ratelimit:gateway:{safeKey}";
         _permitLimit = permitLimit;
         _window = window;
+        _failOpen = failOpen;
     }
 
     protected override ValueTask<RateLimitLease> AcquireAsyncCore(int permitCount, CancellationToken cancellationToken)
@@ -57,10 +60,12 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
                 ? new RedisRateLimitLease(permitCount, null)
                 : new RedisRateLimitLease(0, _window);
         }
-        catch (RedisConnectionException)
+        catch (RedisException)
         {
-            // Redis unavailable: allow request (fail open for availability)
-            return new RedisRateLimitLease(permitCount, null);
+            // Redis unavailable: fail-open allows request; fail-closed denies (IsAcquired=false)
+            return _failOpen
+                ? new RedisRateLimitLease(permitCount, null)
+                : new RedisRateLimitLease(0, _window);
         }
     }
 

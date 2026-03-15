@@ -34,8 +34,7 @@ dotnet run
 
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
-| `ConnectionStrings__ChatDb` | appsettings | Строка подключения PostgreSQL |
-| `ConnectionStrings__DefaultConnection` | appsettings | Альтернативная строка подключения |
+| `ConnectionStrings__ChatDb` | **required** | Строка подключения PostgreSQL. Должна быть задана через переменную окружения или конфигурацию. |
 | `ConnectionStrings__Redis` | `redis:6379` | Redis для health check |
 | `Services__BookingServiceUrl` | `http://localhost:5030` | URL Booking API |
 | `JwtSettings__SigningKey` | appsettings | Ключ подписи JWT |

@@ -116,6 +116,26 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// AUDIT-001: Verifies ValidationBehavior runs in pipeline when Infrastructure is configured.
+    /// Invalid command triggers FluentValidation via ValidationBehavior, returning ProblemDetails with validation errors.
+    /// </summary>
+    [Fact]
+    public async Task Register_WithInvalidRequest_Returns400WithValidationErrors()
+    {
+        var request = new RegisterRequest("not-an-email", "weak", "", "", null);
+
+        var response = await _client.PostAsJsonAsync("/identity/register", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Validation Error");
+        content.Should().Contain("detail");
+        content.Should().Contain("Request.Email");
+    }
+
     [Fact]
     public async Task Login_WithValidCredentials_Returns200()
     {
@@ -149,6 +169,28 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
         var response = await _client.PostAsJsonAsync("/identity/login", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// AUDIT-002: Login lockout still works with InMemoryLockoutService. After max failed attempts,
+    /// even correct credentials return 401 until lockout expires or is reset.
+    /// </summary>
+    [Fact]
+    public async Task Login_WhenLockedOut_Returns401EvenWithCorrectPassword()
+    {
+        await SeedUserAsync("lockout@example.com", "Password1");
+
+        for (var i = 0; i < 3; i++)
+        {
+            var failResp = await _client.PostAsJsonAsync("/identity/login",
+                new LoginRequest("lockout@example.com", "WrongPassword"));
+            failResp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        var correctResp = await _client.PostAsJsonAsync("/identity/login",
+            new LoginRequest("lockout@example.com", "Password1"));
+
+        correctResp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

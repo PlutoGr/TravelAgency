@@ -16,9 +16,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddChatInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("ChatDb")
-            ?? configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'ChatDb' or 'DefaultConnection' must be configured.");
+        var connectionString = configuration.GetConnectionString("ChatDb");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings:ChatDb is required. Set ConnectionStrings__ChatDb environment variable or add it to configuration.");
 
         services.AddDbContext<ChatDbContext>(options =>
             options.UseNpgsql(connectionString));
@@ -27,6 +27,7 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
+        services.AddGrpcAuthCallOptionsFactory();
 
         var bookingGrpcAddress = configuration["GrpcClients:BookingServiceUrl"]
             ?? configuration["Services:BookingServiceUrl"]
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IBookingGrpcClient, BookingGrpcClient>();
 
         services.AddChatApplication();
+        services.AddSharedMediatRBehaviors();
 
         return services;
     }

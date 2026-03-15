@@ -39,6 +39,9 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
             var testSettings = new Dictionary<string, string?>
             {
                 ["Cookie:Secure"] = "false",
+                ["RateLimiting:Auth:Limit"] = "1000",
+                ["RateLimiting:Auth:PeriodSeconds"] = "1",
+                ["RateLimiting:Global:Limit"] = "2000",
                 ["ReverseProxy:Clusters:identity-cluster:Destinations:destination1:Address"] = _mockBackendUrl,
                 ["ReverseProxy:Clusters:catalog-cluster:Destinations:destination1:Address"] = _mockBackendUrl,
                 ["ReverseProxy:Clusters:booking-cluster:Destinations:destination1:Address"] = _mockBackendUrl,

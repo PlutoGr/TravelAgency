@@ -24,12 +24,17 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddMediaApplication();
+        services.AddSharedMediatRBehaviors();
 
         services.Configure<StorageSettings>(configuration.GetSection("Storage"));
         services.Configure<UploadSettings>(configuration.GetSection("Upload"));
 
-        var connectionString = configuration.GetConnectionString("MediaDb")
-            ?? "Host=localhost;Port=5432;Database=travel_media;Username=postgres;Password=postgres";
+        var connectionString = configuration.GetConnectionString("MediaDb");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:MediaDb is required. Set ConnectionStrings__MediaDb environment variable or add it to configuration.");
+        }
 
         services.AddDbContext<MediaDbContext>(options =>
             options.UseNpgsql(connectionString));

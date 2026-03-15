@@ -30,8 +30,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
-        // Set the environment variable so AddMediaAuthentication doesn't throw at startup.
-        // This is read eagerly during service registration, before ConfigureAppConfiguration runs.
+        // Set environment variables so AddMediaInfrastructure and AddMediaAuthentication don't throw at startup.
+        // These are read eagerly during service registration, before ConfigureAppConfiguration runs.
+        Environment.SetEnvironmentVariable("ConnectionStrings__MediaDb", "Host=localhost;Database=travel_media_test");
         Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "test-signing-key-must-be-at-least-32-chars-long!");
 
         StorageService
@@ -76,6 +77,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["ConnectionStrings:MediaDb"] = "Host=localhost;Database=travel_media_test",
                 ["JwtSettings:Issuer"] = "test-issuer",
                 ["JwtSettings:Audience"] = "test-audience",
                 ["JwtSettings:SigningKey"] = "test-signing-key-must-be-at-least-32-chars-long!",

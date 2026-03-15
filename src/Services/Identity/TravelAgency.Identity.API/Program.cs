@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using TravelAgency.Identity.API.Extensions;
 using TravelAgency.Identity.API.Middleware;
+using TravelAgency.Identity.Infrastructure.Extensions;
 using TravelAgency.Identity.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);

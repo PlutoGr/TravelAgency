@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using TravelAgency.Gateway.Extensions;
+using Xunit;
 
 namespace TravelAgency.Gateway.Tests.Extensions;
 
@@ -26,9 +26,8 @@ public class AuthenticationExtensionsTests
             () => services.AddGatewayAuthentication(config));
 
         // Assert
-        Assert.Contains(
-            "JWT SigningKey must be configured via environment variable JwtSettings__SigningKey",
-            ex.Message);
+        Assert.Contains("JWT_SIGNING_KEY", ex.Message);
+        Assert.Contains("SigningKey", ex.Message);
     }
 
     [Theory]
@@ -50,8 +49,11 @@ public class AuthenticationExtensionsTests
         var ex = Assert.Throws<InvalidOperationException>(
             () => services.AddGatewayAuthentication(config));
 
-        // Assert
-        Assert.Contains("JWT SigningKey must be at least 32 characters", ex.Message);
+        // Assert — empty/whitespace triggers "must be configured"; non-empty but short triggers "at least 32 characters"
+        Assert.True(
+            ex.Message.Contains("JWT SigningKey must be at least 32 characters") ||
+            ex.Message.Contains("JWT SigningKey must be configured"),
+            $"Expected message about invalid signing key, got: {ex.Message}");
     }
 
     [Fact]

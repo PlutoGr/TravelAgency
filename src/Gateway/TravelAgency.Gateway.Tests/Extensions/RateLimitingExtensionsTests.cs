@@ -68,6 +68,23 @@ public class RateLimitingExtensionsTests
     }
 
     [Fact]
+    public void AddGatewayRateLimiting_WithFailOpenFalse_DoesNotThrow()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = BuildConfig(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Redis"] = "localhost:6379",
+            ["RateLimiting:FailOpen"] = "false",
+        });
+
+        // Act & Assert
+        var ex = Record.Exception(() => services.AddGatewayRateLimiting(config));
+        Assert.Null(ex);
+    }
+
+    [Fact]
     public async Task UseGatewayRateLimiting_StartsWithoutThrowingExceptions()
     {
         // Arrange & Act

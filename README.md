@@ -43,6 +43,19 @@ When running services locally (without Docker), set these before starting:
 
 See `docker/.env.example` for Docker-based setup.
 
+### Running with Docker
+
+From the `docker/` directory, copy `.env.example` to `.env`, set the required values, then run:
+
+```bash
+cd docker
+cp .env.example .env
+# Edit .env with real JWT_SIGNING_KEY, GRPC_INTERNAL_SERVICE_TOKEN, passwords
+docker compose up
+```
+
+This starts Gateway, Identity, Catalog, Booking, Chat, Media, PostgreSQL, Redis, and MinIO. Add `--profile full` to also start the frontend.
+
 ### Authentication (cookie-based)
 
 Tokens are stored in **httpOnly cookies** (XSS-safe). See [Cookie-Based Auth](ai_docs/develop/features/cookie-auth.md) for flow, CORS, and production config.

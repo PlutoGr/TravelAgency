@@ -2,6 +2,7 @@ using Serilog;
 using TravelAgency.Booking.API.Extensions;
 using TravelAgency.Booking.API.Middleware;
 using TravelAgency.Booking.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);

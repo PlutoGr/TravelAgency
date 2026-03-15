@@ -2,6 +2,7 @@ using TravelAgency.Catalog.API.Extensions;
 using TravelAgency.Catalog.API.Middleware;
 using TravelAgency.Catalog.Infrastructure.Extensions;
 using TravelAgency.Catalog.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,11 +41,12 @@ public partial class Program
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
         app.UseCatalogCors();
 
+        app.UseCatalogMigrations();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
-            app.UseCatalogMigrations();
         }
 
         app.UseAuthentication();

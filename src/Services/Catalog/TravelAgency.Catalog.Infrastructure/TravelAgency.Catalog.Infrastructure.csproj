@@ -4,6 +4,7 @@
     <ProjectReference Include="..\TravelAgency.Catalog.Application\TravelAgency.Catalog.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Contracts.Grpc\TravelAgency.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

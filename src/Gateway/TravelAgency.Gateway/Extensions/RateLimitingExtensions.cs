@@ -26,6 +26,7 @@ public static class RateLimitingExtensions
         var globalWindow = TimeSpan.FromMinutes(1);
         var authLimit = configuration.GetValue<int>("RateLimiting:Auth:Limit", 5);
         var authWindow = TimeSpan.FromSeconds(configuration.GetValue<int>("RateLimiting:Auth:PeriodSeconds", 1));
+        var failOpen = configuration.GetValue<bool>("RateLimiting:FailOpen", true);
 
         services.AddRateLimiter(options =>
         {
@@ -65,7 +66,7 @@ public static class RateLimitingExtensions
                     return RateLimitPartition.Get(compositeKey, key =>
                     {
                         var redis = context.RequestServices.GetRequiredService<IConnectionMultiplexer>();
-                        return new RedisFixedWindowRateLimiter(redis, key, limit, window);
+                        return new RedisFixedWindowRateLimiter(redis, key, limit, window, failOpen);
                     });
                 }
                 return RateLimitPartition.GetFixedWindowLimiter(

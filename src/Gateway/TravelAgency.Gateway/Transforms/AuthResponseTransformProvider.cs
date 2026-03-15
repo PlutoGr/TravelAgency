@@ -18,11 +18,16 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
 
     private readonly CookieSettings _cookieSettings;
     private readonly AuthRouteSettings _authRouteSettings;
+    private readonly ILogger<AuthResponseTransformProvider> _logger;
 
-    public AuthResponseTransformProvider(IOptions<CookieSettings> cookieSettings, IOptions<AuthRouteSettings> authRouteSettings)
+    public AuthResponseTransformProvider(
+        IOptions<CookieSettings> cookieSettings,
+        IOptions<AuthRouteSettings> authRouteSettings,
+        ILogger<AuthResponseTransformProvider> logger)
     {
         _cookieSettings = cookieSettings.Value;
         _authRouteSettings = authRouteSettings.Value;
+        _logger = logger;
     }
 
     public void ValidateRoute(TransformRouteValidationContext context) { }
@@ -75,8 +80,9 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         {
             tokens = JsonSerializer.Deserialize<AuthTokens>(body, JsonOptions);
         }
-        catch
+        catch (JsonException ex)
         {
+            _logger.LogWarning(ex, "Failed to deserialize auth response JSON; passing through body");
             await PassThroughBodyAsync(transformContext, body, content);
             return;
         }

@@ -15,7 +15,7 @@ public sealed class UploadMediaCommandValidator : AbstractValidator<UploadMediaC
             .NotEmpty().WithMessage("File name is required.");
 
         RuleFor(x => x.FileContent)
-            .Must(s => s != null && s.CanSeek)
+            .Must(stream => stream != null && stream.CanSeek)
             .WithMessage("File stream must be seekable for validation.");
 
         RuleFor(x => x.ContentType)

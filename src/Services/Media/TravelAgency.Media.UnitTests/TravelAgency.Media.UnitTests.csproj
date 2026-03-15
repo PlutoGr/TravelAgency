@@ -22,5 +22,6 @@
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Media.Application\TravelAgency.Media.Application.csproj" />
     <ProjectReference Include="..\TravelAgency.Media.Domain\TravelAgency.Media.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
