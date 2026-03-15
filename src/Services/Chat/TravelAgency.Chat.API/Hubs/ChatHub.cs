@@ -24,17 +24,18 @@ public class ChatHub : Hub
 
     public async Task JoinBookingGroup(Guid bookingId)
     {
-        var userId = _currentUserService.UserId;
-        var canAccess = await _bookingGrpcClient.ValidateBookingAccessAsync(bookingId, userId);
-        if (!canAccess)
-        {
-            throw new HubException("You do not have access to this booking.");
-        }
-
+        await EnsureBookingAccessAsync(bookingId);
         await Groups.AddToGroupAsync(Context.ConnectionId, GroupName(bookingId));
     }
 
     public async Task SendMessage(Guid bookingId, string text, IReadOnlyList<string>? attachments = null)
+    {
+        await EnsureBookingAccessAsync(bookingId);
+        var message = await _mediator.Send(new SendMessageCommand(bookingId, text, attachments));
+        await Clients.Group(GroupName(bookingId)).SendAsync("MessageReceived", message);
+    }
+
+    private async Task EnsureBookingAccessAsync(Guid bookingId)
     {
         var userId = _currentUserService.UserId;
         var canAccess = await _bookingGrpcClient.ValidateBookingAccessAsync(bookingId, userId);
@@ -42,9 +43,6 @@ public class ChatHub : Hub
         {
             throw new HubException("You do not have access to this booking.");
         }
-
-        var message = await _mediator.Send(new SendMessageCommand(bookingId, text, attachments));
-        await Clients.Group(GroupName(bookingId)).SendAsync("MessageReceived", message);
     }
 
     private static string GroupName(Guid bookingId) => $"booking_{bookingId}";

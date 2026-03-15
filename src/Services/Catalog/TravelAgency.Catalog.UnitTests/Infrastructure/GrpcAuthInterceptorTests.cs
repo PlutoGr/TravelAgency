@@ -1,6 +1,6 @@
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
-using TravelAgency.Catalog.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 
 namespace TravelAgency.Catalog.UnitTests.Infrastructure;
 

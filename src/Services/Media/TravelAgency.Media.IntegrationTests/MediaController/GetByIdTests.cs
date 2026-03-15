@@ -32,8 +32,12 @@ public class GetByIdTests : IClassFixture<CustomWebApplicationFactory>
     public async Task GetById_ExistingMedia_Returns200WithContent()
     {
         var mediaFile = await SeedMediaFileAsync();
+        var token = JwtTokenHelper.GenerateToken();
 
-        var response = await _client.GetAsync($"/media/{mediaFile.Id}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/media/{mediaFile.Id}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
@@ -45,21 +49,23 @@ public class GetByIdTests : IClassFixture<CustomWebApplicationFactory>
     public async Task GetById_UnknownId_Returns404()
     {
         var unknownId = Guid.NewGuid();
+        var token = JwtTokenHelper.GenerateToken();
 
-        var response = await _client.GetAsync($"/media/{unknownId}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/media/{unknownId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task GetById_NoAuthRequired_Returns200()
+    public async Task GetById_NoAuth_Returns401()
     {
         var mediaFile = await SeedMediaFileAsync();
 
-        // Explicitly create a client with no default auth headers
-        var anonymousClient = _factory.CreateClient();
-        var response = await anonymousClient.GetAsync($"/media/{mediaFile.Id}");
+        var response = await _client.GetAsync($"/media/{mediaFile.Id}");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }

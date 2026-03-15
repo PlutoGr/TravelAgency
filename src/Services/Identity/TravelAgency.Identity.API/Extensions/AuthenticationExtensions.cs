@@ -1,8 +1,6 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Shared.Contracts.Authorization;
+using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Identity.API.Extensions;
 
@@ -10,36 +8,8 @@ public static class AuthenticationExtensions
 {
     public static IServiceCollection AddIdentityAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        var jwtSection = configuration.GetSection("JwtSettings");
-        services.Configure<JwtSettings>(jwtSection);
-
-        var signingKey = jwtSection["SigningKey"];
-        if (string.IsNullOrWhiteSpace(signingKey))
-            throw new InvalidOperationException(
-                "JWT SigningKey must be configured via environment variable JwtSettings__SigningKey");
-
-        services.AddAuthentication(options =>
-        {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = jwtSection.GetValue<bool>("ValidateLifetime", true),
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSection["Issuer"],
-                ValidAudience = jwtSection["Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
-                ClockSkew = TimeSpan.FromSeconds(30),
-                RoleClaimType = System.Security.Claims.ClaimTypes.Role
-            };
-        });
-
-        return services;
+        services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        return services.AddJwtAuthentication(configuration);
     }
 
     public static IServiceCollection AddIdentityAuthorization(this IServiceCollection services)

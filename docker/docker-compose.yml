@@ -26,8 +26,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    profiles:
-      - full
 
   minio:
     image: minio/minio:latest
@@ -40,8 +38,6 @@ services:
       - "9001:9001"
     volumes:
       - minio-data:/data
-    profiles:
-      - full
 
   gateway:
     build:
@@ -61,6 +57,10 @@ services:
         condition: service_started
       booking-service:
         condition: service_started
+      chat-service:
+        condition: service_started
+      media-service:
+        condition: service_started
 
   identity-service:
     build:
@@ -72,6 +72,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_RUN_MIGRATIONS=true
       - ConnectionStrings__IdentityDb=Host=postgres;Port=5432;Database=travel_identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Redis=redis:6379
       - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
       - JwtSettings__Issuer=TravelAgency.Identity
       - JwtSettings__Audience=TravelAgency
@@ -79,6 +80,8 @@ services:
       - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   catalog-service:
@@ -131,7 +134,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_RUN_MIGRATIONS=true
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_chat;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__ChatDb=Host=postgres;Port=5432;Database=travel_chat;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - ConnectionStrings__Redis=redis:6379
       - GrpcClients__BookingServiceUrl=http://booking-service:8080
       - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
@@ -145,8 +148,6 @@ services:
         condition: service_healthy
       booking-service:
         condition: service_started
-    profiles:
-      - full
 
   media-service:
     build:
@@ -170,8 +171,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-    profiles:
-      - full
 
   frontend:
     build:

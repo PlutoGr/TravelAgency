@@ -40,6 +40,7 @@ dotnet run
 | `Cookie__SameSite` | `Lax` | SameSite policy (Lax, Strict, None) |
 | `Cookie__Path` | `/` | Cookie path. `/` или `/api/v1` |
 | `Cookie__Domain` | — | Опционально. Домен для cookie (напр. `.travelagency.com`) при разделении API и frontend по поддоменам |
+| `RateLimiting__FailOpen` | `true` | При Redis rate limiting: `true` = разрешать запросы при недоступности Redis (fail-open); `false` = отклонять (fail-closed, строже по безопасности) |
 
 Для локального запуска `JwtSettings__SigningKey` можно задать через user-secrets или переменные окружения.
 

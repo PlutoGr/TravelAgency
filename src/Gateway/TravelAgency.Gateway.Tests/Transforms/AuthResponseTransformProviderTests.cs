@@ -4,6 +4,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 using TravelAgency.Gateway.Configuration;
@@ -19,7 +21,10 @@ public class AuthResponseTransformProviderTests
     {
         settings ??= new CookieSettings();
         authRouteSettings ??= new AuthRouteSettings();
-        return new AuthResponseTransformProvider(Options.Create(settings), Options.Create(authRouteSettings));
+        return new AuthResponseTransformProvider(
+            Options.Create(settings),
+            Options.Create(authRouteSettings),
+            NullLogger<AuthResponseTransformProvider>.Instance);
     }
 
     private static ResponseTransformContext CreateTransformContext(

@@ -107,6 +107,32 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// AUDIT-001: Verifies ValidationBehavior runs in pipeline when Infrastructure is configured.
+    /// Invalid command triggers FluentValidation via ValidationBehavior, returning ProblemDetails with validation errors.
+    /// </summary>
+    [Fact]
+    public async Task Upload_WithInvalidMimeType_Returns400WithValidationErrors()
+    {
+        var token = JwtTokenHelper.GenerateToken();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/media/upload");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = BuildMultipartContent(
+            "hello, world"u8.ToArray(),
+            "readme.txt",
+            "text/plain");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Validation Error");
+        content.Should().Contain("detail");
+        content.Should().Contain("ContentType");
+    }
+
     [Fact]
     public async Task Upload_WithContentTypeMismatchingMagicBytes_Returns400()
     {

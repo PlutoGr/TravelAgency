@@ -7,13 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\TravelAgency.Identity.Application\TravelAgency.Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Contracts.Grpc\TravelAgency.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">

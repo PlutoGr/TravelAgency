@@ -22,5 +22,6 @@
     <ProjectReference Include="..\TravelAgency.Catalog.Domain\TravelAgency.Catalog.Domain.csproj" />
     <ProjectReference Include="..\TravelAgency.Catalog.Application\TravelAgency.Catalog.Application.csproj" />
     <ProjectReference Include="..\TravelAgency.Catalog.Infrastructure\TravelAgency.Catalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

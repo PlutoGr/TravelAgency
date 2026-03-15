@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
-using TravelAgency.Booking.Infrastructure.BackgroundServices;
 using TravelAgency.Booking.Infrastructure.Persistence;
 
 namespace TravelAgency.Booking.IntegrationTests;
@@ -25,8 +24,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public CustomWebApplicationFactory()
     {
-        // AddBookingAuthentication reads JwtSettings__SigningKey eagerly during host build.
-        // Set env var in constructor so it's available before WebApplicationFactory.CreateClient().
+        // AddBookingInfrastructure and AddBookingAuthentication read config eagerly during host build.
+        Environment.SetEnvironmentVariable("ConnectionStrings__BookingDb", "Host=localhost;Database=travel_booking_test");
         Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
 
         _connection = new SqliteConnection("DataSource=:memory:");
@@ -57,12 +56,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Remove the outbox background service so it doesn't run during tests
-            var outboxDescriptor = services.FirstOrDefault(
-                d => d.ImplementationType == typeof(OutboxProcessorBackgroundService));
-            if (outboxDescriptor != null)
-                services.Remove(outboxDescriptor);
-
             // Replace BookingDbContext with SQLite in-memory.
             // Build options directly via DbContextOptionsBuilder instead of AddDbContext.
             // AddDbContext registers provider infrastructure into the main DI container,
@@ -119,6 +112,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["JwtSettings:ValidateLifetime"] = "true",
                 ["ConnectionStrings:BookingDb"] = "Server=localhost;Database=TestDb;",
                 ["GrpcClients:CatalogServiceUrl"] = "http://localhost:5000",
+                ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
             };
             config.AddInMemoryCollection(testSettings);
         });

@@ -1,26 +1,26 @@
-using Microsoft.Extensions.Configuration;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Contracts.Grpc.Catalog;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 
 namespace TravelAgency.Booking.Infrastructure.GrpcClients;
 
 public class CatalogGrpcClient : ICatalogGrpcClient
 {
     private readonly CatalogService.CatalogServiceClient _client;
-    private readonly IConfiguration _configuration;
+    private readonly IGrpcAuthCallOptionsFactory _callOptionsFactory;
 
-    public CatalogGrpcClient(CatalogService.CatalogServiceClient client, IConfiguration configuration)
+    public CatalogGrpcClient(CatalogService.CatalogServiceClient client, IGrpcAuthCallOptionsFactory callOptionsFactory)
     {
         _client = client;
-        _configuration = configuration;
+        _callOptionsFactory = callOptionsFactory;
     }
 
     public async Task<BookingTourSnapshotDto> GetTourSnapshotAsync(Guid tourId, CancellationToken ct = default)
     {
         var request = new GetTourSnapshotRequest { TourId = tourId.ToString() };
-        var callOptions = CreateCallOptions(ct);
+        var callOptions = _callOptionsFactory.Create(ct);
         var response = await _client.GetTourSnapshotAsync(request, callOptions);
 
         if (!response.Found)
@@ -34,18 +34,5 @@ public class CatalogGrpcClient : ICatalogGrpcClient
             Currency: response.Currency,
             DurationDays: response.DurationDays,
             SnapshotTakenAt: DateTime.Parse(response.SnapshotTakenAt));
-    }
-
-    private Grpc.Core.CallOptions CreateCallOptions(CancellationToken ct = default)
-    {
-        var token = _configuration["GrpcSettings:InternalServiceToken"];
-        if (string.IsNullOrEmpty(token))
-            return new Grpc.Core.CallOptions(cancellationToken: ct);
-
-        var metadata = new Grpc.Core.Metadata
-        {
-            { "x-internal-auth", token }
-        };
-        return new Grpc.Core.CallOptions(metadata, deadline: null, ct);
     }
 }

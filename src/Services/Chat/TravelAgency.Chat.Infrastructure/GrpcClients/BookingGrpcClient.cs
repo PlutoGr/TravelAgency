@@ -1,6 +1,7 @@
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using TravelAgency.Chat.Application.Abstractions;
 using TravelAgency.Contracts.Grpc.Booking;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 
 namespace TravelAgency.Chat.Infrastructure.GrpcClients;
 
@@ -11,12 +12,14 @@ namespace TravelAgency.Chat.Infrastructure.GrpcClients;
 public sealed class BookingGrpcClient : IBookingGrpcClient
 {
     private readonly BookingService.BookingServiceClient _client;
-    private readonly IConfiguration _configuration;
+    private readonly IGrpcAuthCallOptionsFactory _callOptionsFactory;
+    private readonly ILogger<BookingGrpcClient> _logger;
 
-    public BookingGrpcClient(BookingService.BookingServiceClient client, IConfiguration configuration)
+    public BookingGrpcClient(BookingService.BookingServiceClient client, IGrpcAuthCallOptionsFactory callOptionsFactory, ILogger<BookingGrpcClient> logger)
     {
         _client = client;
-        _configuration = configuration;
+        _callOptionsFactory = callOptionsFactory;
+        _logger = logger;
     }
 
     public async Task<bool> ValidateBookingAccessAsync(Guid bookingId, Guid userId, CancellationToken ct = default)
@@ -28,26 +31,14 @@ public sealed class BookingGrpcClient : IBookingGrpcClient
                 BookingId = bookingId.ToString(),
                 UserId = userId.ToString()
             };
-            var callOptions = CreateCallOptions(ct);
+            var callOptions = _callOptionsFactory.Create(ct);
             var response = await _client.ValidateBookingAccessAsync(request, callOptions);
             return response.HasAccess;
         }
-        catch (Grpc.Core.RpcException)
+        catch (Grpc.Core.RpcException ex)
         {
+            _logger.LogWarning(ex, "gRPC call to Booking service failed for booking {BookingId}, user {UserId}", bookingId, userId);
             return false;
         }
-    }
-
-    private Grpc.Core.CallOptions CreateCallOptions(CancellationToken ct = default)
-    {
-        var token = _configuration["GrpcSettings:InternalServiceToken"];
-        if (string.IsNullOrEmpty(token))
-            return new Grpc.Core.CallOptions(cancellationToken: ct);
-
-        var metadata = new Grpc.Core.Metadata
-        {
-            { "x-internal-auth", token }
-        };
-        return new Grpc.Core.CallOptions(metadata, deadline: null, ct);
     }
 }

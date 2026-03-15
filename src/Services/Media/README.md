@@ -34,7 +34,7 @@ dotnet run
 
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
-| `ConnectionStrings__MediaDb` | appsettings | Строка подключения PostgreSQL (`Host=...;Port=5432;Database=travel_media;Username=...;Password=...`) |
+| `ConnectionStrings__MediaDb` | **required** | Строка подключения PostgreSQL. Должна быть задана через переменную окружения. Пример: `Host=...;Port=5432;Database=travel_media;Username=...;Password=...` |
 | `Storage__ServiceUrl` | `http://minio:9000` | URL MinIO/S3 |
 | `Storage__AccessKey` | appsettings | Access key |
 | `Storage__SecretKey` | appsettings | Secret key |
@@ -45,7 +45,7 @@ dotnet run
 | `JwtSettings__Audience` | `TravelAgency` | Audience токена |
 | `ASPNETCORE_RUN_MIGRATIONS` | `false` | `true` — автоматический запуск миграций при старте |
 
-**База данных:** Media требует PostgreSQL (как и другие сервисы). Строка подключения задаётся через `ConnectionStrings__MediaDb`.
+**База данных:** Media требует PostgreSQL (как и другие сервисы). Строка подключения **обязательно** задаётся через переменную окружения `ConnectionStrings__MediaDb` — в appsettings.json нет значения по умолчанию.
 
 ## Docker
 

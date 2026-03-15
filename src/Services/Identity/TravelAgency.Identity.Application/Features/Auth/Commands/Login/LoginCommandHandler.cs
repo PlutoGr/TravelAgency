@@ -15,6 +15,7 @@ public sealed class LoginCommandHandler(
     IRefreshTokenRepository refreshTokenRepository,
     IJwtTokenService jwtTokenService,
     IPasswordHasher passwordHasher,
+    ILockoutService lockoutService,
     IUnitOfWork unitOfWork,
     IOptions<JwtSettings> jwtSettings)
     : IRequestHandler<LoginCommand, AuthTokensDto>
@@ -24,12 +25,25 @@ public sealed class LoginCommandHandler(
     public async Task<AuthTokensDto> Handle(LoginCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
+        var email = request.Email.Trim().ToLowerInvariant();
 
-        var user = await userRepository.GetByEmailAsync(request.Email, cancellationToken)
-            ?? throw new UnauthorizedException("Invalid credentials.");
+        if (lockoutService.IsLockedOut(email))
+            throw new UnauthorizedException("Invalid credentials.");
+
+        var user = await userRepository.GetByEmailAsync(request.Email, cancellationToken);
+        if (user is null)
+        {
+            lockoutService.RecordFailedAttempt(email);
+            throw new UnauthorizedException("Invalid credentials.");
+        }
 
         if (!passwordHasher.Verify(request.Password, user.PasswordHash))
+        {
+            lockoutService.RecordFailedAttempt(email);
             throw new UnauthorizedException("Invalid credentials.");
+        }
+
+        lockoutService.ResetFailedAttempts(email);
 
         var accessTokenDto = jwtTokenService.GenerateAccessToken(user);
         var refreshTokenString = jwtTokenService.GenerateRefreshToken();

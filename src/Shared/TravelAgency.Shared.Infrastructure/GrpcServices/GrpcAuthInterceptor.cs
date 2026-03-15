@@ -4,7 +4,7 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Configuration;
 
-namespace TravelAgency.Catalog.Infrastructure.GrpcServices;
+namespace TravelAgency.Shared.Infrastructure.GrpcServices;
 
 /// <summary>
 /// Server-side interceptor that enforces service-to-service authentication on all gRPC calls.

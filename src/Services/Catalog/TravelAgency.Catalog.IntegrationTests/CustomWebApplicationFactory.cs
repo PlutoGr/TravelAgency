@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -21,6 +22,16 @@ using TravelAgency.Shared.Infrastructure.Middleware;
 namespace TravelAgency.Catalog.IntegrationTests;
 
 /// <summary>
+/// Options for migration startup tests. When set, environment and ASPNETCORE_RUN_MIGRATIONS
+/// are applied before startup; env var is restored in DisposeAsync.
+/// </summary>
+public class CatalogMigrationTestOptions
+{
+    public string? EnvironmentName { get; set; }
+    public string? AspNetCoreRunMigrations { get; set; }
+}
+
+/// <summary>
 /// Custom test factory that bypasses WebApplicationFactory's HostFactoryResolver
 /// (which hangs with Minimal API + Serilog) by using TestServer directly.
 /// </summary>
@@ -29,6 +40,7 @@ public class CustomWebApplicationFactory : IAsyncDisposable
     private readonly SqliteConnection _connection;
     private WebApplication? _app;
     private TestServer? _server;
+    private string? _aspNetCoreRunMigrationsRestore;
 
     public CustomWebApplicationFactory()
     {
@@ -39,13 +51,22 @@ public class CustomWebApplicationFactory : IAsyncDisposable
     /// <summary>
     /// Initializes the test server with default configuration.
     /// </summary>
-    public Task InitializeAsync() => InitializeAsync(null);
+    public Task InitializeAsync() => InitializeAsync(null, null);
 
     /// <summary>
     /// Initializes the test server, optionally customizing config before startup.
     /// Used by startup validation tests to verify SigningKey requirements.
     /// </summary>
-    public async Task InitializeAsync(Action<Dictionary<string, string?>>? configureConfig)
+    public Task InitializeAsync(Action<Dictionary<string, string?>>? configureConfig) =>
+        InitializeAsync(configureConfig, null);
+
+    /// <summary>
+    /// Initializes the test server with full control over config, environment, and migration env var.
+    /// Used by CatalogMigrationStartupTests to verify UseCatalogMigrations conditional logic.
+    /// </summary>
+    public async Task InitializeAsync(
+        Action<Dictionary<string, string?>>? configureConfig,
+        CatalogMigrationTestOptions? migrationOptions)
     {
         var testSettings = new Dictionary<string, string?>
         {
@@ -59,9 +80,19 @@ public class CustomWebApplicationFactory : IAsyncDisposable
 
         configureConfig?.Invoke(testSettings);
 
+        var environmentName = migrationOptions?.EnvironmentName ?? "Testing";
+        var previousRunMigrations = migrationOptions != null
+            ? Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS")
+            : null;
+        if (migrationOptions?.AspNetCoreRunMigrations is { } value)
+        {
+            _aspNetCoreRunMigrationsRestore = previousRunMigrations;
+            Environment.SetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS", value);
+        }
+
         // Set environment in options; UseEnvironment("Testing") after CreateBuilder causes
         // "The environment changed from "" to "Testing"" error.
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environmentName });
 
         builder.Configuration.AddInMemoryCollection(testSettings);
 
@@ -81,6 +112,7 @@ public class CustomWebApplicationFactory : IAsyncDisposable
 
         var sqliteOptions = new DbContextOptionsBuilder<CatalogDbContext>()
             .UseSqlite(_connection)
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
 
         builder.Services.AddScoped<CatalogDbContext>(_ => new CatalogDbContext(sqliteOptions));
@@ -166,6 +198,11 @@ public class CustomWebApplicationFactory : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_aspNetCoreRunMigrationsRestore != null)
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS", _aspNetCoreRunMigrationsRestore);
+            _aspNetCoreRunMigrationsRestore = null;
+        }
         _server?.Dispose();
         if (_app != null)
             await _app.DisposeAsync();

@@ -9,7 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Identity.Domain\TravelAgency.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
-    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

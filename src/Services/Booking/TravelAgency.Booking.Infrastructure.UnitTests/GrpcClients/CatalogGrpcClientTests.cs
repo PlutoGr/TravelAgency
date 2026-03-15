@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Infrastructure.GrpcClients;
 using TravelAgency.Contracts.Grpc.Catalog;
+using TravelAgency.Shared.Infrastructure.GrpcServices;
 
 namespace TravelAgency.Booking.Infrastructure.UnitTests.GrpcClients;
 
@@ -130,7 +131,8 @@ public class CatalogGrpcClientTests
                 ["GrpcSettings:InternalServiceToken"] = "test-token"
             })
             .Build();
-        return new CatalogGrpcClient(grpcClient, configuration);
+        var callOptionsFactory = new GrpcAuthCallOptionsFactory(configuration);
+        return new CatalogGrpcClient(grpcClient, callOptionsFactory);
     }
 
     private class ResponseHolder

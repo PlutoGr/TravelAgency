@@ -9,7 +9,6 @@ using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Contracts.Grpc.Catalog;
 using TravelAgency.Contracts.Grpc.Identity;
 using TravelAgency.Booking.Domain.Interfaces;
-using TravelAgency.Booking.Infrastructure.BackgroundServices;
 using TravelAgency.Booking.Infrastructure.GrpcClients;
 using TravelAgency.Booking.Infrastructure.Persistence;
 using TravelAgency.Booking.Infrastructure.Repositories;
@@ -37,9 +36,14 @@ public static class DependencyInjection
     public static IServiceCollection AddBookingInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddBookingApplication();
+        services.AddSharedMediatRBehaviors();
+
+        var connectionString = configuration.GetConnectionString("BookingDb");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings:BookingDb is required. Set ConnectionStrings__BookingDb environment variable or add it to configuration.");
 
         services.AddDbContext<BookingDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("BookingDb")));
+            options.UseNpgsql(connectionString));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<BookingDbContext>());
         services.AddScoped<IBookingRepository, BookingRepository>();
@@ -47,6 +51,8 @@ public static class DependencyInjection
         services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
+
+        services.AddGrpcAuthCallOptionsFactory();
 
         var catalogGrpcAddress = configuration["GrpcClients:CatalogServiceUrl"] ?? "http://catalog-service:8080";
         var identityGrpcAddress = configuration["GrpcClients:IdentityServiceUrl"] ?? "http://identity-service:8080";
@@ -56,8 +62,6 @@ public static class DependencyInjection
 
         services.AddScoped<ICatalogGrpcClient, CatalogGrpcClient>();
         services.AddScoped<IIdentityGrpcClient, IdentityGrpcClient>();
-
-        services.AddHostedService<OutboxProcessorBackgroundService>();
 
         return services;
     }

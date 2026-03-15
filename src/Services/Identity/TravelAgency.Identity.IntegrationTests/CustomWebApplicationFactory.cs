@@ -20,7 +20,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public CustomWebApplicationFactory()
     {
-        // AddIdentityAuthentication reads JwtSettings__SigningKey eagerly during host build.
+        // AddIdentityInfrastructure and AddIdentityAuthentication read config eagerly during host build.
+        Environment.SetEnvironmentVariable("ConnectionStrings__IdentityDb", "Host=localhost;Database=travel_identity_test");
         Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
@@ -89,6 +90,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["JwtSettings:RefreshTokenExpirationDays"] = "7",
                 ["JwtSettings:ValidateLifetime"] = "true",
                 ["ConnectionStrings:IdentityDb"] = "Server=localhost;Database=TestDb;",
+                ["ConnectionStrings:Redis"] = string.Empty,
+                ["LockoutSettings:LockoutThreshold"] = "3",
                 ["RateLimit:PermitLimit"] = string.Equals(Environment.GetEnvironmentVariable("RATE_LIMIT_STRICT"), "true", StringComparison.OrdinalIgnoreCase) ? "5" : "1000"
             };
             config.AddInMemoryCollection(testSettings);

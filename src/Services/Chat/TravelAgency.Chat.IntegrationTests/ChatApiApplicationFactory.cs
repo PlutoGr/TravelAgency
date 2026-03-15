@@ -29,7 +29,9 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
 
     static ChatApiApplicationFactory()
     {
-        // AddChatAuthentication reads JwtSettings__SigningKey eagerly during host build.
+        // AddChatInfrastructure and AddChatAuthentication read config eagerly during host build.
+        // Placeholder value; ConfigureTestServices replaces DbContext with Testcontainers connection.
+        Environment.SetEnvironmentVariable("ConnectionStrings__ChatDb", "Host=localhost;Database=chat_test_placeholder");
         Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
     }
 
@@ -71,9 +73,11 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["ConnectionStrings:ChatDb"] = "Host=localhost;Database=chat_test_placeholder",
                 ["ConnectionStrings:Redis"] = string.Empty, // Disable Redis for tests
                 ["ASPNETCORE_RUN_MIGRATIONS"] = "true",
                 ["JwtSettings:SigningKey"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
+                ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
             });
         });
 
