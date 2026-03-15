@@ -20,6 +20,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public CustomWebApplicationFactory()
     {
+        // AddIdentityAuthentication reads JwtSettings__SigningKey eagerly during host build.
+        // Set env var in constructor so it's available before WebApplicationFactory.CreateClient().
+        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
     }

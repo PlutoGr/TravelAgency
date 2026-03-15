@@ -24,6 +24,7 @@ project.fragment.lock.json
 
 # .NET misc
 *.log
+*.binlog
 *.vspscc
 *.vssscc
 .build/
@@ -111,6 +112,7 @@ riderModule.iml
 
 # Cursor
 .cursor/
+ai_docs/
 
 # Sublime
 *.sublime-workspace

@@ -29,7 +29,7 @@ public sealed class RefreshTokenRepository(IdentityDbContext dbContext) : IRefre
 
     public async Task UpdateAsync(RefreshToken refreshToken, CancellationToken ct = default)
     {
-        dbContext.RefreshTokens.Update(refreshToken);
+        // Entity is expected to be tracked (e.g. from GetByTokenAsync). Change tracking persists modifications; Update() is redundant.
         await dbContext.SaveChangesAsync(ct);
     }
 

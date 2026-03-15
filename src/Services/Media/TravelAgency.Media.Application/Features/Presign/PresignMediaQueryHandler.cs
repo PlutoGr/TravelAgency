@@ -22,7 +22,8 @@ public sealed class PresignMediaQueryHandler(
         if (file.Status == MediaFileStatus.Deleted)
             throw new MediaNotFoundException(request.Id);
 
-        var ttl = TimeSpan.FromMinutes(options.Value.PresignTtlMinutes);
+        var ttlSeconds = request.TtlSeconds ?? (options.Value.PresignTtlMinutes * 60);
+        var ttl = TimeSpan.FromSeconds(Math.Clamp(ttlSeconds, 60, 604800)); // 1 min to 7 days
         var url = await storage.GeneratePresignedUrlAsync(file.StorageKey, ttl, ct);
         return new PresignMediaResponse(url, DateTimeOffset.UtcNow.Add(ttl));
     }

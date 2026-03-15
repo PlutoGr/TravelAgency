@@ -1,4 +1,5 @@
 using FluentValidation;
+using TravelAgency.Booking.Domain.Enums;
 
 namespace TravelAgency.Booking.Application.Features.Bookings.Commands.ChangeBookingStatus;
 
@@ -8,5 +9,7 @@ public sealed class ChangeBookingStatusCommandValidator : AbstractValidator<Chan
     {
         RuleFor(x => x.BookingId)
             .NotEmpty().WithMessage("BookingId must not be empty.");
+        RuleFor(x => x.Request.NewStatus)
+            .IsInEnum();
     }
 }

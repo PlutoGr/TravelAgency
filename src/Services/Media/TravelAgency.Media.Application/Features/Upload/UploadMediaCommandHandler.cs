@@ -1,6 +1,8 @@
+using System.Security.Cryptography;
 using MediatR;
 using Microsoft.Extensions.Options;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Media.Application.Services;
 using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Interfaces;
@@ -19,7 +21,8 @@ public sealed class UploadMediaCommandHandler(
     public async Task<UploadMediaResponse> Handle(UploadMediaCommand request, CancellationToken ct)
     {
         var fileId = Guid.NewGuid();
-        var storageKey = $"{currentUser.UserId}/{fileId}/{request.FileName}";
+        var sanitizedFileName = FileNameSanitizer.Sanitize(request.FileName);
+        var storageKey = $"{currentUser.UserId}/{fileId}/{sanitizedFileName}";
 
         await storage.UploadAsync(request.FileContent, storageKey, request.ContentType, ct);
 
@@ -52,7 +55,8 @@ public sealed class UploadMediaCommandHandler(
         foreach (var thumb in mediaFile.Thumbnails)
         {
             var thumbUrl = await storage.GeneratePresignedUrlAsync(thumb.StorageKey, ttl, ct);
-            thumbnailResponses.Add(new ThumbnailResponse(Guid.NewGuid(), thumb.Width, thumb.Height, thumbUrl));
+            var thumbId = CreateDeterministicGuid(thumb.StorageKey);
+            thumbnailResponses.Add(new ThumbnailResponse(thumbId, thumb.Width, thumb.Height, thumbUrl));
         }
 
         return new UploadMediaResponse(
@@ -63,5 +67,12 @@ public sealed class UploadMediaCommandHandler(
             mediaFile.SizeBytes,
             thumbnailResponses,
             mediaFile.UploadedAt);
+    }
+
+    private static Guid CreateDeterministicGuid(string value)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+        var hash = SHA256.HashData(bytes);
+        return new Guid(hash.AsSpan(0, 16));
     }
 }

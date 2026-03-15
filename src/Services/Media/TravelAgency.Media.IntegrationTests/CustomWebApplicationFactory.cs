@@ -1,5 +1,6 @@
 using System.Text;
 using Amazon.S3;
+using Amazon.S3.Model;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -82,9 +83,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Replace IAmazonS3 so the S3StorageService never connects to real AWS
+            // Replace IAmazonS3 so the S3StorageService never connects to real AWS.
+            // Configure mock so BucketInitializer sees bucket as existing and skips PutBucketAsync.
+            var s3Mock = Substitute.For<IAmazonS3>();
+            s3Mock.ListBucketsAsync(Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(new ListBucketsResponse
+                {
+                    Buckets = [new S3Bucket { BucketName = "test" }]
+                }));
             services.RemoveAll<IAmazonS3>();
-            services.AddSingleton(Substitute.For<IAmazonS3>());
+            services.AddSingleton(s3Mock);
 
             // Replace real S3 with mock
             services.RemoveAll<IStorageService>();

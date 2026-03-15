@@ -11,7 +11,7 @@ namespace TravelAgency.Media.API.Controllers;
 
 [ApiController]
 [Route("media")]
-[Authorize(Policy = AuthPolicies.RequireClient)]
+[Authorize(Policy = AuthPolicies.RequireAuthenticated)]
 public sealed class MediaController(IMediator mediator) : ControllerBase
 {
     /// <summary>
@@ -46,6 +46,7 @@ public sealed class MediaController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var result = await mediator.Send(new GetMediaQuery(id), ct);
+        Response.OnCompleted(async () => await result.Content.DisposeAsync());
         return File(result.Content, result.ContentType, result.FileName);
     }
 

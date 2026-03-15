@@ -27,6 +27,9 @@ public class TourRepository : ITourRepository
         if (!string.IsNullOrWhiteSpace(filter.Country))
             query = query.Where(t => t.Country.ToLower().Contains(filter.Country.ToLower()));
 
+        if (filter.DirectionId.HasValue)
+            query = query.Where(t => t.DirectionId == filter.DirectionId.Value);
+
         if (filter.TourType.HasValue)
             query = query.Where(t => t.TourType == filter.TourType.Value);
 
@@ -51,10 +54,28 @@ public class TourRepository : ITourRepository
 
         var totalCount = await query.CountAsync(ct);
 
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+
+        query = filter.SortBy switch
+        {
+            TourSortBy.Title => filter.SortDirection == SortDirection.Asc
+                ? query.OrderBy(t => t.Title)
+                : query.OrderByDescending(t => t.Title),
+            TourSortBy.DurationDays => filter.SortDirection == SortDirection.Asc
+                ? query.OrderBy(t => t.DurationDays)
+                : query.OrderByDescending(t => t.DurationDays),
+            TourSortBy.Price => filter.SortDirection == SortDirection.Asc
+                ? query.OrderBy(t => t.CreatedAt)
+                : query.OrderByDescending(t => t.CreatedAt),
+            _ => filter.SortDirection == SortDirection.Asc
+                ? query.OrderBy(t => t.CreatedAt)
+                : query.OrderByDescending(t => t.CreatedAt)
+        };
+
         var items = await query
-            .OrderByDescending(t => t.CreatedAt)
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(t => new TourSummaryDto(
                 t.Id,
                 t.Title,
@@ -74,7 +95,7 @@ public class TourRepository : ITourRepository
                 t.IsActive))
             .ToListAsync(ct);
 
-        return new PagedResult<TourSummaryDto>(items, totalCount, filter.Page, filter.PageSize);
+        return new PagedResult<TourSummaryDto>(items, totalCount, page, pageSize);
     }
 
     public Task AddAsync(Tour tour, CancellationToken ct = default)

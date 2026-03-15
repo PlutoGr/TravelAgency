@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Identity.Domain.Entities;
+using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Infrastructure.Services;
 
 namespace TravelAgency.Identity.UnitTests.Infrastructure.Services;
@@ -32,7 +33,7 @@ public class JwtTokenServiceTests
     [Fact]
     public void GenerateAccessToken_ReturnsNonEmptyAccessToken()
     {
-        var user = User.Create("test@example.com", "hash", "John", "Doe", null, "Client");
+        var user = User.Create("test@example.com", "hash", "John", "Doe", null, UserRole.Client);
 
         var result = _service.GenerateAccessToken(user);
 
@@ -96,7 +97,7 @@ public class JwtTokenServiceTests
     [Fact]
     public void GenerateAccessToken_TokenContainsRoleClaim()
     {
-        var user = User.Create("test@example.com", "hash", "John", "Doe", null, "Manager");
+        var user = User.Create("test@example.com", "hash", "John", "Doe", null, UserRole.Manager);
 
         var result = _service.GenerateAccessToken(user);
 

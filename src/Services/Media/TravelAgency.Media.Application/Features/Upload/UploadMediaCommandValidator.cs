@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.Extensions.Options;
+using TravelAgency.Media.Application.Services;
 using TravelAgency.Media.Application.Settings;
 
 namespace TravelAgency.Media.Application.Features.Upload;
@@ -13,6 +14,10 @@ public sealed class UploadMediaCommandValidator : AbstractValidator<UploadMediaC
         RuleFor(x => x.FileName)
             .NotEmpty().WithMessage("File name is required.");
 
+        RuleFor(x => x.FileContent)
+            .Must(s => s != null && s.CanSeek)
+            .WithMessage("File stream must be seekable for validation.");
+
         RuleFor(x => x.ContentType)
             .NotEmpty()
             .Must(ct => s.AllowedMimeTypes.Contains(ct))
@@ -22,5 +27,14 @@ public sealed class UploadMediaCommandValidator : AbstractValidator<UploadMediaC
             .GreaterThan(0).WithMessage("File must not be empty.")
             .LessThanOrEqualTo(s.MaxFileSizeBytes)
             .WithMessage($"File size must not exceed {s.MaxFileSizeBytes / (1024 * 1024)} MB.");
+
+        RuleFor(x => x)
+            .MustAsync(ValidateContentMatchesDeclaredType)
+            .WithMessage("File content does not match declared content type.");
+    }
+
+    private static async Task<bool> ValidateContentMatchesDeclaredType(UploadMediaCommand command, CancellationToken ct)
+    {
+        return await FileContentValidator.ValidateAsync(command.FileContent, command.ContentType, ct);
     }
 }

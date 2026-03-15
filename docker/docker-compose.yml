@@ -26,6 +26,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    profiles:
+      - full
 
   minio:
     image: minio/minio:latest
@@ -38,6 +40,8 @@ services:
       - "9001:9001"
     volumes:
       - minio-data:/data
+    profiles:
+      - full
 
   gateway:
     build:
@@ -47,6 +51,9 @@ services:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
+      - JwtSettings__Issuer=TravelAgency.Identity
+      - JwtSettings__Audience=TravelAgency
     depends_on:
       identity-service:
         condition: service_started
@@ -65,6 +72,9 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_RUN_MIGRATIONS=true
       - ConnectionStrings__IdentityDb=Host=postgres;Port=5432;Database=travel_identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
+      - JwtSettings__Issuer=TravelAgency.Identity
+      - JwtSettings__Audience=TravelAgency
       # REQUIRED for gRPC service-to-service auth. Set GRPC_INTERNAL_SERVICE_TOKEN in your .env file.
       - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
     depends_on:
@@ -79,7 +89,11 @@ services:
       - "5020:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_catalog;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - ASPNETCORE_RUN_MIGRATIONS=true
+      - ConnectionStrings__CatalogDb=Host=postgres;Port=5432;Database=travel_catalog;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
+      - JwtSettings__Issuer=TravelAgency.Identity
+      - JwtSettings__Audience=TravelAgency
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,10 +106,17 @@ services:
       - "5030:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_booking;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - ASPNETCORE_RUN_MIGRATIONS=true
+      - ConnectionStrings__BookingDb=Host=postgres;Port=5432;Database=travel_booking;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
+      - JwtSettings__Issuer=TravelAgency.Identity
+      - JwtSettings__Audience=TravelAgency
+      - GrpcClients__CatalogServiceUrl=http://catalog-service:8080
     depends_on:
       postgres:
         condition: service_healthy
+      catalog-service:
+        condition: service_started
 
   chat-service:
     build:
@@ -105,13 +126,20 @@ services:
       - "5040:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_RUN_MIGRATIONS=true
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_chat;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - ConnectionStrings__Redis=redis:6379
+      - Services__BookingServiceUrl=http://booking-service:8080
+      - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
+      - JwtSettings__Issuer=TravelAgency.Identity
+      - JwtSettings__Audience=TravelAgency
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      booking-service:
+        condition: service_started
     profiles:
       - full
 
@@ -123,9 +151,13 @@ services:
       - "5050:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - S3__ServiceUrl=http://minio:9000
-      - S3__AccessKey=${MINIO_ROOT_USER}
-      - S3__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Storage__ServiceUrl=http://minio:9000
+      - Storage__AccessKey=${MINIO_ROOT_USER}
+      - Storage__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Storage__BucketName=media
+      - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
+      - JwtSettings__Issuer=TravelAgency.Identity
+      - JwtSettings__Audience=TravelAgency
     depends_on:
       minio:
         condition: service_started
@@ -141,6 +173,8 @@ services:
     depends_on:
       gateway:
         condition: service_started
+    profiles:
+      - full
 
 volumes:
   postgres-data:

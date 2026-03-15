@@ -3,6 +3,7 @@ using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateProposal;
+using TravelAgency.Booking.Domain.Entities;
 using TravelAgency.Booking.Domain.Enums;
 using TravelAgency.Booking.Domain.Interfaces;
 using TravelAgency.Shared.Contracts.Authorization;
@@ -15,6 +16,7 @@ public class CreateProposalCommandHandlerTests
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IBookingRepository> _bookingRepoMock = new();
     private readonly Mock<ICatalogGrpcClient> _catalogGrpcMock = new();
+    private readonly Mock<IOutboxMessageRepository> _outboxRepoMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly CreateProposalCommandHandler _handler;
 
@@ -27,6 +29,7 @@ public class CreateProposalCommandHandlerTests
             _currentUserMock.Object,
             _bookingRepoMock.Object,
             _catalogGrpcMock.Object,
+            _outboxRepoMock.Object,
             _unitOfWorkMock.Object);
     }
 
@@ -98,6 +101,30 @@ public class CreateProposalCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenCatalogReturnsTourNotFound_ShouldPropagateNotFoundException()
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Manager);
+
+        var booking = CreateInProgressBooking();
+        var bookingId = booking.Id;
+        var tourId = booking.TourId;
+
+        _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(tourId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException($"Tour '{tourId}' was not found in catalog."));
+
+        var command = new CreateProposalCommand(bookingId, new CreateProposalRequest(null));
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("*Tour*not found*");
+    }
+
+    [Fact]
     public async Task Handle_ShouldCallCatalogGrpcWithBookingTourId()
     {
         _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
@@ -118,5 +145,59 @@ public class CreateProposalCommandHandlerTests
         await _handler.Handle(command, CancellationToken.None);
 
         _catalogGrpcMock.Verify(c => c.GetTourSnapshotAsync(expectedTourId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_StagesOutboxMessagesBeforeSaveChangesAsync()
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Manager);
+
+        var booking = CreateInProgressBooking();
+        var bookingId = booking.Id;
+
+        _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(booking.TourId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateSnapshotDto(booking.TourId));
+
+        var command = new CreateProposalCommand(bookingId, new CreateProposalRequest("notes"));
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        _outboxRepoMock.Verify(o => o.Stage(It.Is<OutboxMessage>(m =>
+            m.EventType == "ProposalSent" &&
+            m.Payload.Contains(booking.Id.ToString()) &&
+            m.Payload.Contains(booking.TourId.ToString()))), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_StagesProposalSentOutboxMessageWithCorrectPayload()
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Manager);
+
+        var booking = CreateInProgressBooking();
+        var bookingId = booking.Id;
+        var tourId = booking.TourId;
+
+        _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(tourId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateSnapshotDto(tourId));
+
+        var command = new CreateProposalCommand(bookingId, new CreateProposalRequest(null));
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        _outboxRepoMock.Verify(o => o.Stage(It.Is<OutboxMessage>(m =>
+            m.EventType == "ProposalSent" &&
+            m.Payload.Contains(bookingId.ToString()) &&
+            m.Payload.Contains(tourId.ToString()) &&
+            m.Payload.Contains("Test Tour") &&
+            m.Payload.Contains("2000"))), Times.Once);
     }
 }

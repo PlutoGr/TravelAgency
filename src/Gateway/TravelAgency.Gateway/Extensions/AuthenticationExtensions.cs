@@ -48,7 +48,7 @@ public static class AuthenticationExtensions
         this IServiceCollection services)
     {
         services.AddAuthorizationBuilder()
-            .AddPolicy(AuthPolicies.RequireClient, policy =>
+            .AddPolicy(AuthPolicies.RequireAuthenticated, policy =>
                 policy.RequireRole(AppRoles.Client, AppRoles.Manager, AppRoles.Admin))
             .AddPolicy(AuthPolicies.RequireManager, policy =>
                 policy.RequireRole(AppRoles.Manager, AppRoles.Admin))

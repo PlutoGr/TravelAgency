@@ -13,6 +13,7 @@ public sealed class CreateProposalCommandHandler(
     ICurrentUserService currentUser,
     IBookingRepository bookingRepository,
     ICatalogGrpcClient catalogGrpcClient,
+    IOutboxMessageRepository outboxRepository,
     IUnitOfWork unitOfWork)
     : IRequestHandler<CreateProposalCommand, ProposalDto>
 {
@@ -36,6 +37,10 @@ public sealed class CreateProposalCommandHandler(
             snapshotDto.SnapshotTakenAt);
 
         booking.AddProposal(currentUser.UserId, snapshot, command.Request.Notes);
+
+        foreach (var msg in booking.OutboxMessages)
+            outboxRepository.Stage(msg);
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var proposal = booking.Proposals.Last();

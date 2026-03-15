@@ -114,14 +114,15 @@ public class UserRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetByEmailAsync_IsCaseSensitive()
+    public async Task GetByEmailAsync_IsCaseInsensitive()
     {
         var user = User.Create("case@example.com", "hash", "J", "D", null);
         await _repository.AddAsync(user);
 
         var result = await _repository.GetByEmailAsync("CASE@EXAMPLE.COM");
 
-        result.Should().BeNull();
+        result.Should().NotBeNull();
+        result!.Email.Should().Be("case@example.com");
     }
 
     [Fact]

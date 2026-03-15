@@ -7,7 +7,9 @@ public class UpdateTourPricesCommandValidator : AbstractValidator<UpdateTourPric
     public UpdateTourPricesCommandValidator()
     {
         RuleFor(x => x.TourId).NotEmpty();
-        RuleFor(x => x.Request.Prices).NotNull().NotEmpty();
+        RuleFor(x => x.Request.Prices)
+            .Must(p => p != null && p.Count > 0)
+            .WithMessage("Prices must not be null or empty.");
 
         RuleForEach(x => x.Request.Prices).ChildRules(price =>
         {
@@ -15,6 +17,10 @@ public class UpdateTourPricesCommandValidator : AbstractValidator<UpdateTourPric
                 .WithMessage("ValidFrom must be earlier than ValidTo.");
             price.RuleFor(p => p.PricePerPerson).GreaterThan(0);
             price.RuleFor(p => p.AvailableSeats).GreaterThanOrEqualTo(0);
+            price.RuleFor(p => p.Currency)
+                .NotEmpty()
+                .Must(c => c != null && c.Trim().Length == 3 && c.Trim().All(char.IsLetter))
+                .WithMessage("Currency must be a valid ISO 4217 code (3 letters).");
         });
     }
 }

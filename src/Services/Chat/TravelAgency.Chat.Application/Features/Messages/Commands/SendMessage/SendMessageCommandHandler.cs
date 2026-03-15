@@ -26,6 +26,9 @@ public sealed class SendMessageCommandHandler(
             throw new ForbiddenException("You do not have access to this booking.");
 
         var userId = currentUser.UserId;
+        if (userId == Guid.Empty)
+            throw new ForbiddenException("Invalid user identity.");
+
         var role = currentUser.Role;
         var senderName = currentUser.DisplayName;
 

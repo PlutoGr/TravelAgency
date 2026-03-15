@@ -11,6 +11,7 @@ public class CreateBookingCommandHandlerTests
 {
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IBookingRepository> _bookingRepoMock = new();
+    private readonly Mock<IOutboxMessageRepository> _outboxRepoMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly CreateBookingCommandHandler _handler;
 
@@ -25,6 +26,7 @@ public class CreateBookingCommandHandlerTests
         _handler = new CreateBookingCommandHandler(
             _currentUserMock.Object,
             _bookingRepoMock.Object,
+            _outboxRepoMock.Object,
             _unitOfWorkMock.Object);
     }
 

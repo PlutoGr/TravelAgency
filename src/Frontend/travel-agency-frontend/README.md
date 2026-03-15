@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+# TravelAgency Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite фронтенд для TravelAgency. Tailwind CSS, React Query, React Router.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Node.js** (npm) — для сборки и разработки
+- **Gateway** — API на `http://localhost:5000` (или настройте proxy в `vite.config.ts`)
 
-## React Compiler
+Бэкенд (.NET 10): из корня репозитория `source scripts/use-dotnet10.sh` и `./build.sh`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Building this project
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Из этой папки (src/Frontend/travel-agency-frontend)
+npm install
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Run
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Режим разработки (HMR)
+npm run dev
 ```
+
+Приложение доступно на `http://localhost:5173`. API-запросы проксируются на `http://localhost:5000` (см. `vite.config.ts`).
+
+## Environment Variables
+
+Сейчас фронтенд не использует переменные окружения Vite. URL API задаётся через proxy в `vite.config.ts`:
+
+```ts
+server: {
+  proxy: {
+    '/api': { target: 'http://localhost:5000', changeOrigin: true }
+  }
+}
+```
+
+Для production можно добавить `VITE_API_URL` и использовать его в axios/fetch.
+
+## Docker
+
+```bash
+# Из корня репозитория
+cd docker
+cp .env.example .env
+docker compose --profile full up frontend
+```
+
+Frontend: `http://localhost:3000`. Запускается вместе с Gateway и сервисами.
+
+## Tests
+
+```bash
+# Линтинг
+npm run lint
+```
+
+Unit/E2E тесты в проекте не настроены. Рекомендуется добавить Vitest/Jest и Playwright при необходимости.
+
+## Scripts
+
+| Команда | Описание |
+|---------|----------|
+| `npm run dev` | Запуск dev-сервера с HMR |
+| `npm run build` | Сборка для production |
+| `npm run preview` | Просмотр production-сборки |
+| `npm run lint` | ESLint |
+
+Полная инструкция по бэкенду — в [README репозитория](../../../README.md).

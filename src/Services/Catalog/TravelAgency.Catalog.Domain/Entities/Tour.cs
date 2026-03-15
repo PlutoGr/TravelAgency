@@ -32,17 +32,7 @@ public class Tour
         string? imageUrl,
         Guid? directionId = null)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new CatalogDomainException("Tour title cannot be empty.");
-
-        if (string.IsNullOrWhiteSpace(description))
-            throw new CatalogDomainException("Tour description cannot be empty.");
-
-        if (string.IsNullOrWhiteSpace(country))
-            throw new CatalogDomainException("Tour country cannot be empty.");
-
-        if (durationDays < 1)
-            throw new CatalogDomainException("Tour duration must be at least 1 day.");
+        ValidateCore(title, description, country, durationDays);
 
         return new Tour
         {
@@ -68,17 +58,7 @@ public class Tour
         string? imageUrl,
         Guid? directionId = null)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new CatalogDomainException("Tour title cannot be empty.");
-
-        if (string.IsNullOrWhiteSpace(description))
-            throw new CatalogDomainException("Tour description cannot be empty.");
-
-        if (string.IsNullOrWhiteSpace(country))
-            throw new CatalogDomainException("Tour country cannot be empty.");
-
-        if (durationDays < 1)
-            throw new CatalogDomainException("Tour duration must be at least 1 day.");
+        ValidateCore(title, description, country, durationDays);
 
         Title = title.Trim();
         Description = description.Trim();
@@ -106,5 +86,20 @@ public class Tour
     {
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static void ValidateCore(string title, string description, string country, int durationDays)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new CatalogDomainException("Tour title cannot be empty.");
+
+        if (string.IsNullOrWhiteSpace(description))
+            throw new CatalogDomainException("Tour description cannot be empty.");
+
+        if (string.IsNullOrWhiteSpace(country))
+            throw new CatalogDomainException("Tour country cannot be empty.");
+
+        if (durationDays < 1)
+            throw new CatalogDomainException("Tour duration must be at least 1 day.");
     }
 }

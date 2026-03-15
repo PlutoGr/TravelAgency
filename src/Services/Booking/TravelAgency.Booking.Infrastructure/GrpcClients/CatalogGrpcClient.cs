@@ -1,13 +1,15 @@
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
+using TravelAgency.Booking.Application.Exceptions;
+using TravelAgency.Contracts.Grpc.Catalog;
 
 namespace TravelAgency.Booking.Infrastructure.GrpcClients;
 
 public class CatalogGrpcClient : ICatalogGrpcClient
 {
-    private readonly CatalogGrpc.CatalogGrpcClient _client;
+    private readonly CatalogService.CatalogServiceClient _client;
 
-    public CatalogGrpcClient(CatalogGrpc.CatalogGrpcClient client)
+    public CatalogGrpcClient(CatalogService.CatalogServiceClient client)
     {
         _client = client;
     }
@@ -16,6 +18,9 @@ public class CatalogGrpcClient : ICatalogGrpcClient
     {
         var request = new GetTourSnapshotRequest { TourId = tourId.ToString() };
         var response = await _client.GetTourSnapshotAsync(request, cancellationToken: ct);
+
+        if (!response.Found)
+            throw new NotFoundException($"Tour '{tourId}' was not found in catalog.");
 
         return new TourSnapshotDto(
             TourId: Guid.Parse(response.TourId),

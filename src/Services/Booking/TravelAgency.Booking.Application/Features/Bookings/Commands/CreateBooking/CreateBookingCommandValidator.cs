@@ -8,5 +8,7 @@ public sealed class CreateBookingCommandValidator : AbstractValidator<CreateBook
     {
         RuleFor(x => x.Request.TourId)
             .NotEmpty().WithMessage("TourId must not be empty.");
+        RuleFor(x => x.Request.Comment)
+            .MaximumLength(1000);
     }
 }

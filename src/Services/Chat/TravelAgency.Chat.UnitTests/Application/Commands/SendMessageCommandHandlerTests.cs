@@ -72,6 +72,24 @@ public class SendMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIdIsEmpty_ThrowsForbiddenException()
+    {
+        _bookingAccessService
+            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        _currentUserService.UserId.Returns(Guid.Empty);
+        _currentUserService.Role.Returns(AppRoles.Client);
+        _currentUserService.DisplayName.Returns("Test");
+
+        var command = new SendMessageCommand(BookingId, "Hello");
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("*Invalid user identity*");
+    }
+
+    [Fact]
     public async Task Handle_ValidCommand_PersistsMessage()
     {
         _bookingAccessService

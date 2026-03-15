@@ -1,4 +1,5 @@
 using MediatR;
+using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
 using TravelAgency.Identity.Application.Interfaces;
@@ -9,7 +10,8 @@ namespace TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProf
 
 public sealed class UpdateProfileCommandHandler(
     ICurrentUserService currentUserService,
-    IUserRepository userRepository) : IRequestHandler<UpdateProfileCommand, UserProfileDto>
+    IUserRepository userRepository,
+    IUnitOfWork unitOfWork) : IRequestHandler<UpdateProfileCommand, UserProfileDto>
 {
     public async Task<UserProfileDto> Handle(UpdateProfileCommand command, CancellationToken cancellationToken)
     {
@@ -25,7 +27,7 @@ public sealed class UpdateProfileCommandHandler(
             req.LastName ?? user.LastName,
             req.Phone);
 
-        await userRepository.UpdateAsync(user, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new UserProfileDto(
             user.Id,
