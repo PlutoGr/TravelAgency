@@ -11,6 +11,8 @@ import 'swiper/swiper-bundle.css';
 import { StarRating, Skeleton } from '@/components/ui';
 import { FadeInOnScroll } from '@/components/common';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import { getTours } from '@/api/catalog';
 import { formatPrice } from '@/utils/format';
 
@@ -19,6 +21,8 @@ const HOT_DEALS_PAGE_SIZE = 50;
 export default function HotDealsCarousel() {
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
   const isFavorite = useFavoritesStore((s) => s.isFavorite);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
 
   const { data: toursData, isLoading } = useQuery({
     queryKey: ['catalog', 'tours', 'hot-deals'],
@@ -121,6 +125,10 @@ export default function HotDealsCarousel() {
                     <button
                       onClick={(e) => {
                         e.preventDefault();
+                        if (!isAuthenticated) {
+                          openAuthModal('login');
+                          return;
+                        }
                         toggleFavorite(tour.id, tour);
                       }}
                       className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm transition-colors hover:bg-white"

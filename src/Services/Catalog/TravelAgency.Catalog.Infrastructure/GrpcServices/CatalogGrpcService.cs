@@ -33,13 +33,16 @@ public class CatalogGrpcService : CatalogService.CatalogServiceBase
             .OrderBy(p => p.PricePerPerson)
             .FirstOrDefault();
 
+        // Fallback: if no price in current date range, use minimum price from any price
+        var priceToUse = activePrice ?? tour.Prices.OrderBy(p => p.PricePerPerson).FirstOrDefault();
+
         return new TourSnapshotResponse
         {
             TourId = tour.Id.ToString(),
             Title = tour.Title,
             Description = tour.Description,
-            Price = (double)(activePrice?.PricePerPerson ?? 0),
-            Currency = activePrice?.Currency ?? "USD",
+            Price = (double)(priceToUse?.PricePerPerson ?? 0),
+            Currency = priceToUse?.Currency ?? "USD",
             DurationDays = tour.DurationDays,
             SnapshotTakenAt = now.ToString("O"),
             Found = true

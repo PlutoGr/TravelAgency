@@ -56,7 +56,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       .catch((error) => {
         const isAuthFailure = error?.response?.status === 401;
         if (isAuthFailure) {
-          void authApi.logout();
           set({ user: null, isAuthenticated: false, isLoading: false });
         } else {
           set({ isLoading: false });

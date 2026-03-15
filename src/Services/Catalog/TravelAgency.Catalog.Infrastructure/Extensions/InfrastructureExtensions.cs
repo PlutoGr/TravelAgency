@@ -11,6 +11,7 @@ using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 using TravelAgency.Catalog.Infrastructure.Queries;
 using TravelAgency.Catalog.Infrastructure.Repositories;
+using TravelAgency.Catalog.Infrastructure.Seeding;
 
 namespace TravelAgency.Catalog.Infrastructure.Extensions;
 
@@ -52,6 +53,7 @@ public static class InfrastructureExtensions
         services.AddScoped<ITourRepository, TourRepository>();
         services.AddScoped<ITourListQuery, TourListQuery>();
         services.AddScoped<IDirectionRepository, DirectionRepository>();
+        services.AddHostedService<CatalogDataSeeder>();
 
         return services;
     }

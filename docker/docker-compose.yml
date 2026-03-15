@@ -7,12 +7,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: travel_identity
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+      - ./init-identity.sql:/docker-entrypoint-initdb.d/02-init-identity.sql:ro
+      - ./init-chat.sql:/docker-entrypoint-initdb.d/03-init-chat.sql:ro
+      - ./init-media.sql:/docker-entrypoint-initdb.d/04-init-media.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d travel_identity"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -43,14 +46,28 @@ services:
     build:
       context: ..
       dockerfile: src/Gateway/TravelAgency.Gateway/Dockerfile
+    platform: linux/amd64
     ports:
-      - "5000:8080"
+      - "5001:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
       - JwtSettings__Issuer=TravelAgency.Identity
       - JwtSettings__Audience=TravelAgency
+      # Override appsettings.Development.json: use Docker service names instead of localhost
+      - ReverseProxy__Clusters__identity-cluster__Destinations__destination1__Address=http://identity-service:8080
+      - ReverseProxy__Clusters__catalog-cluster__Destinations__destination1__Address=http://catalog-service:8080
+      - ReverseProxy__Clusters__booking-cluster__Destinations__destination1__Address=http://booking-service:8080
+      - ReverseProxy__Clusters__chat-cluster__Destinations__destination1__Address=http://chat-service:8080
+      - ReverseProxy__Clusters__media-cluster__Destinations__destination1__Address=http://media-service:8080
+      # Disable strict auth rate limiting in Docker dev (allows registration flow)
+      - RateLimiting__Auth__Disabled=true
+      - ConnectionStrings__Redis=redis:6379
+      # Allow cookies on HTTP (localhost) for frontend dev with Vite proxy
+      - Cookie__Secure=false
     depends_on:
+      redis:
+        condition: service_healthy
       identity-service:
         condition: service_started
       catalog-service:
@@ -66,12 +83,14 @@ services:
     build:
       context: ..
       dockerfile: src/Services/Identity/TravelAgency.Identity.API/Dockerfile
+    platform: linux/amd64
     ports:
       - "5010:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_RUN_MIGRATIONS=true
       - ConnectionStrings__IdentityDb=Host=postgres;Port=5432;Database=travel_identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - RateLimit__PermitLimit=10000
       - ConnectionStrings__Redis=redis:6379
       - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
       - JwtSettings__Issuer=TravelAgency.Identity
@@ -88,6 +107,7 @@ services:
     build:
       context: ..
       dockerfile: src/Services/Catalog/TravelAgency.Catalog.API/Dockerfile
+    platform: linux/amd64
     ports:
       - "5020:8080"
     environment:
@@ -107,6 +127,7 @@ services:
     build:
       context: ..
       dockerfile: src/Services/Booking/TravelAgency.Booking.API/Dockerfile
+    platform: linux/amd64
     ports:
       - "5030:8080"
     environment:
@@ -129,6 +150,7 @@ services:
     build:
       context: ..
       dockerfile: src/Services/Chat/TravelAgency.Chat.API/Dockerfile
+    platform: linux/amd64
     ports:
       - "5040:8080"
     environment:
@@ -153,6 +175,7 @@ services:
     build:
       context: ..
       dockerfile: src/Services/Media/TravelAgency.Media.API/Dockerfile
+    platform: linux/amd64
     ports:
       - "5050:8080"
     environment:

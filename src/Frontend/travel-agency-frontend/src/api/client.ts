@@ -13,6 +13,12 @@ function redirectToLogin(): void {
   window.location.href = '/?auth=login';
 }
 
+function shouldSkipRedirect(request: InternalAxiosRequestConfig & { _retried?: boolean }): boolean {
+  const url = request?.url ?? '';
+  // getMe is used to check auth state; 401 is expected when not logged in — do not redirect
+  return url.includes('/auth/me');
+}
+
 let refreshPromise: Promise<void> | null = null;
 
 apiClient.interceptors.response.use(
@@ -32,7 +38,11 @@ apiClient.interceptors.response.use(
     }
 
     if (originalRequest?._retried) {
-      redirectToLogin();
+      if (!shouldSkipRedirect(originalRequest)) redirectToLogin();
+      return Promise.reject(error);
+    }
+
+    if (shouldSkipRedirect(originalRequest)) {
       return Promise.reject(error);
     }
 

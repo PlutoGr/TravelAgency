@@ -54,6 +54,6 @@ public sealed class BucketInitializer(
     private async Task<bool> BucketExistsAsync(string bucketName, CancellationToken cancellationToken)
     {
         var response = await s3Client.ListBucketsAsync(cancellationToken);
-        return response.Buckets.Any(b => string.Equals(b.BucketName, bucketName, StringComparison.Ordinal));
+        return response.Buckets?.Any(b => string.Equals(b.BucketName, bucketName, StringComparison.Ordinal)) ?? false;
     }
 }

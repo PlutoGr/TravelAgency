@@ -35,9 +35,13 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
       const nextIds = [...favoriteIds, tourId];
       const nextTours = tour ? [...favoriteTours, tour] : favoriteTours;
       set({ favoriteIds: nextIds, favoriteTours: nextTours, count: nextIds.length });
-      favoritesApi.addFavorite(tourId).catch(() => {
+      favoritesApi.addFavorite(tourId).catch((err: unknown) => {
         set({ favoriteIds, favoriteTours, count: favoriteIds.length });
-        toast.error('Не удалось добавить в избранное');
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 401) toast.error('Войдите, чтобы добавить в избранное');
+        else if (status === 404) toast.error('Тур не найден');
+        else if (status === 409) toast.error('Уже в избранном');
+        else toast.error('Не удалось добавить в избранное');
       });
     }
   },

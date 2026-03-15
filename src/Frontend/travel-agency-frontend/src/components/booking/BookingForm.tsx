@@ -110,8 +110,10 @@ export default function BookingForm({
       toast.success('Заявка успешно создана!');
       onSuccess?.();
       onClose?.();
-    } catch {
-      toast.error('Не удалось создать заявку. Попробуйте ещё раз.');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) toast.error('Войдите, чтобы оформить заявку');
+      else toast.error('Не удалось создать заявку. Попробуйте ещё раз.');
     } finally {
       setIsSubmitting(false);
     }

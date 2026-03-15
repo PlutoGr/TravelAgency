@@ -155,17 +155,15 @@ describe('authStore', () => {
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
 
-    it('forces logout on 401 (auth failure)', async () => {
+    it('clears auth state on 401 (auth failure)', async () => {
       const err401 = { response: { status: 401 } };
       mockGetMe.mockImplementation(() => Promise.reject(err401));
-      mockLogout.mockResolvedValue(undefined);
 
       useAuthStore.getState().checkAuth();
 
       await vi.waitFor(() => mockGetMe.mock.calls.length > 0, { timeout: 500 });
       await new Promise((r) => setTimeout(r, 0));
 
-      expect(mockLogout).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });

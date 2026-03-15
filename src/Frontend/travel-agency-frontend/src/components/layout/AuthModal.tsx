@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,7 +13,8 @@ const AUTH_TABS = [
 ] as const;
 
 export default function AuthModal() {
-  const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal } =
+  const navigate = useNavigate();
+  const { isAuthModalOpen, authModalTab, authReturnTo, closeAuthModal, openAuthModal } =
     useUIStore();
   const { login, register, isLoading } = useAuthStore();
 
@@ -40,6 +42,9 @@ export default function AuthModal() {
                     await login(email, password);
                     toast.success('Добро пожаловать!');
                     closeAuthModal();
+                    if (authReturnTo) {
+                      navigate(authReturnTo);
+                    }
                   } catch {
                     toast.error('Неверный email или пароль');
                   }
@@ -61,8 +66,17 @@ export default function AuthModal() {
                     await register(data);
                     toast.success('Регистрация прошла успешно!');
                     closeAuthModal();
-                  } catch {
-                    toast.error('Ошибка регистрации. Попробуйте ещё раз.');
+                    if (authReturnTo) {
+                      navigate(authReturnTo);
+                    }
+                  } catch (err) {
+                    const messages = extractValidationErrors(err);
+                    if (messages.length > 0) {
+                      toast.error(messages.join('. '));
+                    } else {
+                      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                      toast.error(detail || 'Ошибка регистрации. Попробуйте ещё раз.');
+                    }
                   }
                 }}
               />
@@ -118,6 +132,37 @@ function LoginForm({
   );
 }
 
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_RULES = {
+  length: (p: string) => p.length >= PASSWORD_MIN_LENGTH && p.length <= PASSWORD_MAX_LENGTH,
+  uppercase: (p: string) => /[A-Z]/.test(p),
+  lowercase: (p: string) => /[a-z]/.test(p),
+  digit: (p: string) => /[0-9]/.test(p),
+};
+const PHONE_REGEX = /^\+?[\d\s\-()]+$/;
+
+function validatePassword(password: string): string[] {
+  const errors: string[] = [];
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    errors.push(`Минимум ${PASSWORD_MIN_LENGTH} символов`);
+  }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    errors.push(`Максимум ${PASSWORD_MAX_LENGTH} символов`);
+  }
+  if (!PASSWORD_RULES.uppercase(password)) errors.push('Хотя бы одна заглавная буква');
+  if (!PASSWORD_RULES.lowercase(password)) errors.push('Хотя бы одна строчная буква');
+  if (!PASSWORD_RULES.digit(password)) errors.push('Хотя бы одна цифра');
+  return errors;
+}
+
+function extractValidationErrors(error: unknown): string[] {
+  const data = (error as { response?: { data?: { errors?: Record<string, string[]> } } })?.response?.data;
+  const errors = data?.errors;
+  if (!errors || typeof errors !== 'object') return [];
+  return Object.values(errors).flat().filter((m): m is string => typeof m === 'string');
+}
+
 function RegisterForm({
   isLoading,
   onSubmit,
@@ -136,13 +181,29 @@ function RegisterForm({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | undefined>();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setPasswordError(undefined);
+
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password.trim()) {
       toast.error('Заполните все поля');
       return;
     }
+
+    if (phone.trim() && !PHONE_REGEX.test(phone.trim())) {
+      toast.error('Неверный формат телефона. Допустимы цифры, пробелы, дефисы, скобки и + в начале.');
+      return;
+    }
+
+    const pwdErrors = validatePassword(password);
+    if (pwdErrors.length > 0) {
+      setPasswordError(pwdErrors.join('. '));
+      toast.error(`Пароль: ${pwdErrors.join(', ')}`);
+      return;
+    }
+
     onSubmit({ email, password, firstName, lastName, phone });
   }
 
@@ -180,14 +241,23 @@ function RegisterForm({
         onChange={(e) => setPhone(e.target.value)}
         autoComplete="tel"
       />
-      <Input
-        label="Пароль"
-        type="password"
-        icon={Lock}
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        autoComplete="new-password"
-      />
+      <div>
+        <Input
+          label="Пароль"
+          type="password"
+          icon={Lock}
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setPasswordError(undefined);
+          }}
+          autoComplete="new-password"
+          error={passwordError}
+        />
+        <p className="mt-1.5 text-xs text-warm-gray">
+          Минимум {PASSWORD_MIN_LENGTH} символов, заглавная, строчная буква и цифра
+        </p>
+      </div>
       <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
         Зарегистрироваться
       </Button>

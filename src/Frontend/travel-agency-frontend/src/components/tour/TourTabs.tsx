@@ -23,7 +23,9 @@ import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { Tour, Review } from '@/types';
 import { Tabs, Avatar, StarRating } from '@/components/ui';
-import { mockReviews } from '@/mocks/reviews';
+
+/** Reviews API not yet implemented. Empty until backend provides reviews endpoint. */
+const REVIEWS: Review[] = [];
 
 interface TourTabsProps {
   tour: Tour;
@@ -128,7 +130,7 @@ function AmenitiesPanel({ tour }: { tour: Tour }) {
 
 function ReviewsPanel({ tour }: { tour: Tour }) {
   const reviews = useMemo(
-    () => mockReviews.filter((r) => r.tourId === tour.id),
+    () => REVIEWS.filter((r) => r.tourId === tour.id),
     [tour.id],
   );
 

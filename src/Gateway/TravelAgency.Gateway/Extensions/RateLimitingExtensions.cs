@@ -24,7 +24,8 @@ public static class RateLimitingExtensions
 
         var globalLimit = configuration.GetValue<int>("RateLimiting:Global:Limit", 200);
         var globalWindow = TimeSpan.FromMinutes(1);
-        var authLimit = configuration.GetValue<int>("RateLimiting:Auth:Limit", 5);
+        var authDisabled = configuration.GetValue<bool>("RateLimiting:Auth:Disabled", false);
+        var authLimit = configuration.GetValue<int>("RateLimiting:Auth:Limit", authDisabled ? 10000 : 5);
         var authWindow = TimeSpan.FromSeconds(configuration.GetValue<int>("RateLimiting:Auth:PeriodSeconds", 1));
         var failOpen = configuration.GetValue<bool>("RateLimiting:FailOpen", true);
 

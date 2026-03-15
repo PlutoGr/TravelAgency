@@ -60,6 +60,18 @@ This starts Gateway, Identity, Catalog, Booking, Chat, Media, PostgreSQL, Redis,
 
 Tokens are stored in **httpOnly cookies** (XSS-safe). See [Cookie-Based Auth](ai_docs/develop/features/cookie-auth.md) for flow, CORS, and production config.
 
+### Test accounts (Development seed)
+
+When running in Development or with `ASPNETCORE_SEED_DATA=true`, Identity and Catalog seed test data:
+
+| Email            | Password  | Role   |
+|------------------|-----------|--------|
+| client@test.com  | Test123!  | Client |
+| manager@test.com | Test123!  | Manager|
+| admin@test.com   | Test123!  | Admin  |
+
+Catalog seeds directions (Мальдивы, Пхукет, Санторини, Бали, Дубай) and sample tours.
+
 ## Solution structure
 
 - `src/Gateway/` — API Gateway

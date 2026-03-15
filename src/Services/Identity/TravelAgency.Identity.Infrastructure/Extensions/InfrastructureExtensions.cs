@@ -11,6 +11,7 @@ using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Identity.Domain.Interfaces;
 using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Repositories;
+using TravelAgency.Identity.Infrastructure.Seeding;
 using TravelAgency.Identity.Infrastructure.Services;
 using TravelAgency.Shared.Infrastructure.Extensions;
 
@@ -74,6 +75,7 @@ public static class InfrastructureExtensions
         }
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
+        services.AddHostedService<IdentityDataSeeder>();
 
         return services;
     }
