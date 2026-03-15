@@ -56,6 +56,7 @@ public class GlobalExceptionHandlerMiddleware
         var problemDetails = exception switch
         {
             AppValidationException validationEx => CreateValidationProblemDetails(context, validationEx),
+            BadRequestException badRequestEx => CreateAppProblemDetails(context, badRequestEx),
             NotFoundException notFoundEx => CreateAppProblemDetails(context, notFoundEx),
             ConflictException conflictEx => CreateAppProblemDetails(context, conflictEx),
             ForbiddenException forbiddenEx => CreateAppProblemDetails(context, forbiddenEx),
@@ -91,6 +92,7 @@ public class GlobalExceptionHandlerMiddleware
     {
         var (type, title) = exception.StatusCode switch
         {
+            400 => ("https://tools.ietf.org/html/rfc7231#section-6.5.1", "Bad Request"),
             401 => ("https://tools.ietf.org/html/rfc7235#section-3.1", "Unauthorized"),
             403 => ("https://tools.ietf.org/html/rfc7231#section-6.5.3", "Forbidden"),
             404 => ("https://tools.ietf.org/html/rfc7231#section-6.5.4", "Not Found"),

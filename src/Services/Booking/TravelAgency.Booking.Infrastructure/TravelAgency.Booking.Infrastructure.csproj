@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Booking.Application\TravelAgency.Booking.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Contracts.Grpc\TravelAgency.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
   </ItemGroup>
 
@@ -13,11 +14,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="Protos\catalog.proto" GrpcServices="Client" />
-    <Protobuf Include="Protos\identity_client.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <PropertyGroup>

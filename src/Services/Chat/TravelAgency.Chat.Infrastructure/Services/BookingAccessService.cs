@@ -33,6 +33,14 @@ public class BookingAccessService : IBookingAccessService
 
         var authHeader = authorizationHeader
             ?? _httpContextAccessor.HttpContext?.Request.Headers.Authorization.FirstOrDefault();
+
+        if (string.IsNullOrEmpty(authHeader))
+        {
+            var accessToken = _httpContextAccessor.HttpContext?.Request.Query["access_token"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(accessToken))
+                authHeader = $"Bearer {accessToken}";
+        }
+
         if (!string.IsNullOrEmpty(authHeader))
         {
             request.Headers.Authorization = AuthenticationHeaderValue.Parse(authHeader);

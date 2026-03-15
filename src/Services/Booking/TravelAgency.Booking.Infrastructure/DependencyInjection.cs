@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Booking.Application;
+using TravelAgency.Contracts.Grpc.Catalog;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Domain.Interfaces;
 using TravelAgency.Booking.Infrastructure.BackgroundServices;
@@ -47,13 +48,10 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
 
         var catalogGrpcAddress = configuration["GrpcClients:CatalogServiceUrl"] ?? "http://catalog-service:8080";
-        var identityGrpcAddress = configuration["GrpcClients:IdentityServiceUrl"] ?? "http://identity-service:8080";
 
-        services.AddGrpcClient<CatalogGrpc.CatalogGrpcClient>(o => o.Address = new Uri(catalogGrpcAddress));
-        services.AddGrpcClient<IdentityGrpc.IdentityGrpcClient>(o => o.Address = new Uri(identityGrpcAddress));
+        services.AddGrpcClient<CatalogService.CatalogServiceClient>(o => o.Address = new Uri(catalogGrpcAddress));
 
         services.AddScoped<ICatalogGrpcClient, CatalogGrpcClient>();
-        services.AddScoped<IIdentityGrpcClient, IdentityGrpcClient>();
 
         services.AddHostedService<OutboxProcessorBackgroundService>();
 

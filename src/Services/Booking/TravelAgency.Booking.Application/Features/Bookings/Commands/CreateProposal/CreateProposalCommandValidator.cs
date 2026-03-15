@@ -8,5 +8,7 @@ public sealed class CreateProposalCommandValidator : AbstractValidator<CreatePro
     {
         RuleFor(x => x.BookingId)
             .NotEmpty().WithMessage("BookingId must not be empty.");
+        RuleFor(x => x.Request.Notes)
+            .MaximumLength(2000);
     }
 }

@@ -10,10 +10,10 @@ public static class AuthenticationExtensions
 {
     public static IServiceCollection AddIdentityAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        var jwtSection = configuration.GetSection("JwtSettings");
+        services.Configure<JwtSettings>(jwtSection);
 
-        var jwtSettings = configuration.GetSection("JwtSettings");
-        var signingKey = jwtSettings["SigningKey"];
+        var signingKey = jwtSection["SigningKey"];
         if (string.IsNullOrWhiteSpace(signingKey))
             throw new InvalidOperationException(
                 "JWT SigningKey must be configured via environment variable JwtSettings__SigningKey");
@@ -29,10 +29,10 @@ public static class AuthenticationExtensions
             {
                 ValidateIssuer = true,
                 ValidateAudience = true,
-                ValidateLifetime = jwtSettings.GetValue<bool>("ValidateLifetime", true),
+                ValidateLifetime = jwtSection.GetValue<bool>("ValidateLifetime", true),
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings["Issuer"],
-                ValidAudience = jwtSettings["Audience"],
+                ValidIssuer = jwtSection["Issuer"],
+                ValidAudience = jwtSection["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
                 ClockSkew = TimeSpan.FromSeconds(30),
                 RoleClaimType = System.Security.Claims.ClaimTypes.Role
@@ -45,7 +45,7 @@ public static class AuthenticationExtensions
     public static IServiceCollection AddIdentityAuthorization(this IServiceCollection services)
     {
         services.AddAuthorizationBuilder()
-            .AddPolicy(AuthPolicies.RequireClient, policy =>
+            .AddPolicy(AuthPolicies.RequireAuthenticated, policy =>
                 policy.RequireRole(AppRoles.Client, AppRoles.Manager, AppRoles.Admin))
             .AddPolicy(AuthPolicies.RequireManager, policy =>
                 policy.RequireRole(AppRoles.Manager, AppRoles.Admin))

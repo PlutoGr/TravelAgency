@@ -40,7 +40,7 @@ public sealed class RegisterCommandHandler(
         var accessTokenDto = jwtTokenService.GenerateAccessToken(user);
         var refreshTokenString = jwtTokenService.GenerateRefreshToken();
 
-        var refreshToken = RefreshToken.Create(
+        var refreshToken = TravelAgency.Identity.Domain.Entities.RefreshToken.Create(
             user.Id,
             refreshTokenString,
             DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays));

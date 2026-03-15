@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
+using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.Features.Auth.Commands.RefreshToken;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
@@ -16,6 +17,7 @@ public class RefreshTokenCommandHandlerTests
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepoMock = new();
     private readonly Mock<IJwtTokenService> _jwtServiceMock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly RefreshTokenCommandHandler _handler;
 
     private readonly JwtSettings _jwtSettings = new() { RefreshTokenExpirationDays = 7 };
@@ -26,6 +28,7 @@ public class RefreshTokenCommandHandlerTests
             _userRepoMock.Object,
             _refreshTokenRepoMock.Object,
             _jwtServiceMock.Object,
+            _unitOfWorkMock.Object,
             Options.Create(_jwtSettings));
     }
 
@@ -46,10 +49,7 @@ public class RefreshTokenCommandHandlerTests
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(user))
             .Returns(new AuthTokensDto(newAccessToken, string.Empty, expiresAt));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(newRefreshStr);
-        _refreshTokenRepoMock.Setup(r => r.UpdateAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var command = new RefreshTokenCommand(new RefreshTokenRequest("old-refresh"));
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -73,10 +73,7 @@ public class RefreshTokenCommandHandlerTests
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
             .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1)));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("new-rt");
-        _refreshTokenRepoMock.Setup(r => r.UpdateAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         await _handler.Handle(new RefreshTokenCommand(new RefreshTokenRequest("old-refresh")), CancellationToken.None);
 

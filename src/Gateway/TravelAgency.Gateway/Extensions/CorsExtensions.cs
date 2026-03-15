@@ -12,6 +12,12 @@ public static class CorsExtensions
         var allowedMethods = corsSection.GetSection("AllowedMethods").Get<string[]>() ?? Array.Empty<string>();
         var allowedHeaders = corsSection.GetSection("AllowedHeaders").Get<string[]>() ?? Array.Empty<string>();
 
+        if (allowedOrigins.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "CORS AllowedOrigins must contain at least one origin. Configure at least one value in Cors:AllowedOrigins.");
+        }
+
         services.AddCors(options =>
         {
             options.AddPolicy(GatewayCorsPolicyName, policy =>

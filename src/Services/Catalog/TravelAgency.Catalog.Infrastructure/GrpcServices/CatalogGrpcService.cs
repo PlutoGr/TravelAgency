@@ -1,7 +1,7 @@
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
-using TravelAgency.Catalog.Infrastructure.Grpc;
 using TravelAgency.Catalog.Infrastructure.Persistence;
+using TravelAgency.Contracts.Grpc.Catalog;
 
 namespace TravelAgency.Catalog.Infrastructure.GrpcServices;
 
@@ -37,10 +37,11 @@ public class CatalogGrpcService : CatalogService.CatalogServiceBase
         {
             TourId = tour.Id.ToString(),
             Title = tour.Title,
-            Country = tour.Country,
-            DurationDays = tour.DurationDays,
-            PricePerPerson = (double)(activePrice?.PricePerPerson ?? 0),
+            Description = tour.Description,
+            Price = (double)(activePrice?.PricePerPerson ?? 0),
             Currency = activePrice?.Currency ?? "USD",
+            DurationDays = tour.DurationDays,
+            SnapshotTakenAt = now.ToString("O"),
             Found = true
         };
     }

@@ -28,7 +28,7 @@ public sealed class UserRepository(IdentityDbContext dbContext) : IUserRepositor
 
     public async Task UpdateAsync(User user, CancellationToken ct = default)
     {
-        dbContext.Users.Update(user);
+        // Entity is expected to be tracked (e.g. from GetByIdAsync). Change tracking persists modifications; Update() is redundant.
         await dbContext.SaveChangesAsync(ct);
     }
 

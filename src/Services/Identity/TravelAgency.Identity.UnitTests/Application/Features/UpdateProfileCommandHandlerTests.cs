@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Moq;
+using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
@@ -13,13 +14,18 @@ public class UpdateProfileCommandHandlerTests
 {
     private readonly Mock<ICurrentUserService> _currentUserServiceMock = new();
     private readonly Mock<IUserRepository> _userRepoMock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly UpdateProfileCommandHandler _handler;
 
     public UpdateProfileCommandHandlerTests()
     {
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
         _handler = new UpdateProfileCommandHandler(
             _currentUserServiceMock.Object,
-            _userRepoMock.Object);
+            _userRepoMock.Object,
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -31,8 +37,6 @@ public class UpdateProfileCommandHandlerTests
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _userRepoMock.Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
 
         var request = new UpdateProfileRequest("New", "Surname", "+999");
         var result = await _handler.Handle(new UpdateProfileCommand(request), CancellationToken.None);
@@ -68,8 +72,6 @@ public class UpdateProfileCommandHandlerTests
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _userRepoMock.Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
 
         var result = await _handler.Handle(
             new UpdateProfileCommand(new UpdateProfileRequest(null, null, null)),
@@ -80,7 +82,7 @@ public class UpdateProfileCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithValidRequest_CallsUpdateAsync()
+    public async Task Handle_WithValidRequest_CallsUnitOfWorkSaveChangesAsync()
     {
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "J", "D", null);
@@ -88,14 +90,12 @@ public class UpdateProfileCommandHandlerTests
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _userRepoMock.Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
 
         await _handler.Handle(
             new UpdateProfileCommand(new UpdateProfileRequest("J", "D", null)),
             CancellationToken.None);
 
-        _userRepoMock.Verify(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // FIX-008: Phone is passed directly — null clears the field
@@ -109,8 +109,6 @@ public class UpdateProfileCommandHandlerTests
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _userRepoMock.Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
 
         var result = await _handler.Handle(
             new UpdateProfileCommand(new UpdateProfileRequest(null, null, null)),
@@ -128,8 +126,6 @@ public class UpdateProfileCommandHandlerTests
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _userRepoMock.Setup(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
 
         var result = await _handler.Handle(
             new UpdateProfileCommand(new UpdateProfileRequest(null, null, "+999")),

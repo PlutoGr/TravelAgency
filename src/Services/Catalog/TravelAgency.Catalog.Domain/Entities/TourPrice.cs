@@ -31,6 +31,10 @@ public class TourPrice
         if (validFrom >= validTo)
             throw new CatalogDomainException("ValidFrom must be earlier than ValidTo.");
 
+        var normalizedCurrency = string.IsNullOrWhiteSpace(currency) ? "USD" : currency.Trim().ToUpperInvariant();
+        if (normalizedCurrency.Length != 3 || !normalizedCurrency.All(char.IsLetter))
+            throw new CatalogDomainException("Currency must be a valid ISO 4217 code (3 letters).");
+
         return new TourPrice
         {
             Id = Guid.NewGuid(),
@@ -38,7 +42,7 @@ public class TourPrice
             ValidFrom = validFrom,
             ValidTo = validTo,
             PricePerPerson = pricePerPerson,
-            Currency = string.IsNullOrWhiteSpace(currency) ? "USD" : currency.Trim().ToUpperInvariant(),
+            Currency = normalizedCurrency,
             AvailableSeats = availableSeats
         };
     }

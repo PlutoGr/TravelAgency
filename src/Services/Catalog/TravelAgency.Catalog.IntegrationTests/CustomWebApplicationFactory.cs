@@ -45,13 +45,13 @@ public class CustomWebApplicationFactory : IAsyncDisposable
             ["Serilog:MinimumLevel:Default"] = "Warning"
         };
 
-        var builder = WebApplication.CreateBuilder();
+        // Set environment in options; UseEnvironment("Testing") after CreateBuilder causes
+        // "The environment changed from "" to "Testing"" error.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
 
         builder.Configuration.AddInMemoryCollection(testSettings);
 
-        builder.WebHost
-            .UseTestServer()
-            .UseEnvironment("Testing");
+        builder.WebHost.UseTestServer();
 
         builder.Logging.ClearProviders();
         builder.Logging.SetMinimumLevel(LogLevel.Warning);

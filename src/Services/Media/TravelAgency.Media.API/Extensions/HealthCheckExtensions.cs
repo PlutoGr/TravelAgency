@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using TravelAgency.Media.Infrastructure.HealthChecks;
 
 namespace TravelAgency.Media.API.Extensions;
 
@@ -7,7 +8,8 @@ public static class HealthCheckExtensions
 {
     public static IServiceCollection AddMediaHealthChecks(this IServiceCollection services)
     {
-        services.AddHealthChecks();
+        services.AddHealthChecks()
+            .AddCheck<S3HealthCheck>("s3", tags: ["ready"]);
         return services;
     }
 
@@ -26,6 +28,7 @@ public static class HealthCheckExtensions
 
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
+            Predicate = registration => registration.Tags.Contains("ready"),
             ResultStatusCodes =
             {
                 [HealthStatus.Healthy] = StatusCodes.Status200OK,

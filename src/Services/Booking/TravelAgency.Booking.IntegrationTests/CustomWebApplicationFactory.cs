@@ -23,10 +23,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     private readonly SqliteConnection _connection;
 
     public Mock<ICatalogGrpcClient> CatalogGrpcClientMock { get; } = new();
-    public Mock<IIdentityGrpcClient> IdentityGrpcClientMock { get; } = new();
 
     public CustomWebApplicationFactory()
     {
+        // AddBookingAuthentication reads JwtSettings__SigningKey eagerly during host build.
+        // Set env var in constructor so it's available before WebApplicationFactory.CreateClient().
+        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
@@ -76,9 +79,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             // Replace gRPC client adapters with mocks so no real gRPC calls are made
             services.RemoveAll<ICatalogGrpcClient>();
-            services.RemoveAll<IIdentityGrpcClient>();
             services.AddSingleton<ICatalogGrpcClient>(_ => CatalogGrpcClientMock.Object);
-            services.AddSingleton<IIdentityGrpcClient>(_ => IdentityGrpcClientMock.Object);
 
             // Override JWT validation parameters after all service configuration runs.
             // AddBookingAuthentication reads config values eagerly, so PostConfigure is
@@ -112,7 +113,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["JwtSettings:ValidateLifetime"] = "true",
                 ["ConnectionStrings:BookingDb"] = "Server=localhost;Database=TestDb;",
                 ["GrpcClients:CatalogServiceUrl"] = "http://localhost:5000",
-                ["GrpcClients:IdentityServiceUrl"] = "http://localhost:5001",
             };
             config.AddInMemoryCollection(testSettings);
         });

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Moq;
 using TravelAgency.Chat.Application.DTOs;
 using TravelAgency.Chat.IntegrationTests.Helpers;
 using Xunit;

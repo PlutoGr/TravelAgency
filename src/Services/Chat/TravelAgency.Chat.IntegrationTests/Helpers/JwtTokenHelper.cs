@@ -8,12 +8,12 @@ namespace TravelAgency.Chat.IntegrationTests.Helpers;
 
 /// <summary>
 /// Generates JWT tokens for Chat API integration tests.
-/// Uses same Issuer, Audience, and SigningKey as Chat appsettings.json JwtSettings.
+/// Uses same Issuer, Audience, and SigningKey as Chat appsettings.json (aligned with Identity).
 /// </summary>
 public static class JwtTokenHelper
 {
-    private const string Issuer = "travel-agency";
-    private const string Audience = "travel-agency-users";
+    private const string Issuer = "TravelAgency.Identity";
+    private const string Audience = "TravelAgency";
     private const string SigningKey = "CHANGE_ME_32_CHARACTERS_MINIMUM_KEY";
 
     /// <summary>

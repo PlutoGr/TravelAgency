@@ -38,7 +38,7 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
         using var request = new HttpRequestMessage(HttpMethod.Post, "/media/upload");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Content = BuildMultipartContent(
-            "fake-jpeg-content"u8.ToArray(),
+            [0xFF, 0xD8, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00],
             "photo.jpg",
             "image/jpeg");
 
@@ -62,7 +62,7 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
         using var request = new HttpRequestMessage(HttpMethod.Post, "/media/upload");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Content = BuildMultipartContent(
-            "fake-pdf-content"u8.ToArray(),
+            [0x25, 0x50, 0x44, 0x46, 0x2D, 0x00, 0x00, 0x00],
             "document.pdf",
             "application/pdf");
 
@@ -81,7 +81,7 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/media/upload");
         request.Content = BuildMultipartContent(
-            "fake-content"u8.ToArray(),
+            [0xFF, 0xD8, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00],
             "photo.jpg",
             "image/jpeg");
 
@@ -100,6 +100,22 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
             "hello, world"u8.ToArray(),
             "readme.txt",
             "text/plain");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Upload_WithContentTypeMismatchingMagicBytes_Returns400()
+    {
+        var token = JwtTokenHelper.GenerateToken();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/media/upload");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = BuildMultipartContent(
+            [0xFF, 0xD8, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00],
+            "fake.png",
+            "image/png");
 
         var response = await _client.SendAsync(request);
 

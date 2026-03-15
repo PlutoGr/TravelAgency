@@ -3,6 +3,7 @@ using System.Security.Claims;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using TravelAgency.Identity.Application.Exceptions;
 using TravelAgency.Identity.Infrastructure.Services;
 
 namespace TravelAgency.Identity.UnitTests.Infrastructure.Services;
@@ -47,23 +48,23 @@ public class CurrentUserServiceTests
     }
 
     [Fact]
-    public void UserId_WithoutClaim_ThrowsUnauthorizedAccessException()
+    public void UserId_WithoutClaim_ThrowsUnauthorizedException()
     {
         var service = CreateService(Enumerable.Empty<Claim>());
 
         var act = () => service.UserId;
 
-        act.Should().Throw<UnauthorizedAccessException>();
+        act.Should().Throw<UnauthorizedException>();
     }
 
     [Fact]
-    public void UserId_WithNoHttpContext_ThrowsUnauthorizedAccessException()
+    public void UserId_WithNoHttpContext_ThrowsUnauthorizedException()
     {
         var service = CreateService(null);
 
         var act = () => service.UserId;
 
-        act.Should().Throw<UnauthorizedAccessException>();
+        act.Should().Throw<UnauthorizedException>();
     }
 
     [Fact]

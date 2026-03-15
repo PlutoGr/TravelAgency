@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using TravelAgency.Identity.Application.DTOs;
-using TravelAgency.Identity.Application.Features.Auth.Commands.Logout;
 
 namespace TravelAgency.Identity.IntegrationTests.Auth;
 
@@ -79,10 +78,15 @@ public class RateLimitingTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
 
+    /// <summary>
+    /// Verifies that /logout is exempt from the "auth" rate-limit policy.
+    /// Uses unauthenticated requests (no Authorization header); the endpoint is [Authorize], so all requests return 401.
+    /// The intent is to confirm the rate limiter does not block these requests—we assert they never return 429.
+    /// </summary>
     [Fact]
     public async Task Logout_IsNotRateLimited_Returns_NotTooManyRequests()
     {
-        var request = new LogoutCommand("dummy");
+        var request = new RefreshTokenRequest("dummy");
 
         for (var i = 0; i < 7; i++)
         {

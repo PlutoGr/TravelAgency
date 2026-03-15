@@ -1,6 +1,7 @@
 using Serilog;
 using TravelAgency.Chat.API.Extensions;
 using TravelAgency.Chat.API.Middleware;
+using TravelAgency.Chat.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 

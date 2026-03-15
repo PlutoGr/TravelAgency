@@ -7,7 +7,7 @@ using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Chat.API.Hubs;
 
-[Authorize(Policy = AuthPolicies.RequireClient)]
+[Authorize(Policy = AuthPolicies.RequireAuthenticated)]
 public class ChatHub : Hub
 {
     private readonly IMediator _mediator;

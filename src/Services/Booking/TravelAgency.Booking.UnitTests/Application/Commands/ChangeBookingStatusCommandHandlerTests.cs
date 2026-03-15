@@ -13,6 +13,7 @@ public class ChangeBookingStatusCommandHandlerTests
 {
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IBookingRepository> _bookingRepoMock = new();
+    private readonly Mock<IOutboxMessageRepository> _outboxRepoMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly ChangeBookingStatusCommandHandler _handler;
 
@@ -24,6 +25,7 @@ public class ChangeBookingStatusCommandHandlerTests
         _handler = new ChangeBookingStatusCommandHandler(
             _currentUserMock.Object,
             _bookingRepoMock.Object,
+            _outboxRepoMock.Object,
             _unitOfWorkMock.Object);
     }
 
@@ -134,5 +136,27 @@ public class ChangeBookingStatusCommandHandlerTests
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_NewStatusConfirmed_ShouldThrowBadRequestException()
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Manager);
+
+        var booking = CreateNewBooking();
+        var bookingId = booking.Id;
+
+        _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+
+        var command = new ChangeBookingStatusCommand(
+            bookingId,
+            new ChangeBookingStatusRequest(BookingStatus.Confirmed));
+
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*confirm*");
     }
 }

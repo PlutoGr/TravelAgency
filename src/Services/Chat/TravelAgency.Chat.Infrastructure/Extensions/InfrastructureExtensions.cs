@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Chat.Infrastructure.Persistence;
@@ -11,6 +12,7 @@ public static class InfrastructureExtensions
     /// <summary>
     /// Applies pending EF Core migrations for the Chat database.
     /// Call from API Program.cs: app.UseChatMigrations();
+    /// Runs when ASPNETCORE_RUN_MIGRATIONS=true (env or config) or when env.IsDevelopment().
     /// </summary>
     public static IApplicationBuilder UseChatMigrations(this IApplicationBuilder app)
     {
@@ -18,6 +20,15 @@ public static class InfrastructureExtensions
             Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS"),
             "true",
             StringComparison.OrdinalIgnoreCase);
+
+        if (!runMigrations)
+        {
+            var config = app.ApplicationServices.GetService<IConfiguration>();
+            runMigrations = string.Equals(
+                config?["ASPNETCORE_RUN_MIGRATIONS"],
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+        }
 
         if (!runMigrations)
         {

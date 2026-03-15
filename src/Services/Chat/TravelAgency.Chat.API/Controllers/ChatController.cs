@@ -9,7 +9,7 @@ namespace TravelAgency.Chat.API.Controllers;
 
 [ApiController]
 [Route("chat")]
-[Authorize(Policy = AuthPolicies.RequireClient)]
+[Authorize(Policy = AuthPolicies.RequireAuthenticated)]
 public class ChatController : ControllerBase
 {
     private readonly IMediator _mediator;

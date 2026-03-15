@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
+using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Domain.Enums;
 using TravelAgency.Booking.IntegrationTests.Helpers;
 using TravelAgency.Shared.Contracts.Authorization;
@@ -73,7 +74,7 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
     [Fact]
     public async Task CreateBooking_AsManager_ShouldReturn201()
     {
-        // Managers satisfy the RequireClient policy (Client | Manager | Admin)
+        // Managers satisfy the RequireAuthenticated policy (Client | Manager | Admin)
         AuthorizeAsManager();
         var request = new CreateBookingRequest(Guid.NewGuid(), null);
 
@@ -198,13 +199,28 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
     }
 
     [Fact]
+    public async Task ChangeBookingStatus_AsClient_CannotCancelOtherClientsBooking_ShouldReturn403()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        var otherClientId = Guid.NewGuid();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.GenerateToken(otherClientId, AppRoles.Client));
+
+        var statusRequest = new ChangeBookingStatusRequest(BookingStatus.Cancelled);
+        var response = await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status", statusRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task ChangeBookingStatus_InvalidDomainTransition_ShouldReturn422()
     {
-        // New → Confirmed is not a valid domain transition
+        // New → Closed is not a valid domain transition (skips required states)
         var created = await CreateBookingAsClientAsync();
 
         AuthorizeAsManager();
-        var statusRequest = new ChangeBookingStatusRequest(BookingStatus.Confirmed);
+        var statusRequest = new ChangeBookingStatusRequest(BookingStatus.Closed);
         var response = await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status", statusRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -233,7 +249,7 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
         await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status", statusRequest);
 
         var proposalRequest = new CreateProposalRequest("Special deal just for you!");
-        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposals", proposalRequest);
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal", proposalRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var result = await response.Content.ReadFromJsonAsync<ProposalDto>();
@@ -251,7 +267,7 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
 
         // Still authorized as the client who created the booking
         var proposalRequest = new CreateProposalRequest("hack");
-        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposals", proposalRequest);
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal", proposalRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -262,7 +278,27 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
         AuthorizeAsManager();
         var proposalRequest = new CreateProposalRequest("notes");
 
-        var response = await _client.PostAsJsonAsync($"/bookings/{Guid.NewGuid()}/proposals", proposalRequest);
+        var response = await _client.PostAsJsonAsync($"/bookings/{Guid.NewGuid()}/proposal", proposalRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateProposal_TourNotFound_ShouldReturn404()
+    {
+        var nonExistentTourId = Guid.NewGuid();
+        var created = await CreateBookingAsClientAsync(tourId: nonExistentTourId);
+
+        _factory.CatalogGrpcClientMock
+            .Setup(c => c.GetTourSnapshotAsync(nonExistentTourId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException($"Tour '{nonExistentTourId}' was not found in catalog."));
+
+        AuthorizeAsManager();
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.InProgress));
+
+        var proposalRequest = new CreateProposalRequest("notes");
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal", proposalRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -280,8 +316,149 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
         // Attempt to add proposal to a cancelled booking
         AuthorizeAsManager();
         var proposalRequest = new CreateProposalRequest("too late");
-        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposals", proposalRequest);
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal", proposalRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task CreateProposal_ShouldPersistProposalSentOutboxMessage()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        AuthorizeAsManager();
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.InProgress));
+
+        var proposalRequest = new CreateProposalRequest("outbox test");
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal", proposalRequest);
+        response.EnsureSuccessStatusCode();
+
+        _factory.UseDbContext(db =>
+        {
+            var outboxEntries = db.OutboxMessages
+                .Where(m => m.EventType == "ProposalSent")
+                .ToList();
+            outboxEntries.Should().NotBeEmpty();
+            outboxEntries.Should().Contain(m => m.Payload.Contains(created.Id.ToString()));
+        });
+    }
+
+    [Fact]
+    public async Task ConfirmProposal_AsClient_OwnBooking_ShouldReturn200()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        AuthorizeAsManager();
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.InProgress));
+
+        var proposalResponse = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal",
+            new CreateProposalRequest("confirm me"));
+        proposalResponse.EnsureSuccessStatusCode();
+        var proposal = await proposalResponse.Content.ReadFromJsonAsync<ProposalDto>();
+        proposal.Should().NotBeNull();
+
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.ProposalSent));
+
+        AuthorizeAsClient();
+        var confirmRequest = new ConfirmProposalRequest(proposal!.Id);
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/confirm", confirmRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<BookingDto>();
+        result!.Status.Should().Be(BookingStatus.Confirmed);
+        result.Proposals.Should().Contain(p => p.Id == proposal.Id && p.IsConfirmed);
+    }
+
+    [Fact]
+    public async Task ConfirmProposal_AsManager_AnyBooking_ShouldReturn200()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        AuthorizeAsManager();
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.InProgress));
+
+        var proposalResponse = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal",
+            new CreateProposalRequest("manager confirms"));
+        proposalResponse.EnsureSuccessStatusCode();
+        var proposal = await proposalResponse.Content.ReadFromJsonAsync<ProposalDto>();
+        proposal.Should().NotBeNull();
+
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.ProposalSent));
+
+        var confirmRequest = new ConfirmProposalRequest(proposal!.Id);
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/confirm", confirmRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<BookingDto>();
+        result!.Status.Should().Be(BookingStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task ConfirmProposal_BookingNotFound_ShouldReturn404()
+    {
+        AuthorizeAsClient();
+        var confirmRequest = new ConfirmProposalRequest(Guid.NewGuid());
+
+        var response = await _client.PostAsJsonAsync($"/bookings/{Guid.NewGuid()}/confirm", confirmRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ConfirmProposal_ProposalNotFound_ShouldReturn422()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        AuthorizeAsManager();
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.InProgress));
+        await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal",
+            new CreateProposalRequest("notes"));
+
+        AuthorizeAsClient();
+        var confirmRequest = new ConfirmProposalRequest(Guid.NewGuid());
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/confirm", confirmRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task ConfirmProposal_ClientTriesToConfirmOtherClientsBooking_ShouldReturn403()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        AuthorizeAsManager();
+        await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
+            new ChangeBookingStatusRequest(BookingStatus.InProgress));
+
+        var proposalResponse = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal",
+            new CreateProposalRequest("notes"));
+        proposalResponse.EnsureSuccessStatusCode();
+        var proposal = await proposalResponse.Content.ReadFromJsonAsync<ProposalDto>();
+        proposal.Should().NotBeNull();
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.GenerateToken(Guid.NewGuid(), AppRoles.Client));
+        var confirmRequest = new ConfirmProposalRequest(proposal!.Id);
+        var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/confirm", confirmRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ChangeBookingStatus_NewStatusConfirmed_ShouldReturn400()
+    {
+        var created = await CreateBookingAsClientAsync();
+
+        AuthorizeAsManager();
+        var statusRequest = new ChangeBookingStatusRequest(BookingStatus.Confirmed);
+        var response = await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status", statusRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "TravelAgency.Catalog.Infrastructure.Grpc";
+option csharp_namespace = "TravelAgency.Contracts.Grpc.Catalog";
 
 package catalog;
 
@@ -15,9 +15,10 @@ message GetTourSnapshotRequest {
 message TourSnapshotResponse {
   string tour_id = 1;
   string title = 2;
-  string country = 3;
-  int32 duration_days = 4;
-  double price_per_person = 5;
-  string currency = 6;
-  bool found = 7;
+  string description = 3;
+  double price = 4;
+  string currency = 5;
+  int32 duration_days = 6;
+  string snapshot_taken_at = 7;
+  bool found = 8;
 }
