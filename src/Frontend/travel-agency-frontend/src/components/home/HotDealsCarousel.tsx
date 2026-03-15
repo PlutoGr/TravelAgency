@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { Heart, MapPin, Clock, ArrowRight } from 'lucide-react';
@@ -6,17 +8,27 @@ import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import 'swiper/swiper-bundle.css';
 
-import { StarRating } from '@/components/ui';
+import { StarRating, Skeleton } from '@/components/ui';
 import { FadeInOnScroll } from '@/components/common';
 import { useFavoritesStore } from '@/store/favoritesStore';
-import { mockTours } from '@/mocks/tours';
+import { getTours } from '@/api/catalog';
 import { formatPrice } from '@/utils/format';
 
-const hotTours = mockTours.filter((t) => t.isHot);
+const HOT_DEALS_PAGE_SIZE = 50;
 
 export default function HotDealsCarousel() {
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
   const isFavorite = useFavoritesStore((s) => s.isFavorite);
+
+  const { data: toursData, isLoading } = useQuery({
+    queryKey: ['catalog', 'tours', 'hot-deals'],
+    queryFn: () => getTours(undefined, 1, HOT_DEALS_PAGE_SIZE),
+  });
+
+  const hotTours = useMemo(
+    () => (toursData?.items ?? []).filter((t) => t.isHot),
+    [toursData?.items],
+  );
 
   return (
     <section id="hot-deals" className="py-16 md:py-24">
@@ -40,6 +52,33 @@ export default function HotDealsCarousel() {
         </FadeInOnScroll>
 
         <FadeInOnScroll>
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="overflow-hidden rounded-2xl bg-white shadow-card">
+                  <Skeleton className="aspect-[4/3] w-full" />
+                  <div className="p-5">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="mt-2 h-5 w-full" />
+                    <Skeleton className="mt-3 h-4 w-20" />
+                    <Skeleton className="mt-4 h-8 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : hotTours.length === 0 ? (
+            <div className="rounded-2xl bg-sand/40 py-16 text-center text-warm-gray">
+              <p className="font-medium">Нет горящих предложений</p>
+              <p className="mt-1 text-sm">Следите за обновлениями каталога</p>
+              <Link
+                to="/tours"
+                className="mt-4 inline-flex items-center gap-1 font-heading text-sm font-semibold text-primary"
+              >
+                Все туры
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+          ) : (
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
             spaceBetween={24}
@@ -63,12 +102,16 @@ export default function HotDealsCarousel() {
                   className="group overflow-hidden rounded-2xl bg-white shadow-card"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden">
+                    {tour.photos?.[0] ? (
                     <img
                       src={tour.photos[0]}
                       alt={tour.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"
                     />
+                    ) : (
+                    <div className="h-full w-full bg-sand" aria-hidden />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
                     <span className="absolute left-3 top-3 rounded-full bg-terracotta px-3 py-1 text-xs font-bold text-white shadow-lg">
@@ -141,6 +184,7 @@ export default function HotDealsCarousel() {
               </SwiperSlide>
             ))}
           </Swiper>
+          )}
         </FadeInOnScroll>
 
         <div className="mt-6 text-center md:hidden">

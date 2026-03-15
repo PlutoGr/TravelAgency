@@ -4,6 +4,8 @@ using Amazon.S3.Model;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -11,17 +13,23 @@ using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using TravelAgency.Media.Application.Interfaces;
 using TravelAgency.Media.Domain.Interfaces;
+using TravelAgency.Media.Infrastructure.Persistence;
 using TravelAgency.Media.Infrastructure.Repositories;
 
 namespace TravelAgency.Media.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly SqliteConnection _connection;
+
     public IStorageService StorageService { get; } = Substitute.For<IStorageService>();
     public IImageProcessingService ImageProcessingService { get; } = Substitute.For<IImageProcessingService>();
 
     public CustomWebApplicationFactory()
     {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
         // Set the environment variable so AddMediaAuthentication doesn't throw at startup.
         // This is read eagerly during service registration, before ConfigureAppConfiguration runs.
         Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "test-signing-key-must-be-at-least-32-chars-long!");
@@ -102,9 +110,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IImageProcessingService>();
             services.AddScoped(_ => ImageProcessingService);
 
-            // Fresh in-memory repository (singleton so all requests share state within a test)
-            services.RemoveAll<IMediaFileRepository>();
-            services.AddSingleton<IMediaFileRepository, InMemoryMediaFileRepository>();
+            // Replace DbContext with SQLite in-memory for tests.
+            // Passing the open SqliteConnection keeps the in-memory database alive across requests.
+            services.RemoveAll<DbContextOptions<MediaDbContext>>();
+            services.RemoveAll<MediaDbContext>();
+            var sqliteOptions = new DbContextOptionsBuilder<MediaDbContext>()
+                .UseSqlite(_connection)
+                .Options;
+            services.AddScoped<MediaDbContext>(_ => new MediaDbContext(sqliteOptions));
+            services.AddScoped<DbContextOptions<MediaDbContext>>(_ => sqliteOptions);
+            services.AddScoped<IMediaFileRepository, MediaFileRepository>();
 
             // Override JWT validation so test-issued tokens are accepted
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
@@ -127,11 +142,42 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Helper to access the singleton in-memory repository and seed test data.
+    /// Creates an HttpClient with the database schema ensured. Use this instead of base.CreateClient()
+    /// so SQLite in-memory is initialized before the first request.
+    /// </summary>
+    public new HttpClient CreateClient()
+    {
+        EnsureDatabaseCreated();
+        return base.CreateClient();
+    }
+
+    /// <summary>
+    /// Helper to access the repository and seed test data.
     /// </summary>
     public IMediaFileRepository GetRepository()
     {
+        EnsureDatabaseCreated();
         using var scope = Services.CreateScope();
         return scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
+    }
+
+    private bool _dbCreated;
+
+    /// <summary>
+    /// Ensures the SQLite in-memory database schema exists. Call before seeding or when using the repository.
+    /// </summary>
+    public void EnsureDatabaseCreated()
+    {
+        if (_dbCreated) return;
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MediaDbContext>();
+        db.Database.EnsureCreated();
+        _dbCreated = true;
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await _connection.DisposeAsync();
     }
 }

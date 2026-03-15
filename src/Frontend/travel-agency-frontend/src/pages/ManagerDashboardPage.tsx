@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Inbox,
@@ -9,11 +10,12 @@ import {
   ArrowRight,
   Calendar,
   MapPin,
+  AlertCircle,
 } from 'lucide-react';
 import type { BookingStatus } from '@/types';
-import { mockBookings } from '@/mocks/bookings';
+import { getAllBookings } from '@/api/bookings';
 import { useAuthStore } from '@/store/authStore';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
 import { PageTransition } from '@/components/common';
 import { formatDate, formatBookingId } from '@/utils/format';
@@ -68,28 +70,57 @@ const itemVariants = {
 export default function ManagerDashboardPage() {
   const user = useAuthStore((s) => s.user);
 
+  const { data: bookings = [], isLoading, isError } = useQuery({
+    queryKey: ['manager', 'bookings', 'all'],
+    queryFn: () => getAllBookings(),
+  });
+
   const kpiCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const cfg of KPI_CONFIG) {
-      counts[cfg.key] = mockBookings.filter((b) => b.status === cfg.key).length;
+      counts[cfg.key] = bookings.filter((b) => b.status === cfg.key).length;
     }
     return counts;
-  }, []);
+  }, [bookings]);
 
   const recentBookings = useMemo(
     () =>
-      [...mockBookings]
+      [...bookings]
         .sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )
         .slice(0, 5),
-    [],
+    [bookings],
   );
 
   const greeting = user
     ? `Добро пожаловать, ${user.firstName}!`
     : 'Добро пожаловать!';
+
+  if (isError) {
+    return (
+      <PageTransition>
+        <div className="space-y-8">
+          <div>
+            <h1 className="font-heading text-2xl font-bold text-dark sm:text-3xl">
+              Панель менеджера
+            </h1>
+            <p className="mt-1 text-warm-gray">{greeting}</p>
+          </div>
+          <Card className="flex flex-col items-center justify-center gap-4 p-8">
+            <AlertCircle size={48} className="text-amber-500" />
+            <p className="text-center text-warm-gray">
+              Не удалось загрузить данные. Попробуйте обновить страницу.
+            </p>
+            <Button variant="secondary" onClick={() => window.location.reload()}>
+              Обновить
+            </Button>
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
@@ -103,6 +134,16 @@ export default function ManagerDashboardPage() {
         </div>
 
         {/* KPI Tiles */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {KPI_CONFIG.map((kpi) => (
+              <Card key={kpi.key} className="border-l-4 border-sand p-5">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="mt-2 h-4 w-32" />
+              </Card>
+            ))}
+          </div>
+        ) : (
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -134,6 +175,7 @@ export default function ManagerDashboardPage() {
             );
           })}
         </motion.div>
+        )}
 
         {/* Recent Bookings */}
         <div>
@@ -171,7 +213,19 @@ export default function ManagerDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentBookings.map((booking) => (
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b border-sand/60 last:border-0">
+                        <td className="px-5 py-3.5"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-5 py-3.5"><Skeleton className="h-4 w-28" /></td>
+                        <td className="px-5 py-3.5"><Skeleton className="h-4 w-24" /></td>
+                        <td className="px-5 py-3.5"><Skeleton className="h-4 w-20" /></td>
+                        <td className="px-5 py-3.5"><Skeleton className="h-5 w-20" /></td>
+                        <td className="px-5 py-3.5"><Skeleton className="h-4 w-16" /></td>
+                      </tr>
+                    ))
+                  ) : (
+                  recentBookings.map((booking) => (
                     <tr
                       key={booking.id}
                       className="border-b border-sand/60 transition-colors last:border-0 hover:bg-cream/40"
@@ -185,7 +239,7 @@ export default function ManagerDashboardPage() {
                       <td className="px-5 py-3.5 text-dark">
                         <span className="flex items-center gap-1.5">
                           <MapPin size={14} className="text-warm-gray" />
-                          {booking.destination}, {booking.country}
+                          {[booking.destination, booking.country].filter(Boolean).join(', ') || '—'}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-warm-gray">
@@ -206,7 +260,8 @@ export default function ManagerDashboardPage() {
                         </Link>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -214,29 +269,40 @@ export default function ManagerDashboardPage() {
 
           {/* Mobile cards */}
           <div className="space-y-3 lg:hidden">
-            {recentBookings.map((booking) => (
-              <Link key={booking.id} to={`/manager/bookings/${booking.id}`}>
-                <Card className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-mono text-xs text-warm-gray">
-                        {formatBookingId(booking.id)}
-                      </p>
-                      <p className="mt-1 font-heading text-sm font-semibold text-dark">
-                        {booking.clientName}
-                      </p>
-                      <p className="mt-0.5 text-sm text-warm-gray">
-                        {booking.destination}, {booking.country}
-                      </p>
-                    </div>
-                    <BookingStatusBadge status={booking.status} size="sm" />
-                  </div>
-                  <p className="mt-2 text-xs text-warm-gray">
-                    {formatDate(booking.createdAt)}
-                  </p>
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="p-4">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="mt-2 h-4 w-32" />
+                  <Skeleton className="mt-1 h-3 w-24" />
+                  <Skeleton className="mt-2 h-3 w-20" />
                 </Card>
-              </Link>
-            ))}
+              ))
+            ) : (
+              recentBookings.map((booking) => (
+                <Link key={booking.id} to={`/manager/bookings/${booking.id}`}>
+                  <Card className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono text-xs text-warm-gray">
+                          {formatBookingId(booking.id)}
+                        </p>
+                        <p className="mt-1 font-heading text-sm font-semibold text-dark">
+                          {booking.clientName}
+                        </p>
+                        <p className="mt-0.5 text-sm text-warm-gray">
+                          {[booking.destination, booking.country].filter(Boolean).join(', ') || '—'}
+                        </p>
+                      </div>
+                      <BookingStatusBadge status={booking.status} size="sm" />
+                    </div>
+                    <p className="mt-2 text-xs text-warm-gray">
+                      {formatDate(booking.createdAt)}
+                    </p>
+                  </Card>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </div>

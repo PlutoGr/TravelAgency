@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using TravelAgency.Media.Application.Features.Upload;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Interfaces;
 
@@ -27,9 +28,11 @@ public class UploadMediaCommandHandlerTests
 
     private readonly UploadMediaCommandHandler _handler;
 
+    private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000123");
+
     public UploadMediaCommandHandlerTests()
     {
-        _currentUser.UserId.Returns("user-123");
+        _currentUser.UserId.Returns(TestUserId);
 
         _handler = new UploadMediaCommandHandler(
             _storage,
@@ -148,7 +151,7 @@ public class UploadMediaCommandHandlerTests
 
         await _handler.Handle(command, CancellationToken.None);
 
-        capturedKey.Should().StartWith("user-123/");
+        capturedKey.Should().StartWith($"{TestUserId:N}/");
         capturedKey.Should().EndWith("/test.pdf");
     }
 

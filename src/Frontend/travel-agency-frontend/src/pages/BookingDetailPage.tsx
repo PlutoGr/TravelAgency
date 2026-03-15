@@ -160,6 +160,7 @@ export default function BookingDetailPage() {
       setBooking(data);
     } catch {
       setBooking(null);
+      toast.error('Не удалось загрузить бронирование');
     } finally {
       setIsLoading(false);
     }

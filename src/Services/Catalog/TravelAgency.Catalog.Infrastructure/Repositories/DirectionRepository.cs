@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 

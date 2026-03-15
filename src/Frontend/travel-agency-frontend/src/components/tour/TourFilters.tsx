@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown,
@@ -10,7 +11,9 @@ import {
 import clsx from 'clsx';
 import type { TourFilters as TourFiltersType } from '@/types';
 import { RangeSlider, StarRating, Button } from '@/components/ui';
-import { mockTours } from '@/mocks/tours';
+import { getTours, getDestinations } from '@/api/catalog';
+
+const FILTER_OPTIONS_PAGE_SIZE = 100;
 
 interface TourFiltersProps {
   filters: TourFiltersType;
@@ -28,12 +31,24 @@ const categories = [
   'Активный',
 ];
 
-function useUniqueValues() {
+function useFilterOptions() {
+  const { data: destinations = [] } = useQuery({
+    queryKey: ['catalog', 'destinations'],
+    queryFn: getDestinations,
+  });
+
+  const { data: toursData } = useQuery({
+    queryKey: ['catalog', 'tours', 'filter-options'],
+    queryFn: () => getTours(undefined, 1, FILTER_OPTIONS_PAGE_SIZE),
+  });
+
   return useMemo(() => {
-    const countries = [...new Set(mockTours.map((t) => t.country))].sort();
-    const amenities = [...new Set(mockTours.flatMap((t) => t.amenities))].sort();
+    const countriesFromDestinations = [...new Set(destinations.map((d) => d.country).filter(Boolean))].sort();
+    const countriesFromTours = (toursData?.items ?? []).map((t) => t.country).filter(Boolean);
+    const countries = [...new Set([...countriesFromDestinations, ...countriesFromTours])].sort();
+    const amenities = [...new Set((toursData?.items ?? []).flatMap((t) => t.amenities).filter(Boolean))].sort();
     return { countries, amenities };
-  }, []);
+  }, [destinations, toursData?.items]);
 }
 
 interface AccordionSectionProps {
@@ -76,7 +91,7 @@ function AccordionSection({ title, defaultOpen = true, children }: AccordionSect
 }
 
 function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
-  const { countries, amenities } = useUniqueValues();
+  const { countries, amenities } = useFilterOptions();
 
   const updateFilter = useCallback(
     <K extends keyof TourFiltersType>(key: K, value: TourFiltersType[K]) => {

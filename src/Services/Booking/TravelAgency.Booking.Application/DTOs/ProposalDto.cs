@@ -4,7 +4,7 @@ public record ProposalDto(
     Guid Id,
     Guid BookingId,
     Guid ManagerId,
-    TourSnapshotDto TourSnapshot,
+    BookingTourSnapshotDto TourSnapshot,
     string? Notes,
     bool IsConfirmed,
     DateTime CreatedAt);

@@ -22,6 +22,7 @@
     <ProjectReference Include="..\TravelAgency.Chat.Infrastructure\TravelAgency.Chat.Infrastructure.csproj" />
     <ProjectReference Include="..\TravelAgency.Chat.Application\TravelAgency.Chat.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

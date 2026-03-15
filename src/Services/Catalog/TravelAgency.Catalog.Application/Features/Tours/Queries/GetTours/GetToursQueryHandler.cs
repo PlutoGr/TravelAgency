@@ -6,10 +6,10 @@ namespace TravelAgency.Catalog.Application.Features.Tours.Queries.GetTours;
 
 public class GetToursQueryHandler : IRequestHandler<GetToursQuery, PagedResult<TourSummaryDto>>
 {
-    private readonly ITourRepository _tourRepository;
+    private readonly ITourListQuery _tourListQuery;
 
-    public GetToursQueryHandler(ITourRepository tourRepository) => _tourRepository = tourRepository;
+    public GetToursQueryHandler(ITourListQuery tourListQuery) => _tourListQuery = tourListQuery;
 
     public Task<PagedResult<TourSummaryDto>> Handle(GetToursQuery request, CancellationToken ct)
-        => _tourRepository.GetPagedAsync(request.Filter, ct);
+        => _tourListQuery.GetPagedAsync(request.Filter, ct);
 }

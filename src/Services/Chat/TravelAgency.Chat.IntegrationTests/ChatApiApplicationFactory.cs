@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using Testcontainers.PostgreSql;
 using TravelAgency.Chat.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Chat.Infrastructure.Persistence;
 using TravelAgency.Shared.Contracts.Authorization;
 using Xunit;
@@ -16,7 +17,7 @@ namespace TravelAgency.Chat.IntegrationTests;
 
 /// <summary>
 /// WebApplicationFactory for Chat API integration tests. Uses TestContainers PostgreSQL.
-/// Mocks IBookingAccessService to avoid real Booking service calls.
+/// Mocks IBookingGrpcClient to avoid real Booking gRPC calls.
 /// Mocks ICurrentUserService so SignalR Hub context has valid UserId (HttpContext.User not populated in test server).
 /// </summary>
 public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
@@ -26,6 +27,12 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
     /// </summary>
     public static readonly Guid TestUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
+    static ChatApiApplicationFactory()
+    {
+        // AddChatAuthentication reads JwtSettings__SigningKey eagerly during host build.
+        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+    }
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
         .WithDatabase("TravelAgency_Chat_Test")
         .WithUsername("postgres")
@@ -33,10 +40,10 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
         .Build();
 
     /// <summary>
-    /// Mock for IBookingAccessService. Default: returns true for any bookingId.
+    /// Mock for IBookingGrpcClient. Default: returns true for any bookingId/userId.
     /// Configure per-test for GetMessages_WithInvalidBooking_Returns403.
     /// </summary>
-    public Mock<IBookingAccessService> BookingAccessServiceMock { get; } = new();
+    public Mock<IBookingGrpcClient> BookingGrpcClientMock { get; } = new();
 
     /// <summary>
     /// Mock for ICurrentUserService. Returns valid UserId for SignalR tests where HttpContext.User is empty.
@@ -85,12 +92,12 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
             services.AddScoped<ChatDbContext>(sp => new ChatDbContext(options));
             services.AddScoped<DbContextOptions<ChatDbContext>>(_ => options);
 
-            BookingAccessServiceMock
-                .Setup(x => x.CanAccessBookingAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            BookingGrpcClientMock
+                .Setup(x => x.ValidateBookingAccessAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            services.RemoveAll<IBookingAccessService>();
-            services.AddSingleton<IBookingAccessService>(_ => BookingAccessServiceMock.Object);
+            services.RemoveAll<IBookingGrpcClient>();
+            services.AddSingleton<IBookingGrpcClient>(_ => BookingGrpcClientMock.Object);
 
             // Mock ICurrentUserService: SignalR Hub in WebApplicationFactory doesn't populate HttpContext.User.
             // SendMessageCommandHandler requires UserId != Guid.Empty.
@@ -100,6 +107,12 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
             CurrentUserServiceMock
                 .Setup(x => x.Role)
                 .Returns(AppRoles.Client);
+            CurrentUserServiceMock
+                .Setup(x => x.IsAuthenticated)
+                .Returns(true);
+            CurrentUserServiceMock
+                .Setup(x => x.Email)
+                .Returns(string.Empty);
             CurrentUserServiceMock
                 .Setup(x => x.DisplayName)
                 .Returns("Test User");

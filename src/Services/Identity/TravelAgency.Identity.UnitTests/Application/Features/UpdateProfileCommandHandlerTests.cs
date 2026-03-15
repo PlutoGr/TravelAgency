@@ -4,7 +4,7 @@ using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
-using TravelAgency.Identity.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Identity.Domain.Entities;
 using TravelAgency.Identity.Domain.Interfaces;
 
@@ -34,6 +34,7 @@ public class UpdateProfileCommandHandlerTests
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "Old", "Name", "+111");
 
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -52,6 +53,7 @@ public class UpdateProfileCommandHandlerTests
     public async Task Handle_WhenUserNotFound_ThrowsNotFoundException()
     {
         var userId = Guid.NewGuid();
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
@@ -69,6 +71,7 @@ public class UpdateProfileCommandHandlerTests
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "Existing", "Name", null);
 
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -87,6 +90,7 @@ public class UpdateProfileCommandHandlerTests
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "J", "D", null);
 
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -106,6 +110,7 @@ public class UpdateProfileCommandHandlerTests
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "John", "Doe", "+111");
 
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -123,6 +128,7 @@ public class UpdateProfileCommandHandlerTests
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "John", "Doe", "+111");
 
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
         _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);

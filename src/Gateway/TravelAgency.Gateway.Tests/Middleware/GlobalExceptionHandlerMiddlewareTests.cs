@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using TravelAgency.Gateway.Middleware;
+using TravelAgency.Shared.Infrastructure.Middleware;
 using Xunit;
 
 namespace TravelAgency.Gateway.Tests.Middleware;
@@ -62,7 +62,9 @@ public class GlobalExceptionHandlerMiddlewareTests
         var root = doc.RootElement;
         Assert.Equal(500, root.GetProperty("status").GetInt32());
         Assert.Equal("Internal Server Error", root.GetProperty("title").GetString());
-        Assert.Equal(exceptionMessage, root.GetProperty("detail").GetString());
+        var detail = root.GetProperty("detail").GetString();
+        Assert.NotNull(detail);
+        Assert.Contains(exceptionMessage, detail);
         Assert.True(root.TryGetProperty("instance", out var instance));
         Assert.True(root.TryGetProperty("traceId", out var traceIdExt));
         Assert.Equal(JsonValueKind.String, traceIdExt.ValueKind);

@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Chat.Domain\TravelAgency.Chat.Domain.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,6 @@
 using MediatR;
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Domain.Interfaces;
 

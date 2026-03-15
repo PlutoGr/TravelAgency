@@ -17,6 +17,11 @@ namespace TravelAgency.Identity.IntegrationTests.API;
 
 public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplicationFactory>, IAsyncLifetime
 {
+    static AuthControllerIntegrationTests()
+    {
+        Environment.SetEnvironmentVariable("RATE_LIMIT_STRICT", "false");
+    }
+
     private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
 

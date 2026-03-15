@@ -3,6 +3,39 @@ import { apiClient } from './client';
 import toast from 'react-hot-toast';
 
 const PAGE_SIZE = 6;
+const MANAGER_PAGE_SIZE = 100;
+
+/** Backend TourType enum values */
+const TOUR_TYPE_VALUES = [
+  'Beach',
+  'Mountain',
+  'City',
+  'Cultural',
+  'Adventure',
+  'Cruise',
+  'Safari',
+] as const;
+
+/** Maps frontend category label to backend TourType */
+const CATEGORY_TO_TOUR_TYPE: Record<string, (typeof TOUR_TYPE_VALUES)[number]> = {
+  'Пляжный отдых': 'Beach',
+  Beach: 'Beach',
+  Экзотика: 'Safari',
+  Safari: 'Safari',
+  Люкс: 'Cultural',
+  Экскурсионный: 'Cultural',
+  Романтический: 'Cultural',
+  Гастрономический: 'Cultural',
+  Cultural: 'Cultural',
+  Mountain: 'Mountain',
+  City: 'City',
+  Adventure: 'Adventure',
+  Cruise: 'Cruise',
+};
+
+function categoryToTourType(category: string): (typeof TOUR_TYPE_VALUES)[number] {
+  return CATEGORY_TO_TOUR_TYPE[category] ?? 'Cultural';
+}
 
 /** Backend API response types (camelCase from ASP.NET Core JSON) */
 interface PagedResultDto<T> {
@@ -146,10 +179,11 @@ function mapTourDtoToTour(dto: TourDto): Tour {
 function buildToursQueryParams(
   filters?: TourFilters,
   page = 1,
+  pageSize?: number,
 ): Record<string, string | number | boolean | undefined> {
   const params: Record<string, string | number | boolean | undefined> = {
     Page: page,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize ?? PAGE_SIZE,
   };
 
   if (!filters) return params;
@@ -201,9 +235,10 @@ function buildToursQueryParams(
 export async function getTours(
   filters?: TourFilters,
   page = 1,
+  pageSize?: number,
 ): Promise<PaginatedResponse<Tour>> {
   const { data } = await apiClient.get<PagedResultDto<TourSummaryDto>>('/catalog/tours', {
-    params: buildToursQueryParams(filters, page),
+    params: buildToursQueryParams(filters, page, pageSize),
   });
 
   const items = (data.items ?? []).map(mapTourSummaryToTour);
@@ -216,6 +251,96 @@ export async function getTours(
     pageSize: data.pageSize,
     totalPages,
   };
+}
+
+/** Manager: fetch all tours for listing (uses larger page size) */
+export async function getToursForManager(
+  filters?: TourFilters,
+  page = 1,
+): Promise<PaginatedResponse<Tour>> {
+  return getTours(filters, page, MANAGER_PAGE_SIZE);
+}
+
+/** Create tour request payload (backend CreateTourRequest) */
+export interface CreateTourRequest {
+  title: string;
+  description: string;
+  tourType: string;
+  country: string;
+  durationDays: number;
+  imageUrl: string | null;
+  directionId: string | null;
+}
+
+/** Update tour request payload (backend UpdateTourRequest) */
+export interface UpdateTourRequest {
+  title: string;
+  description: string;
+  tourType: string;
+  country: string;
+  durationDays: number;
+  imageUrl: string | null;
+  directionId: string | null;
+}
+
+/** Tour price request (backend TourPriceRequest) */
+export interface TourPriceRequest {
+  validFrom: string;
+  validTo: string;
+  pricePerPerson: number;
+  currency: string;
+  availableSeats: number;
+}
+
+export async function createTour(
+  request: CreateTourRequest,
+): Promise<Tour> {
+  const { data } = await apiClient.post<TourDto>('/catalog/tours', {
+    title: request.title,
+    description: request.description,
+    tourType: categoryToTourType(request.tourType),
+    country: request.country,
+    durationDays: request.durationDays,
+    imageUrl: request.imageUrl,
+    directionId: request.directionId,
+  });
+  return mapTourDtoToTour(data);
+}
+
+export async function updateTour(
+  id: string,
+  request: UpdateTourRequest,
+): Promise<Tour> {
+  const { data } = await apiClient.put<TourDto>(`/catalog/tours/${id}`, {
+    title: request.title,
+    description: request.description,
+    tourType: categoryToTourType(request.tourType),
+    country: request.country,
+    durationDays: request.durationDays,
+    imageUrl: request.imageUrl,
+    directionId: request.directionId,
+  });
+  return mapTourDtoToTour(data);
+}
+
+export async function updateTourPrices(
+  id: string,
+  prices: TourPriceRequest[],
+): Promise<Tour> {
+  const { data } = await apiClient.patch<TourDto>(`/catalog/tours/${id}/prices`, {
+    prices: prices.map((p) => ({
+      validFrom: p.validFrom,
+      validTo: p.validTo,
+      pricePerPerson: p.pricePerPerson,
+      currency: p.currency,
+      availableSeats: p.availableSeats,
+    })),
+  });
+  return mapTourDtoToTour(data);
+}
+
+export async function deleteTour(id: string): Promise<void> {
+  await apiClient.delete(`/catalog/tours/${id}`);
 }
 
 export async function getTourById(id: string): Promise<Tour> {

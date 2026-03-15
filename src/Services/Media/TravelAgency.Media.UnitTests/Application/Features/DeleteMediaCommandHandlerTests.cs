@@ -1,5 +1,6 @@
 using TravelAgency.Media.Application.Features.Delete;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Exceptions;
 using TravelAgency.Media.Domain.Interfaces;
@@ -13,14 +14,16 @@ public class DeleteMediaCommandHandlerTests
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly DeleteMediaCommandHandler _handler;
 
+    private static readonly Guid OwnerGuid = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
     public DeleteMediaCommandHandlerTests()
     {
-        _currentUser.UserId.Returns("owner-user");
+        _currentUser.UserId.Returns(OwnerGuid);
         _handler = new DeleteMediaCommandHandler(_repository, _storage, _currentUser);
     }
 
-    private static MediaFile CreateActiveFile(string ownerId = "owner-user") =>
-        MediaFile.Create("photo.jpg", "image/jpeg", 1024, "user/key/photo.jpg", ownerId);
+    private static MediaFile CreateActiveFile(string? ownerId = null) =>
+        MediaFile.Create("photo.jpg", "image/jpeg", 1024, "user/key/photo.jpg", ownerId ?? OwnerGuid.ToString());
 
     [Fact]
     public async Task Handle_ExistingOwnedFile_CallsMarkAsDeletedAndSaveChanges()
@@ -104,7 +107,7 @@ public class DeleteMediaCommandHandlerTests
     public async Task Handle_DifferentOwner_ThrowsMediaAccessDeniedException()
     {
         var fileId = Guid.NewGuid();
-        var mediaFile = CreateActiveFile(ownerId: "other-user");
+        var mediaFile = CreateActiveFile(ownerId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
         _repository.GetByIdAsync(fileId, Arg.Any<CancellationToken>()).Returns(mediaFile);
 
         var act = async () => await _handler.Handle(new DeleteMediaCommand(fileId), CancellationToken.None);
@@ -116,7 +119,7 @@ public class DeleteMediaCommandHandlerTests
     public async Task Handle_DifferentOwner_DoesNotDeleteFromStorage()
     {
         var fileId = Guid.NewGuid();
-        var mediaFile = CreateActiveFile(ownerId: "other-user");
+        var mediaFile = CreateActiveFile(ownerId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
         _repository.GetByIdAsync(fileId, Arg.Any<CancellationToken>()).Returns(mediaFile);
 
         try { await _handler.Handle(new DeleteMediaCommand(fileId), CancellationToken.None); } catch { }

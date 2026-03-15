@@ -8,12 +8,12 @@ namespace TravelAgency.Catalog.UnitTests.Application.Features;
 
 public class GetToursQueryHandlerTests
 {
-    private readonly Mock<ITourRepository> _tourRepositoryMock = new();
+    private readonly Mock<ITourListQuery> _tourListQueryMock = new();
     private readonly GetToursQueryHandler _handler;
 
     public GetToursQueryHandlerTests()
     {
-        _handler = new GetToursQueryHandler(_tourRepositoryMock.Object);
+        _handler = new GetToursQueryHandler(_tourListQueryMock.Object);
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class GetToursQueryHandlerTests
         };
         var expected = new PagedResult<TourSummaryDto>(items, 1, 1, 10);
 
-        _tourRepositoryMock
+        _tourListQueryMock
             .Setup(r => r.GetPagedAsync(It.IsAny<ToursFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
@@ -45,7 +45,7 @@ public class GetToursQueryHandlerTests
         var filter = new ToursFilterDto(Page: 1, PageSize: 20);
         var expected = new PagedResult<TourSummaryDto>([], 0, 1, 20);
 
-        _tourRepositoryMock
+        _tourListQueryMock
             .Setup(r => r.GetPagedAsync(It.IsAny<ToursFilterDto>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
@@ -61,13 +61,13 @@ public class GetToursQueryHandlerTests
         var filter = new ToursFilterDto(Country: "Greece", DirectionId: Guid.NewGuid(), Page: 2, PageSize: 5);
         var expected = new PagedResult<TourSummaryDto>([], 0, 2, 5);
 
-        _tourRepositoryMock
+        _tourListQueryMock
             .Setup(r => r.GetPagedAsync(filter, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         await _handler.Handle(new GetToursQuery(filter), CancellationToken.None);
 
-        _tourRepositoryMock.Verify(
+        _tourListQueryMock.Verify(
             r => r.GetPagedAsync(filter, It.IsAny<CancellationToken>()),
             Times.Once);
     }

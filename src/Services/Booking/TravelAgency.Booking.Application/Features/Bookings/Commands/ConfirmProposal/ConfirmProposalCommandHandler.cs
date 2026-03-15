@@ -1,5 +1,6 @@
 using MediatR;
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Mapping;
@@ -34,7 +35,7 @@ public sealed class ConfirmProposalCommandHandler(
             if (booking.ClientId != currentUser.UserId)
                 throw new ForbiddenException("Clients can only confirm their own bookings.");
         }
-        else if (currentUser.Role is not AppRoles.Manager and not AppRoles.Admin)
+        else if (currentUser.Role != AppRoles.Manager && currentUser.Role != AppRoles.Admin)
         {
             throw new ForbiddenException("Only clients, managers, or admins can confirm proposals.");
         }

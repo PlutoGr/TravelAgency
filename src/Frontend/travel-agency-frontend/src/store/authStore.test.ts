@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from './authStore';
-import { AUTH_TOKEN_KEY } from '@/api/client';
 import type { User } from '@/types';
 
 const { mockLogin, mockRegister, mockLogout, mockGetMe } = vi.hoisted(() => ({
@@ -15,7 +14,6 @@ vi.mock('@/api/auth', () => ({
   register: (...args: unknown[]) => mockRegister(...args),
   logout: (...args: unknown[]) => mockLogout(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),
-  refresh: vi.fn(),
   updateProfile: vi.fn(),
 }));
 
@@ -32,7 +30,6 @@ const sampleUser: User = {
 function resetStore() {
   useAuthStore.setState({
     user: null,
-    token: null,
     isAuthenticated: false,
     isLoading: false,
   });
@@ -41,27 +38,21 @@ function resetStore() {
 describe('authStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
     resetStore();
   });
 
   afterEach(() => {
-    localStorage.clear();
     resetStore();
   });
 
   describe('login', () => {
-    it('calls authApi.login, sets user, token, isAuthenticated on success', async () => {
-      mockLogin.mockResolvedValue({
-        user: sampleUser,
-        tokens: { accessToken: 'tok', refreshToken: 'ref' },
-      });
+    it('calls authApi.login, sets user and isAuthenticated on success', async () => {
+      mockLogin.mockResolvedValue({ user: sampleUser });
 
       await useAuthStore.getState().login('a@b.com', 'secret');
 
       expect(mockLogin).toHaveBeenCalledWith({ email: 'a@b.com', password: 'secret' });
       expect(useAuthStore.getState().user).toEqual(sampleUser);
-      expect(useAuthStore.getState().token).toBe('tok');
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });
 
@@ -77,10 +68,7 @@ describe('authStore', () => {
       const loginPromise = useAuthStore.getState().login('a@b.com', 'pass');
       expect(useAuthStore.getState().isLoading).toBe(true);
 
-      resolveLogin!({
-        user: sampleUser,
-        tokens: { accessToken: 't', refreshToken: 'r' },
-      });
+      resolveLogin!({ user: sampleUser });
       await loginPromise;
 
       expect(useAuthStore.getState().isLoading).toBe(false);
@@ -98,10 +86,7 @@ describe('authStore', () => {
 
   describe('register', () => {
     it('calls authApi.register, sets user and isAuthenticated on success', async () => {
-      mockRegister.mockResolvedValue({
-        user: sampleUser,
-        tokens: { accessToken: 'tok', refreshToken: 'ref' },
-      });
+      mockRegister.mockResolvedValue({ user: sampleUser });
 
       await useAuthStore.getState().register({
         email: 'new@b.com',
@@ -122,10 +107,9 @@ describe('authStore', () => {
   });
 
   describe('logout', () => {
-    it('calls authApi.logout and clears user, token, isAuthenticated', async () => {
+    it('calls authApi.logout and clears user and isAuthenticated', async () => {
       useAuthStore.setState({
         user: sampleUser,
-        token: 'tok',
         isAuthenticated: true,
       });
       mockLogout.mockResolvedValue(undefined);
@@ -134,12 +118,11 @@ describe('authStore', () => {
 
       expect(mockLogout).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
-      expect(useAuthStore.getState().token).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
 
     it('clears state even when authApi.logout throws', async () => {
-      useAuthStore.setState({ user: sampleUser, token: 'tok', isAuthenticated: true });
+      useAuthStore.setState({ user: sampleUser, isAuthenticated: true });
       mockLogout.mockRejectedValue(new Error('Network error'));
 
       await expect(useAuthStore.getState().logout()).rejects.toThrow('Network error');
@@ -157,31 +140,22 @@ describe('authStore', () => {
   });
 
   describe('checkAuth', () => {
-    it('does nothing when no token in localStorage', () => {
-      useAuthStore.getState().checkAuth();
-      expect(mockGetMe).not.toHaveBeenCalled();
-      expect(useAuthStore.getState().isAuthenticated).toBe(false);
-    });
-
-    it('sets token and isAuthenticated, fetches user via getMe when token exists', async () => {
-      localStorage.setItem(AUTH_TOKEN_KEY, 'stored-token');
+    it('always calls getMe to determine auth state', async () => {
       mockGetMe.mockResolvedValue(sampleUser);
 
       useAuthStore.getState().checkAuth();
 
-      expect(useAuthStore.getState().token).toBe('stored-token');
-      expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useAuthStore.getState().isLoading).toBe(true);
+      expect(mockGetMe).toHaveBeenCalled();
 
       await vi.waitFor(() => !useAuthStore.getState().isLoading, { timeout: 500 });
 
-      expect(mockGetMe).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toEqual(sampleUser);
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
 
     it('forces logout on 401 (auth failure)', async () => {
-      localStorage.setItem(AUTH_TOKEN_KEY, 'stored-token');
       const err401 = { response: { status: 401 } };
       mockGetMe.mockImplementation(() => Promise.reject(err401));
       mockLogout.mockResolvedValue(undefined);
@@ -193,12 +167,10 @@ describe('authStore', () => {
 
       expect(mockLogout).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
-      expect(useAuthStore.getState().token).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
 
     it('does not logout on network/server errors, only clears isLoading', async () => {
-      localStorage.setItem(AUTH_TOKEN_KEY, 'stored-token');
       const err500 = { response: { status: 500 } };
       mockGetMe.mockImplementation(() => Promise.reject(err500));
 
@@ -208,8 +180,7 @@ describe('authStore', () => {
       await new Promise((r) => setTimeout(r, 0));
 
       expect(mockLogout).not.toHaveBeenCalled();
-      expect(useAuthStore.getState().token).toBe('stored-token');
-      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
   });

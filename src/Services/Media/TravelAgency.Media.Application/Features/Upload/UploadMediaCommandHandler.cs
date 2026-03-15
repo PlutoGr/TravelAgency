@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using MediatR;
 using Microsoft.Extensions.Options;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Media.Application.Services;
 using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Entities;
@@ -22,7 +23,7 @@ public sealed class UploadMediaCommandHandler(
     {
         var fileId = Guid.NewGuid();
         var sanitizedFileName = FileNameSanitizer.Sanitize(request.FileName);
-        var storageKey = $"{currentUser.UserId}/{fileId}/{sanitizedFileName}";
+        var storageKey = $"{currentUser.UserId:N}/{fileId}/{sanitizedFileName}";
 
         await storage.UploadAsync(request.FileContent, storageKey, request.ContentType, ct);
 
@@ -31,7 +32,7 @@ public sealed class UploadMediaCommandHandler(
             request.ContentType,
             request.SizeBytes,
             storageKey,
-            currentUser.UserId);
+            currentUser.UserId.ToString());
 
         if (imageProcessor.IsImage(request.ContentType))
         {

@@ -1,11 +1,16 @@
+using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using TravelAgency.Identity.API.Extensions;
 using TravelAgency.Identity.API.Middleware;
 using TravelAgency.Identity.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<IExceptionMapper, IdentityExceptionMapper>();
 
 builder.Host.AddIdentitySerilog();
 
@@ -22,6 +27,11 @@ builder.Services.AddIdentityTracing();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    var permitLimit = builder.Configuration.GetValue<int?>("RateLimit:PermitLimit")
+        ?? (builder.Environment.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(Environment.GetEnvironmentVariable("RATE_LIMIT_STRICT"), "true", StringComparison.OrdinalIgnoreCase)
+            ? 1000
+            : 5);
     options.AddPolicy("auth", context =>
         RateLimitPartition.GetSlidingWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -29,12 +39,19 @@ builder.Services.AddRateLimiter(options =>
             {
                 Window = TimeSpan.FromSeconds(60),
                 SegmentsPerWindow = 6,
-                PermitLimit = 5,
+                PermitLimit = permitLimit,
                 QueueLimit = 0
             }));
 });
 
 var app = builder.Build();
+
+// Trust forwarded headers from Gateway so rate limiting uses real client IP
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    KnownIPNetworks = { new System.Net.IPNetwork(IPAddress.Parse("10.0.0.0"), 8), new System.Net.IPNetwork(IPAddress.Parse("172.16.0.0"), 12), new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 16) }
+});
 
 app.UseIdentityMigrations();
 app.UseIdentityCors();

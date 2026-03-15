@@ -9,6 +9,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import clsx from 'clsx';
+import toast from 'react-hot-toast';
 import type { Booking } from '@/types';
 import { getAllBookings } from '@/api/bookings';
 import { Card, Avatar, Skeleton } from '@/components/ui';
@@ -70,6 +71,7 @@ export default function ManagerClientsPage() {
   useEffect(() => {
     getAllBookings()
       .then(setBookings)
+      .catch(() => toast.error('Не удалось загрузить список бронирований'))
       .finally(() => setIsLoading(false));
   }, []);
 

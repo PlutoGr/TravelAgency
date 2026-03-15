@@ -1,7 +1,5 @@
-import { apiClient, applyTokens, AUTH_TOKEN_KEY, REFRESH_TOKEN_KEY } from './client';
-import { mapAuthTokensDtoToAuthTokens, type AuthTokensDto } from './dto';
+import { apiClient } from './client';
 import type {
-  AuthTokens,
   LoginRequest,
   RegisterRequest,
   UpdateProfileRequest,
@@ -36,44 +34,25 @@ function mapUserProfileDtoToUser(dto: UserProfileDto): User {
 
 export async function login(
   data: LoginRequest,
-): Promise<{ user: User; tokens: AuthTokens }> {
-  const { data: tokensDto } = await apiClient.post<AuthTokensDto>(
-    '/auth/login',
-    data,
-  );
-  const tokens = mapAuthTokensDtoToAuthTokens(tokensDto);
-  applyTokens(tokens);
-
+): Promise<{ user: User }> {
+  await apiClient.post('/auth/login', data);
   const user = await getMe();
-  return { user, tokens };
+  return { user };
 }
 
 export async function register(
   data: RegisterRequest,
-): Promise<{ user: User; tokens: AuthTokens }> {
-  const { data: tokensDto } = await apiClient.post<AuthTokensDto>(
-    '/auth/register',
-    data,
-  );
-  const tokens = mapAuthTokensDtoToAuthTokens(tokensDto);
-  applyTokens(tokens);
-
+): Promise<{ user: User }> {
+  await apiClient.post('/auth/register', data);
   const user = await getMe();
-  return { user, tokens };
+  return { user };
 }
 
 export async function logout(): Promise<void> {
-  // SECURITY: Tokens read from localStorage (XSS-vulnerable). Migration to httpOnly cookies planned.
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   try {
-    if (refreshToken) {
-      await apiClient.post('/auth/logout', { refreshToken });
-    }
+    await apiClient.post('/auth/logout', {});
   } finally {
     // Always clear local state even if API call fails
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    delete apiClient.defaults.headers.common.Authorization;
   }
 }
 
@@ -93,21 +72,4 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<User> {
     payload,
   );
   return mapUserProfileDtoToUser(dto);
-}
-
-export async function refresh(): Promise<AuthTokens> {
-  // SECURITY: Tokens read from localStorage (XSS-vulnerable). Migration to httpOnly cookies planned.
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  if (!refreshToken) {
-    throw new Error('No refresh token available');
-  }
-
-  const { data: tokensDto } = await apiClient.post<AuthTokensDto>(
-    '/auth/refresh',
-    { refreshToken },
-  );
-  const tokens = mapAuthTokensDtoToAuthTokens(tokensDto);
-  applyTokens(tokens);
-
-  return tokens;
 }

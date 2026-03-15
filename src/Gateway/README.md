@@ -36,6 +36,10 @@ dotnet run
 | `JwtSettings__Issuer` | `TravelAgency.Identity` | Issuer токена |
 | `JwtSettings__Audience` | `TravelAgency` | Audience токена |
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Окружение (Development/Production) |
+| `Cookie__Secure` | `true` (prod) / `false` (dev) | Secure flag. Production: true (HTTPS). Development: false для localhost |
+| `Cookie__SameSite` | `Lax` | SameSite policy (Lax, Strict, None) |
+| `Cookie__Path` | `/` | Cookie path. `/` или `/api/v1` |
+| `Cookie__Domain` | — | Опционально. Домен для cookie (напр. `.travelagency.com`) при разделении API и frontend по поддоменам |
 
 Для локального запуска `JwtSettings__SigningKey` можно задать через user-secrets или переменные окружения.
 

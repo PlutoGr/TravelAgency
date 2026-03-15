@@ -1,3 +1,4 @@
+using Grpc.Core;
 using Grpc.Net.Client;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
@@ -8,6 +9,8 @@ namespace TravelAgency.Catalog.IntegrationTests.GrpcServices;
 [Collection(nameof(CatalogIntegrationTestCollection))]
 public class CatalogGrpcServiceTests
 {
+    private const string TestGrpcToken = "test-internal-token";
+
     private readonly CatalogTestFixture _fixture;
 
     public CatalogGrpcServiceTests(CatalogTestFixture fixture)
@@ -21,6 +24,12 @@ public class CatalogGrpcServiceTests
         var baseAddress = httpClient.BaseAddress ?? new Uri("http://localhost");
         var channel = GrpcChannel.ForAddress(baseAddress, new GrpcChannelOptions { HttpClient = httpClient });
         return new CatalogService.CatalogServiceClient(channel);
+    }
+
+    private static CallOptions CreateCallOptions(CancellationToken ct = default)
+    {
+        var metadata = new Metadata { { "x-internal-auth", TestGrpcToken } };
+        return new CallOptions(metadata, deadline: null, ct);
     }
 
     [Fact]
@@ -40,7 +49,9 @@ public class CatalogGrpcServiceTests
 
         var client = CreateGrpcClient();
 
-        var response = await client.GetTourSnapshotAsync(new GetTourSnapshotRequest { TourId = tour.Id.ToString() });
+        var response = await client.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = tour.Id.ToString() },
+            CreateCallOptions());
 
         response.Should().NotBeNull();
         response.Found.Should().BeTrue();
@@ -59,7 +70,9 @@ public class CatalogGrpcServiceTests
     {
         var client = CreateGrpcClient();
 
-        var response = await client.GetTourSnapshotAsync(new GetTourSnapshotRequest { TourId = Guid.NewGuid().ToString() });
+        var response = await client.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = Guid.NewGuid().ToString() },
+            CreateCallOptions());
 
         response.Should().NotBeNull();
         response.Found.Should().BeFalse();
@@ -70,9 +83,39 @@ public class CatalogGrpcServiceTests
     {
         var client = CreateGrpcClient();
 
-        var response = await client.GetTourSnapshotAsync(new GetTourSnapshotRequest { TourId = "not-a-valid-guid" });
+        var response = await client.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = "not-a-valid-guid" },
+            CreateCallOptions());
 
         response.Should().NotBeNull();
         response.Found.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetTourSnapshot_WithoutAuthHeader_ReturnsUnauthenticated()
+    {
+        var client = CreateGrpcClient();
+        var call = client.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = Guid.NewGuid().ToString() },
+            new CallOptions(cancellationToken: CancellationToken.None));
+
+        Func<Task> act = async () => await call.ResponseAsync;
+        var ex = await act.Should().ThrowAsync<RpcException>();
+        ex.Which.StatusCode.Should().Be(StatusCode.Unauthenticated);
+    }
+
+    [Fact]
+    public async Task GetTourSnapshot_WithInvalidToken_ReturnsUnauthenticated()
+    {
+        var client = CreateGrpcClient();
+        var invalidMetadata = new Metadata { { "x-internal-auth", "wrong-token" } };
+        var callOptions = new CallOptions(invalidMetadata, deadline: null, CancellationToken.None);
+        var call = client.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = Guid.NewGuid().ToString() },
+            callOptions);
+
+        Func<Task> act = async () => await call.ResponseAsync;
+        var ex = await act.Should().ThrowAsync<RpcException>();
+        ex.Which.StatusCode.Should().Be(StatusCode.Unauthenticated);
     }
 }

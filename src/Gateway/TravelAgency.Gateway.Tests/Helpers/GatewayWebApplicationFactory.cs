@@ -38,6 +38,7 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
             var mockHealthUrl = $"{_mockBackendUrl}/health/live";
             var testSettings = new Dictionary<string, string?>
             {
+                ["Cookie:Secure"] = "false",
                 ["ReverseProxy:Clusters:identity-cluster:Destinations:destination1:Address"] = _mockBackendUrl,
                 ["ReverseProxy:Clusters:catalog-cluster:Destinations:destination1:Address"] = _mockBackendUrl,
                 ["ReverseProxy:Clusters:booking-cluster:Destinations:destination1:Address"] = _mockBackendUrl,

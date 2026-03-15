@@ -1,4 +1,5 @@
 using TravelAgency.Chat.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Chat.Application.Exceptions;
 using TravelAgency.Chat.Application.Features.Messages.Commands.SendMessage;
 using TravelAgency.Chat.Domain.Entities;
@@ -10,7 +11,7 @@ namespace TravelAgency.Chat.UnitTests.Application.Commands;
 
 public class SendMessageCommandHandlerTests
 {
-    private readonly IBookingAccessService _bookingAccessService = Substitute.For<IBookingAccessService>();
+    private readonly IBookingGrpcClient _bookingGrpcClient = Substitute.For<IBookingGrpcClient>();
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IChatMessageRepository _messageRepository = Substitute.For<IChatMessageRepository>();
     private readonly SendMessageCommandHandler _handler;
@@ -21,14 +22,14 @@ public class SendMessageCommandHandlerTests
 
     public SendMessageCommandHandlerTests()
     {
-        _handler = new SendMessageCommandHandler(_bookingAccessService, _currentUserService, _messageRepository);
+        _handler = new SendMessageCommandHandler(_bookingGrpcClient, _currentUserService, _messageRepository);
     }
 
     [Fact]
     public async Task Handle_WhenUserHasAccess_CreatesAndReturnsMessage()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         _currentUserService.UserId.Returns(UserId);
@@ -60,8 +61,8 @@ public class SendMessageCommandHandlerTests
     [Fact]
     public async Task Handle_WhenUserHasNoAccess_ThrowsForbiddenException()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
         var command = new SendMessageCommand(BookingId, "Hello");
@@ -74,8 +75,8 @@ public class SendMessageCommandHandlerTests
     [Fact]
     public async Task Handle_WhenUserIdIsEmpty_ThrowsForbiddenException()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         _currentUserService.UserId.Returns(Guid.Empty);
@@ -92,8 +93,8 @@ public class SendMessageCommandHandlerTests
     [Fact]
     public async Task Handle_ValidCommand_PersistsMessage()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         _currentUserService.UserId.Returns(UserId);

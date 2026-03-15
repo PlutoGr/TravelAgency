@@ -2,8 +2,11 @@ using Serilog;
 using TravelAgency.Chat.API.Extensions;
 using TravelAgency.Chat.API.Middleware;
 using TravelAgency.Chat.Infrastructure;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<IExceptionMapper, ChatExceptionMapper>();
 
 builder.Host.AddChatSerilog();
 

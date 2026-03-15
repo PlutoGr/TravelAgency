@@ -2,7 +2,7 @@ using FluentAssertions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Moq;
-using TravelAgency.Identity.Application.Behaviors;
+using TravelAgency.Shared.Infrastructure.Behaviors;
 
 namespace TravelAgency.Identity.UnitTests.Application.Behaviors;
 

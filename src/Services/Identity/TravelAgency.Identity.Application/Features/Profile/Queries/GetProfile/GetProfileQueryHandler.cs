@@ -1,7 +1,7 @@
 using MediatR;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
-using TravelAgency.Identity.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Domain.Interfaces;
 
@@ -13,6 +13,9 @@ public sealed class GetProfileQueryHandler(
 {
     public async Task<UserProfileDto> Handle(GetProfileQuery request, CancellationToken cancellationToken)
     {
+        if (!currentUserService.IsAuthenticated)
+            throw new UnauthorizedException("User is not authenticated.");
+
         var userId = currentUserService.UserId;
 
         var user = await userRepository.GetByIdAsync(userId, cancellationToken)

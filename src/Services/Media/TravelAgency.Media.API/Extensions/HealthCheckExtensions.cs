@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using TravelAgency.Media.Infrastructure.HealthChecks;
+using TravelAgency.Media.Infrastructure.Persistence;
 
 namespace TravelAgency.Media.API.Extensions;
 
@@ -9,6 +10,7 @@ public static class HealthCheckExtensions
     public static IServiceCollection AddMediaHealthChecks(this IServiceCollection services)
     {
         services.AddHealthChecks()
+            .AddDbContextCheck<MediaDbContext>("media-db", tags: ["ready"])
             .AddCheck<S3HealthCheck>("s3", tags: ["ready"]);
         return services;
     }

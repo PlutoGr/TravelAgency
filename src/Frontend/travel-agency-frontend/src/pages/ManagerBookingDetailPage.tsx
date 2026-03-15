@@ -26,6 +26,7 @@ import {
   updateBookingStatus,
   createProposal,
 } from '@/api/bookings';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { Card, Button, Select, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
@@ -75,6 +76,9 @@ export default function ManagerBookingDetailPage() {
         setSelectedStatus(data.status);
         setManagerNotes(data.notes);
       })
+      .catch(() => {
+        if (!cancelled) toast.error('Не удалось загрузить бронирование');
+      })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
@@ -94,6 +98,8 @@ export default function ManagerBookingDetailPage() {
       );
       setBooking(updated);
       showToast('Статус обновлён');
+    } catch {
+      toast.error('Не удалось обновить статус');
     } finally {
       setIsUpdatingStatus(false);
     }

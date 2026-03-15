@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using TravelAgency.Booking.API.Middleware;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Domain.Exceptions;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Booking.IntegrationTests.Middleware;
 
@@ -22,7 +23,11 @@ public class GlobalExceptionHandlerMiddlewareTests
             {
                 webBuilder.UseTestServer();
                 webBuilder.UseEnvironment(environment);
-                webBuilder.ConfigureServices(services => services.AddLogging());
+                webBuilder.ConfigureServices(services =>
+                {
+                    services.AddLogging();
+                    services.AddSingleton<IExceptionMapper, BookingExceptionMapper>();
+                });
                 webBuilder.Configure(app =>
                 {
                     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();

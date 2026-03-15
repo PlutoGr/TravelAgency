@@ -1,6 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
-using TravelAgency.Media.Application.Behaviors;
+using TravelAgency.Shared.Infrastructure.Behaviors;
 
 namespace TravelAgency.Media.UnitTests.Application.Behaviors;
 

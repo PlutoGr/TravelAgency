@@ -1,8 +1,12 @@
 using Serilog;
 using TravelAgency.Booking.API.Extensions;
 using TravelAgency.Booking.API.Middleware;
+using TravelAgency.Booking.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<IExceptionMapper, BookingExceptionMapper>();
 
 builder.Host.AddBookingSerilog();
 
@@ -14,6 +18,9 @@ builder.Services.AddBookingCors(builder.Configuration);
 builder.Services.AddBookingHealthChecks();
 builder.Services.AddBookingSwagger();
 builder.Services.AddBookingTracing();
+
+builder.Services.AddSingleton<GrpcAuthInterceptor>();
+builder.Services.AddGrpc(options => options.Interceptors.Add<GrpcAuthInterceptor>());
 
 var app = builder.Build();
 
@@ -33,6 +40,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGrpcService<BookingGrpcService>();
 app.MapBookingHealthChecks();
 
 app.Run();

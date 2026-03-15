@@ -1,8 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
-using TravelAgency.Media.Application.Behaviors;
-using AppValidationException = TravelAgency.Media.Application.Exceptions.ValidationException;
+using TravelAgency.Shared.Infrastructure.Behaviors;
 
 namespace TravelAgency.Media.UnitTests.Application.Behaviors;
 
@@ -55,9 +54,9 @@ public class ValidationBehaviorTests
 
         var act = async () => await behavior.Handle(new TestRequest("invalid"), next, CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<AppValidationException>();
-        ex.Which.Errors.Should().ContainKey("FileName");
-        ex.Which.Errors.Should().ContainKey("ContentType");
+        var ex = await act.Should().ThrowAsync<ValidationException>();
+        ex.Which.Errors.Should().Contain(e => e.PropertyName == "FileName");
+        ex.Which.Errors.Should().Contain(e => e.PropertyName == "ContentType");
     }
 
     [Fact]
@@ -80,8 +79,8 @@ public class ValidationBehaviorTests
             _ => Task.FromResult(new TestResponse("unused")),
             CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<AppValidationException>();
-        ex.Which.Errors["FileName"].Should().HaveCount(2);
+        var ex = await act.Should().ThrowAsync<ValidationException>();
+        ex.Which.Errors.Where(e => e.PropertyName == "FileName").Should().HaveCount(2);
     }
 
     [Fact]
@@ -123,9 +122,9 @@ public class ValidationBehaviorTests
             _ => Task.FromResult(new TestResponse("unused")),
             CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<AppValidationException>();
-        ex.Which.Errors.Should().ContainKey("FileName");
-        ex.Which.Errors.Should().ContainKey("ContentType");
+        var ex = await act.Should().ThrowAsync<ValidationException>();
+        ex.Which.Errors.Should().Contain(e => e.PropertyName == "FileName");
+        ex.Which.Errors.Should().Contain(e => e.PropertyName == "ContentType");
     }
 
     public record TestRequest(string Value) : IRequest<TestResponse>;

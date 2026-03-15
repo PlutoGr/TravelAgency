@@ -1,5 +1,5 @@
 using TravelAgency.Catalog.Application.Features.Directions.Queries.GetDirections;
-using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Domain.Entities;
 
 namespace TravelAgency.Catalog.UnitTests.Application.Features;
