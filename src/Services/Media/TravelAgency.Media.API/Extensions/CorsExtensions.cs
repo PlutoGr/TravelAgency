@@ -2,24 +2,27 @@ namespace TravelAgency.Media.API.Extensions;
 
 public static class CorsExtensions
 {
-    private const string PolicyName = "MediaCorsPolicy";
+    private const string CorsSection = "Cors";
+    private const string AllowedOriginsKey = "AllowedOrigins";
 
+    /// <summary>
+    /// Adds CORS with whitelist of allowed origins from configuration.
+    /// When Cors:AllowedOrigins is empty, uses safe default (localhost) — never AllowAnyOrigin.
+    /// </summary>
     public static IServiceCollection AddMediaCors(this IServiceCollection services, IConfiguration configuration)
     {
-        var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        var origins = configuration.GetSection(CorsSection).GetSection(AllowedOriginsKey).Get<string[]>();
+        if (origins is null or { Length: 0 })
+            origins = ["http://localhost:3000", "http://localhost:5000"];
 
         services.AddCors(options =>
         {
-            options.AddPolicy(PolicyName, builder =>
+            options.AddDefaultPolicy(policy =>
             {
-                if (origins.Length > 0)
-                    builder.WithOrigins(origins)
-                           .AllowAnyHeader()
-                           .AllowAnyMethod();
-                else
-                    builder.AllowAnyOrigin()
-                           .AllowAnyHeader()
-                           .AllowAnyMethod();
+                policy.WithOrigins(origins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             });
         });
 
@@ -28,7 +31,7 @@ public static class CorsExtensions
 
     public static IApplicationBuilder UseMediaCors(this IApplicationBuilder app)
     {
-        app.UseCors(PolicyName);
+        app.UseCors();
         return app;
     }
 }

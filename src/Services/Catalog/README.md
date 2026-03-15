@@ -37,8 +37,9 @@ dotnet run
 | `JwtSettings__Issuer` | `TravelAgency.Identity` | Issuer токена |
 | `JwtSettings__Audience` | `TravelAgency` | Audience токена |
 | `ASPNETCORE_RUN_MIGRATIONS` | `false` | `true` — автоматический запуск миграций при старте |
+| `AllowedHosts` | `localhost` (prod) / `*` (dev) | В production задайте явный список хостов через env |
 
-**Важно:** В production переопределите `JwtSettings__SigningKey` через переменные окружения.
+**Важно:** В production переопределите `JwtSettings__SigningKey` и `AllowedHosts` через переменные окружения.
 
 ## Docker
 

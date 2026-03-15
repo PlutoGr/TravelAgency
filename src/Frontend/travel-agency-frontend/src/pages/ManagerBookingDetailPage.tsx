@@ -10,19 +10,24 @@ import {
   StickyNote,
   Clock,
   Save,
-  Link2,
+  Send,
   FileText,
-  Search,
   X,
   Star,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import type { Booking, BookingStatus, Tour } from '@/types';
-import { getBookingById, updateBookingStatus } from '@/api/bookings';
-import { mockTours } from '@/mocks/tours';
-import { mockManager } from '@/mocks/users';
-import { Card, Button, Select, Modal, Skeleton } from '@/components/ui';
+import {
+  formatDateFull,
+  formatBudget,
+  formatBookingId,
+} from '@/utils/format';
+import type { Booking, BookingStatus } from '@/types';
+import {
+  getBookingById,
+  updateBookingStatus,
+  createProposal,
+} from '@/api/bookings';
+import { useAuthStore } from '@/store/authStore';
+import { Card, Button, Select, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
 import ChatWindow from '@/components/booking/ChatWindow.tsx';
 import { Breadcrumbs } from '@/components/layout';
@@ -42,33 +47,15 @@ const QUICK_REPLIES = [
   'Тур подтверждён! Ожидайте оплату.',
 ];
 
-const MOCK_CLIENT_DETAILS: Record<string, { email: string; phone: string }> = {
-  'user-1': { email: 'ivan.ivanov@mail.ru', phone: '+7 (999) 123-45-67' },
-  'user-2': { email: 'maria.lebedeva@gmail.com', phone: '+7 (916) 555-12-34' },
-  'user-3': { email: 'alexey.novikov@yandex.ru', phone: '+7 (903) 777-88-99' },
-  'user-4': { email: 'elena.smirnova@mail.ru', phone: '+7 (926) 333-44-55' },
-  'user-5': { email: 'dmitry.kozlov@gmail.com', phone: '+7 (905) 111-22-33' },
-  'user-6': { email: 'natalia.sokolova@yandex.ru', phone: '+7 (917) 666-77-88' },
-};
-
-function formatDate(dateStr: string): string {
-  return format(new Date(dateStr), 'd MMMM yyyy', { locale: ru });
-}
-
-function formatBudget(amount: number): string {
-  return amount.toLocaleString('ru-RU') + ' ₽';
-}
-
 export default function ManagerBookingDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [managerNotes, setManagerNotes] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [showTourModal, setShowTourModal] = useState(false);
-  const [tourSearch, setTourSearch] = useState('');
-  const [attachedTour, setAttachedTour] = useState<Tour | null>(null);
+  const [isSendingProposal, setIsSendingProposal] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   const showToast = useCallback((message: string) => {
@@ -87,7 +74,6 @@ export default function ManagerBookingDetailPage() {
         setBooking(data);
         setSelectedStatus(data.status);
         setManagerNotes(data.notes);
-        if (data.tour) setAttachedTour(data.tour);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -113,22 +99,26 @@ export default function ManagerBookingDetailPage() {
     }
   };
 
-  const filteredTours = mockTours.filter((t) => {
-    if (!tourSearch) return true;
-    const q = tourSearch.toLowerCase();
-    return (
-      t.title.toLowerCase().includes(q) ||
-      t.country.toLowerCase().includes(q) ||
-      t.city.toLowerCase().includes(q)
-    );
-  });
+  const handleSendProposal = async () => {
+    if (!booking || !id) return;
+    setIsSendingProposal(true);
+    try {
+      await createProposal(booking.id, { notes: managerNotes });
+      await updateBookingStatus(booking.id, 'proposal_sent');
+      const refreshed = await getBookingById(id);
+      setBooking(refreshed);
+      setSelectedStatus(refreshed.status);
+      setManagerNotes(refreshed.notes);
+      showToast('Предложение отправлено');
+    } catch {
+      showToast('Ошибка при отправке предложения');
+    } finally {
+      setIsSendingProposal(false);
+    }
+  };
 
-  const clientDetails = booking
-    ? MOCK_CLIENT_DETAILS[booking.clientId] ?? {
-        email: 'client@email.com',
-        phone: '+7 (900) 000-00-00',
-      }
-    : null;
+  const clientEmail = booking?.clientEmail ?? '—';
+  const clientPhone = booking?.clientPhone ?? '—';
 
   if (isLoading) {
     return (
@@ -189,15 +179,17 @@ export default function ManagerBookingDetailPage() {
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="text-xs text-warm-gray">Имя</p>
-                  <p className="font-medium text-dark">{booking.clientName}</p>
+                  <p className="font-medium text-dark">
+                    {booking.clientName || booking.clientId}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-warm-gray">Email</p>
-                  <p className="text-dark">{clientDetails!.email}</p>
+                  <p className="text-dark">{clientEmail}</p>
                 </div>
                 <div>
                   <p className="text-xs text-warm-gray">Телефон</p>
-                  <p className="text-dark">{clientDetails!.phone}</p>
+                  <p className="text-dark">{clientPhone}</p>
                 </div>
               </div>
             </Card>
@@ -217,7 +209,7 @@ export default function ManagerBookingDetailPage() {
                 <InfoRow
                   icon={Calendar}
                   label="Даты"
-                  value={`${formatDate(booking.dateFrom)} — ${formatDate(booking.dateTo)}`}
+                  value={`${formatDateFull(booking.dateFrom)} — ${formatDateFull(booking.dateTo)}`}
                 />
                 <InfoRow
                   icon={Users}
@@ -237,7 +229,7 @@ export default function ManagerBookingDetailPage() {
                 <InfoRow
                   icon={Clock}
                   label="Дата создания"
-                  value={formatDate(booking.createdAt)}
+                  value={formatDateFull(booking.createdAt)}
                 />
               </div>
             </Card>
@@ -260,9 +252,10 @@ export default function ManagerBookingDetailPage() {
                 size="sm"
                 leftIcon={<Save size={14} />}
                 className="mt-3"
-                onClick={() => showToast('Заметки сохранены')}
+                disabled
+                title="Скоро"
               >
-                Сохранить
+                Сохранить (скоро)
               </Button>
             </Card>
           </div>
@@ -278,8 +271,10 @@ export default function ManagerBookingDetailPage() {
               <div className="flex-1 overflow-hidden">
                 <ChatWindow
                   bookingId={booking.id}
-                  currentUserId={mockManager.id}
-                  currentUserName={`${mockManager.firstName} ${mockManager.lastName}`}
+                  currentUserId={user?.id ?? ''}
+                  currentUserName={
+                    user ? `${user.firstName} ${user.lastName}` : ''
+                  }
                   currentUserRole="manager"
                 />
               </div>
@@ -293,7 +288,14 @@ export default function ManagerBookingDetailPage() {
                     <button
                       key={text}
                       className="rounded-lg bg-cream px-3 py-1.5 text-xs text-dark transition-colors hover:bg-sand"
-                      onClick={() => showToast('Шаблон скопирован')}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(text);
+                          showToast('Шаблон скопирован');
+                        } catch {
+                          showToast('Не удалось скопировать');
+                        }
+                      }}
                     >
                       {text}
                     </button>
@@ -340,33 +342,40 @@ export default function ManagerBookingDetailPage() {
 
               <div className="my-4 border-t border-sand" />
 
-              <Button
-                variant="secondary"
-                size="sm"
-                fullWidth
-                leftIcon={<Link2 size={14} />}
-                onClick={() => setShowTourModal(true)}
-              >
-                Прикрепить тур
-              </Button>
+              {booking.status === 'new' || booking.status === 'in_progress' ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  fullWidth
+                  leftIcon={<Send size={14} />}
+                  isLoading={isSendingProposal}
+                  onClick={handleSendProposal}
+                >
+                  Отправить предложение
+                </Button>
+              ) : null}
 
-              {attachedTour && (
+              {booking.tour && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="mt-3 overflow-hidden rounded-[12px] border border-sand"
                 >
-                  <img
-                    src={attachedTour.photos[0]}
-                    alt={attachedTour.title}
-                    className="h-28 w-full object-cover"
-                  />
+                  {booking.tour.photos[0] && (
+                    <img
+                      src={booking.tour.photos[0]}
+                      alt={booking.tour.title}
+                      className="h-28 w-full object-cover"
+                    />
+                  )}
                   <div className="p-3">
                     <p className="text-xs font-semibold text-dark">
-                      {attachedTour.title}
+                      {booking.tour.title}
                     </p>
                     <p className="mt-0.5 text-xs text-warm-gray">
-                      {attachedTour.country}, {attachedTour.city}
+                      {booking.tour.country || booking.tour.city
+                        ? `${booking.tour.country}, ${booking.tour.city}`
+                        : booking.tour.duration + ' дн.'}
                     </p>
                     <div className="mt-1 flex items-center gap-1">
                       <Star
@@ -374,11 +383,11 @@ export default function ManagerBookingDetailPage() {
                         className="fill-amber-400 text-amber-400"
                       />
                       <span className="text-xs text-warm-gray">
-                        {attachedTour.rating}
+                        {booking.tour.rating || '—'}
                       </span>
                     </div>
                     <p className="mt-1 text-sm font-bold text-primary">
-                      {formatBudget(attachedTour.price)}
+                      {formatBudget(booking.tour.price)}
                     </p>
                   </div>
                 </motion.div>
@@ -391,82 +400,15 @@ export default function ManagerBookingDetailPage() {
                 size="sm"
                 fullWidth
                 leftIcon={<FileText size={14} />}
-                onClick={() => showToast('Счёт создан и отправлен клиенту')}
+                onClick={() => showToast('Скоро')}
+                title="Скоро"
               >
-                Создать счёт
+                Создать счёт (скоро)
               </Button>
             </Card>
           </div>
         </div>
       </div>
-
-      {/* Tour selection modal */}
-      <Modal
-        isOpen={showTourModal}
-        onClose={() => setShowTourModal(false)}
-        title="Прикрепить тур"
-        size="lg"
-      >
-        <div className="space-y-4">
-          <div className="relative">
-            <Search
-              size={18}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-gray"
-            />
-            <input
-              type="text"
-              placeholder="Поиск по названию, стране..."
-              value={tourSearch}
-              onChange={(e) => setTourSearch(e.target.value)}
-              className="w-full rounded-[12px] border border-sand bg-white py-2.5 pl-10 pr-4 text-sm text-dark outline-none placeholder:text-warm-gray focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-
-          <div className="max-h-[400px] space-y-2 overflow-y-auto pr-1">
-            {filteredTours.map((tour) => (
-              <button
-                key={tour.id}
-                onClick={() => {
-                  setAttachedTour(tour);
-                  setShowTourModal(false);
-                  showToast(`Тур "${tour.title}" прикреплён`);
-                }}
-                className="flex w-full items-center gap-3 rounded-[12px] p-3 text-left transition-colors hover:bg-cream"
-              >
-                <img
-                  src={tour.photos[0]}
-                  alt={tour.title}
-                  className="h-14 w-14 shrink-0 rounded-lg object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-dark">
-                    {tour.title}
-                  </p>
-                  <p className="text-xs text-warm-gray">
-                    {tour.country}, {tour.city}
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold text-primary">
-                    {formatBudget(tour.price)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Star
-                    size={12}
-                    className="fill-amber-400 text-amber-400"
-                  />
-                  <span className="text-xs text-warm-gray">{tour.rating}</span>
-                </div>
-              </button>
-            ))}
-
-            {filteredTours.length === 0 && (
-              <p className="py-8 text-center text-sm text-warm-gray">
-                Туры не найдены
-              </p>
-            )}
-          </div>
-        </div>
-      </Modal>
 
       {/* Toast */}
       <AnimatePresence>
@@ -488,10 +430,6 @@ export default function ManagerBookingDetailPage() {
       </AnimatePresence>
     </PageTransition>
   );
-}
-
-function formatBookingId(id: string): string {
-  return '#BK-' + (id.split('-')[1]?.padStart(3, '0') ?? id);
 }
 
 function InfoRow({

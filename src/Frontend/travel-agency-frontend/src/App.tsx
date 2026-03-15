@@ -10,6 +10,7 @@ import {
   ManagerLayout,
   ProtectedRoute,
   AuthModal,
+  AuthRedirectHandler,
   ScrollToTop,
 } from '@/components/layout';
 import { Skeleton } from '@/components/ui';
@@ -55,17 +56,24 @@ function PageFallback() {
 
 export default function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const loadFavorites = useFavoritesStore((s) => s.loadFavorites);
 
   useEffect(() => {
     checkAuth();
-    loadFavorites();
-  }, [checkAuth, loadFavorites]);
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadFavorites();
+    }
+  }, [isAuthenticated, loadFavorites]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ScrollToTop />
+        <AuthRedirectHandler />
         <Suspense fallback={<PageFallback />}>
           <Routes>
             {/* Public Routes */}

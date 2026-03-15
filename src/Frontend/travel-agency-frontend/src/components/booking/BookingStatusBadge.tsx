@@ -9,6 +9,7 @@ const statusConfig: Record<BookingStatus, { label: string; variant: BadgeVariant
   proposal_sent: { label: 'Предложение отправлено', variant: 'purple' },
   confirmed: { label: 'Подтверждена', variant: 'green' },
   closed: { label: 'Закрыта', variant: 'gray' },
+  cancelled: { label: 'Отменена', variant: 'gray' },
 };
 
 interface BookingStatusBadgeProps {

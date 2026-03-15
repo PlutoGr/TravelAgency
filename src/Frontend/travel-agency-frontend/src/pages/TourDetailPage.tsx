@@ -16,15 +16,12 @@ import clsx from 'clsx';
 import { format, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { Tour } from '@/types';
+import { formatPrice } from '@/utils/format';
 import { PageTransition, FadeInOnScroll } from '@/components/common';
 import { Button, StarRating, Skeleton, Badge, Select } from '@/components/ui';
 import { TourGallery, TourTabs, TourCard } from '@/components/tour';
 import { getTourById, getTours } from '@/api/catalog';
 import { useFavoritesStore } from '@/store/favoritesStore';
-
-function formatPrice(price: number): string {
-  return price.toLocaleString('ru-RU') + ' ₽';
-}
 
 function DetailSkeleton() {
   return (
@@ -157,7 +154,7 @@ function BookingSidebar({ tour }: { tour: Tour }) {
       {/* Favorite */}
       <motion.button
         whileTap={{ scale: 0.95 }}
-        onClick={() => toggleFavorite(tour.id)}
+        onClick={() => toggleFavorite(tour.id, tour)}
         className={clsx(
           'flex w-full items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-medium transition-colors',
           favorite

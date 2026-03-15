@@ -66,8 +66,14 @@ public class TourRepository : ITourRepository
                 ? query.OrderBy(t => t.DurationDays)
                 : query.OrderByDescending(t => t.DurationDays),
             TourSortBy.Price => filter.SortDirection == SortDirection.Asc
-                ? query.OrderBy(t => t.CreatedAt)
-                : query.OrderByDescending(t => t.CreatedAt),
+                ? query.OrderBy(t => t.Prices
+                    .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
+                    .Select(p => (decimal?)p.PricePerPerson)
+                    .Min() ?? decimal.MaxValue)
+                : query.OrderByDescending(t => t.Prices
+                    .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
+                    .Select(p => (decimal?)p.PricePerPerson)
+                    .Min()),
             _ => filter.SortDirection == SortDirection.Asc
                 ? query.OrderBy(t => t.CreatedAt)
                 : query.OrderByDescending(t => t.CreatedAt)

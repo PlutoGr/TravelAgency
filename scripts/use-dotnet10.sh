@@ -26,7 +26,7 @@ if [[ -n "$CURRENT_DOTNET" && -d "$CURRENT_DOTNET/sdk" ]]; then
   export DOTNET_ROOT="$CURRENT_DOTNET"
   export PATH="$DOTNET_ROOT:$PATH"
   echo "Using .NET 10: $DOTNET_ROOT -> $(dotnet --version)"
-  exit 0
+  [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 0 || exit 0
 fi
 
 # Search common installation roots for SDK 10 (use find to avoid zsh glob "no matches" errors)
@@ -38,10 +38,10 @@ for ROOT in "$HOME/.dotnet" "/usr/local/share/dotnet" "/opt/homebrew/share/dotne
       export PATH="$DOTNET_ROOT:$PATH"
       export MSBuildSDKsPath="$SDK_DIR/Sdks"
       echo "Using .NET 10: $DOTNET_ROOT (SDK $(basename "$SDK_DIR")) -> $(dotnet --version)"
-      exit 0
+      [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 0 || exit 0
     fi
   done < <(find "$ROOT/sdk" -maxdepth 1 -type d -name '10.*' -print0 2>/dev/null)
 done
 
 echo "No .NET 10 SDK found. Install from https://dotnet.microsoft.com/download or ensure dotnet in PATH is 10.x."
-exit 1
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1

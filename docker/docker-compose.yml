@@ -112,6 +112,8 @@ services:
       - JwtSettings__Issuer=TravelAgency.Identity
       - JwtSettings__Audience=TravelAgency
       - GrpcClients__CatalogServiceUrl=http://catalog-service:8080
+      - GrpcClients__IdentityServiceUrl=http://identity-service:8080
+      - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,6 +170,8 @@ services:
     build:
       context: ../src/Frontend/travel-agency-frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
     ports:
       - "3000:80"
     depends_on:

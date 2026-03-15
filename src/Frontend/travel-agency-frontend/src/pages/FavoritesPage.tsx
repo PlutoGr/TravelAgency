@@ -1,11 +1,11 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
-import { Button } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
 import TourCard from '@/components/tour/TourCard';
 import { useFavoritesStore } from '@/store/favoritesStore';
-import { mockTours } from '@/mocks/tours';
 
 const BREADCRUMBS = [
   { label: 'Личный кабинет', path: '/dashboard' },
@@ -13,8 +13,11 @@ const BREADCRUMBS = [
 ];
 
 export default function FavoritesPage() {
-  const favoriteIds = useFavoritesStore((s) => s.favoriteIds);
-  const favoriteTours = mockTours.filter((t) => favoriteIds.includes(t.id));
+  const { favoriteTours, loadFavorites, isLoading } = useFavoritesStore();
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
 
   return (
     <PageTransition>
@@ -25,7 +28,20 @@ export default function FavoritesPage() {
           Избранное
         </h1>
 
-        {favoriteTours.length === 0 ? (
+        {isLoading ? (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex flex-col">
+                <Skeleton variant="rectangular" className="aspect-[4/3] w-full !rounded-t-2xl" />
+                <div className="space-y-3 p-4">
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : favoriteTours.length === 0 ? (
           <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-sand">
               <Heart size={28} className="text-warm-gray" />

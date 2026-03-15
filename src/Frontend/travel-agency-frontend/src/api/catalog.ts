@@ -1,114 +1,287 @@
 import type { Destination, PaginatedResponse, Tour, TourFilters } from '@/types';
-import { mockTours } from '@/mocks/tours';
-import { mockDestinations } from '@/mocks/destinations';
+import { apiClient } from './client';
+import toast from 'react-hot-toast';
 
-const delay = () => new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
 const PAGE_SIZE = 6;
 
-function applyFilters(tours: Tour[], filters?: TourFilters): Tour[] {
-  if (!filters) return tours;
+/** Backend API response types (camelCase from ASP.NET Core JSON) */
+interface PagedResultDto<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
 
-  let result = [...tours];
+/** Maps numeric TourType (0-6) from backend to string label */
+const TOUR_TYPE_LABELS: Record<number, string> = {
+  0: 'Beach',
+  1: 'Mountain',
+  2: 'City',
+  3: 'Cultural',
+  4: 'Adventure',
+  5: 'Cruise',
+  6: 'Safari',
+};
 
-  if (filters.search) {
-    const q = filters.search.toLowerCase();
-    result = result.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.country.toLowerCase().includes(q) ||
-        t.city.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q),
-    );
+function mapTourTypeToCategory(tourType: string | number): string {
+  if (typeof tourType === 'number' && tourType in TOUR_TYPE_LABELS) {
+    return TOUR_TYPE_LABELS[tourType];
   }
+  return String(tourType ?? '');
+}
+
+/** Shared params for building a Tour from DTO fields (used by both mappers) */
+interface BuildTourParams {
+  id: string;
+  title: string;
+  country: string;
+  tourType: string | number;
+  durationDays: number;
+  imageUrl: string | null;
+  description?: string;
+  shortDescription?: string;
+  price?: number;
+  dates?: { start: string; end: string }[];
+  maxTravelers?: number;
+}
+
+/** Builds a Tour from common DTO fields; varying parts passed as overrides. Exported for testing. */
+export function buildTourFromDtoFields(params: BuildTourParams): Tour {
+  return {
+    id: params.id,
+    title: params.title,
+    description: params.description ?? '',
+    shortDescription: params.shortDescription ?? '',
+    country: params.country,
+    city: '',
+    hotel: '',
+    price: params.price ?? 0,
+    rating: 0,
+    reviewCount: 0,
+    dates: params.dates ?? [],
+    duration: params.durationDays,
+    photos: params.imageUrl ? [params.imageUrl] : [],
+    amenities: [],
+    included: [],
+    notIncluded: [],
+    category: mapTourTypeToCategory(params.tourType),
+    isHot: false,
+    maxTravelers: params.maxTravelers ?? 0,
+  };
+}
+
+interface TourSummaryDto {
+  id: string;
+  title: string;
+  country: string;
+  tourType: string | number;
+  durationDays: number;
+  imageUrl: string | null;
+  minPrice: number | null;
+  currency: string | null;
+  isActive: boolean;
+}
+
+interface TourPriceDto {
+  id: string;
+  validFrom: string;
+  validTo: string;
+  pricePerPerson: number;
+  currency: string;
+  availableSeats: number;
+}
+
+interface TourDto {
+  id: string;
+  title: string;
+  description?: string | null;
+  country: string;
+  tourType: string | number;
+  durationDays: number;
+  imageUrl: string | null;
+  directionId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+  prices: TourPriceDto[];
+}
+
+function mapTourSummaryToTour(dto: TourSummaryDto): Tour {
+  return buildTourFromDtoFields({
+    id: dto.id,
+    title: dto.title,
+    country: dto.country,
+    tourType: dto.tourType,
+    durationDays: dto.durationDays,
+    imageUrl: dto.imageUrl,
+    price: dto.minPrice ?? 0,
+  });
+}
+
+function mapTourDtoToTour(dto: TourDto): Tour {
+  const desc = dto.description ?? '';
+  const firstPrice = dto.prices?.[0];
+  const dates =
+    dto.prices?.map((p) => ({
+      start: p.validFrom,
+      end: p.validTo,
+    })) ?? [];
+
+  return buildTourFromDtoFields({
+    id: dto.id,
+    title: dto.title,
+    country: dto.country,
+    tourType: dto.tourType,
+    durationDays: dto.durationDays,
+    imageUrl: dto.imageUrl,
+    description: desc,
+    shortDescription: desc.slice(0, 150) + (desc.length > 150 ? '...' : ''),
+    price: firstPrice?.pricePerPerson ?? 0,
+    dates,
+    maxTravelers: firstPrice?.availableSeats ?? 0,
+  });
+}
+
+function buildToursQueryParams(
+  filters?: TourFilters,
+  page = 1,
+): Record<string, string | number | boolean | undefined> {
+  const params: Record<string, string | number | boolean | undefined> = {
+    Page: page,
+    PageSize: PAGE_SIZE,
+  };
+
+  if (!filters) return params;
 
   if (filters.country?.length) {
-    result = result.filter((t) => filters.country!.includes(t.country));
+    params.Country = filters.country[0];
   }
-
   if (filters.priceMin != null) {
-    result = result.filter((t) => t.price >= filters.priceMin!);
+    params.MinPrice = filters.priceMin;
   }
-
   if (filters.priceMax != null) {
-    result = result.filter((t) => t.price <= filters.priceMax!);
+    params.MaxPrice = filters.priceMax;
   }
-
-  if (filters.rating != null) {
-    result = result.filter((t) => t.rating >= filters.rating!);
+  if (filters.dateFrom) {
+    params.DateFrom = filters.dateFrom;
   }
-
+  if (filters.dateTo) {
+    params.DateTo = filters.dateTo;
+  }
   if (filters.category) {
-    result = result.filter((t) => t.category === filters.category);
+    params.TourType = filters.category;
+  }
+  if (filters.sortBy) {
+    switch (filters.sortBy) {
+      case 'price_asc':
+        params.SortBy = 'Price';
+        params.SortDirection = 'Asc';
+        break;
+      case 'price_desc':
+        params.SortBy = 'Price';
+        params.SortDirection = 'Desc';
+        break;
+      case 'date':
+        params.SortBy = 'CreatedAt';
+        params.SortDirection = 'Desc';
+        break;
+      case 'rating':
+      case 'popularity':
+      default:
+        params.SortBy = 'CreatedAt';
+        params.SortDirection = 'Desc';
+        break;
+    }
   }
 
-  if (filters.amenities?.length) {
-    result = result.filter((t) =>
-      filters.amenities!.every((a) => t.amenities.includes(a)),
-    );
-  }
-
-  switch (filters.sortBy) {
-    case 'price_asc':
-      result.sort((a, b) => a.price - b.price);
-      break;
-    case 'price_desc':
-      result.sort((a, b) => b.price - a.price);
-      break;
-    case 'rating':
-      result.sort((a, b) => b.rating - a.rating);
-      break;
-    case 'date':
-      result.sort(
-        (a, b) =>
-          new Date(a.dates[0]?.start ?? '').getTime() -
-          new Date(b.dates[0]?.start ?? '').getTime(),
-      );
-      break;
-    case 'popularity':
-    default:
-      result.sort((a, b) => b.reviewCount - a.reviewCount);
-      break;
-  }
-
-  return result;
+  return params;
 }
 
 export async function getTours(
   filters?: TourFilters,
   page = 1,
 ): Promise<PaginatedResponse<Tour>> {
-  await delay();
+  const { data } = await apiClient.get<PagedResultDto<TourSummaryDto>>('/catalog/tours', {
+    params: buildToursQueryParams(filters, page),
+  });
 
-  const filtered = applyFilters(mockTours, filters);
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-  const start = (page - 1) * PAGE_SIZE;
-  const items = filtered.slice(start, start + PAGE_SIZE);
+  const items = (data.items ?? []).map(mapTourSummaryToTour);
+  const totalPages = data.pageSize > 0 ? Math.ceil(data.totalCount / data.pageSize) : 0;
 
-  return { items, total, page, pageSize: PAGE_SIZE, totalPages };
+  return {
+    items,
+    total: data.totalCount,
+    page: data.page,
+    pageSize: data.pageSize,
+    totalPages,
+  };
 }
 
 export async function getTourById(id: string): Promise<Tour> {
-  await delay();
-
-  const tour = mockTours.find((t) => t.id === id);
-  if (!tour) throw new Error(`Тур с ID "${id}" не найден`);
-  return tour;
+  try {
+    const { data } = await apiClient.get<TourDto>(`/catalog/tours/${id}`);
+    return mapTourDtoToTour(data);
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'response' in err) {
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr.response?.status === 404) {
+        throw new Error(`Тур с ID "${id}" не найден`);
+      }
+    }
+    throw err;
+  }
 }
 
+/** Backend DirectionDto (GET /catalog/directions) */
+interface DirectionDto {
+  id: string;
+  name: string;
+  country: string;
+  description?: string | null;
+}
+
+function mapDirectionDtoToDestination(dto: DirectionDto): Destination {
+  return {
+    id: dto.id,
+    name: dto.name,
+    country: dto.country,
+    photo: '',
+    tourCount: 0,
+    description: dto.description ?? '',
+  };
+}
+
+/**
+ * Fetches destinations from GET /catalog/directions.
+ * Maps DirectionDto (id, name, country, description) to Destination.
+ * photo and tourCount use defaults (empty string, 0) as backend does not provide them.
+ */
 export async function getDestinations(): Promise<Destination[]> {
-  await delay();
-  return mockDestinations;
+  try {
+    const { data } = await apiClient.get<DirectionDto[] | null | undefined>(
+      '/catalog/directions',
+    );
+    const items = Array.isArray(data) ? data : [];
+    return items.map(mapDirectionDtoToDestination);
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'response' in err) {
+      const axiosErr = err as { response?: { status?: number }; message?: string };
+      if (axiosErr.response?.status === 404 || axiosErr.response?.status === 500) {
+        console.error('[getDestinations]', axiosErr.response?.status, axiosErr);
+        toast.error('Не удалось загрузить направления');
+        return [];
+      }
+    }
+    throw err;
+  }
 }
 
-export async function searchTours(query: string): Promise<Tour[]> {
-  await delay();
-
-  const q = query.toLowerCase();
-  return mockTours.filter(
-    (t) =>
-      t.title.toLowerCase().includes(q) ||
-      t.country.toLowerCase().includes(q) ||
-      t.city.toLowerCase().includes(q),
-  );
+/**
+ * Backend has no equivalent endpoint. Returns empty array until search API is available.
+ * For now, use getTours with filters (e.g. country) for catalog browsing.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- stub; query reserved for future search API
+export async function searchTours(_query: string): Promise<Tour[]> {
+  return [];
 }

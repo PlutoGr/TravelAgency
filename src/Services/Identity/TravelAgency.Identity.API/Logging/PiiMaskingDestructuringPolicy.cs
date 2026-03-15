@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Serilog.Core;
 using Serilog.Events;
 using TravelAgency.Identity.Application.DTOs;
@@ -15,7 +16,7 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
 {
     private const string PasswordRedacted = "[REDACTED]";
 
-    public bool TryDestructure(object value, ILogEventPropertyValueFactory propertyValueFactory, out LogEventPropertyValue? result)
+    public bool TryDestructure(object value, ILogEventPropertyValueFactory propertyValueFactory, [MaybeNullWhen(false)] out LogEventPropertyValue result)
     {
         result = null;
 

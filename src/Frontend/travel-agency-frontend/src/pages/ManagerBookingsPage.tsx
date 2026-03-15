@@ -9,8 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import clsx from 'clsx';
 import type { Booking, BookingStatus } from '@/types';
 import { getAllBookings } from '@/api/bookings';
@@ -18,6 +16,7 @@ import { Card, Select, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
 import { Breadcrumbs } from '@/components/layout';
 import { PageTransition } from '@/components/common';
+import { formatDate, formatDateRange, formatBookingId } from '@/utils/format';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Все статусы' },
@@ -35,18 +34,7 @@ const BREADCRUMBS = [
   { label: 'Бронирования' },
 ];
 
-function formatBookingId(id: string): string {
-  return '#BK-' + (id.split('-')[1]?.padStart(3, '0') ?? id);
-}
-
-function formatDate(dateStr: string): string {
-  return format(new Date(dateStr), 'd MMM yyyy', { locale: ru });
-}
-
-function formatDateRange(from: string, to: string): string {
-  return `${format(new Date(from), 'd MMM', { locale: ru })} — ${format(new Date(to), 'd MMM yyyy', { locale: ru })}`;
-}
-
+/** Manager bookings list shows empty until backend adds manager bookings endpoint */
 export default function ManagerBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);

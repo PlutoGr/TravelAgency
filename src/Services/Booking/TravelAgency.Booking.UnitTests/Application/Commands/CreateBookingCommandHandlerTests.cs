@@ -1,5 +1,7 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
+using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateBooking;
 using TravelAgency.Booking.Domain.Enums;
 using TravelAgency.Booking.Domain.Interfaces;
@@ -11,6 +13,7 @@ public class CreateBookingCommandHandlerTests
 {
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IBookingRepository> _bookingRepoMock = new();
+    private readonly Mock<ICatalogGrpcClient> _catalogGrpcMock = new();
     private readonly Mock<IOutboxMessageRepository> _outboxRepoMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly CreateBookingCommandHandler _handler;
@@ -23,9 +26,14 @@ public class CreateBookingCommandHandlerTests
         _currentUserMock.Setup(u => u.UserId).Returns(ClientId);
         _currentUserMock.Setup(u => u.Role).Returns("Client");
 
+        _catalogGrpcMock
+            .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TourSnapshotDto(TourId, "Tour", "Desc", 100m, "USD", 7, DateTime.UtcNow));
+
         _handler = new CreateBookingCommandHandler(
             _currentUserMock.Object,
             _bookingRepoMock.Object,
+            _catalogGrpcMock.Object,
             _outboxRepoMock.Object,
             _unitOfWorkMock.Object);
     }
@@ -53,6 +61,19 @@ public class CreateBookingCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.Status.Should().Be(BookingStatus.New);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTourNotFound_ShouldPropagateNotFoundException()
+    {
+        _catalogGrpcMock
+            .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("Tour not found"));
+
+        var command = new CreateBookingCommand(new CreateBookingRequest(TourId, null));
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]

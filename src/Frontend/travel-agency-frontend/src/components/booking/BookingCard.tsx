@@ -1,21 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Users, Calendar, ArrowRight } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import type { Booking } from '@/types';
 import BookingStatusBadge from './BookingStatusBadge';
+import { formatDate, formatBudgetFrom } from '@/utils/format';
 
 interface BookingCardProps {
   booking: Booking;
-}
-
-function formatBudget(amount: number): string {
-  return 'от ' + amount.toLocaleString('ru-RU') + ' ₽';
-}
-
-function formatDate(dateStr: string): string {
-  return format(new Date(dateStr), 'd MMM yyyy', { locale: ru });
 }
 
 export default function BookingCard({ booking }: BookingCardProps) {
@@ -60,7 +51,7 @@ export default function BookingCard({ booking }: BookingCardProps) {
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-2">
           <BookingStatusBadge status={booking.status} size="sm" />
           <span className="font-heading text-sm font-semibold text-primary">
-            {formatBudget(booking.budget)}
+            {formatBudgetFrom(booking.budget)}
           </span>
         </div>
       </div>

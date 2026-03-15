@@ -1,13 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { User } from '@/types';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { Card, Avatar, Button, Input } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { updateProfile } from '@/api/auth';
-import { mockUser } from '@/mocks/users';
 
 const BREADCRUMBS = [
   { label: 'Личный кабинет', path: '/dashboard' },
@@ -17,16 +15,27 @@ const BREADCRUMBS = [
 export default function ProfilePage() {
   const storeUser = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
-  const user = storeUser ?? mockUser;
 
   const [form, setForm] = useState({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    phone: user.phone,
-    email: user.email,
-    passport: user.passport ?? '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    passport: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (storeUser) {
+      setForm({
+        firstName: storeUser.firstName,
+        lastName: storeUser.lastName,
+        phone: storeUser.phone,
+        email: storeUser.email,
+        passport: storeUser.passport ?? '',
+      });
+    }
+  }, [storeUser]);
 
   function handleChange(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -39,7 +48,6 @@ export default function ProfilePage() {
         firstName: form.firstName,
         lastName: form.lastName,
         phone: form.phone,
-        passport: form.passport || undefined,
       });
       setUser(updated);
       toast.success('Профиль успешно обновлён');
@@ -49,6 +57,18 @@ export default function ProfilePage() {
       setIsSaving(false);
     }
   }
+
+  if (!storeUser) {
+    return (
+      <PageTransition>
+        <div className="flex items-center justify-center p-12">
+          <p className="text-warm-gray">Загрузка профиля...</p>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  const user = storeUser;
 
   return (
     <PageTransition>
@@ -108,8 +128,9 @@ export default function ProfilePage() {
             <Input
               label="Паспорт"
               value={form.passport}
-              onChange={(e) => handleChange('passport', e.target.value)}
-              placeholder="Серия и номер"
+              disabled
+              placeholder="Пока не поддерживается"
+              title="Редактирование паспортных данных пока недоступно"
             />
           </div>
 

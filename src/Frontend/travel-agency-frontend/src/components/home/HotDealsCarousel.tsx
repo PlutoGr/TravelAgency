@@ -10,12 +10,9 @@ import { StarRating } from '@/components/ui';
 import { FadeInOnScroll } from '@/components/common';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import { mockTours } from '@/mocks/tours';
+import { formatPrice } from '@/utils/format';
 
 const hotTours = mockTours.filter((t) => t.isHot);
-
-function formatPrice(price: number) {
-  return price.toLocaleString('ru-RU');
-}
 
 export default function HotDealsCarousel() {
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
@@ -81,7 +78,7 @@ export default function HotDealsCarousel() {
                     <button
                       onClick={(e) => {
                         e.preventDefault();
-                        toggleFavorite(tour.id);
+                        toggleFavorite(tour.id, tour);
                       }}
                       className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm transition-colors hover:bg-white"
                       aria-label="Добавить в избранное"
@@ -125,11 +122,11 @@ export default function HotDealsCarousel() {
                       <div>
                         {tour.originalPrice && (
                           <span className="block text-sm text-warm-gray line-through">
-                            {formatPrice(tour.originalPrice)} ₽
+                            {formatPrice(tour.originalPrice)}
                           </span>
                         )}
                         <span className="font-heading text-xl font-bold text-terracotta">
-                          {formatPrice(tour.price)} ₽
+                          {formatPrice(tour.price)}
                         </span>
                       </div>
                       <Link

@@ -11,11 +11,14 @@ namespace TravelAgency.Booking.Application.Features.Favorites.Commands.AddFavori
 public sealed class AddFavoriteCommandHandler(
     ICurrentUserService currentUser,
     IFavoriteRepository favoriteRepository,
+    ICatalogGrpcClient catalogGrpcClient,
     IUnitOfWork unitOfWork)
     : IRequestHandler<AddFavoriteCommand, FavoriteDto>
 {
     public async Task<FavoriteDto> Handle(AddFavoriteCommand command, CancellationToken cancellationToken)
     {
+        _ = await catalogGrpcClient.GetTourSnapshotAsync(command.TourId, cancellationToken);
+
         var existing = await favoriteRepository.GetAsync(currentUser.UserId, command.TourId, cancellationToken);
 
         if (existing is not null)

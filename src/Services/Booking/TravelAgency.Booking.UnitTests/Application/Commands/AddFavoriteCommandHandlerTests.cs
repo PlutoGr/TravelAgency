@@ -1,4 +1,5 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Features.Favorites.Commands.AddFavorite;
 using TravelAgency.Booking.Domain.Entities;
@@ -10,6 +11,7 @@ public class AddFavoriteCommandHandlerTests
 {
     private readonly Mock<ICurrentUserService> _currentUserMock = new();
     private readonly Mock<IFavoriteRepository> _favoriteRepoMock = new();
+    private readonly Mock<ICatalogGrpcClient> _catalogGrpcMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly AddFavoriteCommandHandler _handler;
 
@@ -20,9 +22,14 @@ public class AddFavoriteCommandHandlerTests
     {
         _currentUserMock.Setup(u => u.UserId).Returns(UserId);
 
+        _catalogGrpcMock
+            .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TourSnapshotDto(TourId, "Tour", "Desc", 100m, "USD", 7, DateTime.UtcNow));
+
         _handler = new AddFavoriteCommandHandler(
             _currentUserMock.Object,
             _favoriteRepoMock.Object,
+            _catalogGrpcMock.Object,
             _unitOfWorkMock.Object);
     }
 
@@ -40,6 +47,18 @@ public class AddFavoriteCommandHandlerTests
 
         _favoriteRepoMock.Verify(r => r.Stage(It.IsAny<Favorite>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTourNotFound_ShouldPropagateNotFoundException()
+    {
+        _catalogGrpcMock
+            .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("Tour not found"));
+
+        var act = async () => await _handler.Handle(new AddFavoriteCommand(TourId), CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 
     [Fact]

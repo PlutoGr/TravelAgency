@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Identity.Application\TravelAgency.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Contracts.Grpc\TravelAgency.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
   </ItemGroup>
 
@@ -23,8 +24,5 @@
     <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Protobuf Include="Protos\identity.proto" GrpcServices="Server" />
-  </ItemGroup>
 
 </Project>

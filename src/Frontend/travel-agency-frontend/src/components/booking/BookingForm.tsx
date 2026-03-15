@@ -1,45 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Users, Calendar, Wallet, FileText, Check } from 'lucide-react';
+import { FileText, Check, MapPin, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Input, Select } from '@/components/ui';
+import type { Tour } from '@/types';
+import { Button } from '@/components/ui';
 import { createBooking } from '@/api/bookings';
+import { getTours, getTourById } from '@/api/catalog';
 
 interface BookingFormProps {
+  /** Pre-selected tour (e.g. from tour detail page) */
+  tourId?: string;
+  /** Tours to choose from; when absent, fetches from catalog */
+  tours?: Tour[];
   onSuccess?: () => void;
   onClose?: () => void;
 }
 
-const COUNTRIES = [
-  { value: 'Турция', label: 'Турция' },
-  { value: 'Египет', label: 'Египет' },
-  { value: 'Таиланд', label: 'Таиланд' },
-  { value: 'Мальдивы', label: 'Мальдивы' },
-  { value: 'Италия', label: 'Италия' },
-  { value: 'Греция', label: 'Греция' },
-  { value: 'Испания', label: 'Испания' },
-  { value: 'Индонезия', label: 'Индонезия' },
-  { value: 'Шри-Ланка', label: 'Шри-Ланка' },
-  { value: 'ОАЭ', label: 'ОАЭ' },
-  { value: 'Черногория', label: 'Черногория' },
-  { value: 'Грузия', label: 'Грузия' },
-];
-
 const STEPS = [
-  { id: 1, title: 'Направление' },
-  { id: 2, title: 'Бюджет' },
+  { id: 1, title: 'Выбор тура' },
+  { id: 2, title: 'Комментарий' },
   { id: 3, title: 'Подтверждение' },
 ];
-
-type FormData = {
-  country: string;
-  destination: string;
-  dateFrom: string;
-  dateTo: string;
-  travelers: number;
-  budget: number;
-  notes: string;
-};
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -53,23 +34,53 @@ const slideVariants = {
   }),
 };
 
-export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
+export default function BookingForm({
+  tourId: initialTourId,
+  tours: initialTours,
+  onSuccess,
+  onClose,
+}: BookingFormProps) {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState<FormData>({
-    country: '',
-    destination: '',
-    dateFrom: '',
-    dateTo: '',
-    travelers: 2,
-    budget: 100000,
-    notes: '',
-  });
+  const [tours, setTours] = useState<Tour[]>(initialTours ?? []);
+  const [selectedTour, setSelectedTour] = useState<Tour | null>(
+    initialTourId && initialTours?.length
+      ? initialTours.find((t) => t.id === initialTourId) ?? null
+      : null,
+  );
+  const [comment, setComment] = useState('');
+  const [isLoadingTours, setIsLoadingTours] = useState(!initialTours?.length);
 
-  function updateField<K extends keyof FormData>(key: K, value: FormData[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+  useEffect(() => {
+    if (initialTours?.length) {
+      setTours(initialTours);
+      if (initialTourId) {
+        const t = initialTours.find((t) => t.id === initialTourId);
+        if (t) setSelectedTour(t);
+      }
+      setIsLoadingTours(false);
+      return;
+    }
+    if (initialTourId) {
+      getTourById(initialTourId)
+        .then((t) => {
+          setTours([t]);
+          setSelectedTour(t);
+        })
+        .catch(() => {
+          toast.error('Не удалось загрузить тур');
+        })
+        .finally(() => setIsLoadingTours(false));
+      return;
+    }
+    getTours()
+      .then((res) => setTours(res.items))
+      .catch(() => {
+        toast.error('Не удалось загрузить список туров');
+      })
+      .finally(() => setIsLoadingTours(false));
+  }, [initialTourId, initialTours]);
 
   function goNext() {
     setDirection(1);
@@ -82,27 +93,20 @@ export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
   }
 
   function canProceed(): boolean {
-    if (step === 1) {
-      return !!form.country && !!form.destination && !!form.dateFrom && !!form.dateTo;
-    }
-    if (step === 2) {
-      return form.budget > 0;
-    }
+    if (step === 1) return !!selectedTour || !!initialTourId;
+    if (step === 2) return true;
     return true;
   }
 
   async function handleSubmit() {
+    const tid = selectedTour?.id ?? initialTourId;
+    if (!tid) {
+      toast.error('Выберите тур');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await createBooking({
-        country: form.country,
-        destination: form.destination,
-        dateFrom: form.dateFrom,
-        dateTo: form.dateTo,
-        travelers: form.travelers,
-        budget: form.budget,
-        notes: form.notes,
-      });
+      await createBooking({ tourId: tid, comment: comment || undefined });
       toast.success('Заявка успешно создана!');
       onSuccess?.();
       onClose?.();
@@ -113,6 +117,8 @@ export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
     }
   }
 
+  const effectiveTour = selectedTour ?? (initialTourId && tours.find((t) => t.id === initialTourId));
+
   return (
     <div className="space-y-6">
       {/* Progress */}
@@ -122,9 +128,7 @@ export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
             <div className="flex items-center gap-2">
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                  step >= s.id
-                    ? 'bg-primary text-white'
-                    : 'bg-sand text-warm-gray'
+                  step >= s.id ? 'bg-primary text-white' : 'bg-sand text-warm-gray'
                 }`}
               >
                 {step > s.id ? <Check size={16} /> : s.id}
@@ -162,47 +166,49 @@ export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
               transition={{ duration: 0.25, ease: 'easeInOut' }}
               className="space-y-4"
             >
-              <Select
-                label="Страна"
-                options={COUNTRIES}
-                value={form.country}
-                onChange={(v) => updateField('country', v)}
-                placeholder="Выберите страну"
-              />
-
-              <Input
-                label="Город / курорт"
-                icon={MapPin}
-                value={form.destination}
-                onChange={(e) => updateField('destination', e.target.value)}
-              />
-
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Дата вылета"
-                  icon={Calendar}
-                  type="date"
-                  value={form.dateFrom}
-                  onChange={(e) => updateField('dateFrom', e.target.value)}
-                />
-                <Input
-                  label="Дата возврата"
-                  icon={Calendar}
-                  type="date"
-                  value={form.dateTo}
-                  onChange={(e) => updateField('dateTo', e.target.value)}
-                />
-              </div>
-
-              <Input
-                label="Количество туристов"
-                icon={Users}
-                type="number"
-                min={1}
-                max={10}
-                value={form.travelers}
-                onChange={(e) => updateField('travelers', Number(e.target.value))}
-              />
+              {isLoadingTours ? (
+                <p className="py-8 text-center text-sm text-warm-gray">
+                  Загрузка туров...
+                </p>
+              ) : tours.length === 0 ? (
+                <p className="py-8 text-center text-sm text-warm-gray">
+                  Туры не найдены
+                </p>
+              ) : (
+                <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  {tours.map((tour) => (
+                    <button
+                      key={tour.id}
+                      type="button"
+                      onClick={() => setSelectedTour(tour)}
+                      className={`flex w-full items-center gap-3 rounded-[12px] border p-3 text-left transition-colors ${
+                        selectedTour?.id === tour.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-sand hover:bg-cream'
+                      }`}
+                    >
+                      {tour.photos[0] && (
+                        <img
+                          src={tour.photos[0]}
+                          alt={tour.title}
+                          className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-dark">
+                          {tour.title}
+                        </p>
+                        <p className="text-xs text-warm-gray">
+                          {tour.country} · {tour.duration} дн.
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-primary">
+                          {tour.price.toLocaleString('ru-RU')} ₽
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -217,23 +223,13 @@ export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
               transition={{ duration: 0.25, ease: 'easeInOut' }}
               className="space-y-4"
             >
-              <Input
-                label="Бюджет (₽)"
-                icon={Wallet}
-                type="number"
-                min={0}
-                step={10000}
-                value={form.budget}
-                onChange={(e) => updateField('budget', Number(e.target.value))}
-              />
-
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-primary">
                   Пожелания и комментарии
                 </label>
                 <textarea
-                  value={form.notes}
-                  onChange={(e) => updateField('notes', e.target.value)}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
                   rows={5}
                   placeholder="Расскажите о ваших пожеланиях..."
                   className="w-full rounded-[12px] border border-sand bg-white px-4 py-3 text-dark outline-none transition-all placeholder:text-warm-gray focus:border-primary focus:ring-2 focus:ring-primary/10"
@@ -258,31 +254,25 @@ export default function BookingForm({ onSuccess, onClose }: BookingFormProps) {
               </h3>
 
               <div className="space-y-3 rounded-[12px] bg-sand/50 p-4">
-                <SummaryRow
-                  icon={<MapPin size={16} />}
-                  label="Направление"
-                  value={`${form.destination}, ${form.country}`}
-                />
-                <SummaryRow
-                  icon={<Calendar size={16} />}
-                  label="Даты"
-                  value={`${form.dateFrom} — ${form.dateTo}`}
-                />
-                <SummaryRow
-                  icon={<Users size={16} />}
-                  label="Туристов"
-                  value={String(form.travelers)}
-                />
-                <SummaryRow
-                  icon={<Wallet size={16} />}
-                  label="Бюджет"
-                  value={`${form.budget.toLocaleString('ru-RU')} ₽`}
-                />
-                {form.notes && (
+                {effectiveTour && (
+                  <>
+                    <SummaryRow
+                      icon={<MapPin size={16} />}
+                      label="Тур"
+                      value={`${effectiveTour.title}, ${effectiveTour.country}`}
+                    />
+                    <SummaryRow
+                      icon={<Wallet size={16} />}
+                      label="Цена"
+                      value={`${effectiveTour.price.toLocaleString('ru-RU')} ₽`}
+                    />
+                  </>
+                )}
+                {comment && (
                   <SummaryRow
                     icon={<FileText size={16} />}
                     label="Пожелания"
-                    value={form.notes}
+                    value={comment}
                   />
                 )}
               </div>

@@ -32,15 +32,12 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseUrls(url);
-        builder.WebHost.ConfigureLogging(l =>
-        {
-            l.ClearProviders();
-            l.SetMinimumLevel(LogLevel.Warning);
-        });
+        builder.Logging.ClearProviders();
+        builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
         var app = builder.Build();
 
-        app.Use(async (context, next) =>
+        app.Run(async context =>
         {
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";

@@ -22,7 +22,7 @@ public partial class Program
         services.AddCatalogInfrastructure(configuration);
         services.AddCatalogAuthentication(configuration);
         services.AddCatalogTracing();
-        services.AddCatalogCors();
+        services.AddCatalogCors(configuration);
         services.AddCatalogHealthChecks(configuration);
         services.AddCatalogSwagger();
         services.AddControllers();
@@ -34,7 +34,7 @@ public partial class Program
     {
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
-        app.UseCors("AllowAll");
+        app.UseCatalogCors();
 
         if (app.Environment.IsDevelopment())
         {

@@ -6,14 +6,7 @@ import 'swiper/swiper-bundle.css';
 import { StarRating } from '@/components/ui';
 import { FadeInOnScroll } from '@/components/common';
 import { mockReviews } from '@/mocks/reviews';
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
+import { formatDateFull } from '@/utils/format';
 
 export default function ReviewsSlider() {
   return (
@@ -56,7 +49,7 @@ export default function ReviewsSlider() {
                       <p className="font-heading text-sm font-bold text-dark">
                         {review.userName}
                       </p>
-                      <p className="text-xs text-warm-gray">{formatDate(review.date)}</p>
+                      <p className="text-xs text-warm-gray">{formatDateFull(review.date)}</p>
                     </div>
                   </div>
 
