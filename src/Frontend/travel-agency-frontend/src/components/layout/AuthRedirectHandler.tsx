@@ -13,10 +13,12 @@ export default function AuthRedirectHandler() {
 
   useEffect(() => {
     const auth = searchParams.get('auth');
+    const returnTo = searchParams.get('returnTo');
     if (auth === 'login') {
-      openAuthModal('login');
+      openAuthModal('login', returnTo ? decodeURIComponent(returnTo) : undefined);
       const next = new URLSearchParams(searchParams);
       next.delete('auth');
+      next.delete('returnTo');
       const qs = next.toString();
       navigate(qs ? `/?${qs}` : '/', { replace: true });
     }

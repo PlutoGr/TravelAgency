@@ -6,6 +6,8 @@ import clsx from 'clsx';
 import type { Tour } from '@/types';
 import { Card, Badge, StarRating, Button } from '@/components/ui';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import { formatPrice } from '@/utils/format';
 
 interface TourCardProps {
@@ -14,6 +16,8 @@ interface TourCardProps {
 
 export default function TourCard({ tour }: TourCardProps) {
   const { toggleFavorite, isFavorite } = useFavoritesStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
   const [imgLoaded, setImgLoaded] = useState(false);
   const favorite = isFavorite(tour.id);
 
@@ -53,6 +57,10 @@ export default function TourCard({ tour }: TourCardProps) {
           whileTap={{ scale: 0.8 }}
           onClick={(e) => {
             e.preventDefault();
+            if (!isAuthenticated) {
+              openAuthModal('login');
+              return;
+            }
             toggleFavorite(tour.id, tour);
           }}
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm transition-colors hover:bg-white"

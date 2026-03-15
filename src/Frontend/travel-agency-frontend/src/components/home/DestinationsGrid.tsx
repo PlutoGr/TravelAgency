@@ -1,11 +1,40 @@
 import { Link } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import clsx from 'clsx';
+import { useQuery } from '@tanstack/react-query';
 
 import { FadeInOnScroll } from '@/components/common';
-import { mockDestinations } from '@/mocks/destinations';
+import { getDestinations } from '@/api/catalog';
+import { Skeleton } from '@/components/ui';
+
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop';
 
 export default function DestinationsGrid() {
+  const { data: destinations = [], isLoading } = useQuery({
+    queryKey: ['destinations'],
+    queryFn: getDestinations,
+  });
+
+  if (isLoading) {
+    return (
+      <section id="destinations" className="bg-sand py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-14 text-center">
+            <Skeleton className="mx-auto h-10 w-64" />
+            <div className="mx-auto mt-4 h-1 w-16 rounded-full bg-terracotta" />
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="aspect-[4/3] rounded-2xl" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (destinations.length === 0) return null;
+
   return (
     <section id="destinations" className="bg-sand py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4">
@@ -19,7 +48,7 @@ export default function DestinationsGrid() {
         </FadeInOnScroll>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {mockDestinations.map((dest, idx) => {
+          {destinations.map((dest, idx) => {
             const isLarge = idx < 2;
 
             return (
@@ -36,7 +65,7 @@ export default function DestinationsGrid() {
                   )}
                 >
                   <img
-                    src={dest.photo}
+                    src={dest.photo || PLACEHOLDER_IMAGE}
                     alt={dest.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
@@ -56,9 +85,11 @@ export default function DestinationsGrid() {
                     >
                       {dest.name}
                     </h3>
-                    <span className="mt-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                      {dest.tourCount} туров
-                    </span>
+                    {dest.tourCount > 0 && (
+                      <span className="mt-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                        {dest.tourCount} туров
+                      </span>
+                    )}
                   </div>
                 </Link>
               </FadeInOnScroll>

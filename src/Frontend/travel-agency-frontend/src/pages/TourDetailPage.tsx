@@ -18,10 +18,13 @@ import { ru } from 'date-fns/locale';
 import type { Tour } from '@/types';
 import { formatPrice } from '@/utils/format';
 import { PageTransition, FadeInOnScroll } from '@/components/common';
-import { Button, StarRating, Skeleton, Badge, Select } from '@/components/ui';
+import { Button, StarRating, Skeleton, Badge, Select, Modal } from '@/components/ui';
 import { TourGallery, TourTabs, TourCard } from '@/components/tour';
+import { BookingForm } from '@/components/booking';
 import { getTourById, getTours } from '@/api/catalog';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 
 function DetailSkeleton() {
   return (
@@ -42,8 +45,10 @@ function DetailSkeleton() {
   );
 }
 
-function BookingSidebar({ tour }: { tour: Tour }) {
+function BookingSidebar({ tour, onBookClick }: { tour: Tour; onBookClick: () => void }) {
   const { toggleFavorite, isFavorite } = useFavoritesStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
   const [travelers, setTravelers] = useState(1);
   const [selectedDateIndex, setSelectedDateIndex] = useState<string>('0');
   const favorite = isFavorite(tour.id);
@@ -143,7 +148,18 @@ function BookingSidebar({ tour }: { tour: Tour }) {
       </div>
 
       {/* Actions */}
-      <Button variant="terracotta" size="lg" fullWidth>
+      <Button
+        variant="terracotta"
+        size="lg"
+        fullWidth
+        onClick={() => {
+          if (!isAuthenticated) {
+            openAuthModal('login');
+            return;
+          }
+          onBookClick();
+        }}
+      >
         Забронировать
       </Button>
 
@@ -154,7 +170,13 @@ function BookingSidebar({ tour }: { tour: Tour }) {
       {/* Favorite */}
       <motion.button
         whileTap={{ scale: 0.95 }}
-        onClick={() => toggleFavorite(tour.id, tour)}
+        onClick={() => {
+          if (!isAuthenticated) {
+            openAuthModal('login');
+            return;
+          }
+          toggleFavorite(tour.id, tour);
+        }}
         className={clsx(
           'flex w-full items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-medium transition-colors',
           favorite
@@ -213,6 +235,9 @@ function SimilarTours({ tour }: { tour: Tour }) {
 
 export default function TourDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const openAuthModal = useUIStore((s) => s.openAuthModal);
 
   const { data: tour, isLoading, error } = useQuery({
     queryKey: ['tour', id],
@@ -306,7 +331,10 @@ export default function TourDetailPage() {
 
           {/* Right Sidebar */}
           <div className="hidden lg:block">
-            <BookingSidebar tour={tour} />
+            <BookingSidebar
+              tour={tour}
+              onBookClick={() => setShowBookingModal(true)}
+            />
           </div>
         </div>
 
@@ -323,7 +351,17 @@ export default function TourDetailPage() {
                 {formatPrice(tour.price)}
               </p>
             </div>
-            <Button variant="terracotta" size="md">
+            <Button
+              variant="terracotta"
+              size="md"
+              onClick={() => {
+                if (!isAuthenticated) {
+                  openAuthModal('login');
+                  return;
+                }
+                setShowBookingModal(true);
+              }}
+            >
               Забронировать
             </Button>
           </div>
@@ -335,6 +373,20 @@ export default function TourDetailPage() {
         {/* Bottom spacer for mobile booking bar */}
         <div className="h-20 lg:hidden" />
       </div>
+
+      <Modal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        title="Оформить заявку"
+        size="lg"
+      >
+        <BookingForm
+          tourId={tour.id}
+          tours={[tour]}
+          onSuccess={() => setShowBookingModal(false)}
+          onClose={() => setShowBookingModal(false)}
+        />
+      </Modal>
     </PageTransition>
   );
 }

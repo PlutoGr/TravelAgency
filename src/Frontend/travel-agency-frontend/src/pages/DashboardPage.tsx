@@ -10,8 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import toast from 'react-hot-toast';
 import { getMyBookings } from '@/api/bookings';
-import { mockTours } from '@/mocks/tours';
-import { mockUser } from '@/mocks/users';
+import { getTours } from '@/api/catalog';
 
 const ACTION_TILES = [
   {
@@ -29,20 +28,24 @@ const ACTION_TILES = [
   },
 ] as const;
 
-function getRandomTours(count: number) {
-  const shuffled = [...mockTours].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-}
-
 export default function DashboardPage() {
-  const storeUser = useAuthStore((s) => s.user);
-  const user = storeUser ?? mockUser;
+  const user = useAuthStore((s) => s.user);
   const favCount = useFavoritesStore((s) => s.count);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [suggestedTours, setSuggestedTours] = useState<Awaited<ReturnType<typeof getTours>>['items']>([]);
 
-  const suggestedTours = useMemo(() => getRandomTours(4), []);
+  useEffect(() => {
+    getTours(undefined, 1, 8)
+      .then((res) => {
+        const shuffled = [...res.items].sort(() => 0.5 - Math.random());
+        setSuggestedTours(shuffled.slice(0, 4));
+      })
+      .catch(() => {
+        setSuggestedTours([]);
+      });
+  }, []);
 
   useEffect(() => {
     getMyBookings()
@@ -71,7 +74,7 @@ export default function DashboardPage() {
       <div className="space-y-8">
         {/* Welcome */}
         <h1 className="font-heading text-2xl font-bold text-dark sm:text-3xl">
-          Добро пожаловать, {user.firstName}!
+          Добро пожаловать{user?.firstName ? `, ${user.firstName}` : ''}!
         </h1>
 
         {/* Action Tiles */}
@@ -150,16 +153,18 @@ export default function DashboardPage() {
         )}
 
         {/* Suggested Tours */}
-        <section>
-          <h2 className="mb-4 font-heading text-lg font-semibold text-dark">
-            Вам может понравиться
-          </h2>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {suggestedTours.map((tour) => (
-              <TourCard key={tour.id} tour={tour} />
-            ))}
-          </div>
-        </section>
+        {suggestedTours.length > 0 && (
+          <section>
+            <h2 className="mb-4 font-heading text-lg font-semibold text-dark">
+              Вам может понравиться
+            </h2>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {suggestedTours.map((tour) => (
+                <TourCard key={tour.id} tour={tour} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Booking Form Modal */}

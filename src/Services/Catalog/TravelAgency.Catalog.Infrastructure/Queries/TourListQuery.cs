@@ -91,12 +91,12 @@ public class TourListQuery : ITourListQuery
                 t.Prices
                     .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
                     .Select(p => (decimal?)p.PricePerPerson)
-                    .Min(),
+                    .Min() ?? t.Prices.Select(p => (decimal?)p.PricePerPerson).Min(),
                 t.Prices
                     .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
                     .OrderBy(p => p.PricePerPerson)
                     .Select(p => p.Currency)
-                    .FirstOrDefault(),
+                    .FirstOrDefault() ?? t.Prices.OrderBy(p => p.PricePerPerson).Select(p => p.Currency).FirstOrDefault(),
                 t.IsActive))
             .ToListAsync(ct);
 

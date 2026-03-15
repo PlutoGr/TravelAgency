@@ -27,7 +27,7 @@ function mapUserProfileDtoToUser(dto: UserProfileDto): User {
     firstName: dto.firstName,
     lastName: dto.lastName,
     phone: dto.phone ?? '',
-    role: dto.role as UserRole,
+    role: dto.role.toLowerCase() as UserRole,
     createdAt: dto.createdAt,
   };
 }
