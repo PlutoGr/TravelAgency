@@ -1,5 +1,6 @@
 using MediatR;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Media.Domain.Enums;
 using TravelAgency.Media.Domain.Exceptions;
 using TravelAgency.Media.Domain.Interfaces;
@@ -20,7 +21,7 @@ public sealed class DeleteMediaCommandHandler(
         if (file.Status == MediaFileStatus.Deleted)
             throw new MediaNotFoundException(request.Id);
 
-        if (file.OwnerId != currentUser.UserId)
+        if (file.OwnerId != currentUser.UserId.ToString())
             throw new MediaAccessDeniedException(request.Id);
 
         file.MarkAsDeleted();

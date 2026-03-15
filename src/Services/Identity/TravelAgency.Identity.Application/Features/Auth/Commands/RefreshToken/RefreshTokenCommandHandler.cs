@@ -28,7 +28,7 @@ public sealed class RefreshTokenCommandHandler(
             throw new UnauthorizedException("Invalid or expired refresh token.");
 
         var user = await userRepository.GetByIdAsync(oldToken.UserId, cancellationToken)
-            ?? throw new NotFoundException("User not found.");
+            ?? throw new UnauthorizedException("Invalid or expired refresh token.");
 
         var accessTokenDto = jwtTokenService.GenerateAccessToken(user);
         var newRefreshTokenString = jwtTokenService.GenerateRefreshToken();

@@ -11,7 +11,7 @@ public static class JwtTokenHelper
     private const string Audience = "test-audience";
     private const string SigningKey = "test-signing-key-must-be-at-least-32-chars-long!";
 
-    public static string GenerateToken(string userId = "test-user-id", string role = "Client")
+    public static string GenerateToken(string userId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", string role = "Client")
     {
         var claims = new[]
         {

@@ -33,6 +33,7 @@ dotnet run
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
 | `ConnectionStrings__CatalogDb` | appsettings | Строка подключения PostgreSQL |
+| `GrpcSettings__InternalServiceToken` | — | Токен для gRPC service-to-service auth (обязателен для gRPC) |
 | `JwtSettings__SigningKey` | appsettings | Ключ подписи JWT (должен совпадать с Identity) |
 | `JwtSettings__Issuer` | `TravelAgency.Identity` | Issuer токена |
 | `JwtSettings__Audience` | `TravelAgency` | Audience токена |

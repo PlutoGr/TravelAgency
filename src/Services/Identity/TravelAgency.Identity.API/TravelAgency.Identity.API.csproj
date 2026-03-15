@@ -7,9 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="TravelAgency.Identity.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Identity.Infrastructure\TravelAgency.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\TravelAgency.Identity.Application\TravelAgency.Identity.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

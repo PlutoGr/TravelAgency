@@ -1,6 +1,6 @@
 using MediatR;
 using TravelAgency.Catalog.Application.DTOs;
-using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Interfaces;
 
 namespace TravelAgency.Catalog.Application.Features.Directions.Queries.GetDirections;
 

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
-using TravelAgency.Identity.API.Middleware;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Identity.IntegrationTests.Middleware;
 

@@ -18,8 +18,6 @@ namespace TravelAgency.Booking.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
-    // Keep the connection open for the factory lifetime so the SQLite in-memory
-    // database persists across all requests made during a test class.
     private readonly SqliteConnection _connection;
 
     public Mock<ICatalogGrpcClient> CatalogGrpcClientMock { get; } = new();
@@ -37,7 +35,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         // Default: return a sensible tour snapshot so CreateBooking doesn't need extra setup
         CatalogGrpcClientMock
             .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Guid tourId, CancellationToken _) => new TourSnapshotDto(
+            .ReturnsAsync((Guid tourId, CancellationToken _) => new BookingTourSnapshotDto(
                 tourId, "Test Tour", "A great tour", 999.99m, "USD", 7, DateTime.UtcNow));
 
         // Default: return null for Identity (client details not enriched in tests unless explicitly set up)
@@ -117,7 +115,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["JwtSettings:Issuer"] = "TestIssuer",
                 ["JwtSettings:Audience"] = "TestAudience",
                 ["JwtSettings:SigningKey"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
-                ["JwtSettings:AccessTokenExpirationMinutes"] = "60",
+                ["JwtSettings:AccessTokenExpirationMinutes"] = "15",
                 ["JwtSettings:ValidateLifetime"] = "true",
                 ["ConnectionStrings:BookingDb"] = "Server=localhost;Database=TestDb;",
                 ["GrpcClients:CatalogServiceUrl"] = "http://localhost:5000",

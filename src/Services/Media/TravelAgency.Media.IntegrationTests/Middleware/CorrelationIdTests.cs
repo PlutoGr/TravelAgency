@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
-using TravelAgency.Media.API.Middleware;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Media.IntegrationTests.Middleware;
 

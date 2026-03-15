@@ -1,7 +1,7 @@
 using MediatR;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Application.Exceptions;
-using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Application.Mappings;
 using TravelAgency.Catalog.Domain.Entities;
 

@@ -1,5 +1,6 @@
 using MediatR;
 using TravelAgency.Chat.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Chat.Application.DTOs;
 using TravelAgency.Chat.Application.Exceptions;
 using TravelAgency.Chat.Application.Mapping;
@@ -14,18 +15,18 @@ namespace TravelAgency.Chat.Application.Features.Messages.Commands.SendMessage;
 /// Handles SendMessageCommand: verifies booking access, creates and persists a chat message.
 /// </summary>
 public sealed class SendMessageCommandHandler(
-    IBookingAccessService bookingAccess,
+    IBookingGrpcClient bookingGrpcClient,
     ICurrentUserService currentUser,
     IChatMessageRepository messageRepository)
     : IRequestHandler<SendMessageCommand, ChatMessageDto>
 {
     public async Task<ChatMessageDto> Handle(SendMessageCommand command, CancellationToken cancellationToken)
     {
-        var canAccess = await bookingAccess.CanAccessBookingAsync(command.BookingId, ct: cancellationToken);
+        var userId = currentUser.UserId;
+        var canAccess = await bookingGrpcClient.ValidateBookingAccessAsync(command.BookingId, userId, cancellationToken);
         if (!canAccess)
             throw new ForbiddenException("You do not have access to this booking.");
 
-        var userId = currentUser.UserId;
         if (userId == Guid.Empty)
             throw new ForbiddenException("Invalid user identity.");
 

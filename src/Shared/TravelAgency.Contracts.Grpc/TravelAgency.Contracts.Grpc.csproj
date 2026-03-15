@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Protobuf Include="Protos\booking.proto" GrpcServices="Both" />
     <Protobuf Include="Protos\catalog.proto" GrpcServices="Both" />
     <Protobuf Include="Protos\identity.proto" GrpcServices="Both" />
   </ItemGroup>

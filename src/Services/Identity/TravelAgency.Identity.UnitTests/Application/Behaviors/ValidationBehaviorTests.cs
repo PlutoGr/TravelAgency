@@ -3,8 +3,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
 using Moq;
-using TravelAgency.Identity.Application.Behaviors;
-using TravelAgency.Identity.Application.Exceptions;
+using TravelAgency.Shared.Infrastructure.Behaviors;
 
 namespace TravelAgency.Identity.UnitTests.Application.Behaviors;
 
@@ -40,7 +39,7 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_WhenValidationFails_ThrowsAppValidationException()
+    public async Task Handle_WhenValidationFails_ThrowsValidationException()
     {
         var failures = new List<ValidationFailure>
         {
@@ -56,10 +55,9 @@ public class ValidationBehaviorTests
 
         var act = async () => await behavior.Handle(new TestRequest("invalid"), next, CancellationToken.None);
 
-        var exception = await act.Should().ThrowAsync<AppValidationException>();
-        exception.Which.Errors.Should().ContainKey("Email");
-        exception.Which.Errors.Should().ContainKey("Password");
-        exception.Which.StatusCode.Should().Be(400);
+        var exception = await act.Should().ThrowAsync<ValidationException>();
+        exception.Which.Errors.Should().Contain(e => e.PropertyName == "Email");
+        exception.Which.Errors.Should().Contain(e => e.PropertyName == "Password");
     }
 
     [Fact]
@@ -81,8 +79,8 @@ public class ValidationBehaviorTests
             _ => Task.FromResult(new TestResponse("unused")),
             CancellationToken.None);
 
-        var exception = await act.Should().ThrowAsync<AppValidationException>();
-        exception.Which.Errors["Email"].Should().HaveCount(2);
+        var exception = await act.Should().ThrowAsync<ValidationException>();
+        exception.Which.Errors.Where(e => e.PropertyName == "Email").Should().HaveCount(2);
     }
 
     [Fact]

@@ -34,7 +34,8 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
             .ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<Stream>(new MemoryStream("resized"u8.ToArray())));
 
-        var token = JwtTokenHelper.GenerateToken();
+        var userId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+        var token = JwtTokenHelper.GenerateToken(userId);
         using var request = new HttpRequestMessage(HttpMethod.Post, "/media/upload");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Content = BuildMultipartContent(

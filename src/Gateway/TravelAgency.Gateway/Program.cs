@@ -3,6 +3,7 @@ using Serilog;
 using System.Net;
 using TravelAgency.Gateway.Extensions;
 using TravelAgency.Gateway.Middleware;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -38,6 +39,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("Referrer-Policy", "no-referrer");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
     await next();
 });
 app.UseSerilogRequestLogging();
@@ -45,8 +47,10 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseCors(CorsExtensions.GatewayCorsPolicyName);
 app.UseGatewayRateLimiting();
+app.UseMiddleware<CookieToAuthHeaderMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AuthRequestMiddleware>();
 
 // Endpoints
 app.MapGatewayHealthChecks();

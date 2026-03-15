@@ -6,7 +6,9 @@ using Microsoft.Extensions.Hosting;
 using TravelAgency.Catalog.Application;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Infrastructure.Persistence;
+using TravelAgency.Catalog.Infrastructure.Queries;
 using TravelAgency.Catalog.Infrastructure.Repositories;
 
 namespace TravelAgency.Catalog.Infrastructure.Extensions;
@@ -43,6 +45,7 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
         services.AddScoped<ITourRepository, TourRepository>();
+        services.AddScoped<ITourListQuery, TourListQuery>();
         services.AddScoped<IDirectionRepository, DirectionRepository>();
 
         return services;

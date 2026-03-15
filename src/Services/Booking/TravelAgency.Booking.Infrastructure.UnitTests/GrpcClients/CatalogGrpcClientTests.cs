@@ -3,6 +3,7 @@ using Grpc.Net.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Booking.Application.Exceptions;
@@ -46,7 +47,7 @@ public class CatalogGrpcClientTests
     }
 
     [Fact]
-    public async Task GetTourSnapshotAsync_ProtoContractFields_AreCorrectlyMappedToTourSnapshotDto()
+    public async Task GetTourSnapshotAsync_ProtoContractFields_AreCorrectlyMappedToBookingTourSnapshotDto()
     {
         var tourId = Guid.NewGuid();
         var snapshotTakenAt = "2025-03-14T12:00:00.0000000Z";
@@ -123,7 +124,13 @@ public class CatalogGrpcClientTests
             HttpClient = httpClient
         });
         var grpcClient = new CatalogService.CatalogServiceClient(channel);
-        return new CatalogGrpcClient(grpcClient);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["GrpcSettings:InternalServiceToken"] = "test-token"
+            })
+            .Build();
+        return new CatalogGrpcClient(grpcClient, configuration);
     }
 
     private class ResponseHolder

@@ -1,6 +1,6 @@
 using TravelAgency.Catalog.Application.Exceptions;
 using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourById;
-using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
 

@@ -14,7 +14,9 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using TravelAgency.Catalog.API.Middleware;
 using TravelAgency.Catalog.Infrastructure.Persistence;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Catalog.IntegrationTests;
 
@@ -51,6 +53,7 @@ public class CustomWebApplicationFactory : IAsyncDisposable
             ["JwtSettings:Audience"] = "TestAudience",
             ["JwtSettings:SigningKey"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
             ["ConnectionStrings:CatalogDb"] = "DataSource=:memory:",
+            ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
             ["Serilog:MinimumLevel:Default"] = "Warning"
         };
 
@@ -63,6 +66,8 @@ public class CustomWebApplicationFactory : IAsyncDisposable
         builder.Configuration.AddInMemoryCollection(testSettings);
 
         builder.WebHost.UseTestServer();
+
+        builder.Services.AddSingleton<IExceptionMapper, CatalogExceptionMapper>();
 
         builder.Logging.ClearProviders();
         builder.Logging.SetMinimumLevel(LogLevel.Warning);

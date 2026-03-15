@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.TestHost;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using TravelAgency.Gateway.Middleware;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Gateway.Tests.Middleware;
 

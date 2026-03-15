@@ -37,8 +37,8 @@ public static class BookingMapper
             favorite.TourId,
             favorite.AddedAt);
 
-    public static TourSnapshotDto ToDto(this TourSnapshot snapshot) =>
-        new(
+    public static BookingTourSnapshotDto ToDto(this TourSnapshot snapshot) =>
+        new BookingTourSnapshotDto(
             snapshot.TourId,
             snapshot.Title,
             snapshot.Description,

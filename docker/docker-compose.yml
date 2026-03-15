@@ -94,6 +94,8 @@ services:
       - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
       - JwtSettings__Issuer=TravelAgency.Identity
       - JwtSettings__Audience=TravelAgency
+      # REQUIRED for gRPC service-to-service auth. Set GRPC_INTERNAL_SERVICE_TOKEN in your .env file.
+      - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,7 +133,8 @@ services:
       - ASPNETCORE_RUN_MIGRATIONS=true
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=travel_chat;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - ConnectionStrings__Redis=redis:6379
-      - Services__BookingServiceUrl=http://booking-service:8080
+      - GrpcClients__BookingServiceUrl=http://booking-service:8080
+      - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
       - JwtSettings__SigningKey=${JWT_SIGNING_KEY}
       - JwtSettings__Issuer=TravelAgency.Identity
       - JwtSettings__Audience=TravelAgency
@@ -153,6 +156,8 @@ services:
       - "5050:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_RUN_MIGRATIONS=true
+      - ConnectionStrings__MediaDb=Host=postgres;Port=5432;Database=travel_media;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - Storage__ServiceUrl=http://minio:9000
       - Storage__AccessKey=${MINIO_ROOT_USER}
       - Storage__SecretKey=${MINIO_ROOT_PASSWORD}
@@ -161,6 +166,8 @@ services:
       - JwtSettings__Issuer=TravelAgency.Identity
       - JwtSettings__Audience=TravelAgency
     depends_on:
+      postgres:
+        condition: service_healthy
       minio:
         condition: service_started
     profiles:

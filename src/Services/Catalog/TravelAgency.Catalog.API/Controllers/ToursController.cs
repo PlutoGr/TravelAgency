@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Application.Features.Tours.Commands.CreateTour;
+using TravelAgency.Catalog.Application.Features.Tours.Commands.DeleteTour;
 using TravelAgency.Catalog.Application.Features.Tours.Commands.UpdateTour;
 using TravelAgency.Catalog.Application.Features.Tours.Commands.UpdateTourPrices;
 using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourById;
@@ -65,5 +66,15 @@ public class ToursController : ControllerBase
     {
         var result = await _mediator.Send(new UpdateTourPricesCommand(id, request), ct);
         return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "ManagerOrAdmin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteTour(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new DeleteTourCommand(id), ct);
+        return NoContent();
     }
 }

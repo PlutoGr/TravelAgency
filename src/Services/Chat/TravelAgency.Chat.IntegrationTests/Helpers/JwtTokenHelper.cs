@@ -14,7 +14,7 @@ public static class JwtTokenHelper
 {
     private const string Issuer = "TravelAgency.Identity";
     private const string Audience = "TravelAgency";
-    private const string SigningKey = "CHANGE_ME_32_CHARACTERS_MINIMUM_KEY";
+    private const string SigningKey = "TestSigningKeyWithAtLeast32CharactersForHMAC";
 
     /// <summary>
     /// Generates a valid JWT for the Chat API with Client role.

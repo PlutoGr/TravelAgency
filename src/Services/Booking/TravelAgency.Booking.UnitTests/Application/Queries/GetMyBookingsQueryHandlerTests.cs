@@ -1,4 +1,5 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.Features.Bookings.Queries.GetMyBookings;
 using TravelAgency.Booking.Domain.Enums;
 using TravelAgency.Booking.Domain.Interfaces;

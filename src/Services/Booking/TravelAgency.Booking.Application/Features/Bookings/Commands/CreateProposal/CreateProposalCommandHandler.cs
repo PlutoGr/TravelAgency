@@ -1,5 +1,6 @@
 using MediatR;
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Mapping;
@@ -19,7 +20,7 @@ public sealed class CreateProposalCommandHandler(
 {
     public async Task<ProposalDto> Handle(CreateProposalCommand command, CancellationToken cancellationToken)
     {
-        if (currentUser.Role is not AppRoles.Manager and currentUser.Role is not AppRoles.Admin)
+        if (currentUser.Role != AppRoles.Manager && currentUser.Role != AppRoles.Admin)
             throw new ForbiddenException("Only managers or admins can create proposals.");
 
         var booking = await bookingRepository.GetByIdAsync(command.BookingId, cancellationToken)

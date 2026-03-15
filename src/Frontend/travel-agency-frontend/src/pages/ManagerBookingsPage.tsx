@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
   Search,
   Eye,
@@ -34,7 +35,6 @@ const BREADCRUMBS = [
   { label: 'Бронирования' },
 ];
 
-/** Manager bookings list shows empty until backend adds manager bookings endpoint */
 export default function ManagerBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,13 +49,15 @@ export default function ManagerBookingsPage() {
     try {
       const data = await getAllBookings({
         status: (statusFilter || undefined) as BookingStatus | undefined,
-        search: searchQuery || undefined,
       });
       setBookings(data);
+    } catch {
+      toast.error('Не удалось загрузить бронирования');
+      setBookings([]);
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, searchQuery]);
+  }, [statusFilter]);
 
   useEffect(() => {
     loadBookings();
@@ -68,18 +70,28 @@ export default function ManagerBookingsPage() {
   const filteredBookings = useMemo(() => {
     let result = bookings;
 
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (b) =>
+          b.clientName.toLowerCase().includes(q) ||
+          b.destination.toLowerCase().includes(q) ||
+          (b.country && b.country.toLowerCase().includes(q)),
+      );
+    }
+
     if (dateFrom) {
-      result = result.filter((b) => b.dateFrom >= dateFrom);
+      result = result.filter((b) => (b.createdAt ?? '').slice(0, 10) >= dateFrom);
     }
     if (dateTo) {
-      result = result.filter((b) => b.dateTo <= dateTo);
+      result = result.filter((b) => (b.createdAt ?? '').slice(0, 10) <= dateTo);
     }
 
     return result.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [bookings, dateFrom, dateTo]);
+  }, [bookings, searchQuery, dateFrom, dateTo]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
   const paginatedBookings = filteredBookings.slice(

@@ -25,7 +25,14 @@ public sealed class MockBackendServer : IAsyncDisposable
     /// Starts a mock backend on a random port. Returns 200 for any path and echoes
     /// the request path in the response body as JSON: {"path": "/identity/me"}.
     /// </summary>
-    public static async Task<MockBackendServer> StartAsync(CancellationToken cancellationToken = default)
+    /// <param name="authTokenSupport">When true, /identity/login, /identity/register, and /identity/refresh
+    /// return 200/201 with token JSON for auth response transform tests; /identity/logout returns 204.</param>
+    /// <param name="validJwtFactory">When provided with authTokenSupport, used for accessToken so Gateway
+    /// accepts it for protected routes. If null, returns "test-access-token" (invalid for JWT validation).</param>
+    public static async Task<MockBackendServer> StartAsync(
+        bool authTokenSupport = false,
+        Func<string>? validJwtFactory = null,
+        CancellationToken cancellationToken = default)
     {
         var port = GetAvailablePort();
         var url = $"http://127.0.0.1:{port}";
@@ -39,10 +46,29 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         app.Run(async context =>
         {
-            context.Response.StatusCode = 200;
-            context.Response.ContentType = "application/json";
             var path = context.Request.Path.Value ?? "/";
-            await context.Response.WriteAsJsonAsync(new { path }, cancellationToken);
+            if (authTokenSupport && IsLogoutPath(path))
+            {
+                context.Response.StatusCode = 204;
+            }
+            else if (authTokenSupport && IsAuthTokenPath(path))
+            {
+                context.Response.StatusCode = path.Contains("register", StringComparison.OrdinalIgnoreCase) ? 201 : 200;
+                context.Response.ContentType = "application/json";
+                var accessToken = validJwtFactory != null ? validJwtFactory() : "test-access-token";
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    accessToken,
+                    refreshToken = "test-refresh-token",
+                    expiresAt = DateTime.UtcNow.AddHours(1)
+                }, cancellationToken);
+            }
+            else
+            {
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { path }, cancellationToken);
+            }
         });
 
         await app.StartAsync(cancellationToken);
@@ -60,6 +86,14 @@ public sealed class MockBackendServer : IAsyncDisposable
         await StopAsync();
         await _app.DisposeAsync();
     }
+
+    private static bool IsLogoutPath(string path) =>
+        path.Equals("/identity/logout", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAuthTokenPath(string path) =>
+        path.Equals("/identity/login", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/identity/register", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/identity/refresh", StringComparison.OrdinalIgnoreCase);
 
     private static int GetAvailablePort()
     {

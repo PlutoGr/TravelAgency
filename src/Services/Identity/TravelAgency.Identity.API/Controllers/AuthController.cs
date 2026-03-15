@@ -9,7 +9,7 @@ using TravelAgency.Identity.Application.Features.Auth.Commands.RefreshToken;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Register;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
 using TravelAgency.Identity.Application.Features.Profile.Queries.GetProfile;
-using TravelAgency.Identity.Application.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 
 namespace TravelAgency.Identity.API.Controllers;
 
@@ -63,6 +63,9 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
+        if (!_currentUserService.IsAuthenticated)
+            return Unauthorized();
+
         await _mediator.Send(new LogoutCommand(request.RefreshToken, _currentUserService.UserId), ct);
         return NoContent();
     }

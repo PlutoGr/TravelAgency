@@ -1,4 +1,5 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
 using TravelAgency.Booking.Application.Exceptions;
@@ -40,8 +41,8 @@ public class CreateProposalCommandHandlerTests
         return booking;
     }
 
-    private TourSnapshotDto CreateSnapshotDto(Guid tourId) =>
-        new TourSnapshotDto(tourId, "Test Tour", "Description", 2000m, "USD", 7, DateTime.UtcNow);
+    private BookingTourSnapshotDto CreateSnapshotDto(Guid tourId) =>
+        new BookingTourSnapshotDto(tourId, "Test Tour", "Description", 2000m, "USD", 7, DateTime.UtcNow);
 
     [Fact]
     public async Task Handle_Manager_CanCreateProposal()

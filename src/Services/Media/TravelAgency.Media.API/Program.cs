@@ -2,8 +2,12 @@ using Serilog;
 using TravelAgency.Media.API.Extensions;
 using TravelAgency.Media.API.Middleware;
 using TravelAgency.Media.Infrastructure;
+using TravelAgency.Media.Infrastructure.Extensions;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<IExceptionMapper, MediaExceptionMapper>();
 
 builder.Host.AddMediaSerilog();
 
@@ -28,6 +32,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseMediaSwagger();
 }
+app.UseMediaMigrations();
 
 app.UseAuthentication();
 app.UseAuthorization();

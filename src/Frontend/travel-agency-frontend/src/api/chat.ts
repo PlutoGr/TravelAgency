@@ -1,7 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 import type { ChatMessage } from '@/types';
 import { apiClient } from '@/api/client';
-import { AUTH_TOKEN_KEY } from '@/api/client';
 
 /** DTO shape from backend ChatMessageDto */
 interface ChatMessageDto {
@@ -47,12 +46,7 @@ function getOrCreateConnection(bookingId: string): signalR.HubConnection {
 
   const hubUrl = getHubBaseUrl();
   conn = new signalR.HubConnectionBuilder()
-    .withUrl(hubUrl, {
-      accessTokenFactory: () => {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY);
-        return token ?? '';
-      },
-    })
+    .withUrl(hubUrl, { withCredentials: true })
     .withAutomaticReconnect()
     .build();
 

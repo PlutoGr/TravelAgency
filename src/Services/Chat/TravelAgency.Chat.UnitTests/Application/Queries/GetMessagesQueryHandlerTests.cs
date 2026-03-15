@@ -4,28 +4,32 @@ using TravelAgency.Chat.Application.Features.Messages.Queries.GetMessages;
 using TravelAgency.Chat.Domain.Entities;
 using TravelAgency.Chat.Domain.Enums;
 using TravelAgency.Chat.Domain.Interfaces;
+using TravelAgency.Shared.Contracts.Abstractions;
 
 namespace TravelAgency.Chat.UnitTests.Application.Queries;
 
 public class GetMessagesQueryHandlerTests
 {
-    private readonly IBookingAccessService _bookingAccessService = Substitute.For<IBookingAccessService>();
+    private readonly IBookingGrpcClient _bookingGrpcClient = Substitute.For<IBookingGrpcClient>();
+    private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IChatMessageRepository _messageRepository = Substitute.For<IChatMessageRepository>();
     private readonly GetMessagesQueryHandler _handler;
 
     private static readonly Guid BookingId = Guid.NewGuid();
+    private static readonly Guid UserId = Guid.NewGuid();
 
     public GetMessagesQueryHandlerTests()
     {
-        _handler = new GetMessagesQueryHandler(_bookingAccessService, _messageRepository);
+        _handler = new GetMessagesQueryHandler(_bookingGrpcClient, _currentUserService, _messageRepository);
     }
 
     [Fact]
     public async Task Handle_WhenUserHasAccess_ReturnsMessages()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        _currentUserService.UserId.Returns(UserId);
 
         var message = ChatMessage.Create(
             BookingId,
@@ -49,9 +53,10 @@ public class GetMessagesQueryHandlerTests
     [Fact]
     public async Task Handle_WhenUserHasNoAccess_ThrowsForbiddenException()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
+        _currentUserService.UserId.Returns(UserId);
 
         var act = async () => await _handler.Handle(new GetMessagesQuery(BookingId), CancellationToken.None);
 
@@ -62,9 +67,10 @@ public class GetMessagesQueryHandlerTests
     [Fact]
     public async Task Handle_WhenNoMessages_ReturnsEmptyList()
     {
-        _bookingAccessService
-            .CanAccessBookingAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        _currentUserService.UserId.Returns(UserId);
 
         _messageRepository
             .GetByBookingIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

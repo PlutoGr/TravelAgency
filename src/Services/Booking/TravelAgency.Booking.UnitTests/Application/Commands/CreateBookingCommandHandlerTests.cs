@@ -1,4 +1,5 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
 using TravelAgency.Booking.Application.Exceptions;
@@ -28,7 +29,7 @@ public class CreateBookingCommandHandlerTests
 
         _catalogGrpcMock
             .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TourSnapshotDto(TourId, "Tour", "Desc", 100m, "USD", 7, DateTime.UtcNow));
+            .ReturnsAsync(new BookingTourSnapshotDto(TourId, "Tour", "Desc", 100m, "USD", 7, DateTime.UtcNow));
 
         _handler = new CreateBookingCommandHandler(
             _currentUserMock.Object,

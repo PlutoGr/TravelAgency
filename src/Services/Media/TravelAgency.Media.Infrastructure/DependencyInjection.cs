@@ -1,16 +1,19 @@
 using Amazon.Runtime;
 using Amazon.S3;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using TravelAgency.Media.Application;
 using TravelAgency.Media.Application.Interfaces;
 using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Interfaces;
-using Microsoft.Extensions.Hosting;
 using TravelAgency.Media.Infrastructure.HealthChecks;
+using TravelAgency.Media.Infrastructure.Persistence;
 using TravelAgency.Media.Infrastructure.Repositories;
 using TravelAgency.Media.Infrastructure.Services;
 using TravelAgency.Media.Infrastructure.Storage;
+using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Media.Infrastructure;
 
@@ -24,6 +27,14 @@ public static class DependencyInjection
 
         services.Configure<StorageSettings>(configuration.GetSection("Storage"));
         services.Configure<UploadSettings>(configuration.GetSection("Upload"));
+
+        var connectionString = configuration.GetConnectionString("MediaDb")
+            ?? "Host=localhost;Port=5432;Database=travel_media;Username=postgres;Password=postgres";
+
+        services.AddDbContext<MediaDbContext>(options =>
+            options.UseNpgsql(connectionString));
+
+        services.AddScoped<IMediaFileRepository, MediaFileRepository>();
 
         // S3 / MinIO client — singleton as it is thread-safe and expensive to construct
         var storageConfig = configuration.GetSection("Storage").Get<StorageSettings>()
@@ -45,10 +56,8 @@ public static class DependencyInjection
         services.AddSingleton<S3HealthCheck>();
         services.AddHostedService<BucketInitializer>();
 
-        services.AddSingleton<IMediaFileRepository, InMemoryMediaFileRepository>();
-
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddCurrentUserService();
 
         return services;
     }

@@ -27,12 +27,16 @@ export default function TourCard({ tour }: TourCardProps) {
               imgLoaded ? 'opacity-0' : 'opacity-100',
             )}
           />
-          <img
-            src={tour.photos[0]}
-            alt={tour.title}
-            onLoad={() => setImgLoaded(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          {tour.photos?.[0] ? (
+            <img
+              src={tour.photos[0]}
+              alt={tour.title}
+              onLoad={() => setImgLoaded(true)}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="h-full w-full bg-sand" aria-hidden />
+          )}
         </Link>
 
         {tour.isHot && (

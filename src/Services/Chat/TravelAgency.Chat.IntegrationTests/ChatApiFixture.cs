@@ -13,7 +13,7 @@ public sealed class ChatApiFixture : IAsyncLifetime
     private readonly ChatApiApplicationFactory _factory = new();
 
     /// <summary>
-    /// Exposes the factory for tests that need to configure mocks (e.g. IBookingAccessService).
+    /// Exposes the factory for tests that need to configure mocks (e.g. IBookingGrpcClient).
     /// </summary>
     public ChatApiApplicationFactory Factory => _factory;
 

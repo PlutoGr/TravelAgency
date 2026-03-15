@@ -5,6 +5,7 @@
 ## Prerequisites
 
 - **.NET 10 SDK** — при нескольких SDK используйте `source scripts/use-dotnet10.sh` из корня репозитория
+- **PostgreSQL** — база `travel_media` (создаётся через `docker/init-db.sql` или вручную)
 - **MinIO** (или AWS S3) — объектное хранилище
 - **Identity service** — для JWT (генерация токенов)
 
@@ -33,6 +34,7 @@ dotnet run
 
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
+| `ConnectionStrings__MediaDb` | appsettings | Строка подключения PostgreSQL (`Host=...;Port=5432;Database=travel_media;Username=...;Password=...`) |
 | `Storage__ServiceUrl` | `http://minio:9000` | URL MinIO/S3 |
 | `Storage__AccessKey` | appsettings | Access key |
 | `Storage__SecretKey` | appsettings | Secret key |
@@ -41,17 +43,20 @@ dotnet run
 | `JwtSettings__SigningKey` | appsettings | Ключ подписи JWT |
 | `JwtSettings__Issuer` | `TravelAgency.Identity` | Issuer токена |
 | `JwtSettings__Audience` | `TravelAgency` | Audience токена |
+| `ASPNETCORE_RUN_MIGRATIONS` | `false` | `true` — автоматический запуск миграций при старте |
+
+**База данных:** Media требует PostgreSQL (как и другие сервисы). Строка подключения задаётся через `ConnectionStrings__MediaDb`.
 
 ## Docker
 
 ```bash
 # Из корня репозитория
 cd docker
-cp .env.example .env   # заполните JWT_SIGNING_KEY, MINIO_ROOT_*
+cp .env.example .env   # заполните JWT_SIGNING_KEY, POSTGRES_*, MINIO_ROOT_*
 docker compose --profile full up media-service
 ```
 
-Media: `http://localhost:5050`. Требуется `.env` с `JWT_SIGNING_KEY`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`. MinIO должен быть запущен.
+Media: `http://localhost:5050`. Требуется `.env` с `JWT_SIGNING_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`. PostgreSQL и MinIO должны быть запущены.
 
 ### Локальный MinIO
 

@@ -7,6 +7,7 @@ using TravelAgency.Identity.Domain.Interfaces;
 using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Repositories;
 using TravelAgency.Identity.Infrastructure.Services;
+using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Identity.API.Extensions;
 
@@ -45,8 +46,8 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasherService>();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();
+        services.AddCurrentUserService();
 
         return services;
     }

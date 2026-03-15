@@ -1,4 +1,5 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Features.Favorites.Commands.AddFavorite;
@@ -24,7 +25,7 @@ public class AddFavoriteCommandHandlerTests
 
         _catalogGrpcMock
             .Setup(c => c.GetTourSnapshotAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TourSnapshotDto(TourId, "Tour", "Desc", 100m, "USD", 7, DateTime.UtcNow));
+            .ReturnsAsync(new BookingTourSnapshotDto(TourId, "Tour", "Desc", 100m, "USD", 7, DateTime.UtcNow));
 
         _handler = new AddFavoriteCommandHandler(
             _currentUserMock.Object,

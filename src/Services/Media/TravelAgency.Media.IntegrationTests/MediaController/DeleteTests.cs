@@ -15,13 +15,15 @@ public class DeleteTests : IClassFixture<CustomWebApplicationFactory>
         _client = factory.CreateClient();
     }
 
-    private async Task<MediaFile> SeedMediaFileAsync(string ownerId = "test-user-id")
+    private async Task<MediaFile> SeedMediaFileAsync(string ownerId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     {
+        _factory.EnsureDatabaseCreated();
         var file = MediaFile.Create("photo.jpg", "image/jpeg", 1024, "storage/key/photo.jpg", ownerId);
 
         using var scope = _factory.Services.CreateScope();
         var repo = scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
         await repo.AddAsync(file);
+        await repo.SaveChangesAsync();
 
         return file;
     }
@@ -29,7 +31,7 @@ public class DeleteTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Delete_OwnFile_Returns204()
     {
-        const string userId = "owner-user-id";
+        const string userId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
         var mediaFile = await SeedMediaFileAsync(ownerId: userId);
         var token = JwtTokenHelper.GenerateToken(userId: userId);
 
@@ -44,8 +46,8 @@ public class DeleteTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Delete_OtherUsersFile_Returns403()
     {
-        var mediaFile = await SeedMediaFileAsync(ownerId: "other-user-id");
-        var token = JwtTokenHelper.GenerateToken(userId: "requester-user-id");
+        var mediaFile = await SeedMediaFileAsync(ownerId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var token = JwtTokenHelper.GenerateToken(userId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
         using var request = new HttpRequestMessage(HttpMethod.Delete, $"/media/{mediaFile.Id}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

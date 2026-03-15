@@ -1,4 +1,5 @@
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs.Requests;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.ConfirmProposal;

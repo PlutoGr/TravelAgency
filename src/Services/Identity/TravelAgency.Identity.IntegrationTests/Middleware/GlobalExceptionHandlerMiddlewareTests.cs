@@ -1,5 +1,6 @@
 using System.Net;
 using FluentAssertions;
+using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Identity.API.Middleware;
 using TravelAgency.Identity.Application.Exceptions;
+using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Identity.IntegrationTests.Middleware;
 
@@ -22,7 +24,11 @@ public class GlobalExceptionHandlerMiddlewareTests
             {
                 webBuilder.UseTestServer();
                 webBuilder.UseEnvironment(environment);
-                webBuilder.ConfigureServices(services => services.AddLogging());
+                webBuilder.ConfigureServices(services =>
+                {
+                    services.AddLogging();
+                    services.AddSingleton<IExceptionMapper, IdentityExceptionMapper>();
+                });
                 webBuilder.Configure(app =>
                 {
                     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
@@ -34,14 +40,13 @@ public class GlobalExceptionHandlerMiddlewareTests
     }
 
     [Fact]
-    public async Task WhenAppValidationExceptionThrown_Returns400WithErrors()
+    public async Task WhenValidationExceptionThrown_Returns400WithErrors()
     {
-        var errors = new Dictionary<string, string[]>
+        var failures = new List<FluentValidation.Results.ValidationFailure>
         {
-            ["Email"] = new[] { "Email is required" }
-        } as IReadOnlyDictionary<string, string[]>;
-
-        var client = await CreateClientThatThrowsAsync(new AppValidationException(errors!));
+            new("Email", "Email is required")
+        };
+        var client = await CreateClientThatThrowsAsync(new ValidationException(failures));
 
         var response = await client.GetAsync("/");
 

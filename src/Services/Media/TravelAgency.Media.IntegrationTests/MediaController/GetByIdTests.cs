@@ -17,11 +17,13 @@ public class GetByIdTests : IClassFixture<CustomWebApplicationFactory>
 
     private async Task<MediaFile> SeedMediaFileAsync(string ownerId = "test-user-id")
     {
+        _factory.EnsureDatabaseCreated();
         var file = MediaFile.Create("photo.jpg", "image/jpeg", 1024, "storage/key/photo.jpg", ownerId);
 
         using var scope = _factory.Services.CreateScope();
         var repo = scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
         await repo.AddAsync(file);
+        await repo.SaveChangesAsync();
 
         return file;
     }

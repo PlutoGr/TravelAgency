@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import type { RegisterRequest, User } from '@/types';
 import * as authApi from '@/api/auth';
-import { AUTH_TOKEN_KEY } from '@/api/client';
 
 type AuthState = {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -17,15 +15,14 @@ type AuthState = {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
   isAuthenticated: false,
   isLoading: false,
 
   login: async (email, password) => {
     set({ isLoading: true });
     try {
-      const { user, tokens } = await authApi.login({ email, password });
-      set({ user, token: tokens.accessToken, isAuthenticated: true });
+      const { user } = await authApi.login({ email, password });
+      set({ user, isAuthenticated: true });
     } finally {
       set({ isLoading: false });
     }
@@ -34,8 +31,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (data) => {
     set({ isLoading: true });
     try {
-      const { user, tokens } = await authApi.register(data);
-      set({ user, token: tokens.accessToken, isAuthenticated: true });
+      const { user } = await authApi.register(data);
+      set({ user, isAuthenticated: true });
     } finally {
       set({ isLoading: false });
     }
@@ -45,29 +42,25 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authApi.logout();
     } finally {
-      set({ user: null, token: null, isAuthenticated: false });
+      set({ user: null, isAuthenticated: false });
     }
   },
 
   setUser: (user) => set({ user }),
 
   checkAuth: () => {
-    // SECURITY: Token read from localStorage (XSS-vulnerable). Migration to httpOnly cookies planned.
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (token) {
-      set({ token, isAuthenticated: true, isLoading: true });
-      authApi
-        .getMe()
-        .then((user) => set({ user, isLoading: false }))
-        .catch((error) => {
-          const isAuthFailure = error?.response?.status === 401;
-          if (isAuthFailure) {
-            void authApi.logout();
-            set({ user: null, token: null, isAuthenticated: false, isLoading: false });
-          } else {
-            set({ isLoading: false });
-          }
-        });
-    }
+    set({ isLoading: true });
+    authApi
+      .getMe()
+      .then((user) => set({ user, isAuthenticated: true, isLoading: false }))
+      .catch((error) => {
+        const isAuthFailure = error?.response?.status === 401;
+        if (isAuthFailure) {
+          void authApi.logout();
+          set({ user: null, isAuthenticated: false, isLoading: false });
+        } else {
+          set({ isLoading: false });
+        }
+      });
   },
 }));

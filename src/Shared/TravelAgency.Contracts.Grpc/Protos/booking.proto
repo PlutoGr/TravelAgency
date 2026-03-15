@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "TravelAgency.Contracts.Grpc.Booking";
+
+package booking;
+
+service BookingService {
+  rpc ValidateBookingAccess (ValidateBookingAccessRequest) returns (ValidateBookingAccessResponse);
+}
+
+message ValidateBookingAccessRequest {
+  string booking_id = 1;
+  string user_id = 2;
+}
+
+message ValidateBookingAccessResponse {
+  bool has_access = 1;
+}

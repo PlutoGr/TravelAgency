@@ -5,15 +5,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Booking.Application;
+using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Contracts.Grpc.Catalog;
 using TravelAgency.Contracts.Grpc.Identity;
-using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Domain.Interfaces;
 using TravelAgency.Booking.Infrastructure.BackgroundServices;
 using TravelAgency.Booking.Infrastructure.GrpcClients;
 using TravelAgency.Booking.Infrastructure.Persistence;
 using TravelAgency.Booking.Infrastructure.Repositories;
-using TravelAgency.Booking.Infrastructure.Services;
+using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Booking.Infrastructure;
 
@@ -45,8 +45,8 @@ public static class DependencyInjection
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IFavoriteRepository, FavoriteRepository>();
         services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();
+        services.AddCurrentUserService();
 
         var catalogGrpcAddress = configuration["GrpcClients:CatalogServiceUrl"] ?? "http://catalog-service:8080";
         var identityGrpcAddress = configuration["GrpcClients:IdentityServiceUrl"] ?? "http://identity-service:8080";
