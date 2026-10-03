@@ -8,6 +8,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Транзитивная 9.0.0 уязвима (CVE-2026-33116), поднимаем явно -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.12" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
