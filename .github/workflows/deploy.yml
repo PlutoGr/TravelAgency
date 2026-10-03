@@ -7,8 +7,14 @@ name: Deploy to dev
 on:
   push:
     branches: [main]
-  # Ручной запуск из вкладки Actions
+  # Ручной запуск из вкладки Actions. Если указать rollback_sha, тесты и сборка пропускаются,
+  # а на сервер ставятся уже собранные образы этого коммита (откат на прошлую версию).
   workflow_dispatch:
+    inputs:
+      rollback_sha:
+        description: "Откат: полный sha коммита (40 символов), образы которого поставить. Пусто = обычный деплой"
+        required: false
+        default: ""
 
 # Два деплоя одновременно не запускаем: новый пуш ждёт, пока закончится предыдущий.
 concurrency:
@@ -33,6 +39,8 @@ jobs:
   # -------------------------------------------------------------------
   test:
     name: Тесты .NET
+    # При откате (rollback_sha) не нужны
+    if: ${{ !inputs.rollback_sha }}
     runs-on: ubuntu-latest
     steps:
       # Забираем код репозитория
@@ -65,6 +73,7 @@ jobs:
   build:
     name: Образ ${{ matrix.name }}
     needs: test
+    if: ${{ !inputs.rollback_sha }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -129,6 +138,8 @@ jobs:
   deploy:
     name: Деплой на travelagency-dev
     needs: build
+    # Обычный деплой: после успешной сборки. Откат: сборка пропущена, деплоим сразу.
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -141,22 +152,44 @@ jobs:
           echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
+      # Какие образы ставить: при обычном деплое образы этого коммита (тег = sha),
+      # при откате образы указанного коммита. Тег проверяем, чтобы в команду не попало лишнее.
+      - name: Выбор версии образов
+        env:
+          ROLLBACK_SHA: ${{ inputs.rollback_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          tag="${ROLLBACK_SHA:-$CURRENT_SHA}"
+          if ! echo "$tag" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "rollback_sha должен быть полным sha коммита (40 символов 0-9a-f)"; exit 1
+          fi
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "Ставим образы с тегом $tag"
+
       # На сервере: логин в GHCR встроенным GITHUB_TOKEN (передаётся через stdin, в лог не попадает;
       # токен живёт только до конца задачи, этого хватает на pull), обновление кода,
-      # скачивание новых образов и перезапуск контейнеров
+      # скачивание образов с тегом IMAGE_TAG и перезапуск контейнеров.
+      # В docker-compose.override.yml на сервере образы указаны как ...:${IMAGE_TAG:-latest}.
+      # Старые образы других коммитов удаляем, чтобы не забивать диск.
       - name: Деплой по SSH
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "$REGISTRY_TOKEN" | ssh deploy@${{ env.DEV_HOST }} \
-            "docker login ghcr.io -u '$REGISTRY_USER' --password-stdin && \
-             cd /opt/travelagency && \
-             git pull --ff-only && \
-             cd docker && \
-             docker compose pull && \
-             docker compose up -d && \
-             docker image prune -f"
+            "docker login ghcr.io -u '$REGISTRY_USER' --password-stdin"
+          ssh deploy@${{ env.DEV_HOST }} "IMAGE_TAG=$IMAGE_TAG bash -s" <<'EOF'
+          set -e
+          export IMAGE_TAG
+          cd /opt/travelagency
+          git pull --ff-only
+          cd docker
+          docker compose pull
+          docker compose up -d
+          docker images 'ghcr.io/plutogr/travelagency-*' --format '{{.Repository}}:{{.Tag}}' \
+            | grep -v -E ":(latest|$IMAGE_TAG)\$" | xargs -r docker rmi >/dev/null 2>&1 || true
+          docker image prune -f
+          EOF
 
       # Проверка здоровья (dev закрыт basic auth, сертификат самоподписанный, поэтому curl -k):
       #  - HTTP редиректит на HTTPS (301);

@@ -1,0 +1,78 @@
+# =====================================================================
+# Пример docker-compose.override.yml для dev-сервера (travelagency-dev, 185.75.189.253).
+# Настоящий файл лежит только на сервере: /opt/travelagency/docker/docker-compose.override.yml
+# (в .gitignore). Секретов здесь нет, они в /opt/travelagency/docker/.env.
+#
+# Как использовать на новом сервере:
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#   docker compose config   # проверить, что всё собирается
+#
+# Что делает:
+#  - наружу публикуется только frontend (nginx) на 80 и 443, остальное без портов
+#    (Docker обходит ufw для опубликованных портов, поэтому внутренним сервисам порты не даём);
+#  - gateway и консоль MinIO доступны только с самого сервера (127.0.0.1), снаружи через SSH-туннель;
+#  - образы сервисов берутся из GHCR, тег задаёт переменная IMAGE_TAG (sha коммита),
+#    без неё используется latest. Так работает деплой и откат (см. README, «Как устроен dev»);
+#  - сертификат и htpasswd монтируются с хоста, nginx в образе сам включает HTTPS и пароль.
+# =====================================================================
+services:
+  postgres:
+    ports: !reset []
+    restart: unless-stopped
+    # init-identity/chat/media.sql из базового файла в репозитории отсутствуют (см. #15):
+    # если bind-источника нет, Docker создаёт пустой каталог, и инициализация Postgres ломается.
+    volumes: !override
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+  minio:
+    # minio/minio больше нет в Docker Hub (сентябрь 2026). Образ собирается на сервере из исходников
+    # тега RELEASE.2025-10-15T17-29-55Z по docker/minio/Dockerfile (копия на сервере в /opt/travelagency-local/minio):
+    #   docker build -t travelagency-minio:RELEASE.2025-10-15T17-29-55Z docker/minio
+    image: travelagency-minio:RELEASE.2025-10-15T17-29-55Z
+    pull_policy: never
+    restart: unless-stopped
+    # Консоль только через туннель: ssh -L 9001:127.0.0.1:9001 travelagency-dev-platon
+    ports: !override
+      - "127.0.0.1:9001:9001"
+  gateway:
+    image: ghcr.io/plutogr/travelagency-gateway:${IMAGE_TAG:-latest}
+    # API напрямую только через туннель: ssh -L 5001:127.0.0.1:5001 travelagency-dev-platon
+    ports: !override
+      - "127.0.0.1:5001:8080"
+    restart: unless-stopped
+  identity-service:
+    image: ghcr.io/plutogr/travelagency-identity:${IMAGE_TAG:-latest}
+    ports: !reset []
+    restart: unless-stopped
+  catalog-service:
+    image: ghcr.io/plutogr/travelagency-catalog:${IMAGE_TAG:-latest}
+    ports: !reset []
+    restart: unless-stopped
+  booking-service:
+    image: ghcr.io/plutogr/travelagency-booking:${IMAGE_TAG:-latest}
+    ports: !reset []
+    restart: unless-stopped
+  chat-service:
+    image: ghcr.io/plutogr/travelagency-chat:${IMAGE_TAG:-latest}
+    ports: !reset []
+    restart: unless-stopped
+  media-service:
+    image: ghcr.io/plutogr/travelagency-media:${IMAGE_TAG:-latest}
+    ports: !reset []
+    restart: unless-stopped
+  frontend:
+    image: ghcr.io/plutogr/travelagency-frontend:${IMAGE_TAG:-latest}
+    # В базовом файле frontend в профиле full, на сервере запускаем всегда
+    profiles: !reset []
+    ports: !override
+      - "80:80"
+      - "443:443"
+    # Самоподписанный сертификат для IP (tls.crt, tls.key) и htpasswd для basic auth, вне репозитория.
+    # Если файлы смонтированы, nginx сам включает HTTPS, редирект с HTTP и пароль.
+    volumes:
+      - /etc/travelagency/certs:/etc/nginx/certs:ro
+      - /etc/travelagency/auth:/etc/nginx/auth:ro
+    restart: unless-stopped
