@@ -31,6 +31,14 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("JwtSettings__Issuer", TestIssuer);
         Environment.SetEnvironmentVariable("JwtSettings__Audience", TestAudience);
 
+        // Rate limits are read eagerly in Program.cs (AddGatewayRateLimiting) before
+        // ConfigureAppConfiguration overrides below are applied, so the in-memory values
+        // alone are not seen and appsettings.json (Auth:Limit = 5/s) wins, causing 429s.
+        // Environment variables are read during WebApplication.CreateBuilder(), so set them here.
+        Environment.SetEnvironmentVariable("RateLimiting__Auth__Disabled", "true");
+        Environment.SetEnvironmentVariable("RateLimiting__Auth__Limit", "1000");
+        Environment.SetEnvironmentVariable("RateLimiting__Global__Limit", "2000");
+
         builder.UseEnvironment("Testing");
 
         builder.ConfigureAppConfiguration((_, config) =>
