@@ -1,5 +1,7 @@
 # TravelAgency
 
+[![Deploy to dev](https://github.com/PlutoGr/TravelAgency/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/PlutoGr/TravelAgency/actions/workflows/deploy.yml)
+
 Microservices solution (Gateway, Identity, Catalog, Booking, Chat, Media) and frontend. All backend projects target **.NET 10**.
 
 ## Building the repository
