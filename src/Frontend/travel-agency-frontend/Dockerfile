@@ -19,7 +19,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/travelagency/http.conf
 COPY nginx-https.conf /etc/nginx/travelagency/https.conf
 COPY nginx-app.conf /etc/nginx/travelagency/app.conf
+COPY nginx-headers.conf /etc/nginx/travelagency/headers.conf
 COPY --chmod=755 nginx-entrypoint.sh /docker-entrypoint.d/40-travelagency.sh
-RUN touch /etc/nginx/travelagency/auth.conf
+# Значения по умолчанию, если entrypoint не запускался (basic auth выключен)
+RUN touch /etc/nginx/travelagency/auth.conf && \
+    printf 'map $remote_user $ta_gate_cookie { default ""; }\n' > /etc/nginx/conf.d/00-travelagency-gate.conf
 EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]
