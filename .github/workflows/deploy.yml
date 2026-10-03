@@ -19,8 +19,10 @@ env:
   IMAGE_PREFIX: ghcr.io/plutogr/travelagency
   DEV_HOST: 185.75.189.253
 
+# Встроенный GITHUB_TOKEN: чтение кода и публикация образов в GHCR (секреты для GHCR не нужны)
 permissions:
   contents: read
+  packages: write
 
 jobs:
   # -------------------------------------------------------------------
@@ -97,13 +99,13 @@ jobs:
       - name: Настройка Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Логин в GitHub Container Registry логином и токеном из секретов
+      # Логин в GitHub Container Registry встроенным GITHUB_TOKEN (права packages: write выше)
       - name: Логин в ghcr.io
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.GHCR_USERNAME }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Сборка и пуш образа с тегами latest и sha коммита; кеш слоёв хранится в GitHub Actions
       - name: Сборка и пуш образа
@@ -137,15 +139,16 @@ jobs:
           echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      # На сервере: логин в GHCR (токен передаётся через stdin, в лог не попадает),
-      # обновление кода, скачивание новых образов и перезапуск контейнеров
+      # На сервере: логин в GHCR встроенным GITHUB_TOKEN (передаётся через stdin, в лог не попадает;
+      # токен живёт только до конца задачи, этого хватает на pull), обновление кода,
+      # скачивание новых образов и перезапуск контейнеров
       - name: Деплой по SSH
         env:
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "$GHCR_TOKEN" | ssh deploy@${{ env.DEV_HOST }} \
-            "docker login ghcr.io -u '$GHCR_USERNAME' --password-stdin && \
+          echo "$REGISTRY_TOKEN" | ssh deploy@${{ env.DEV_HOST }} \
+            "docker login ghcr.io -u '$REGISTRY_USER' --password-stdin && \
              cd /opt/travelagency && \
              git pull --ff-only && \
              cd docker && \
