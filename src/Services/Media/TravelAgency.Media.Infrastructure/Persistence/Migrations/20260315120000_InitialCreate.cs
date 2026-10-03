@@ -1,5 +1,6 @@
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -34,7 +35,8 @@ namespace TravelAgency.Media.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     MediaFileId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Id = table.Column<int>(type: "integer", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     StorageKey = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: false),
                     Width = table.Column<int>(type: "integer", nullable: false),
                     Height = table.Column<int>(type: "integer", nullable: false)
