@@ -1,0 +1,66 @@
+# =====================================================================
+# Проверка pull request: сборка и тесты .NET и фронтенда. Ничего не публикует и не деплоит.
+# Деплой на dev только из main (deploy.yml).
+# =====================================================================
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# Новый пуш в тот же PR отменяет предыдущую проверку
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    name: .NET сборка и тесты
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Установка .NET 10 SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+
+      - name: dotnet restore
+        run: dotnet restore TravelAgency.sln
+
+      - name: dotnet build
+        run: dotnet build TravelAgency.sln -c Release --no-restore
+
+      - name: dotnet test
+        run: dotnet test TravelAgency.sln -c Release --no-build --verbosity normal
+
+  frontend:
+    name: Фронтенд сборка и тесты
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Frontend/travel-agency-frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Установка Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/Frontend/travel-agency-frontend/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      # tsc + vite build
+      - name: Сборка
+        run: npm run build
+
+      - name: Тесты (vitest)
+        run: npx vitest run
