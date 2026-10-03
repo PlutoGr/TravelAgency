@@ -60,6 +60,12 @@ services:
       - ReverseProxy__Clusters__booking-cluster__Destinations__destination1__Address=http://booking-service:8080
       - ReverseProxy__Clusters__chat-cluster__Destinations__destination1__Address=http://chat-service:8080
       - ReverseProxy__Clusters__media-cluster__Destinations__destination1__Address=http://media-service:8080
+      # Health check gateway (/health/ready) тоже должен ходить по именам сервисов, а не на localhost
+      - HealthCheckEndpoints__Identity=http://identity-service:8080/health/live
+      - HealthCheckEndpoints__Catalog=http://catalog-service:8080/health/live
+      - HealthCheckEndpoints__Booking=http://booking-service:8080/health/live
+      - HealthCheckEndpoints__Chat=http://chat-service:8080/health/live
+      - HealthCheckEndpoints__Media=http://media-service:8080/health/live
       # Disable strict auth rate limiting in Docker dev (allows registration flow)
       - RateLimiting__Auth__Disabled=true
       - ConnectionStrings__Redis=redis:6379
