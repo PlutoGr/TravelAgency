@@ -158,17 +158,22 @@ jobs:
              docker compose up -d && \
              docker image prune -f"
 
-      # Проверка здоровья: главная страница, API через nginx -> gateway -> catalog
-      # и готовность gateway (все сервисы отвечают). Ждём до 5 минут, иначе пайплайн красный.
+      # Проверка здоровья (dev закрыт basic auth, сертификат самоподписанный, поэтому curl -k):
+      #  - HTTP редиректит на HTTPS (301);
+      #  - HTTPS без пароля отвечает 401 (доступ закрыт);
+      #  - /healthz через nginx и gateway отвечает Healthy (все сервисы живы, путь открыт без пароля);
+      #  - API через gateway на сервере отвечает 200.
+      # Ждём до 5 минут, иначе пайплайн красный.
       - name: Проверка здоровья
         run: |
           for i in $(seq 1 30); do
-            site=$(curl -s -o /dev/null -w '%{http_code}' "http://${{ env.DEV_HOST }}/" || true)
-            api=$(curl -s -o /dev/null -w '%{http_code}' "http://${{ env.DEV_HOST }}/api/v1/catalog/tours" || true)
-            ready=$(ssh deploy@${{ env.DEV_HOST }} "curl -s -m 5 http://127.0.0.1:5001/health/ready" || true)
-            echo "Попытка $i: сайт=$site, API=$api, gateway=$ready"
-            if [ "$site" = "200" ] && [ "$api" = "200" ] && [ "$ready" = "Healthy" ]; then
-              echo "Сайт, API и все сервисы отвечают"; exit 0
+            http=$(curl -s -o /dev/null -w '%{http_code}' "http://${{ env.DEV_HOST }}/" || true)
+            auth=$(curl -sk -o /dev/null -w '%{http_code}' "https://${{ env.DEV_HOST }}/" || true)
+            health=$(curl -sk "https://${{ env.DEV_HOST }}/healthz" || true)
+            api=$(ssh deploy@${{ env.DEV_HOST }} "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/api/v1/catalog/tours" || true)
+            echo "Попытка $i: http=$http (ждём 301), https без пароля=$auth (ждём 401), healthz=$health, API=$api"
+            if [ "$http" = "301" ] && [ "$auth" = "401" ] && [ "$health" = "Healthy" ] && [ "$api" = "200" ]; then
+              echo "HTTPS, пароль, API и все сервисы в порядке"; exit 0
             fi
             sleep 10
           done
