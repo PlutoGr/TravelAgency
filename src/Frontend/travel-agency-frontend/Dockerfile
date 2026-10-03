@@ -13,6 +13,13 @@ RUN npm run build
 
 FROM nginx:alpine AS final
 COPY --from=build /app/dist /usr/share/nginx/html
+# Конфигурация nginx: HTTP по умолчанию, HTTPS и basic auth включаются entrypoint-скриптом,
+# если смонтированы /etc/nginx/certs/tls.{crt,key} и /etc/nginx/auth/htpasswd
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+COPY nginx.conf /etc/nginx/travelagency/http.conf
+COPY nginx-https.conf /etc/nginx/travelagency/https.conf
+COPY nginx-app.conf /etc/nginx/travelagency/app.conf
+COPY --chmod=755 nginx-entrypoint.sh /docker-entrypoint.d/40-travelagency.sh
+RUN touch /etc/nginx/travelagency/auth.conf
+EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]
