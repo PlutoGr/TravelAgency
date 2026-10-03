@@ -1,0 +1,64 @@
+# Dependabot: еженедельные PR с обновлениями зависимостей.
+# Мелкие обновления (minor/patch) собираются в один PR на экосистему, чтобы не было шума.
+# Обновления безопасности (security updates) приходят отдельно и сразу, если они включены
+# в Settings -> Code security.
+version: 2
+updates:
+  # NuGet: все проекты решения TravelAgency.sln
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 5
+    groups:
+      nuget-minor-patch:
+        update-types: [minor, patch]
+
+  # npm: фронтенд
+  - package-ecosystem: npm
+    directory: "/src/Frontend/travel-agency-frontend"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  # Docker: базовые образы в Dockerfile сервисов и фронтенда
+  - package-ecosystem: docker
+    directories:
+      - "/src/Gateway/TravelAgency.Gateway"
+      - "/src/Services/Identity/TravelAgency.Identity.API"
+      - "/src/Services/Catalog/TravelAgency.Catalog.API"
+      - "/src/Services/Booking/TravelAgency.Booking.API"
+      - "/src/Services/Chat/TravelAgency.Chat.API"
+      - "/src/Services/Media/TravelAgency.Media.API"
+      - "/src/Frontend/travel-agency-frontend"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 5
+    groups:
+      docker-images:
+        patterns: ["*"]
+
+  # GitHub Actions: версии actions в .github/workflows
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]

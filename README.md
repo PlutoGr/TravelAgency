@@ -74,6 +74,96 @@ When running in Development or with `ASPNETCORE_SEED_DATA=true`, Identity and Ca
 
 Catalog seeds directions (Мальдивы, Пхукет, Санторини, Бали, Дубай) and sample tours.
 
+## Как устроен dev
+
+Dev-среда работает на одном сервере Selectel (Ubuntu 24.04) в Docker Compose. Код и образы обновляются автоматически после каждого push в `main`.
+
+### Адрес и доступ
+
+- Сайт: **https://185.75.189.253**. Сертификат самоподписанный (домена пока нет, см. #17), поэтому браузер покажет предупреждение, его нужно принять один раз.
+- Сайт закрыт basic auth: пользователь `dev`, пароль у Платона (на его Mac в `~/.ssh/travelagency_dev_basic_auth.txt`). Без пароля открыты только `/robots.txt` и `/healthz`.
+- HTTP на 80 порту редиректит на HTTPS. Поисковики сайт не индексируют (`robots.txt` и заголовок `X-Robots-Tag`).
+- Снаружи открыты только порты 22, 80 и 443 (ufw). Gateway (`127.0.0.1:5001`) и консоль MinIO (`127.0.0.1:9001`) доступны только через SSH-туннель:
+
+```bash
+ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
+```
+
+### SSH
+
+Вход только по ключу, по паролю и под root нельзя, fail2ban банит перебор. Алиасы из `~/.ssh/config` на Mac Платона:
+
+| Алиас | Пользователь | Для чего |
+|---|---|---|
+| `travelagency-dev-platon` | `platon` | Администрирование, есть `sudo` и группа `docker` |
+| `travelagency-dev-deploy` | `deploy` | Пользователь деплоя (ключ в секрете `DEPLOY_SSH_KEY`), группа `docker`, без `sudo` |
+
+```
+Host travelagency-dev-platon
+    HostName 185.75.189.253
+    User platon
+    IdentityFile ~/.ssh/travelagency-dev
+    IdentitiesOnly yes
+```
+
+### Как работает деплой
+
+Workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) запускается на каждый push в `main`:
+
+1. `dotnet test` всего решения. Если тесты падают, дальше не идёт.
+2. Сборка 7 образов (gateway, identity, catalog, booking, chat, media, frontend) и пуш в GHCR с тегами `latest` и полным sha коммита: `ghcr.io/plutogr/travelagency-<имя>:<sha>`.
+3. По SSH под `deploy`: `git pull` в `/opt/travelagency`, `docker compose pull` и `docker compose up -d` с `IMAGE_TAG=<sha>`, удаление старых образов.
+4. Проверка здоровья: HTTP отдаёт 301, HTTPS без пароля 401, `/healthz` отвечает `Healthy` (gateway и все сервисы), API отвечает 200. Если за 5 минут не дождались, пайплайн красный.
+
+Отдельно на каждый push работает [поиск секретов gitleaks](.github/workflows/gitleaks.yml), а Dependabot раз в неделю присылает PR с обновлениями ([`.github/dependabot.yml`](.github/dependabot.yml)).
+
+Ручной запуск: Actions → Deploy to dev → Run workflow.
+
+### Откат на прошлую версию
+
+Образы каждого коммита хранятся в GHCR с тегом sha, поэтому откат не требует пересборки.
+
+- **Через GitHub Actions (основной способ):** Actions → Deploy to dev → Run workflow, в поле `rollback_sha` указать полный sha коммита (40 символов), на который откатываемся. Тесты и сборка пропускаются, на сервер ставятся образы этого коммита и выполняется та же проверка здоровья.
+- **Вручную на сервере** (образы в GHCR приватные, нужен свой токен GitHub с правом `read:packages`):
+
+```bash
+ssh travelagency-dev-deploy
+docker login ghcr.io -u <github-логин>    # пароль: токен с read:packages
+cd /opt/travelagency/docker
+export IMAGE_TAG=<полный sha>
+docker compose pull && docker compose up -d
+docker logout ghcr.io
+```
+
+Следующий обычный деплой вернёт свежую версию. Если откат нужен надолго, лучше сделать `git revert` плохого коммита и запушить его в `main`.
+
+### Где смотреть логи
+
+```bash
+ssh travelagency-dev-platon
+cd /opt/travelagency/docker
+docker compose ps                         # статус контейнеров
+docker compose logs -f --tail=200 gateway # логи сервиса (gateway, identity-service, frontend, ...)
+```
+
+Логи контейнеров ротируются Docker (`/etc/docker/daemon.json`: `max-size 10m`, `max-file 3`), диск они не забьют. Логи сборки и деплоя находятся во вкладке Actions.
+
+### Файлы, которые есть только на сервере
+
+Их нет в репозитории (секреты или настройки конкретного сервера). Бэкапы настраиваются в #18.
+
+| Файл на сервере | Что это | Откуда восстановить |
+|---|---|---|
+| `/opt/travelagency/docker/.env` | Секреты: пароли Postgres и MinIO, `JWT_SIGNING_KEY`, `GRPC_INTERNAL_SERVICE_TOKEN` | Шаблон `docker/.env.example`, значения сгенерировать заново (`openssl rand -base64 32`) |
+| `/opt/travelagency/docker/docker-compose.override.yml` | Порты, образы GHCR, монтирование сертификата и пароля | [`docker/docker-compose.override.example.yml`](docker/docker-compose.override.example.yml) |
+| `/etc/travelagency/certs/tls.crt`, `tls.key` | Самоподписанный сертификат для IP, до 2028-10-02 | `openssl req -x509 -newkey rsa:2048 -nodes -days 730 -subj "/CN=185.75.189.253" -addext "subjectAltName=IP:185.75.189.253" -keyout tls.key -out tls.crt` |
+| `/etc/travelagency/auth/htpasswd` | Пароль basic auth для `dev` | `printf 'dev:%s\n' "$(openssl passwd -apr1)" > /etc/travelagency/auth/htpasswd` |
+| `/opt/travelagency-local/minio/Dockerfile` | Сборка локального образа MinIO | [`docker/minio/Dockerfile`](docker/minio/Dockerfile) |
+| `/etc/docker/daemon.json` | Ротация логов Docker | `{"log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}}` |
+| `/etc/ssh/sshd_config.d/00-hardening.conf`, `/etc/fail2ban/jail.local` | Настройки SSH и fail2ban | Раздел «SSH» выше |
+
+Системные обновления безопасности ставит `unattended-upgrades` каждый день. Если после обновления ядра нужна перезагрузка, появится файл `/var/run/reboot-required`.
+
 ## Solution structure
 
 - `src/Gateway/` — API Gateway

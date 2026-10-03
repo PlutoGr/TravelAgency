@@ -1,0 +1,12 @@
+# Настройки gitleaks (поиск секретов). Берём стандартные правила и исключаем тестовые проекты:
+# в них намеренно лежат фиктивные JWT-ключи для интеграционных тестов, на сервере они не используются.
+title = "TravelAgency gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Фиктивные ключи в тестовых проектах"
+paths = [
+  '''(^|/)[^/]*\.(Tests|IntegrationTests|UnitTests)/''',
+]

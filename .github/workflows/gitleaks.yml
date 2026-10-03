@@ -1,0 +1,40 @@
+# =====================================================================
+# Поиск секретов (gitleaks) при каждом push и pull request.
+# Замена GitHub secret scanning для приватного репозитория.
+# Проверяется вся история (она небольшая), исключения описаны в .gitleaks.toml.
+# Workflow отдельный: если он красный, деплой это не останавливает, но падение видно сразу.
+# =====================================================================
+name: Secret scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+    steps:
+      # Полная история нужна, чтобы проверить все коммиты, а не только последний
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Ставим gitleaks из официального релиза
+      - name: Установка gitleaks
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      # Значения секретов в логе маскируются (--redact)
+      - name: Поиск секретов в истории
+        run: gitleaks git --config .gitleaks.toml --redact --no-banner --verbose .
