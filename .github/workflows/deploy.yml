@@ -7,6 +7,8 @@ name: Deploy to dev
 on:
   push:
     branches: [main]
+  # Ручной запуск из вкладки Actions
+  workflow_dispatch:
 
 # Два деплоя одновременно не запускаем: новый пуш ждёт, пока закончится предыдущий.
 concurrency:
@@ -156,13 +158,18 @@ jobs:
              docker compose up -d && \
              docker image prune -f"
 
-      # Проверка здоровья: сайт должен ответить за 5 минут, иначе пайплайн красный
+      # Проверка здоровья: главная страница, API через nginx -> gateway -> catalog
+      # и готовность gateway (все сервисы отвечают). Ждём до 5 минут, иначе пайплайн красный.
       - name: Проверка здоровья
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS -o /dev/null "http://${{ env.DEV_HOST }}/"; then
-              echo "Сайт отвечает"; exit 0
+            site=$(curl -s -o /dev/null -w '%{http_code}' "http://${{ env.DEV_HOST }}/" || true)
+            api=$(curl -s -o /dev/null -w '%{http_code}' "http://${{ env.DEV_HOST }}/api/v1/catalog/tours" || true)
+            ready=$(ssh deploy@${{ env.DEV_HOST }} "curl -s -m 5 http://127.0.0.1:5001/health/ready" || true)
+            echo "Попытка $i: сайт=$site, API=$api, gateway=$ready"
+            if [ "$site" = "200" ] && [ "$api" = "200" ] && [ "$ready" = "Healthy" ]; then
+              echo "Сайт, API и все сервисы отвечают"; exit 0
             fi
-            echo "Попытка $i: пока не отвечает, ждём 10 секунд"; sleep 10
+            sleep 10
           done
-          echo "Сайт не ответил за 5 минут"; exit 1
+          echo "Проверка здоровья не прошла за 5 минут"; exit 1
