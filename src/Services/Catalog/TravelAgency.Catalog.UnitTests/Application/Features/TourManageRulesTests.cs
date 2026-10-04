@@ -217,6 +217,35 @@ public class TourManageRulesTests
         result.Images.Single(i => !i.IsCover).WidthPx.Should().Be(100);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1279)]
+    public async Task Publish_WhenCoverWidthFromMediaIsUnknownOrBelow1280_ThrowsAndStaysDraft(int width)
+    {
+        var owner = Guid.NewGuid();
+        var tour = OwnedReady(owner, imageCount: 3);
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        var files = tour.Images
+            .Select(image => new RemoteMediaFile(
+                image.MediaFileId,
+                owner.ToString(),
+                image.IsCover ? width : 800,
+                600))
+            .ToArray();
+        ReturnFiles(files);
+
+        var act = () => new PublishTourCommandHandler(_store, _media.Object).Handle(
+            new PublishTourCommand(tour.Id, TourEtag.Format(tour.Version)),
+            CancellationToken.None);
+
+        var error = await act.Should().ThrowAsync<TourImageRuleException>();
+        error.Which.Code.Should().Be(TourPublishRequirementCodes.ImagesCoverMinWidth);
+        tour.Status.Should().Be(TourStatus.Draft);
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task Publish_WhenFewerThanThreePhotos_ThrowsWithMissingCode_AndDoesNotMarkPublic()
     {

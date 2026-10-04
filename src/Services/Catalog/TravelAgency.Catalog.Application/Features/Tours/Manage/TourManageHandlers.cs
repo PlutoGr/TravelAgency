@@ -198,7 +198,11 @@ public sealed class PublishTourCommandHandler(TourManageStore store, IMediaFiles
         var cover = tour.Images.SingleOrDefault(image => image.IsCover);
         int? coverWidth = null;
         if (cover is not null && files.TryGetValue(cover.MediaFileId, out var coverFile))
+        {
+            // Ширина с Media, не из сохранённого WidthPx: 0 — размер неизвестен, уже 1280 — мало.
             coverWidth = coverFile.Width;
+            TourImageRules.EnsureCoverWidth(coverWidth.Value);
+        }
 
         var missing = tour.GetMissingPublishRequirements(now, coverWidth);
         if (missing.Count > 0)

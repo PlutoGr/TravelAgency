@@ -244,6 +244,53 @@ public class TourManageControllerTests
         guest.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    public static IEnumerable<object[]> MutatingEndpointsWithoutIfMatch()
+    {
+        yield return ["PUT", "basics", """{"title":"Сочи"}"""];
+        yield return ["PUT", "description", """{"description":"Полное описание"}"""];
+        yield return ["PUT", "program", """{"days":[{"dayNumber":1,"title":"День","description":"Море"}]}"""];
+        yield return ["PUT", "conditions", """{"inclusions":[],"mealPlan":"BB","accommodationText":"Отель"}"""];
+        yield return ["PUT", "prices", """{"offers":[]}"""];
+        yield return ["PUT", "images", """{"images":[]}"""];
+        yield return ["POST", "publish", ""];
+        yield return ["POST", "unpublish", ""];
+        yield return ["DELETE", "", ""];
+    }
+
+    [Theory]
+    [MemberData(nameof(MutatingEndpointsWithoutIfMatch))]
+    public async Task MutatingEndpoints_WithoutIfMatch_Return428(string method, string step, string json)
+    {
+        var created = await CreateDraftAsync();
+        var path = string.IsNullOrEmpty(step)
+            ? $"/catalog/manage/tours/{created.Id}"
+            : $"/catalog/manage/tours/{created.Id}/{step}";
+        var request = new HttpRequestMessage(new HttpMethod(method), path);
+        if (json.Length > 0)
+            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.PreconditionRequired);
+    }
+
+    [Fact]
+    public async Task Publish_AfterUnpublish_PublishesAgain()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+
+        var unpublished = await SendAsync(HttpMethod.Post, $"/catalog/manage/tours/{tour.Id}/unpublish", null, etag);
+        unpublished.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hidden = await ReadTourAsync(unpublished);
+        hidden.Status.Should().Be(nameof(TourStatus.Unpublished));
+
+        var again = await SendAsync(HttpMethod.Post, $"/catalog/manage/tours/{tour.Id}/publish", null, hidden.Etag);
+        again.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadTourAsync(again)).Status.Should().Be(nameof(TourStatus.Published));
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
     [Fact]
     public async Task Delete_WithoutIfMatch_Returns428_AndDraftWithMatch_Returns204()
     {

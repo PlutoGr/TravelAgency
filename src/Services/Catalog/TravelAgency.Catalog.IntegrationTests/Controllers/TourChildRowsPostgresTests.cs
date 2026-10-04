@@ -17,6 +17,9 @@ using Testcontainers.PostgreSql;
 using TravelAgency.Catalog.API.Middleware;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
+using TravelAgency.Catalog.Domain;
+using TravelAgency.Catalog.Domain.Entities;
+using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 using TravelAgency.Catalog.IntegrationTests.Helpers;
 using TravelAgency.Shared.Infrastructure.Middleware;
@@ -152,6 +155,138 @@ public sealed class TourChildRowsPostgresTests : IAsyncLifetime
         (await db.TourImages.AsNoTracking().CountAsync(i => i.Id == imageId && i.TourId == created.Id && i.MediaFileId == fileId))
             .Should().Be(1);
     }
+
+    [Fact]
+    public async Task PutImages_OnPublishedTour_WhenFewerThanThree_Returns422_AndKeepsRows()
+    {
+        var stored = await SeedAsync(publish: true);
+        var client = Client();
+        var only = Guid.NewGuid();
+
+        var response = await SendAsync(
+            client,
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{stored.Id}/images",
+            new UpdateTourImagesRequest([new TourImageInput(only, 0, true, "одна")]),
+            stored.Etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await response.Content.ReadAsStringAsync()).Should().Contain(TourPublishRequirementCodes.ImagesMinCount);
+        (await ReadStoredAsync(stored.Id)).Should().BeEquivalentTo(stored);
+    }
+
+    [Fact]
+    public async Task PutImages_OnPublishedTour_WhenCoverIsNarrow_Returns422_AndKeepsRows()
+    {
+        var stored = await SeedAsync(publish: true);
+        var cover = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var third = Guid.NewGuid();
+        _media.Files = new Dictionary<Guid, RemoteMediaFile>
+        {
+            [cover] = new(cover, _managerId.ToString(), 1279, 800),
+            [second] = new(second, _managerId.ToString(), 900, 600),
+            [third] = new(third, _managerId.ToString(), 900, 600)
+        };
+
+        var response = await SendAsync(
+            Client(),
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{stored.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(cover, 0, true, "узкая"),
+                new TourImageInput(second, 1, false, "два"),
+                new TourImageInput(third, 2, false, "три")
+            ]),
+            stored.Etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await response.Content.ReadAsStringAsync()).Should().Contain(TourPublishRequirementCodes.ImagesCoverMinWidth);
+        (await ReadStoredAsync(stored.Id)).Should().BeEquivalentTo(stored);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1279)]
+    public async Task Publish_WhenCoverWidthIsUnknownOrBelow1280_Returns422_AndStaysDraft(int width)
+    {
+        var stored = await SeedAsync(publish: false);
+        _media.Files = stored.ImageIds.Select((id, index) => new RemoteMediaFile(
+            id,
+            _managerId.ToString(),
+            index == 0 ? width : 900,
+            600)).ToDictionary(file => file.Id);
+
+        var response = await SendAsync(
+            Client(),
+            HttpMethod.Post,
+            $"/catalog/manage/tours/{stored.Id}/publish",
+            new { },
+            stored.Etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain(TourPublishRequirementCodes.ImagesCoverMinWidth);
+        body.Should().Contain("tour-image");
+        var again = await ReadStoredAsync(stored.Id);
+        again.Status.Should().Be(TourStatus.Draft);
+        again.Version.Should().Be(stored.Version);
+        again.ImageIds.Should().Equal(stored.ImageIds);
+    }
+
+    private HttpClient Client()
+    {
+        var client = _server!.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token());
+        return client;
+    }
+
+    private async Task<StoredTour> SeedAsync(bool publish)
+    {
+        var tour = Tour.CreateDraft(_managerId);
+        tour.SetBasics("Опубликованный", "Кратко", "Москва", "Италия", TourType.Beach, 1, null);
+        tour.SetDescription("Описание тура для проверки публикации");
+        tour.ReplaceDays([TourDay.Create(tour.Id, 1, "День", "Программа")]);
+        tour.ReplaceConditions(
+            [TourInclusion.Create(tour.Id, "Завтрак", TourInclusionKind.Included)],
+            MealPlan.BB,
+            "Гостиница");
+        var from = DateTime.UtcNow.AddDays(10);
+        tour.ReplaceOffers([TourOffer.Create(tour.Id, from, from.AddDays(3), 500m, "EUR", 4)]);
+        var ids = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToArray();
+        tour.ReplaceImages(
+        [
+            TourImage.Create(tour.Id, ids[0], 0, true, "Обложка", 1600),
+            TourImage.Create(tour.Id, ids[1], 1, false, "Два", 800),
+            TourImage.Create(tour.Id, ids[2], 2, false, "Три", 800)
+        ], 1600);
+        if (publish)
+            tour.Publish(DateTime.UtcNow, 1600);
+
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        db.Tours.Add(tour);
+        await db.SaveChangesAsync();
+        return Snapshot(tour.Id, tour.Version, tour.Status, ids);
+    }
+
+    /// <summary>
+    /// Новый scope и новый DbContext: читаем то, что лежит в Postgres, а не трекер запроса.
+    /// </summary>
+    private async Task<StoredTour> ReadStoredAsync(Guid id)
+    {
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        var tour = await db.Tours.AsNoTracking().Include(t => t.Images).SingleAsync(t => t.Id == id);
+        var ids = tour.Images.OrderBy(image => image.SortOrder).Select(image => image.MediaFileId).ToArray();
+        return Snapshot(tour.Id, tour.Version, tour.Status, ids);
+    }
+
+    private static StoredTour Snapshot(Guid id, long version, TourStatus status, IReadOnlyList<Guid> imageIds) =>
+        new(id, version, $"\"{version}\"", status, imageIds);
+
+    private sealed record StoredTour(Guid Id, long Version, string Etag, TourStatus Status, IReadOnlyList<Guid> ImageIds);
 
     private static async Task<HttpResponseMessage> SendAsync(
         HttpClient client,
