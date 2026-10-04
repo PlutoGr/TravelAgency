@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,17 +10,29 @@ using TravelAgency.Catalog.Infrastructure.Persistence;
 namespace TravelAgency.Catalog.Infrastructure.Seeding;
 
 /// <summary>
-/// Seeds directions and tours when the database is empty. Only runs in Development or when explicitly enabled.
+/// Seeds directions and tours when the database is empty. Demo catalog only, no users. See ShouldSeed.
 /// </summary>
 public sealed class CatalogDataSeeder(
     IServiceScopeFactory scopeFactory,
     IHostEnvironment environment,
+    IConfiguration configuration,
     ILogger<CatalogDataSeeder> logger) : IHostedService
 {
+    /// <summary>Флаг демо-каталога вне Development: Seeding__DemoCatalog=true.</summary>
+    public const string DemoCatalogKey = "Seeding:DemoCatalog";
+
+    /// <summary>
+    /// Демо-направления и туры: в Development, при Seeding:DemoCatalog=true
+    /// или при устаревшем ASPNETCORE_SEED_DATA=true. Пользователей не создаёт.
+    /// </summary>
+    public static bool ShouldSeed(IHostEnvironment environment, IConfiguration configuration) =>
+        environment.IsDevelopment()
+        || configuration.GetValue<bool>(DemoCatalogKey)
+        || string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_SEED_DATA"), "true", StringComparison.OrdinalIgnoreCase);
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!environment.IsDevelopment() &&
-            !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_SEED_DATA"), "true", StringComparison.OrdinalIgnoreCase))
+        if (!ShouldSeed(environment, configuration))
         {
             return;
         }
