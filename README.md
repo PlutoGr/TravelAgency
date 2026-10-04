@@ -73,6 +73,7 @@ When running in Development or with `ASPNETCORE_SEED_DATA=true`, Identity and Ca
 | admin@test.com   | Test123!  | Admin  |
 
 Catalog seeds directions (Мальдивы, Пхукет, Санторини, Бали, Дубай) and sample tours.
+Catalog demo data alone (without test users) can be enabled with `Seeding__DemoCatalog=true`.
 
 ## Как устроен dev
 
@@ -88,6 +89,13 @@ Dev-среда работает на одном сервере Selectel (Ubuntu 
 ```bash
 ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 ```
+
+### Окружение
+
+- Все .NET-сервисы на dev работают с `ASPNETCORE_ENVIRONMENT=Staging` (задаётся в `docker-compose.override.yml` на сервере). Swagger и OpenAPI выключены, в ответах 500 нет стека, подробные логи Development не используются.
+- Миграции применяются при старте (`ASPNETCORE_RUN_MIGRATIONS=true`).
+- Тестовые аккаунты и демо-каталог на dev оставлены специально: включены флагом `ASPNETCORE_SEED_DATA=true` (таблица аккаунтов выше). Это только для dev, на production флаг не ставить.
+- Cookie авторизации с флагом `Secure` (сайт только по HTTPS), CORS разрешён для `https://185.75.189.253`.
 
 ### SSH
 
