@@ -222,3 +222,38 @@ jobs:
             sleep 10
           done
           echo "Проверка здоровья не прошла за 5 минут"; exit 1
+
+      # Смоук gRPC между сервисами (#50). Unit-тесты и TestServer не видят протокол на настоящем сокете,
+      # поэтому из сети compose шлём настоящий gRPC-вызов по HTTP/2 без TLS (h2c) на внутренний порт 8081.
+      # Токен не передаём: успех = HTTP/2 и grpc-status 16 (Unauthenticated). Это значит, что сервер принял
+      # HTTP/2, нашёл метод и дошёл до проверки токена. 12 (метод не найден), 13 (токен не задан
+      # в контейнере), другой код или обрыв рукопожатия = провал.
+      - name: Смоук gRPC (порт 8081)
+        run: |
+          ssh deploy@${{ env.DEV_HOST }} 'bash -s' <<'EOF'
+          set -u
+          cid=$(docker ps -q -f label=com.docker.compose.service=catalog-service | head -1)
+          net=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' "$cid")
+          # Пустое gRPC-сообщение: флаг сжатия 0 и длина 0
+          printf '\0\0\0\0\0' > /tmp/grpc-smoke-empty.bin
+          fail=0
+          for target in \
+            catalog-service/catalog.CatalogService/GetTourSnapshot \
+            identity-service/identity.IdentityGrpc/GetUserSummary \
+            booking-service/booking.BookingService/ValidateBookingAccess; do
+            host=${target%%/*}; path=/${target#*/}
+            out=$(docker run --rm --network "$net" -v /tmp/grpc-smoke-empty.bin:/e.bin:ro curlimages/curl:8.22.0 \
+              -sS --max-time 10 --http2-prior-knowledge -o /dev/null -D - -X POST \
+              -H 'content-type: application/grpc' -H 'te: trailers' --data-binary @/e.bin \
+              "http://$host:8081$path" 2>&1 | tr -d '\r')
+            proto=$(echo "$out" | awk '/^HTTP\//{print $1}' | head -1)
+            status=$(echo "$out" | awk -F': ' 'tolower($1)=="grpc-status"{print $2}' | head -1)
+            echo "$host$path: протокол=${proto:-нет} grpc-status=${status:-нет} (ждём HTTP/2 и 16)"
+            if [ "$proto" != "HTTP/2" ] || [ "$status" != "16" ]; then
+              echo "$out" | grep -iE '^curl|grpc-message' || true
+              fail=1
+            fi
+          done
+          rm -f /tmp/grpc-smoke-empty.bin
+          exit $fail
+          EOF
