@@ -25,8 +25,11 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IApplicationBuilder UseCatalogMigrations(this IApplicationBuilder app)
     {
+        // Флаг берётся из конфигурации хоста, куда уже попала переменная окружения.
+        // Так тестовый хост может выставить false и не подхватить чужой процессный env.
+        var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
         var runMigrations = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS"),
+            configuration["ASPNETCORE_RUN_MIGRATIONS"],
             "true",
             StringComparison.OrdinalIgnoreCase);
         if (!runMigrations && !app.ApplicationServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
