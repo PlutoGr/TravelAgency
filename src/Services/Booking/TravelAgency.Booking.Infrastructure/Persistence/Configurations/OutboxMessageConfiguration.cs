@@ -12,6 +12,8 @@ public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage
         builder.ToTable("OutboxMessages");
 
         builder.HasKey(m => m.Id);
+        // Id ставит домен (Guid.NewGuid()), база его не генерирует.
+        builder.Property(m => m.Id).ValueGeneratedNever();
 
         builder.Property(m => m.EventType).HasMaxLength(200).IsRequired();
         builder.Property(m => m.Payload).IsRequired();

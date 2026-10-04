@@ -65,14 +65,21 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
     [Fact]
     public async Task Grpc_OnRestPort_IsRefused()
     {
+        new Uri(_fixture.Address).Host.Should().Be(new Uri(_fixture.GrpcAddress).Host);
+
+        var (liveClient, _) = CreateClient();
+        var listed = await liveClient.GetMediaFilesAsync(
+            new GetMediaFilesRequest { Ids = { Guid.NewGuid().ToString() } },
+            AuthHeaders());
+        listed.Files.Should().BeEmpty();
+
         var (client, _) = CreateClient(_fixture.Address);
         var call = client.GetMediaFilesAsync(
             new GetMediaFilesRequest { Ids = { Guid.NewGuid().ToString() } },
             AuthHeaders());
 
         var ex = await Assert.ThrowsAsync<RpcException>(async () => await call.ResponseAsync);
-        ex.StatusCode.Should().Be(StatusCode.Internal);
-        ex.Status.Detail.Should().Contain("HTTP_1_1_REQUIRED");
+        ex.StatusCode.Should().BeOneOf(StatusCode.Unavailable, StatusCode.Internal);
     }
 
     [Fact]

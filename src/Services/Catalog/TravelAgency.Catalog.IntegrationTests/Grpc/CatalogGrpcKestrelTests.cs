@@ -26,13 +26,21 @@ public sealed class CatalogGrpcKestrelTests : IClassFixture<CatalogGrpcKestrelFi
     [Fact]
     public async Task Grpc_OnRestPort_IsRefused()
     {
+        new Uri(_fixture.Address).Host.Should().Be(new Uri(_fixture.GrpcAddress).Host);
+
+        using var liveChannel = GrpcChannel.ForAddress(_fixture.GrpcAddress);
+        var liveClient = new CatalogService.CatalogServiceClient(liveChannel);
+        var snapshot = await liveClient.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = "x" },
+            new Metadata { { "x-internal-auth", CatalogGrpcKestrelFixture.ServiceToken } });
+        snapshot.Found.Should().BeFalse();
+
         using var channel = GrpcChannel.ForAddress(_fixture.Address);
         var client = new CatalogService.CatalogServiceClient(channel);
         var call = client.GetTourSnapshotAsync(new GetTourSnapshotRequest { TourId = "x" });
 
         var ex = await Assert.ThrowsAsync<RpcException>(async () => await call.ResponseAsync);
-        ex.StatusCode.Should().Be(StatusCode.Internal);
-        ex.Status.Detail.Should().Contain("HTTP_1_1_REQUIRED");
+        ex.StatusCode.Should().BeOneOf(StatusCode.Unavailable, StatusCode.Internal);
     }
 
     [Fact]

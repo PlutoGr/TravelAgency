@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using TravelAgency.Identity.API.Extensions;
+using TravelAgency.Identity.Domain.Entities;
+using TravelAgency.Identity.Domain.Interfaces;
 using TravelAgency.Shared.Infrastructure.Hosting;
 
 namespace TravelAgency.Identity.IntegrationTests.Grpc;
@@ -52,6 +55,10 @@ public sealed class IdentityGrpcKestrelFixture : IAsyncLifetime
         });
         builder.UseServiceListenPorts();
         Program.ConfigureServices(builder);
+        // GetUserSummary has no OK path without a user row, and this fixture has no database.
+        // A fixed user lets the REST-port test probe the gRPC port before asserting the refusal.
+        builder.Services.RemoveAll<IUserRepository>();
+        builder.Services.AddSingleton<IUserRepository>(new FixedGrpcUserRepository());
 
         _app = builder.Build();
         Program.ConfigurePipeline(_app);
@@ -80,5 +87,25 @@ public sealed class IdentityGrpcKestrelFixture : IAsyncLifetime
         }
 
         return port;
+    }
+
+    private sealed class FixedGrpcUserRepository : IUserRepository
+    {
+        public Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult<User?>(User.Create("grpc-live@test.com", "hash", "Live", "Probe", null));
+
+        public Task<User?> GetByEmailAsync(string email, CancellationToken ct = default) =>
+            Task.FromResult<User?>(null);
+
+        public Task AddAsync(User user, CancellationToken ct = default) => Task.CompletedTask;
+
+        public void Stage(User user)
+        {
+        }
+
+        public Task UpdateAsync(User user, CancellationToken ct = default) => Task.CompletedTask;
+
+        public Task<bool> ExistsAsync(string email, CancellationToken ct = default) =>
+            Task.FromResult(false);
     }
 }

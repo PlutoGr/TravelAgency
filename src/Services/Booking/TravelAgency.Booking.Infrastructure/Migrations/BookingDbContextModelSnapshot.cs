@@ -25,7 +25,6 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.Booking", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ClientId")
@@ -55,7 +54,6 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.BookingStatusHistory", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("BookingId")
@@ -80,7 +78,6 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.Favorite", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("AddedAt")
@@ -103,7 +100,6 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -134,7 +130,6 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.Proposal", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("BookingId")

@@ -11,6 +11,9 @@ public class ProposalConfiguration : IEntityTypeConfiguration<Proposal>
         builder.ToTable("Proposals");
 
         builder.HasKey(p => p.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новое предложение уже существующей строкой и делать UPDATE вместо INSERT.
+        builder.Property(p => p.Id).ValueGeneratedNever();
 
         builder.Property(p => p.BookingId).IsRequired();
         builder.Property(p => p.ManagerId).IsRequired();
