@@ -6,15 +6,21 @@ namespace TravelAgency.Gateway.Middleware;
 
 /// <summary>
 /// Injects Authorization: Bearer when the request has no Authorization header.
-/// The token is taken from the access_token cookie, or, if the cookie is absent,
-/// from the access_token query string (SignalR WebSocket: the browser cannot set
-/// an Authorization header on the upgrade).
+/// The token is taken from the access_token cookie on every route.
+/// The access_token query string is read only for the chat hub path
+/// (/api/v1/chat/hubs/...), because a browser WebSocket cannot set Authorization.
+/// Query tokens on other routes are ignored: they leak into access logs, history and Referer.
 /// Runs before UseAuthentication so JWT middleware can authenticate the request.
 /// On dev, nginx basic auth occupies Authorization and that header is removed
-/// before the gateway, so the JWT arrives as the cookie or the SignalR query value.
+/// before the gateway, so the JWT arrives as the cookie or, on the hub, as the SignalR query value.
 /// </summary>
 internal sealed class CookieToAuthHeaderMiddleware
 {
+    /// <summary>
+    /// Segment prefix of the SignalR hub. StartsWithSegments rejects lookalikes such as /api/v1/chat/hubsX.
+    /// </summary>
+    private static readonly PathString ChatHubPathPrefix = new("/api/v1/chat/hubs");
+
     private readonly RequestDelegate _next;
     private readonly CookieSettings _cookieSettings;
 
@@ -29,7 +35,7 @@ internal sealed class CookieToAuthHeaderMiddleware
         if (!context.Request.Headers.ContainsKey("Authorization"))
         {
             var accessToken = context.Request.Cookies[_cookieSettings.AccessTokenName];
-            if (string.IsNullOrEmpty(accessToken))
+            if (string.IsNullOrEmpty(accessToken) && IsChatHubPath(context.Request.Path))
             {
                 accessToken = context.Request.Query[_cookieSettings.AccessTokenName].ToString();
             }
@@ -42,4 +48,7 @@ internal sealed class CookieToAuthHeaderMiddleware
 
         await _next(context);
     }
+
+    private static bool IsChatHubPath(PathString path) =>
+        path.StartsWithSegments(ChatHubPathPrefix, StringComparison.OrdinalIgnoreCase);
 }

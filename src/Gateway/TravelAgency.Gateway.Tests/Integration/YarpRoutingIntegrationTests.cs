@@ -206,6 +206,67 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
     }
 
     [Fact]
+    public async Task Chat_GetBookingMessages_WithAccessTokenQueryOnly_Returns401()
+    {
+        // Arrange — a query token must not authenticate chat REST. URLs are logged and stored in history.
+        var client = CreateClient(withAuth: false);
+        var token = Uri.EscapeDataString(Helpers.JwtTokenHelper.GenerateToken(role: AppRoles.Client));
+        var bookingId = Guid.NewGuid();
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/chat/booking/{bookingId}/messages?access_token={token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Chat_GetHubsLookalike_WithAccessTokenQueryOnly_Returns401()
+    {
+        // Arrange — "/api/v1/chat/hubsX" shares a string prefix with the hub but is a different segment.
+        var client = CreateClient(withAuth: false);
+        var token = Uri.EscapeDataString(Helpers.JwtTokenHelper.GenerateToken(role: AppRoles.Client));
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/chat/hubsX?access_token={token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Bookings_Get_WithAccessTokenQueryOnly_Returns401()
+    {
+        // Arrange — neighbouring routes stay closed to a token parked in the query string.
+        var client = CreateClient(withAuth: false);
+        var token = Uri.EscapeDataString(Helpers.JwtTokenHelper.GenerateToken(role: AppRoles.Client));
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/bookings?access_token={token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Chat_DeleteHub_WithAccessTokenCookie_SelectsChatHubRoute()
+    {
+        // Arrange — SignalR long polling sends DELETE /hubs/chat?id=... when the connection stops.
+        var client = CreateClient(withAuth: false);
+        var token = Helpers.JwtTokenHelper.GenerateToken(role: AppRoles.Client);
+        var request = CreateRequest(HttpMethod.Delete, "/api/v1/chat/hubs/chat?id=x", token);
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echo = await ReadEchoAsync(response);
+        Assert.Equal("chat-hub-route", echo.RouteId);
+        Assert.Equal("/hubs/chat", echo.Path);
+    }
+
+    [Fact]
     public async Task Chat_GetBookingMessages_WithAccessTokenCookie_SelectsChatRoute()
     {
         // Arrange — REST must stay on chat-route (prefix /api/v1 only), even though hub Order is lower.
