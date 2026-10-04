@@ -2,7 +2,7 @@ using System.Net;
 using Grpc.Core;
 using Grpc.Net.Client;
 using TravelAgency.Contracts.Grpc.Media;
-using TravelAgency.Media.API.Hosting;
+using TravelAgency.Shared.Infrastructure.Hosting;
 using TravelAgency.Media.Domain;
 
 namespace TravelAgency.Media.IntegrationTests.Grpc;
@@ -80,7 +80,7 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
     {
         using var handler = new SocketsHttpHandler { EnableMultipleHttp2Connections = true };
         using var http = new HttpClient(handler);
-        var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{MediaPorts.Grpc}/health/live")
+        var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{ServiceListenSettings.DefaultGrpcPort}/health/live")
         {
             Version = HttpVersion.Version20,
             VersionPolicy = HttpVersionPolicy.RequestVersionExact
