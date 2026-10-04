@@ -4,14 +4,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Catalog.Application;
-using TravelAgency.Shared.Infrastructure.Extensions;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.Interfaces;
 using TravelAgency.Catalog.Domain.Interfaces;
+using TravelAgency.Catalog.Infrastructure.GrpcClients;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 using TravelAgency.Catalog.Infrastructure.Queries;
 using TravelAgency.Catalog.Infrastructure.Repositories;
 using TravelAgency.Catalog.Infrastructure.Seeding;
+using TravelAgency.Contracts.Grpc.Media;
+using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Catalog.Infrastructure.Extensions;
 
@@ -54,6 +56,14 @@ public static class InfrastructureExtensions
         services.AddScoped<ITourListQuery, TourListQuery>();
         services.AddScoped<IDirectionRepository, DirectionRepository>();
         services.AddHostedService<CatalogDataSeeder>();
+
+        services.AddHttpContextAccessor();
+        services.AddCurrentUserService();
+        services.AddGrpcAuthCallOptionsFactory();
+
+        var mediaGrpcAddress = configuration["GrpcClients:MediaServiceUrl"] ?? "http://media-service:8081";
+        services.AddGrpcClient<MediaService.MediaServiceClient>(options => options.Address = new Uri(mediaGrpcAddress));
+        services.AddScoped<IMediaFilesClient, MediaFilesGrpcClient>();
 
         return services;
     }

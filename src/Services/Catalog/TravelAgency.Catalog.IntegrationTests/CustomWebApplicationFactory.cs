@@ -16,7 +16,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Catalog.API.Middleware;
+using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Infrastructure.Persistence;
+using TravelAgency.Catalog.IntegrationTests.Helpers;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Catalog.IntegrationTests;
@@ -41,6 +43,8 @@ public class CustomWebApplicationFactory : IAsyncDisposable
     private WebApplication? _app;
     private TestServer? _server;
     private string? _aspNetCoreRunMigrationsRestore;
+
+    public FakeMediaFilesClient Media { get; } = new();
 
     public CustomWebApplicationFactory()
     {
@@ -105,6 +109,9 @@ public class CustomWebApplicationFactory : IAsyncDisposable
 
         // Register all application services
         Program.ConfigureServices(builder.Services, builder.Configuration);
+
+        builder.Services.RemoveAll<IMediaFilesClient>();
+        builder.Services.AddSingleton<IMediaFilesClient>(Media);
 
         // Replace DbContext with SQLite in-memory
         builder.Services.RemoveAll<DbContextOptions<CatalogDbContext>>();

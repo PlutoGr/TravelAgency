@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TravelAgency.Catalog.Application.Exceptions;
 using TravelAgency.Catalog.Domain.Exceptions;
 using TravelAgency.Shared.Infrastructure.Middleware;
@@ -26,6 +27,35 @@ internal sealed class CatalogExceptionMapper : IExceptionMapper
                 Detail = conflict.Message,
                 Instance = context.Request.Path
             },
+            DbUpdateConcurrencyException => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Conflict",
+                Detail = "The tour was changed. Send the current If-Match value.",
+                Instance = context.Request.Path
+            },
+            PreconditionRequiredException precondition => new ProblemDetails
+            {
+                Status = StatusCodes.Status428PreconditionRequired,
+                Title = "Precondition Required",
+                Detail = precondition.Message,
+                Instance = context.Request.Path
+            },
+            ForbiddenException forbidden => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "Forbidden",
+                Detail = forbidden.Message,
+                Instance = context.Request.Path
+            },
+            MediaUnavailableException unavailable => new ProblemDetails
+            {
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Title = "Service Unavailable",
+                Detail = unavailable.Message,
+                Instance = context.Request.Path
+            },
+            TourImageRuleException imageRule => MapImageRule(imageRule, context),
             TourNotPublishableException notPublishable => MapNotPublishable(notPublishable, context),
             CatalogDomainException domain => new ProblemDetails
             {
@@ -52,6 +82,21 @@ internal sealed class CatalogExceptionMapper : IExceptionMapper
             Instance = context.Request.Path
         };
         details.Extensions["missing"] = exception.Missing;
+        return details;
+    }
+
+    private static ProblemDetails MapImageRule(TourImageRuleException exception, HttpContext context)
+    {
+        var details = new ProblemDetails
+        {
+            Status = StatusCodes.Status422UnprocessableEntity,
+            Title = "Unprocessable Entity",
+            Type = "https://travelagency/errors/tour-image",
+            Detail = exception.Message,
+            Instance = context.Request.Path
+        };
+        details.Extensions["code"] = exception.Code;
+        details.Extensions["missing"] = new[] { exception.Code };
         return details;
     }
 }

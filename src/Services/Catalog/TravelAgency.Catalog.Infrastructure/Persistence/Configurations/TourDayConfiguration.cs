@@ -11,6 +11,9 @@ public class TourDayConfiguration : IEntityTypeConfiguration<TourDay>
         builder.ToTable("TourDays");
 
         builder.HasKey(d => d.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новый день уже существующей строкой и делать UPDATE вместо INSERT.
+        builder.Property(d => d.Id).ValueGeneratedNever();
 
         builder.Property(d => d.Title)
             .IsRequired()

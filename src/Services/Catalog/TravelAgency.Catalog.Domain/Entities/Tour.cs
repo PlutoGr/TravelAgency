@@ -30,6 +30,12 @@ public class Tour
     public DateTime? UpdatedAt { get; private set; }
 
     /// <summary>
+    /// Версия для If-Match. Увеличивается на каждое успешное изменение.
+    /// У существующих строк после миграции остаётся 0.
+    /// </summary>
+    public long Version { get; private set; }
+
+    /// <summary>
     /// Совместимость публичной выдачи: раньше в каталог попадали туры с IsActive=true.
     /// После миграции это статус Published.
     /// </summary>
@@ -67,6 +73,30 @@ public class Tour
             Status = TourStatus.Draft,
             Source = TourSource.Manager,
             OwnerId = ownerId,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Пустой черновик мастера. Источник этапа 1 всегда менеджер, владелец — текущий пользователь.
+    /// </summary>
+    public static Tour CreateDraft(Guid ownerId)
+    {
+        if (ownerId == Guid.Empty)
+            throw new CatalogDomainException("Draft owner is required.");
+
+        return new Tour
+        {
+            Id = Guid.NewGuid(),
+            Title = string.Empty,
+            Description = string.Empty,
+            Country = string.Empty,
+            DurationDays = 0,
+            TourType = TourType.Beach,
+            Status = TourStatus.Draft,
+            Source = TourSource.Manager,
+            OwnerId = ownerId,
+            Version = 1,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -126,6 +156,54 @@ public class Tour
         CommitOrRevert(() => DepartureCity = previous);
     }
 
+    public void SetBasics(
+        string? title,
+        string? shortDescription,
+        string? departureCity,
+        string? country,
+        TourType tourType,
+        int durationDays,
+        Guid? directionId)
+    {
+        var normalizedTitle = title?.Trim() ?? string.Empty;
+        var normalizedShort = string.IsNullOrWhiteSpace(shortDescription) ? null : shortDescription.Trim();
+        var normalizedCity = string.IsNullOrWhiteSpace(departureCity) ? null : departureCity.Trim();
+        var normalizedCountry = country?.Trim() ?? string.Empty;
+
+        if (normalizedTitle.Length > 200)
+            throw new CatalogDomainException("Tour title cannot exceed 200 characters.");
+
+        if (normalizedShort is { Length: > TourContentLimits.ShortDescriptionMaxLength })
+            throw new CatalogDomainException(
+                $"Short description cannot exceed {TourContentLimits.ShortDescriptionMaxLength} characters.");
+
+        if (normalizedCity is { Length: > 100 })
+            throw new CatalogDomainException("Departure city cannot exceed 100 characters.");
+
+        if (normalizedCountry.Length > 100)
+            throw new CatalogDomainException("Tour country cannot exceed 100 characters.");
+
+        if (durationDays < 0)
+            throw new CatalogDomainException("Tour duration cannot be negative.");
+
+        var previous = CaptureBasics();
+        var previousShort = ShortDescription;
+        var previousCity = DepartureCity;
+        Title = normalizedTitle;
+        ShortDescription = normalizedShort;
+        DepartureCity = normalizedCity;
+        Country = normalizedCountry;
+        TourType = tourType;
+        DurationDays = durationDays;
+        DirectionId = directionId;
+        CommitOrRevert(() =>
+        {
+            RestoreBasics(previous);
+            ShortDescription = previousShort;
+            DepartureCity = previousCity;
+        });
+    }
+
     public void SetConditions(Enums.MealPlan? mealPlan, string? accommodationText)
     {
         var previousMeal = MealPlan;
@@ -134,6 +212,31 @@ public class Tour
         AccommodationText = string.IsNullOrWhiteSpace(accommodationText) ? null : accommodationText.Trim();
         CommitOrRevert(() =>
         {
+            MealPlan = previousMeal;
+            AccommodationText = previousStay;
+        });
+    }
+
+    public void ReplaceConditions(IEnumerable<TourInclusion> inclusions, Enums.MealPlan? mealPlan, string? accommodationText)
+    {
+        var incoming = inclusions.ToList();
+        EnsureOwned(incoming.Select(i => i.TourId), "Inclusion");
+
+        var normalizedStay = string.IsNullOrWhiteSpace(accommodationText) ? null : accommodationText.Trim();
+        if (normalizedStay is { Length: > 4000 })
+            throw new CatalogDomainException("Accommodation text cannot exceed 4000 characters.");
+
+        var previousInclusions = _inclusions.ToList();
+        var previousMeal = MealPlan;
+        var previousStay = AccommodationText;
+        _inclusions.Clear();
+        _inclusions.AddRange(incoming);
+        MealPlan = mealPlan;
+        AccommodationText = normalizedStay;
+        CommitOrRevert(() =>
+        {
+            _inclusions.Clear();
+            _inclusions.AddRange(previousInclusions);
             MealPlan = previousMeal;
             AccommodationText = previousStay;
         });
@@ -239,7 +342,7 @@ public class Tour
 
         Status = TourStatus.Published;
         PublishedAt = utcNow;
-        UpdatedAt = utcNow;
+        Touch(utcNow);
     }
 
     public void Unpublish()
@@ -251,7 +354,7 @@ public class Tour
             throw new CatalogDomainException("Only a published tour can be unpublished.");
 
         Status = TourStatus.Unpublished;
-        UpdatedAt = DateTime.UtcNow;
+        Touch(DateTime.UtcNow);
     }
 
     /// <summary>
@@ -265,7 +368,7 @@ public class Tour
 
     private bool HasExactProgram()
     {
-        if (_days.Count != DurationDays)
+        if (DurationDays < 1 || _days.Count != DurationDays)
             return false;
 
         var numbers = _days.Select(d => d.DayNumber).ToHashSet();
@@ -296,7 +399,7 @@ public class Tour
         try
         {
             GuardIfPublished(coverWidthPx);
-            UpdatedAt = DateTime.UtcNow;
+            Touch(DateTime.UtcNow);
         }
         catch
         {
@@ -321,6 +424,12 @@ public class Tour
     {
         if (tourIds.Any(id => id != Id))
             throw new CatalogDomainException($"{itemName} belongs to another tour.");
+    }
+
+    private void Touch(DateTime utcNow)
+    {
+        Version++;
+        UpdatedAt = utcNow;
     }
 
     private (string Title, string Description, TourType TourType, Guid? DirectionId, string Country, int DurationDays, string? ImageUrl) CaptureBasics()

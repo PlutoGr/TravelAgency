@@ -324,8 +324,8 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
         var created = await CreateBookingAsClientAsync(tourId: nonExistentTourId);
 
         _factory.CatalogGrpcClientMock
-            .Setup(c => c.GetTourSnapshotAsync(nonExistentTourId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new NotFoundException($"Tour '{nonExistentTourId}' was not found in catalog."));
+            .Setup(c => c.GetTourSnapshotForExistingBookingAsync(nonExistentTourId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TourUnavailableException());
 
         AuthorizeAsManager();
         await _client.PatchAsJsonAsync($"/bookings/{created.Id}/status",
@@ -334,7 +334,9 @@ public class BookingsControllerTests : IClassFixture<CustomWebApplicationFactory
         var proposalRequest = new CreateProposalRequest("notes");
         var response = await _client.PostAsJsonAsync($"/bookings/{created.Id}/proposal", proposalRequest);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("tour-unavailable");
     }
 
     [Fact(Skip = "DbUpdateConcurrencyException with SQLite in-memory across requests; covered by unit tests")]

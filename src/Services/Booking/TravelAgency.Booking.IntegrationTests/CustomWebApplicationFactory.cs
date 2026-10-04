@@ -37,6 +37,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             .ReturnsAsync((Guid tourId, CancellationToken _) => new BookingTourSnapshotDto(
                 tourId, "Test Tour", "A great tour", 999.99m, "USD", 7, DateTime.UtcNow));
 
+        CatalogGrpcClientMock
+            .Setup(c => c.GetTourSnapshotForExistingBookingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid tourId, CancellationToken _) => new BookingTourSnapshotDto(
+                tourId, "Test Tour", "A great tour", 999.99m, "USD", 7, DateTime.UtcNow));
+
         // Default: return null for Identity (client details not enriched in tests unless explicitly set up)
         IdentityGrpcClientMock
             .Setup(c => c.GetUserSummaryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))

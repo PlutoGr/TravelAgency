@@ -517,6 +517,54 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
     }
 
     [Fact]
+    public async Task CatalogManage_ManagerPut_SelectsWizardRoute()
+    {
+        var client = CreateClientForRole(AppRoles.Manager);
+        var request = new HttpRequestMessage(HttpMethod.Put, "/api/v1/catalog/manage/tours/11111111-1111-1111-1111-111111111111/basics")
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+        };
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echo = await ReadEchoAsync(response);
+        Assert.Equal("catalog-wizard-route", echo.RouteId);
+        Assert.Equal("/catalog/manage/tours/11111111-1111-1111-1111-111111111111/basics", echo.Path);
+    }
+
+    [Fact]
+    public async Task CatalogManage_AdminDelete_SelectsWizardRoute()
+    {
+        var client = CreateClientForRole(AppRoles.Admin);
+
+        var response = await client.DeleteAsync("/api/v1/catalog/manage/tours/11111111-1111-1111-1111-111111111111");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("catalog-wizard-route", (await ReadEchoAsync(response)).RouteId);
+    }
+
+    [Fact]
+    public async Task CatalogManage_ClientPost_Returns403()
+    {
+        var client = CreateClientForRole(AppRoles.Client);
+
+        var response = await client.PostAsync("/api/v1/catalog/manage/tours", new StringContent("{}"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CatalogManage_GuestGet_Returns401()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.GetAsync("/api/v1/catalog/manage/tours");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task HealthReady_Returns200_WithMockBackend()
     {
         // Arrange

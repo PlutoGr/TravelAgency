@@ -220,5 +220,10 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
                 Found = true
             });
         }
+
+        public override Task<TourSnapshotResponse> GetTourSnapshotForExistingBooking(
+            GetTourSnapshotRequest request,
+            ServerCallContext context) =>
+            GetTourSnapshot(request, context);
     }
 }
