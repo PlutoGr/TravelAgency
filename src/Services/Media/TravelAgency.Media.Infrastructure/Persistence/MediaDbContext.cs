@@ -25,6 +25,7 @@ public sealed class MediaDbContext : DbContext
                 tb.Property(t => t.StorageKey).IsRequired().HasMaxLength(1024);
                 tb.Property(t => t.Width).IsRequired();
                 tb.Property(t => t.Height).IsRequired();
+                tb.Property(t => t.SizeCode).HasMaxLength(16);
                 tb.ToTable("MediaFileThumbnails");
             });
         }

@@ -2,6 +2,7 @@ using FluentValidation.TestHelper;
 using Microsoft.Extensions.Options;
 using TravelAgency.Media.Application.Features.Upload;
 using TravelAgency.Media.Application.Settings;
+using TravelAgency.Media.Domain;
 
 namespace TravelAgency.Media.UnitTests.Application.Validators;
 
@@ -165,6 +166,88 @@ public class UploadMediaCommandValidatorTests
         var result = await _validator.TestValidateAsync(command);
 
         result.ShouldHaveValidationErrorFor(x => x.ContentType);
+    }
+
+    [Theory]
+    [InlineData("image/jpeg", new byte[] { 0xFF, 0xD8, 0xFF })]
+    [InlineData("image/png", new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })]
+    [InlineData("image/webp", new byte[] { 0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50 })]
+    public async Task Validate_TourImage_AllowsJpegPngWebp(string contentType, byte[] magicBytes)
+    {
+        var ms = new MemoryStream();
+        ms.Write(magicBytes);
+        ms.Position = 0;
+        var command = ValidCommand() with
+        {
+            Purpose = MediaPurposes.TourImage,
+            ContentType = contentType,
+            FileContent = ms
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.ContentType);
+        result.ShouldNotHaveValidationErrorFor(x => x.Purpose);
+    }
+
+    [Theory]
+    [InlineData("image/gif", new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 })]
+    [InlineData("application/pdf", new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D })]
+    public async Task Validate_TourImage_RejectsGifAndPdf(string contentType, byte[] magicBytes)
+    {
+        var ms = new MemoryStream();
+        ms.Write(magicBytes);
+        ms.Position = 0;
+        var command = ValidCommand() with
+        {
+            Purpose = "tour-image",
+            ContentType = contentType,
+            FileContent = ms
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.ContentType)
+            .WithErrorMessage("Tour images must be jpeg, png, or webp.");
+    }
+
+    [Fact]
+    public async Task Validate_TourImage_OverTenMegabytes_Fails()
+    {
+        var command = ValidCommand() with
+        {
+            Purpose = MediaPurposes.TourImage,
+            SizeBytes = 10 * 1024 * 1024 + 1
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.SizeBytes)
+            .WithErrorMessage("File size must not exceed 10 MB.");
+    }
+
+    [Fact]
+    public async Task Validate_TourImage_ExactlyTenMegabytes_PassesSize()
+    {
+        var command = ValidCommand() with
+        {
+            Purpose = MediaPurposes.TourImage,
+            SizeBytes = 10 * 1024 * 1024
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.SizeBytes);
+    }
+
+    [Fact]
+    public async Task Validate_UnknownPurpose_Fails()
+    {
+        var command = ValidCommand() with { Purpose = "avatar" };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Purpose);
     }
 
     [Fact]

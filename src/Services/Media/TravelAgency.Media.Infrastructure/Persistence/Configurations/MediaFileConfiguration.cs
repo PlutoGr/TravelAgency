@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
-using TravelAgency.Media.Domain.Enums;
 
 namespace TravelAgency.Media.Infrastructure.Persistence.Configurations;
 
@@ -40,6 +40,19 @@ public sealed class MediaFileConfiguration : IEntityTypeConfiguration<MediaFile>
         builder.Property(f => f.UploadedAt)
             .IsRequired();
 
+        builder.Property(f => f.IsPublic)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(f => f.Width);
+
+        builder.Property(f => f.Height);
+
+        builder.Property(f => f.Purpose)
+            .IsRequired()
+            .HasMaxLength(32)
+            .HasDefaultValue(MediaPurposes.General);
+
         builder.Navigation(f => f.Thumbnails).HasField("_thumbnails");
 
         builder.OwnsMany(f => f.Thumbnails, tb =>
@@ -49,6 +62,7 @@ public sealed class MediaFileConfiguration : IEntityTypeConfiguration<MediaFile>
             tb.Property(t => t.StorageKey).IsRequired().HasMaxLength(1024);
             tb.Property(t => t.Width).IsRequired();
             tb.Property(t => t.Height).IsRequired();
+            tb.Property(t => t.SizeCode).HasMaxLength(16);
             tb.ToTable("MediaFileThumbnails");
         });
     }

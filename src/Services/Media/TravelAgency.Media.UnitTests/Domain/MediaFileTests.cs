@@ -1,3 +1,4 @@
+using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Enums;
 
@@ -25,6 +26,10 @@ public class MediaFileTests
         file.Status.Should().Be(MediaFileStatus.Active);
         file.UploadedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
         file.Thumbnails.Should().BeEmpty();
+        file.IsPublic.Should().BeFalse();
+        file.Purpose.Should().Be(MediaPurposes.General);
+        file.Width.Should().BeNull();
+        file.Height.Should().BeNull();
     }
 
     [Fact]
@@ -89,6 +94,36 @@ public class MediaFileTests
         var file = MediaFile.Create("photo.jpg", "image/jpeg", 1024, "key", "user1");
 
         file.Thumbnails.Should().BeAssignableTo<IReadOnlyList<MediaFileThumbnail>>();
+    }
+
+    [Fact]
+    public void MarkPublic_IsOneWay_AndStartsPrivate()
+    {
+        var file = MediaFile.Create(
+            "cover.jpg", "image/jpeg", 10, "key", "owner",
+            MediaPurposes.TourImage, width: 1920, height: 1080);
+
+        file.IsPublic.Should().BeFalse();
+        file.Purpose.Should().Be(MediaPurposes.TourImage);
+        file.Width.Should().Be(1920);
+        file.Height.Should().Be(1080);
+
+        file.MarkPublic();
+        file.MarkPublic();
+
+        file.IsPublic.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddThumbnail_StoresSizeCode()
+    {
+        var file = MediaFile.Create("photo.jpg", "image/jpeg", 1024, "key", "user1");
+
+        file.AddThumbnail("key-preview-w200", 200, 100, TourImageSizes.W200);
+
+        file.Thumbnails[0].SizeCode.Should().Be(TourImageSizes.W200);
+        file.Thumbnails[0].Width.Should().Be(200);
+        file.Thumbnails[0].Height.Should().Be(100);
     }
 
     [Fact]

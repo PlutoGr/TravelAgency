@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using TravelAgency.Gateway.Tests.Transforms;
+using Yarp.ReverseProxy.Transforms.Builder;
 
 namespace TravelAgency.Gateway.Tests.Helpers;
 
@@ -69,6 +71,8 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            services.AddSingleton<ITransformProvider, RouteIdResponseTransformProvider>();
+
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
