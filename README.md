@@ -64,13 +64,15 @@ Tokens are stored in **httpOnly cookies** (XSS-safe). See [Cookie-Based Auth](ai
 
 ### Test accounts (Development seed)
 
-When running in Development or with `ASPNETCORE_SEED_DATA=true`, Identity and Catalog seed test data:
+When running in Development or with `ASPNETCORE_SEED_DATA=true`, Identity and Catalog seed test data. Logins:
 
-| Email            | Password  | Role   |
-|------------------|-----------|--------|
-| client@test.com  | Test123!  | Client |
-| manager@test.com | Test123!  | Manager|
-| admin@test.com   | Test123!  | Admin  |
+| Email            | Role   |
+|------------------|--------|
+| client@test.com  | Client |
+| manager@test.com | Manager|
+| admin@test.com   | Admin  |
+
+The password is set in [`src/Services/Identity/TravelAgency.Identity.Infrastructure/Seeding/IdentityDataSeeder.cs`](src/Services/Identity/TravelAgency.Identity.Infrastructure/Seeding/IdentityDataSeeder.cs) and noted in [`docker/.env.example`](docker/.env.example). The value is not repeated here.
 
 Catalog seeds directions (Мальдивы, Пхукет, Санторини, Бали, Дубай) and sample tours.
 Catalog demo data alone (without test users) can be enabled with `Seeding__DemoCatalog=true`.
@@ -81,8 +83,8 @@ Dev-среда работает на одном сервере Selectel (Ubuntu 
 
 ### Адрес и доступ
 
-- Сайт: **https://185.75.189.253**. Сертификат самоподписанный (домена пока нет, см. #17), поэтому браузер покажет предупреждение, его нужно принять один раз.
-- Сайт закрыт basic auth: пользователь `dev`, пароль у Платона (на его Mac в `~/.ssh/travelagency_dev_basic_auth.txt`). Без пароля открыты только `/robots.txt` и `/healthz`.
+Адрес и доступ у команды. Сертификат самоподписанный (домена пока нет, см. #17), поэтому браузер покажет предупреждение, его нужно принять один раз. Сайт закрыт basic auth; без пароля открыты только `/robots.txt` и `/healthz`.
+
 - HTTP на 80 порту редиректит на HTTPS. Поисковики сайт не индексируют (`robots.txt` и заголовок `X-Robots-Tag`).
 - Снаружи открыты только порты 22, 80 и 443 (ufw). Gateway (`127.0.0.1:5001`) и консоль MinIO (`127.0.0.1:9001`) доступны только через SSH-туннель:
 
@@ -95,7 +97,7 @@ ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 - Все .NET-сервисы на dev работают с `ASPNETCORE_ENVIRONMENT=Staging` (задаётся в `docker-compose.override.yml` на сервере). Swagger и OpenAPI выключены, в ответах 500 нет стека, подробные логи Development не используются.
 - Миграции применяются при старте (`ASPNETCORE_RUN_MIGRATIONS=true`).
 - Тестовые аккаунты и демо-каталог на dev оставлены специально: включены флагом `ASPNETCORE_SEED_DATA=true` (таблица аккаунтов выше). Это только для dev, на production флаг не ставить.
-- Cookie авторизации с флагом `Secure` (сайт только по HTTPS), CORS разрешён для `https://185.75.189.253`.
+- Cookie авторизации с флагом `Secure` (сайт только по HTTPS), CORS разрешён для адреса dev-сайта (адрес у команды).
 
 ### SSH
 
@@ -106,9 +108,10 @@ ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 | `travelagency-dev-platon` | `platon` | Администрирование, есть `sudo` и группа `docker` |
 | `travelagency-dev-deploy` | `deploy` | Пользователь деплоя (ключ в секрете `DEPLOY_SSH_KEY`), группа `docker`, без `sudo` |
 
+Адрес (HostName) у команды.
+
 ```
 Host travelagency-dev-platon
-    HostName 185.75.189.253
     User platon
     IdentityFile ~/.ssh/travelagency-dev
     IdentitiesOnly yes
@@ -164,7 +167,7 @@ docker compose logs -f --tail=200 gateway # логи сервиса (gateway, id
 |---|---|---|
 | `/opt/travelagency/docker/.env` | Секреты: пароли Postgres и MinIO, `JWT_SIGNING_KEY`, `GRPC_INTERNAL_SERVICE_TOKEN` | Шаблон `docker/.env.example`, значения сгенерировать заново (`openssl rand -base64 32`) |
 | `/opt/travelagency/docker/docker-compose.override.yml` | Порты, образы GHCR, монтирование сертификата и пароля | [`docker/docker-compose.override.example.yml`](docker/docker-compose.override.example.yml) |
-| `/etc/travelagency/certs/tls.crt`, `tls.key` | Самоподписанный сертификат для IP, до 2028-10-02 | `openssl req -x509 -newkey rsa:2048 -nodes -days 730 -subj "/CN=185.75.189.253" -addext "subjectAltName=IP:185.75.189.253" -keyout tls.key -out tls.crt` |
+| `/etc/travelagency/certs/tls.crt`, `tls.key` | Самоподписанный сертификат для адреса dev (адрес у команды), до 2028-10-02 | `openssl req -x509 -newkey rsa:2048 -nodes -days 730 -subj "/CN=<адрес>" -addext "subjectAltName=IP:<адрес>" -keyout tls.key -out tls.crt` |
 | `/etc/travelagency/auth/htpasswd` | Пароль basic auth для `dev` | `printf 'dev:%s\n' "$(openssl passwd -apr1)" > /etc/travelagency/auth/htpasswd` |
 | `/opt/travelagency-local/minio/Dockerfile` | Сборка локального образа MinIO | [`docker/minio/Dockerfile`](docker/minio/Dockerfile) |
 | `/etc/docker/daemon.json` | Ротация логов Docker | `{"log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}}` |
