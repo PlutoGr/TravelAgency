@@ -15,7 +15,9 @@ public class TourEntityTests
         tour.Title.Should().Be("Santorini Explorer");
         tour.Country.Should().Be("Greece");
         tour.DurationDays.Should().Be(7);
-        tour.IsActive.Should().BeTrue();
+        tour.Status.Should().Be(TourStatus.Draft);
+        tour.Source.Should().Be(TourSource.Manager);
+        tour.IsActive.Should().BeFalse();
     }
 
     [Fact]
@@ -56,43 +58,22 @@ public class TourEntityTests
     }
 
     [Fact]
-    public void SetPrices_ReplacesPrices()
+    public void ReplaceOffers_ReplacesOffers()
     {
         var tour = Tour.Create("Test Tour", "Description", TourType.Beach, "Greece", 7, null, null);
         var validFrom = DateTime.UtcNow.AddDays(1);
 
-        var initialPrices = new[]
+        var initialOffers = new[]
         {
-            TourPrice.Create(tour.Id, validFrom, validFrom.AddDays(7), 500m, "USD", 10),
-            TourPrice.Create(tour.Id, validFrom.AddDays(10), validFrom.AddDays(17), 600m, "USD", 5)
+            TourOffer.Create(tour.Id, validFrom, validFrom.AddDays(7), 500m, "USD", 10),
+            TourOffer.Create(tour.Id, validFrom.AddDays(10), validFrom.AddDays(17), 600m, "USD", 5)
         };
-        tour.SetPrices(initialPrices);
+        tour.ReplaceOffers(initialOffers);
 
-        var newPrice = TourPrice.Create(tour.Id, validFrom.AddDays(20), validFrom.AddDays(27), 700m, "USD", 8);
-        tour.SetPrices([newPrice]);
+        var newOffer = TourOffer.Create(tour.Id, validFrom.AddDays(20), validFrom.AddDays(27), 700m, "USD", 8);
+        tour.ReplaceOffers([newOffer]);
 
-        tour.Prices.Should().HaveCount(1);
-        tour.Prices.First().PricePerPerson.Should().Be(700m);
-    }
-
-    [Fact]
-    public void Deactivate_SetsIsActiveFalse()
-    {
-        var tour = Tour.Create("Test Tour", "Description", TourType.Beach, "Greece", 7, null, null);
-
-        tour.Deactivate();
-
-        tour.IsActive.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Activate_AfterDeactivate_SetsIsActiveTrue()
-    {
-        var tour = Tour.Create("Test Tour", "Description", TourType.Beach, "Greece", 7, null, null);
-        tour.Deactivate();
-
-        tour.Activate();
-
-        tour.IsActive.Should().BeTrue();
+        tour.Offers.Should().HaveCount(1);
+        tour.Offers.First().PricePerPerson.Should().Be(700m);
     }
 }

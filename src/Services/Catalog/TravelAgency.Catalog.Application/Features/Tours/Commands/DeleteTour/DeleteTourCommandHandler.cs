@@ -2,6 +2,7 @@ using MediatR;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.Exceptions;
 using TravelAgency.Catalog.Domain.Entities;
+using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.Domain.Interfaces;
 
 namespace TravelAgency.Catalog.Application.Features.Tours.Commands.DeleteTour;
@@ -22,7 +23,10 @@ public class DeleteTourCommandHandler : IRequestHandler<DeleteTourCommand, Unit>
         var tour = await _tourRepository.GetByIdAsync(command.Id, ct)
             ?? throw new NotFoundException(nameof(Tour), command.Id);
 
-        tour.Deactivate();
+        // Старый HTTP DELETE прячет тур из каталога. Жёсткое удаление черновика — правило домена для #37.
+        if (tour.Status == TourStatus.Published)
+            tour.Unpublish();
+
         _tourRepository.Update(tour);
         await _unitOfWork.SaveChangesAsync(ct);
 
