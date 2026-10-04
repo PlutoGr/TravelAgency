@@ -20,6 +20,7 @@ COPY nginx.conf /etc/nginx/travelagency/http.conf
 COPY nginx-https.conf /etc/nginx/travelagency/https.conf
 COPY nginx-app.conf /etc/nginx/travelagency/app.conf
 COPY nginx-headers.conf /etc/nginx/travelagency/headers.conf
+COPY nginx-logging.conf /etc/nginx/conf.d/01-travelagency-logging.conf
 COPY --chmod=755 nginx-entrypoint.sh /docker-entrypoint.d/40-travelagency.sh
 # Значения по умолчанию, если entrypoint не запускался (basic auth выключен)
 RUN touch /etc/nginx/travelagency/auth.conf && \
