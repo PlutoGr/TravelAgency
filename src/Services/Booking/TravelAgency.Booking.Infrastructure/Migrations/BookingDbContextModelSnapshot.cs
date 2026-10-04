@@ -134,7 +134,6 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.Proposal", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("BookingId")
