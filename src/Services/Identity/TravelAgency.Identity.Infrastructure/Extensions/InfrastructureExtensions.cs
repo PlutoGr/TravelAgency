@@ -25,8 +25,9 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IApplicationBuilder UseIdentityMigrations(this IApplicationBuilder app)
     {
+        var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
         var runMigrations = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS"),
+            configuration["ASPNETCORE_RUN_MIGRATIONS"],
             "true",
             StringComparison.OrdinalIgnoreCase);
         if (!runMigrations && !app.ApplicationServices.GetRequiredService<IHostEnvironment>().IsDevelopment())

@@ -55,7 +55,9 @@ public sealed class TourChildRowsPostgresTests : IAsyncLifetime
             ["ConnectionStrings:CatalogDb"] = _postgres.GetConnectionString(),
             ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
             ["GrpcClients:MediaServiceUrl"] = "http://media-service:8081",
-            ["Serilog:MinimumLevel:Default"] = "Warning"
+            ["Serilog:MinimumLevel:Default"] = "Warning",
+            ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
+            ["ASPNETCORE_SEED_DATA"] = "false"
         };
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });

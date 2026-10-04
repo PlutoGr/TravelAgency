@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TravelAgency.Media.Infrastructure.Persistence;
@@ -15,8 +16,9 @@ public static class InfrastructureExtensions
     /// </summary>
     public static IApplicationBuilder UseMediaMigrations(this IApplicationBuilder app)
     {
+        var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
         var runMigrations = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS"),
+            configuration["ASPNETCORE_RUN_MIGRATIONS"],
             "true",
             StringComparison.OrdinalIgnoreCase);
         if (!runMigrations && !app.ApplicationServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())

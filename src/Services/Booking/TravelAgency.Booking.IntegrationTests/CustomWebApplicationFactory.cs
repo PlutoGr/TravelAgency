@@ -24,10 +24,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public CustomWebApplicationFactory()
     {
-        // AddBookingInfrastructure and AddBookingAuthentication read config eagerly during host build.
-        Environment.SetEnvironmentVariable("ConnectionStrings__BookingDb", "Host=localhost;Database=travel_booking_test");
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
-
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
@@ -51,6 +47,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:BookingDb", "Server=localhost;Database=TestDb;");
+        builder.UseSetting("JwtSettings:SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+        builder.UseSetting("ASPNETCORE_RUN_MIGRATIONS", "false");
 
         builder.ConfigureLogging(logging =>
         {
@@ -118,6 +117,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:BookingDb"] = "Server=localhost;Database=TestDb;",
                 ["GrpcClients:CatalogServiceUrl"] = "http://localhost:5000",
                 ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
+                ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
             };
             config.AddInMemoryCollection(testSettings);
         });

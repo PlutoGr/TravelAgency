@@ -1,5 +1,7 @@
 using System.Net;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace TravelAgency.Gateway.Tests.Integration;
@@ -12,14 +14,22 @@ public class ProgramSmokeTests
 {
     private static WebApplicationFactory<Program> CreateFactory()
     {
-        // Environment variables are read during WebApplication.CreateBuilder(), before
-        // any service registration runs, so this is the reliable way to inject test config
-        // into a Minimal API entry point with WebApplicationFactory.
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "smoke-test-signing-key-at-least-32-chars!");
-        Environment.SetEnvironmentVariable("JwtSettings__Issuer", "smoke-issuer");
-        Environment.SetEnvironmentVariable("JwtSettings__Audience", "smoke-audience");
-
-        return new WebApplicationFactory<Program>().WithWebHostBuilder(b => b.UseEnvironment("Testing"));
+        return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Testing");
+            builder.UseSetting("JwtSettings:SigningKey", "smoke-test-signing-key-at-least-32-chars!");
+            builder.UseSetting("JwtSettings:Issuer", "smoke-issuer");
+            builder.UseSetting("JwtSettings:Audience", "smoke-audience");
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["JwtSettings:SigningKey"] = "smoke-test-signing-key-at-least-32-chars!",
+                    ["JwtSettings:Issuer"] = "smoke-issuer",
+                    ["JwtSettings:Audience"] = "smoke-audience",
+                });
+            });
+        });
     }
 
     [Fact]

@@ -14,7 +14,9 @@ public static class JwtAuthenticationExtensions
     private const int MinSigningKeyLength = 32;
 
     /// <summary>
-    /// Adds JWT Bearer authentication using signing key from JWT_SIGNING_KEY env var or JwtSettings:SigningKey.
+    /// Adds JWT Bearer authentication using signing key from configuration
+    /// (<c>JwtSettings:SigningKey</c>, then <c>JWT_SIGNING_KEY</c>).
+    /// The host already copies process environment variables into configuration.
     /// Validates signing key: non-empty, minimum 32 characters.
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -27,12 +29,15 @@ public static class JwtAuthenticationExtensions
         IConfiguration configuration,
         Action<JwtBearerOptions>? configureOptions = null)
     {
-        var signingKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY")
-            ?? configuration["JwtSettings:SigningKey"];
+        // Непустой JwtSettings:SigningKey важнее JWT_SIGNING_KEY: фабрика теста
+        // переопределяет ключ только у своего хоста и не видит чужой процесс.
+        var signingKey = FirstNonWhiteSpace(
+            configuration["JwtSettings:SigningKey"],
+            configuration["JWT_SIGNING_KEY"]);
 
         if (string.IsNullOrWhiteSpace(signingKey))
             throw new InvalidOperationException(
-                "JWT SigningKey must be configured via environment variable JWT_SIGNING_KEY or JwtSettings:SigningKey.");
+                "JWT SigningKey must be configured via JWT_SIGNING_KEY or JwtSettings:SigningKey.");
 
         if (signingKey.Length < MinSigningKeyLength)
             throw new InvalidOperationException("JWT SigningKey must be at least 32 characters.");
@@ -62,5 +67,16 @@ public static class JwtAuthenticationExtensions
         });
 
         return services;
+    }
+
+    private static string? FirstNonWhiteSpace(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return null;
     }
 }
