@@ -23,14 +23,15 @@ public sealed class MediaController(IMediator mediator) : ControllerBase
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(UploadMediaResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Upload(IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> Upload(IFormFile file, [FromQuery] string? purpose, CancellationToken ct)
     {
         await using var stream = file.OpenReadStream();
         var command = new UploadMediaCommand(
             stream,
             file.FileName,
             file.ContentType,
-            file.Length);
+            file.Length,
+            purpose);
 
         var result = await mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);

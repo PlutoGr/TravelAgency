@@ -10,6 +10,14 @@ namespace TravelAgency.Media.Domain.Interfaces;
 public interface IMediaFileRepository
 {
     Task<MediaFile?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<MediaFile>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <see cref="MediaFile.IsPublic"/> for active files. Missing ids are ignored.
+    /// Already-public files stay public. Does not publish deleted files.
+    /// </summary>
+    Task MarkPublicAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+
     Task AddAsync(MediaFile file, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

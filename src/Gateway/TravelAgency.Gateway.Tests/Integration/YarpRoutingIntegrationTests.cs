@@ -33,6 +33,14 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         return client;
     }
 
+    private HttpClient CreateClientForRole(string role)
+    {
+        var client = _fixture.Factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", Helpers.JwtTokenHelper.GenerateToken(role: role));
+        return client;
+    }
+
     private static async Task<string> GetEchoedPathAsync(HttpResponseMessage response)
     {
         var echo = await ReadEchoAsync(response);
@@ -378,6 +386,97 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var path = await GetEchoedPathAsync(response);
         Assert.Equal("/media/presign", path);
+        Assert.Equal("media-route", (await ReadEchoAsync(response)).RouteId);
+    }
+
+    [Fact]
+    public async Task Media_PublicFile_AnonymousGet_SelectsPublicRoute()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.GetAsync("/api/v1/media/files/11111111-1111-1111-1111-111111111111/w800");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("media-files-public-route", (await ReadEchoAsync(response)).RouteId);
+        Assert.Equal("/media/files/11111111-1111-1111-1111-111111111111/w800", await GetEchoedPathAsync(response));
+    }
+
+    [Fact]
+    public async Task Media_PublicFile_Post_DoesNotUseAnonymousRoute()
+    {
+        var client = CreateClientForRole(AppRoles.Manager);
+
+        var response = await client.PostAsync(
+            "/api/v1/media/files/11111111-1111-1111-1111-111111111111/w800",
+            new StringContent(string.Empty));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("media-route", (await ReadEchoAsync(response)).RouteId);
+    }
+
+    [Fact]
+    public async Task Media_ManageFile_ManagerGet_SelectsManageRoute()
+    {
+        var client = CreateClientForRole(AppRoles.Manager);
+
+        var response = await client.GetAsync("/api/v1/media/manage/files/11111111-1111-1111-1111-111111111111/w200");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("media-manage-files-route", (await ReadEchoAsync(response)).RouteId);
+        Assert.Equal("/media/manage/files/11111111-1111-1111-1111-111111111111/w200", await GetEchoedPathAsync(response));
+    }
+
+    [Fact]
+    public async Task Media_ManageFile_AdminGet_SelectsManageRoute()
+    {
+        var client = CreateClientForRole(AppRoles.Admin);
+
+        var response = await client.GetAsync("/api/v1/media/manage/files/11111111-1111-1111-1111-111111111111/w1600");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("media-manage-files-route", (await ReadEchoAsync(response)).RouteId);
+    }
+
+    [Fact]
+    public async Task Media_ManageFile_ClientGet_Returns403()
+    {
+        var client = CreateClientForRole(AppRoles.Client);
+
+        var response = await client.GetAsync("/api/v1/media/manage/files/11111111-1111-1111-1111-111111111111/w200");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Media_ManageFile_GuestGet_Returns401()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.GetAsync("/api/v1/media/manage/files/11111111-1111-1111-1111-111111111111/w200");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Media_Upload_GuestPost_Returns401()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.PostAsync("/api/v1/media/upload?purpose=tour-image", new StringContent(string.Empty));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Media_GrpcPath_IsNotRoutedThroughGateway()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var root = await client.PostAsync("/media.MediaService/GetMediaFiles", new StringContent(string.Empty));
+        var underApi = await client.PostAsync("/api/v1/media.MediaService/MarkMediaFilesPublic", new StringContent(string.Empty));
+
+        Assert.Equal(HttpStatusCode.NotFound, root.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, underApi.StatusCode);
     }
 
     [Fact]
