@@ -25,7 +25,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.Direction", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Country")
@@ -61,7 +60,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.Tour", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("AccommodationText")
@@ -132,6 +130,10 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -154,7 +156,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourComponent", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -178,7 +179,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourDay", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("ComponentId")
@@ -213,7 +213,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourImage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("Alt")
@@ -251,7 +250,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourInclusion", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("ComponentId")
@@ -285,7 +283,6 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourOffer", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<int>("AvailableSeats")

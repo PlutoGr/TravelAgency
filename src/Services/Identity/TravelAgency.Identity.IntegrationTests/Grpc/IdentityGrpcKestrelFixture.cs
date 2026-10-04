@@ -51,7 +51,9 @@ public sealed class IdentityGrpcKestrelFixture : IAsyncLifetime
             ["JwtSettings:ValidateLifetime"] = "false",
             ["GrpcSettings:InternalServiceToken"] = ServiceToken,
             ["ServiceListen:GrpcPort"] = GrpcPort.ToString(),
-            ["RateLimit:PermitLimit"] = "1000"
+            ["RateLimit:PermitLimit"] = "1000",
+            ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
+            ["ASPNETCORE_SEED_DATA"] = "false"
         });
         builder.UseServiceListenPorts();
         Program.ConfigureServices(builder);

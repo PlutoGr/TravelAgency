@@ -18,11 +18,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     // database persists across all requests made during a test class.
     private readonly SqliteConnection _connection;
 
+    /// <summary>
+    /// Лимит политики auth для этого хоста. Не читается из процесса:
+    /// иначе параллельный тест с жёстким лимитом даёт 429 чужим запросам.
+    /// </summary>
+    public int RateLimitPermit { get; set; } = 1000;
+
     public CustomWebApplicationFactory()
     {
-        // AddIdentityInfrastructure and AddIdentityAuthentication read config eagerly during host build.
-        Environment.SetEnvironmentVariable("ConnectionStrings__IdentityDb", "Host=localhost;Database=travel_identity_test");
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
     }
@@ -30,6 +33,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:IdentityDb", "Server=localhost;Database=TestDb;");
+        builder.UseSetting("JwtSettings:SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+        builder.UseSetting("ASPNETCORE_RUN_MIGRATIONS", "false");
+        builder.UseSetting("ASPNETCORE_SEED_DATA", "false");
+        builder.UseSetting("RateLimit:PermitLimit", RateLimitPermit.ToString());
 
         builder.ConfigureLogging(logging =>
         {
@@ -92,7 +100,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:IdentityDb"] = "Server=localhost;Database=TestDb;",
                 ["ConnectionStrings:Redis"] = string.Empty,
                 ["LockoutSettings:LockoutThreshold"] = "3",
-                ["RateLimit:PermitLimit"] = string.Equals(Environment.GetEnvironmentVariable("RATE_LIMIT_STRICT"), "true", StringComparison.OrdinalIgnoreCase) ? "5" : "1000"
+                ["RateLimit:PermitLimit"] = RateLimitPermit.ToString(),
+                ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
+                ["ASPNETCORE_SEED_DATA"] = "false"
             };
             config.AddInMemoryCollection(testSettings);
         });

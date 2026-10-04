@@ -27,14 +27,6 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
     /// </summary>
     public static readonly Guid TestUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    static ChatApiApplicationFactory()
-    {
-        // AddChatInfrastructure and AddChatAuthentication read config eagerly during host build.
-        // Placeholder value; ConfigureTestServices replaces DbContext with Testcontainers connection.
-        Environment.SetEnvironmentVariable("ConnectionStrings__ChatDb", "Host=localhost;Database=chat_test_placeholder");
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
-    }
-
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
         .WithDatabase("TravelAgency_Chat_Test")
         .WithUsername("postgres")
@@ -56,7 +48,6 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
 
     public new async Task DisposeAsync()
     {
-        Environment.SetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS", null);
         await _postgres.DisposeAsync();
         await base.DisposeAsync();
     }
@@ -64,11 +55,10 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("ConnectionStrings:ChatDb", "Host=localhost;Database=chat_test_placeholder");
+        builder.UseSetting("JwtSettings:SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+        builder.UseSetting("ASPNETCORE_RUN_MIGRATIONS", "true");
 
-        // Force migrations to run in tests (UseChatMigrations checks env var).
-        Environment.SetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS", "true");
-
-        // ASPNETCORE_RUN_MIGRATIONS=true forces migrations to run in tests (UseChatMigrations checks config).
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

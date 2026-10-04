@@ -122,6 +122,44 @@ public class CatalogGrpcClientTests
         result.SnapshotTakenAt.ToString("O").Should().Be("2026-04-04T10:15:30.0000000Z");
     }
 
+    [Fact]
+    public async Task GetTourSnapshotForExistingBookingAsync_UsesTheSameUtcParseAsGetTourSnapshot()
+    {
+        var tourId = Guid.NewGuid();
+        var snapshotTakenAt = "2026-04-04T13:15:30.0000000+03:00";
+        var response = new TourSnapshotResponse
+        {
+            TourId = tourId.ToString(),
+            Title = "Снятый тур",
+            Description = "Старая заявка",
+            Price = 1500,
+            Currency = "EUR",
+            DurationDays = 5,
+            SnapshotTakenAt = snapshotTakenAt,
+            Found = true
+        };
+
+        using var host = await CreateTestServerAsync(response);
+        var client = CreateCatalogGrpcClient(host);
+
+        var result = await client.GetTourSnapshotForExistingBookingAsync(tourId, CancellationToken.None);
+
+        result.SnapshotTakenAt.Kind.Should().Be(DateTimeKind.Utc);
+        result.SnapshotTakenAt.Should().Be(new DateTime(2026, 4, 4, 10, 15, 30, DateTimeKind.Utc));
+        result.Title.Should().Be("Снятый тур");
+    }
+
+    [Fact]
+    public async Task GetTourSnapshotForExistingBookingAsync_WhenNotFound_ThrowsTourUnavailable()
+    {
+        using var host = await CreateTestServerAsync(new TourSnapshotResponse { Found = false });
+        var client = CreateCatalogGrpcClient(host);
+
+        var act = async () => await client.GetTourSnapshotForExistingBookingAsync(Guid.NewGuid(), CancellationToken.None);
+
+        await act.Should().ThrowAsync<TourUnavailableException>();
+    }
+
     private static DateTime ParseAsUtc(string value) =>
         DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 
@@ -190,5 +228,10 @@ public class CatalogGrpcClientTests
         {
             return Task.FromResult(_holder.Response);
         }
+
+        public override Task<TourSnapshotResponse> GetTourSnapshotForExistingBooking(
+            GetTourSnapshotRequest request,
+            ServerCallContext context) =>
+            GetTourSnapshot(request, context);
     }
 }

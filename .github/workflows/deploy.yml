@@ -240,7 +240,8 @@ jobs:
           for target in \
             catalog-service/catalog.CatalogService/GetTourSnapshot \
             identity-service/identity.IdentityGrpc/GetUserSummary \
-            booking-service/booking.BookingService/ValidateBookingAccess; do
+            booking-service/booking.BookingService/ValidateBookingAccess \
+            media-service/media.MediaService/GetMediaFiles; do
             host=${target%%/*}; path=/${target#*/}
             out=$(docker run --rm --network "$net" -v /tmp/grpc-smoke-empty.bin:/e.bin:ro curlimages/curl:8.22.0 \
               -sS --max-time 10 --http2-prior-knowledge -o /dev/null -D - -X POST \

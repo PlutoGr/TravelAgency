@@ -66,7 +66,8 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
             ["Storage:AccessKey"] = "test",
             ["Storage:SecretKey"] = "test",
             ["Storage:BucketName"] = "test-media",
-            ["Storage:ForcePathStyle"] = "true"
+            ["Storage:ForcePathStyle"] = "true",
+            ["ASPNETCORE_RUN_MIGRATIONS"] = "false"
         });
 
         Program.ConfigureServices(builder.Services, builder.Configuration);

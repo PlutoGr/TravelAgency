@@ -42,12 +42,6 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
     private HttpClient? _catalogHttpClient;
     private GrpcChannel? _catalogChannel;
 
-    public ProposalUtcWebApplicationFactory()
-    {
-        Environment.SetEnvironmentVariable("ConnectionStrings__BookingDb", "Host=localhost;Database=travel_booking_test");
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
-    }
-
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -128,6 +122,9 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:BookingDb", "Host=localhost;Database=travel_booking_placeholder");
+        builder.UseSetting("JwtSettings:SigningKey", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+        builder.UseSetting("ASPNETCORE_RUN_MIGRATIONS", "false");
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -142,6 +139,7 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
                 ["GrpcClients:CatalogServiceUrl"] = "http://127.0.0.1:1",
                 ["GrpcClients:IdentityServiceUrl"] = "http://127.0.0.1:1",
                 ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
+                ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
             });
         });
 
@@ -220,5 +218,10 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
                 Found = true
             });
         }
+
+        public override Task<TourSnapshotResponse> GetTourSnapshotForExistingBooking(
+            GetTourSnapshotRequest request,
+            ServerCallContext context) =>
+            GetTourSnapshot(request, context);
     }
 }

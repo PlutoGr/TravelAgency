@@ -6,6 +6,10 @@ package catalog;
 
 service CatalogService {
   rpc GetTourSnapshot (GetTourSnapshotRequest) returns (TourSnapshotResponse);
+
+  // Снимок для уже существующей заявки. Возвращает опубликованный и снятый тур.
+  // Черновик и неизвестный id: found=false. Формат полей тот же, что у GetTourSnapshot.
+  rpc GetTourSnapshotForExistingBooking (GetTourSnapshotRequest) returns (TourSnapshotResponse);
 }
 
 message GetTourSnapshotRequest {

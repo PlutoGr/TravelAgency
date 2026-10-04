@@ -43,7 +43,6 @@ public partial class Program
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             var permitLimit = builder.Configuration.GetValue<int?>("RateLimit:PermitLimit")
                 ?? (builder.Environment.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase)
-                    && !string.Equals(Environment.GetEnvironmentVariable("RATE_LIMIT_STRICT"), "true", StringComparison.OrdinalIgnoreCase)
                     ? 1000
                     : 5);
             options.AddPolicy("auth", context =>

@@ -47,7 +47,8 @@ public sealed class BookingGrpcKestrelFixture : IAsyncLifetime
             ["GrpcClients:CatalogServiceUrl"] = "http://127.0.0.1:1",
             ["GrpcClients:IdentityServiceUrl"] = "http://127.0.0.1:1",
             ["GrpcSettings:InternalServiceToken"] = ServiceToken,
-            ["ServiceListen:GrpcPort"] = GrpcPort.ToString()
+            ["ServiceListen:GrpcPort"] = GrpcPort.ToString(),
+            ["ASPNETCORE_RUN_MIGRATIONS"] = "false"
         });
         builder.UseServiceListenPorts();
         Program.ConfigureServices(builder);

@@ -26,7 +26,8 @@ public sealed class CreateProposalCommandHandler(
         var booking = await bookingRepository.GetByIdAsync(command.BookingId, cancellationToken)
             ?? throw new NotFoundException($"Booking '{command.BookingId}' was not found.");
 
-        var snapshotDto = await catalogGrpcClient.GetTourSnapshotAsync(booking.TourId, cancellationToken);
+        var snapshotDto = await catalogGrpcClient.GetTourSnapshotForExistingBookingAsync(
+            booking.TourId, cancellationToken);
 
         var snapshot = new TourSnapshot(
             snapshotDto.TourId,

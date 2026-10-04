@@ -13,6 +13,7 @@ internal sealed class BookingExceptionMapper : IExceptionMapper
     {
         ProblemDetails? details = exception switch
         {
+            TourUnavailableException unavailable => CreateTourUnavailable(context, unavailable),
             AppException appEx => CreateAppProblemDetails(context, appEx),
             BookingDomainException domainEx => new ProblemDetails
             {
@@ -57,5 +58,19 @@ internal sealed class BookingExceptionMapper : IExceptionMapper
             Detail = exception.Message,
             Instance = context.Request.Path
         };
+    }
+
+    private static ProblemDetails CreateTourUnavailable(HttpContext context, TourUnavailableException exception)
+    {
+        var details = new ProblemDetails
+        {
+            Type = "https://travelagency/errors/tour-unavailable",
+            Title = "Unprocessable Entity",
+            Status = StatusCodes.Status422UnprocessableEntity,
+            Detail = exception.Message,
+            Instance = context.Request.Path
+        };
+        details.Extensions["code"] = TourUnavailableException.Code;
+        return details;
     }
 }

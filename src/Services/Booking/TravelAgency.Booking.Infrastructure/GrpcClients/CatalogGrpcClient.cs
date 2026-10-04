@@ -27,16 +27,34 @@ public class CatalogGrpcClient : ICatalogGrpcClient
         if (!response.Found)
             throw new NotFoundException($"Tour '{tourId}' was not found in catalog.");
 
-        return new BookingTourSnapshotDto(
+        return Map(response);
+    }
+
+    public async Task<BookingTourSnapshotDto> GetTourSnapshotForExistingBookingAsync(Guid tourId, CancellationToken ct = default)
+    {
+        var request = new GetTourSnapshotRequest { TourId = tourId.ToString() };
+        var callOptions = _callOptionsFactory.Create(ct);
+        var response = await _client.GetTourSnapshotForExistingBookingAsync(request, callOptions);
+
+        if (!response.Found)
+            throw new TourUnavailableException();
+
+        return Map(response);
+    }
+
+    private static BookingTourSnapshotDto Map(TourSnapshotResponse response) =>
+        new(
             TourId: Guid.Parse(response.TourId),
             Title: response.Title,
             Description: response.Description,
             Price: (decimal)response.Price,
             Currency: response.Currency,
             DurationDays: response.DurationDays,
-            SnapshotTakenAt: DateTime.Parse(
-                response.SnapshotTakenAt,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal));
-    }
+            SnapshotTakenAt: ParseUtc(response.SnapshotTakenAt));
+
+    private static DateTime ParseUtc(string value) =>
+        DateTime.Parse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 }

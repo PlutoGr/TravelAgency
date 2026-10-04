@@ -13,6 +13,9 @@ public class TourImageConfiguration : IEntityTypeConfiguration<TourImage>
         builder.ToTable("TourImages");
 
         builder.HasKey(i => i.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новое фото уже существующей строкой и делать UPDATE вместо INSERT.
+        builder.Property(i => i.Id).ValueGeneratedNever();
 
         builder.Property(i => i.Alt)
             .HasMaxLength(300);

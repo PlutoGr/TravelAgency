@@ -28,7 +28,7 @@ public sealed class CatalogDataSeeder(
     public static bool ShouldSeed(IHostEnvironment environment, IConfiguration configuration) =>
         environment.IsDevelopment()
         || configuration.GetValue<bool>(DemoCatalogKey)
-        || string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_SEED_DATA"), "true", StringComparison.OrdinalIgnoreCase);
+        || string.Equals(configuration["ASPNETCORE_SEED_DATA"], "true", StringComparison.OrdinalIgnoreCase);
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
