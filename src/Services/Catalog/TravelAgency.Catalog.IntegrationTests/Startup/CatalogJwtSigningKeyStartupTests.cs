@@ -63,25 +63,19 @@ public class CatalogJwtSigningKeyStartupTests
     }
 
     [Fact]
-    public async Task InitializeAsync_WhenSigningKeyProvidedViaEnvVar_StartsSuccessfully()
+    public async Task InitializeAsync_WhenSigningKeyProvidedViaJwtSigningKeyConfiguration_StartsSuccessfully()
     {
-        var previous = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY");
-        try
+        var factory = new CustomWebApplicationFactory();
+        await factory.InitializeAsync(d =>
         {
-            Environment.SetEnvironmentVariable("JWT_SIGNING_KEY", ValidSigningKey);
+            d.Remove("JwtSettings:SigningKey");
+            d["JWT_SIGNING_KEY"] = ValidSigningKey;
+        });
 
-            var factory = new CustomWebApplicationFactory();
-            await factory.InitializeAsync(d => d.Remove("JwtSettings:SigningKey"));
+        var client = factory.CreateClient();
+        var response = await client.GetAsync("/health/live");
+        response.IsSuccessStatusCode.Should().BeTrue();
 
-            var client = factory.CreateClient();
-            var response = await client.GetAsync("/health/live");
-            response.IsSuccessStatusCode.Should().BeTrue();
-
-            await factory.DisposeAsync();
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("JWT_SIGNING_KEY", previous);
-        }
+        await factory.DisposeAsync();
     }
 }

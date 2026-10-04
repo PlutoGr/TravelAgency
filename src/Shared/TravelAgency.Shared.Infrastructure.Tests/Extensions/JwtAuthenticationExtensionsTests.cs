@@ -53,27 +53,18 @@ public class JwtAuthenticationExtensionsTests
     }
 
     [Fact]
-    public void AddJwtAuthentication_WhenSigningKeyProvidedViaEnvVar_Succeeds()
+    public void AddJwtAuthentication_WhenSigningKeyProvidedViaJwtSigningKeyConfiguration_Succeeds()
     {
-        var previous = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY");
-        try
+        var services = new ServiceCollection();
+        var config = BuildConfig(new Dictionary<string, string?>
         {
-            Environment.SetEnvironmentVariable("JWT_SIGNING_KEY", "TestSigningKeyWithAtLeast32CharactersForHMAC");
+            ["JWT_SIGNING_KEY"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
+            ["JwtSettings:Issuer"] = "issuer",
+            ["JwtSettings:Audience"] = "audience",
+        });
 
-            var services = new ServiceCollection();
-            var config = BuildConfig(new Dictionary<string, string?>
-            {
-                ["JwtSettings:Issuer"] = "issuer",
-                ["JwtSettings:Audience"] = "audience",
-            });
-
-            var ex = Record.Exception(() => services.AddJwtAuthentication(config));
-            ex.Should().BeNull();
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("JWT_SIGNING_KEY", previous);
-        }
+        var ex = Record.Exception(() => services.AddJwtAuthentication(config));
+        ex.Should().BeNull();
     }
 
     [Fact]

@@ -20,8 +20,9 @@ public static class DependencyInjection
 {
     public static IApplicationBuilder UseBookingMigrations(this IApplicationBuilder app)
     {
+        var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
         var runMigrations = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS"),
+            configuration["ASPNETCORE_RUN_MIGRATIONS"],
             "true", StringComparison.OrdinalIgnoreCase);
 
         if (!runMigrations && !app.ApplicationServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())

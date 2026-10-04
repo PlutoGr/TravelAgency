@@ -56,7 +56,7 @@ public class CreateProposalCommandHandlerTests
         _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
 
-        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(booking.TourId, It.IsAny<CancellationToken>()))
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotForExistingBookingAsync(booking.TourId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSnapshotDto(booking.TourId));
 
         var command = new CreateProposalCommand(bookingId, new CreateProposalRequest("optional notes"));
@@ -82,7 +82,7 @@ public class CreateProposalCommandHandlerTests
         _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
 
-        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(booking.TourId, It.IsAny<CancellationToken>()))
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotForExistingBookingAsync(booking.TourId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSnapshotDto(booking.TourId));
 
         var command = new CreateProposalCommand(bookingId, new CreateProposalRequest("admin notes"));
@@ -126,7 +126,7 @@ public class CreateProposalCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenCatalogReturnsTourNotFound_ShouldPropagateNotFoundException()
+    public async Task Handle_WhenExistingBookingTourIsUnavailable_ThrowsTourUnavailable()
     {
         _currentUserMock.Setup(u => u.UserId).Returns(ManagerId);
         _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Manager);
@@ -138,15 +138,14 @@ public class CreateProposalCommandHandlerTests
         _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
 
-        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(tourId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new NotFoundException($"Tour '{tourId}' was not found in catalog."));
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotForExistingBookingAsync(tourId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TourUnavailableException());
 
         var command = new CreateProposalCommand(bookingId, new CreateProposalRequest(null));
 
         var act = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await act.Should().ThrowAsync<NotFoundException>()
-            .WithMessage("*Tour*not found*");
+        await act.Should().ThrowAsync<TourUnavailableException>();
     }
 
     [Fact]
@@ -162,14 +161,14 @@ public class CreateProposalCommandHandlerTests
         _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
 
-        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(expectedTourId, It.IsAny<CancellationToken>()))
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotForExistingBookingAsync(expectedTourId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSnapshotDto(expectedTourId));
 
         var command = new CreateProposalCommand(bookingId, new CreateProposalRequest(null));
 
         await _handler.Handle(command, CancellationToken.None);
 
-        _catalogGrpcMock.Verify(c => c.GetTourSnapshotAsync(expectedTourId, It.IsAny<CancellationToken>()), Times.Once);
+        _catalogGrpcMock.Verify(c => c.GetTourSnapshotForExistingBookingAsync(expectedTourId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -184,7 +183,7 @@ public class CreateProposalCommandHandlerTests
         _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
 
-        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(booking.TourId, It.IsAny<CancellationToken>()))
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotForExistingBookingAsync(booking.TourId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSnapshotDto(booking.TourId));
 
         var command = new CreateProposalCommand(bookingId, new CreateProposalRequest("notes"));
@@ -211,7 +210,7 @@ public class CreateProposalCommandHandlerTests
         _bookingRepoMock.Setup(r => r.GetByIdAsync(bookingId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(booking);
 
-        _catalogGrpcMock.Setup(c => c.GetTourSnapshotAsync(tourId, It.IsAny<CancellationToken>()))
+        _catalogGrpcMock.Setup(c => c.GetTourSnapshotForExistingBookingAsync(tourId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateSnapshotDto(tourId));
 
         var command = new CreateProposalCommand(bookingId, new CreateProposalRequest(null));

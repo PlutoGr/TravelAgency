@@ -44,7 +44,9 @@ public sealed class CatalogGrpcKestrelFixture : IAsyncLifetime
             ["JwtSettings:SigningKey"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
             ["JwtSettings:ValidateLifetime"] = "false",
             ["GrpcSettings:InternalServiceToken"] = ServiceToken,
-            ["ServiceListen:GrpcPort"] = GrpcPort.ToString()
+            ["ServiceListen:GrpcPort"] = GrpcPort.ToString(),
+            ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
+            ["ASPNETCORE_SEED_DATA"] = "false"
         });
         builder.UseServiceListenPorts();
         builder.Services.AddSingleton<IExceptionMapper, CatalogExceptionMapper>();

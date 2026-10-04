@@ -30,11 +30,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
 
-        // Set environment variables so AddMediaInfrastructure and AddMediaAuthentication don't throw at startup.
-        // These are read eagerly during service registration, before ConfigureAppConfiguration runs.
-        Environment.SetEnvironmentVariable("ConnectionStrings__MediaDb", "Host=localhost;Database=travel_media_test");
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", "test-signing-key-must-be-at-least-32-chars-long!");
-
         StorageService
             .UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult("storage-key"));
@@ -65,6 +60,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:MediaDb", "Host=localhost;Database=travel_media_test");
+        builder.UseSetting("JwtSettings:SigningKey", "test-signing-key-must-be-at-least-32-chars-long!");
+        builder.UseSetting("ASPNETCORE_RUN_MIGRATIONS", "false");
 
         builder.ConfigureLogging(logging =>
         {
@@ -88,6 +86,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Storage:BucketName"] = "test",
                 ["Storage:PresignTtlMinutes"] = "60",
                 ["Upload:MaxFileSizeBytes"] = "10485760",
+                ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
             });
         });
 

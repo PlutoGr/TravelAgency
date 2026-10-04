@@ -11,6 +11,9 @@ public class TourComponentConfiguration : IEntityTypeConfiguration<TourComponent
         builder.ToTable("TourComponents");
 
         builder.HasKey(c => c.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новый компонент уже существующей строкой и делать UPDATE вместо INSERT.
+        builder.Property(c => c.Id).ValueGeneratedNever();
 
         builder.Property(c => c.Name)
             .IsRequired()

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ namespace TravelAgency.Identity.Infrastructure.Seeding;
 public sealed class IdentityDataSeeder(
     IServiceScopeFactory scopeFactory,
     IHostEnvironment environment,
+    IConfiguration configuration,
     ILogger<IdentityDataSeeder> logger) : IHostedService
 {
     private const string TestPassword = "Test123!";
@@ -32,7 +34,7 @@ public sealed class IdentityDataSeeder(
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (!environment.IsDevelopment() &&
-            !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_SEED_DATA"), "true", StringComparison.OrdinalIgnoreCase))
+            !string.Equals(configuration["ASPNETCORE_SEED_DATA"], "true", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }

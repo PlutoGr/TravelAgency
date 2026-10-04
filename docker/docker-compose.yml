@@ -125,6 +125,8 @@ services:
       - JwtSettings__Audience=TravelAgency
       # REQUIRED for gRPC service-to-service auth. Set GRPC_INTERNAL_SERVICE_TOKEN in your .env file.
       - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
+      # Catalog ходит в Media по gRPC (#37): проверка фото в PUT images и publish. Только внутренний порт 8081.
+      - GrpcClients__MediaServiceUrl=http://media-service:8081
     depends_on:
       postgres:
         condition: service_healthy

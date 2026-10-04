@@ -11,6 +11,9 @@ public class DirectionConfiguration : IEntityTypeConfiguration<Direction>
         builder.ToTable("Directions");
 
         builder.HasKey(d => d.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новую строку уже существующей и делать UPDATE вместо INSERT.
+        builder.Property(d => d.Id).ValueGeneratedNever();
 
         builder.Property(d => d.Name)
             .IsRequired()

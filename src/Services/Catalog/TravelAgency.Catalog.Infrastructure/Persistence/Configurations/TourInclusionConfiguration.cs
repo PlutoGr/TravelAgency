@@ -12,6 +12,9 @@ public class TourInclusionConfiguration : IEntityTypeConfiguration<TourInclusion
         builder.ToTable("TourInclusions");
 
         builder.HasKey(i => i.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новый пункт уже существующей строкой и делать UPDATE вместо INSERT.
+        builder.Property(i => i.Id).ValueGeneratedNever();
 
         builder.Property(i => i.Text)
             .IsRequired()

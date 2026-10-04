@@ -1,5 +1,7 @@
 using Grpc.Core;
 using Grpc.Net.Client;
+using TravelAgency.Catalog.Domain.Entities;
+using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.IntegrationTests.Helpers;
 using TravelAgency.Contracts.Grpc.Catalog;
 
@@ -113,5 +115,54 @@ public class CatalogGrpcServiceTests
         Func<Task> act = async () => await call.ResponseAsync;
         var ex = await act.Should().ThrowAsync<RpcException>();
         ex.Which.StatusCode.Should().Be(StatusCode.Unauthenticated);
+    }
+
+    [Fact]
+    public async Task GetTourSnapshotForExistingBooking_WhenUnpublished_ReturnsSnapshot_AndNewBookingSnapshotDoesNot()
+    {
+        var tour = PublishedTourSeed.Create("Снятый тур", "Описание снятого тура", 4, 2200m, "RUB", 6);
+        tour.Unpublish();
+        _fixture.Factory.UseDbContext(db =>
+        {
+            db.Tours.Add(tour);
+            db.SaveChanges();
+        });
+
+        var client = CreateGrpcClient();
+        var hidden = await client.GetTourSnapshotAsync(
+            new GetTourSnapshotRequest { TourId = tour.Id.ToString() },
+            CreateCallOptions());
+        hidden.Found.Should().BeFalse();
+
+        var existing = await client.GetTourSnapshotForExistingBookingAsync(
+            new GetTourSnapshotRequest { TourId = tour.Id.ToString() },
+            CreateCallOptions());
+
+        existing.Found.Should().BeTrue();
+        existing.TourId.Should().Be(tour.Id.ToString());
+        existing.Title.Should().Be("Снятый тур");
+        existing.Description.Should().Be("Описание снятого тура");
+        existing.Price.Should().Be(2200.0);
+        existing.Currency.Should().Be("RUB");
+        existing.DurationDays.Should().Be(4);
+        existing.SnapshotTakenAt.Should().EndWith("Z");
+    }
+
+    [Fact]
+    public async Task GetTourSnapshotForExistingBooking_WhenDraft_ReturnsFoundFalse()
+    {
+        var tour = Tour.Create("Черновик", "Ещё не публиковали", TourType.City, "Италия", 3, null);
+        _fixture.Factory.UseDbContext(db =>
+        {
+            db.Tours.Add(tour);
+            db.SaveChanges();
+        });
+
+        var client = CreateGrpcClient();
+        var response = await client.GetTourSnapshotForExistingBookingAsync(
+            new GetTourSnapshotRequest { TourId = tour.Id.ToString() },
+            CreateCallOptions());
+
+        response.Found.Should().BeFalse();
     }
 }

@@ -18,15 +18,32 @@ public class CatalogGrpcService : CatalogService.CatalogServiceBase
     public override async Task<TourSnapshotResponse> GetTourSnapshot(
         GetTourSnapshotRequest request, ServerCallContext context)
     {
+        return await SnapshotAsync(request, context, status => status == TourStatus.Published);
+    }
+
+    public override Task<TourSnapshotResponse> GetTourSnapshotForExistingBooking(
+        GetTourSnapshotRequest request, ServerCallContext context)
+    {
+        return SnapshotAsync(
+            request,
+            context,
+            status => status is TourStatus.Published or TourStatus.Unpublished);
+    }
+
+    private async Task<TourSnapshotResponse> SnapshotAsync(
+        GetTourSnapshotRequest request,
+        ServerCallContext context,
+        Func<TourStatus, bool> statusAllowed)
+    {
         if (!Guid.TryParse(request.TourId, out var tourId))
             return new TourSnapshotResponse { Found = false };
 
         var now = DateTime.UtcNow;
         var tour = await _db.Tours
             .Include(t => t.Offers)
-            .FirstOrDefaultAsync(t => t.Id == tourId && t.Status == TourStatus.Published, context.CancellationToken);
+            .FirstOrDefaultAsync(t => t.Id == tourId, context.CancellationToken);
 
-        if (tour == null)
+        if (tour == null || !statusAllowed(tour.Status))
             return new TourSnapshotResponse { Found = false };
 
         var activePrice = tour.Offers
@@ -36,6 +53,7 @@ public class CatalogGrpcService : CatalogService.CatalogServiceBase
 
         // Fallback: if no price in current date range, use minimum price from any offer.
         // Поля снимка не переименовываются: контракт catalog.proto с Booking остаётся прежним.
+        // Строка времени — round-trip "O" от UtcNow, как у GetTourSnapshot. Timestamp — отдельно, #55.
         var priceToUse = activePrice ?? tour.Offers.OrderBy(p => p.PricePerPerson).FirstOrDefault();
 
         return new TourSnapshotResponse

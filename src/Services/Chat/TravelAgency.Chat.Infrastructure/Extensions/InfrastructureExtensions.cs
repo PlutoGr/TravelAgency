@@ -12,31 +12,19 @@ public static class InfrastructureExtensions
     /// <summary>
     /// Applies pending EF Core migrations for the Chat database.
     /// Call from API Program.cs: app.UseChatMigrations();
-    /// Runs when ASPNETCORE_RUN_MIGRATIONS=true (env or config) or when env.IsDevelopment().
+    /// Runs when ASPNETCORE_RUN_MIGRATIONS=true in configuration or when env.IsDevelopment().
+    /// The host copies the process variable into configuration.
     /// </summary>
     public static IApplicationBuilder UseChatMigrations(this IApplicationBuilder app)
     {
+        var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
         var runMigrations = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS"),
+            configuration["ASPNETCORE_RUN_MIGRATIONS"],
             "true",
             StringComparison.OrdinalIgnoreCase);
 
-        if (!runMigrations)
-        {
-            var config = app.ApplicationServices.GetService<IConfiguration>();
-            runMigrations = string.Equals(
-                config?["ASPNETCORE_RUN_MIGRATIONS"],
-                "true",
-                StringComparison.OrdinalIgnoreCase);
-        }
-
-        if (!runMigrations)
-        {
-            using var scope = app.ApplicationServices.CreateScope();
-            var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
-            if (!env.IsDevelopment())
-                return app;
-        }
+        if (!runMigrations && !app.ApplicationServices.GetRequiredService<IHostEnvironment>().IsDevelopment())
+            return app;
 
         using var migrateScope = app.ApplicationServices.CreateScope();
         var db = migrateScope.ServiceProvider.GetRequiredService<ChatDbContext>();

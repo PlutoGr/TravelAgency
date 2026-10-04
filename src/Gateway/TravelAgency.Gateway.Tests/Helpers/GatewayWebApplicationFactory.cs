@@ -28,19 +28,13 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        Environment.SetEnvironmentVariable("JwtSettings__SigningKey", TestSigningKey);
-        Environment.SetEnvironmentVariable("JwtSettings__Issuer", TestIssuer);
-        Environment.SetEnvironmentVariable("JwtSettings__Audience", TestAudience);
-
-        // Rate limits are read eagerly in Program.cs (AddGatewayRateLimiting) before
-        // ConfigureAppConfiguration overrides below are applied, so the in-memory values
-        // alone are not seen and appsettings.json (Auth:Limit = 5/s) wins, causing 429s.
-        // Environment variables are read during WebApplication.CreateBuilder(), so set them here.
-        Environment.SetEnvironmentVariable("RateLimiting__Auth__Disabled", "true");
-        Environment.SetEnvironmentVariable("RateLimiting__Auth__Limit", "1000");
-        Environment.SetEnvironmentVariable("RateLimiting__Global__Limit", "2000");
-
         builder.UseEnvironment("Testing");
+        builder.UseSetting("JwtSettings:SigningKey", TestSigningKey);
+        builder.UseSetting("JwtSettings:Issuer", TestIssuer);
+        builder.UseSetting("JwtSettings:Audience", TestAudience);
+        builder.UseSetting("RateLimiting:Auth:Disabled", "true");
+        builder.UseSetting("RateLimiting:Auth:Limit", "1000");
+        builder.UseSetting("RateLimiting:Global:Limit", "2000");
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -48,6 +42,7 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
             var testSettings = new Dictionary<string, string?>
             {
                 ["Cookie:Secure"] = "false",
+                ["RateLimiting:Auth:Disabled"] = "true",
                 ["RateLimiting:Auth:Limit"] = "1000",
                 ["RateLimiting:Auth:PeriodSeconds"] = "1",
                 ["RateLimiting:Global:Limit"] = "2000",

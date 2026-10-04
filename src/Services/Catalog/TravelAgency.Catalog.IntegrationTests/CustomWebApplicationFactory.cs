@@ -16,14 +16,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Catalog.API.Middleware;
+using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Infrastructure.Persistence;
+using TravelAgency.Catalog.IntegrationTests.Helpers;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 namespace TravelAgency.Catalog.IntegrationTests;
 
 /// <summary>
-/// Options for migration startup tests. When set, environment and ASPNETCORE_RUN_MIGRATIONS
-/// are applied before startup; env var is restored in DisposeAsync.
+/// Options for migration startup tests. Environment name and ASPNETCORE_RUN_MIGRATIONS
+/// are applied to this host's configuration only.
 /// </summary>
 public class CatalogMigrationTestOptions
 {
@@ -40,7 +42,8 @@ public class CustomWebApplicationFactory : IAsyncDisposable
     private readonly SqliteConnection _connection;
     private WebApplication? _app;
     private TestServer? _server;
-    private string? _aspNetCoreRunMigrationsRestore;
+
+    public FakeMediaFilesClient Media { get; } = new();
 
     public CustomWebApplicationFactory()
     {
@@ -61,7 +64,7 @@ public class CustomWebApplicationFactory : IAsyncDisposable
         InitializeAsync(configureConfig, null);
 
     /// <summary>
-    /// Initializes the test server with full control over config, environment, and migration env var.
+    /// Initializes the test server with full control over config and migration flag.
     /// Used by CatalogMigrationStartupTests to verify UseCatalogMigrations conditional logic.
     /// </summary>
     public async Task InitializeAsync(
@@ -75,20 +78,18 @@ public class CustomWebApplicationFactory : IAsyncDisposable
             ["JwtSettings:SigningKey"] = "TestSigningKeyWithAtLeast32CharactersForHMAC",
             ["ConnectionStrings:CatalogDb"] = "DataSource=:memory:",
             ["GrpcSettings:InternalServiceToken"] = "test-internal-token",
-            ["Serilog:MinimumLevel:Default"] = "Warning"
+            ["Serilog:MinimumLevel:Default"] = "Warning",
+            ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
+            ["ASPNETCORE_SEED_DATA"] = "false",
+            ["JWT_SIGNING_KEY"] = ""
         };
 
         configureConfig?.Invoke(testSettings);
 
-        var environmentName = migrationOptions?.EnvironmentName ?? "Testing";
-        var previousRunMigrations = migrationOptions != null
-            ? Environment.GetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS")
-            : null;
         if (migrationOptions?.AspNetCoreRunMigrations is { } value)
-        {
-            _aspNetCoreRunMigrationsRestore = previousRunMigrations;
-            Environment.SetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS", value);
-        }
+            testSettings["ASPNETCORE_RUN_MIGRATIONS"] = value;
+
+        var environmentName = migrationOptions?.EnvironmentName ?? "Testing";
 
         // Set environment in options; UseEnvironment("Testing") after CreateBuilder causes
         // "The environment changed from "" to "Testing"" error.
@@ -105,6 +106,9 @@ public class CustomWebApplicationFactory : IAsyncDisposable
 
         // Register all application services
         Program.ConfigureServices(builder.Services, builder.Configuration);
+
+        builder.Services.RemoveAll<IMediaFilesClient>();
+        builder.Services.AddSingleton<IMediaFilesClient>(Media);
 
         // Replace DbContext with SQLite in-memory
         builder.Services.RemoveAll<DbContextOptions<CatalogDbContext>>();
@@ -198,11 +202,6 @@ public class CustomWebApplicationFactory : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_aspNetCoreRunMigrationsRestore != null)
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_RUN_MIGRATIONS", _aspNetCoreRunMigrationsRestore);
-            _aspNetCoreRunMigrationsRestore = null;
-        }
         _server?.Dispose();
         if (_app != null)
             await _app.DisposeAsync();

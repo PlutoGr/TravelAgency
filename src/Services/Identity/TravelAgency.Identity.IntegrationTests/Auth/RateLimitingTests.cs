@@ -19,14 +19,12 @@ public class RateLimitingTests : IDisposable
 
     public RateLimitingTests()
     {
-        Environment.SetEnvironmentVariable("RATE_LIMIT_STRICT", "true");
-        _factory = new CustomWebApplicationFactory();
+        _factory = new CustomWebApplicationFactory { RateLimitPermit = 5 };
         _client = _factory.CreateClient();
     }
 
     public void Dispose()
     {
-        Environment.SetEnvironmentVariable("RATE_LIMIT_STRICT", null);
         _client.Dispose();
         _factory.Dispose();
     }

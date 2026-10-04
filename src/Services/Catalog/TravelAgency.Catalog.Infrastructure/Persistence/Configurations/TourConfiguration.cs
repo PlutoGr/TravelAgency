@@ -13,6 +13,10 @@ public class TourConfiguration : IEntityTypeConfiguration<Tour>
         builder.ToTable("Tours");
 
         builder.HasKey(t => t.Id);
+        // Id ставит домен (Guid.NewGuid()). ValueGeneratedOnAdd заставляет EF считать
+        // новую строку уже существующей и делать UPDATE вместо INSERT.
+        builder.Property(t => t.Id).ValueGeneratedNever();
+        builder.Property(t => t.Version).IsConcurrencyToken();
 
         builder.Ignore(t => t.IsActive);
 
