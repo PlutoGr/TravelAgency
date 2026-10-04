@@ -11,6 +11,9 @@ public class BookingStatusHistoryConfiguration : IEntityTypeConfiguration<Bookin
         builder.ToTable("BookingStatusHistories");
 
         builder.HasKey(h => h.Id);
+        // Id ставит домен. Запись добавляется к уже отслеживаемой брони (TransitionTo),
+        // поэтому ValueGeneratedOnAdd превращает вставку в UPDATE несуществующей строки.
+        builder.Property(h => h.Id).ValueGeneratedNever();
 
         builder.Property(h => h.BookingId).IsRequired();
         builder.Property(h => h.Status).IsRequired().HasConversion<int>();

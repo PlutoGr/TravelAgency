@@ -10,7 +10,8 @@ using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Booking.IntegrationTests.Bookings;
 
-public class CreateProposalSnapshotUtcTests : IClassFixture<ProposalUtcWebApplicationFactory>
+[Collection(BookingPostgresCollection.Name)]
+public class CreateProposalSnapshotUtcTests
 {
     private readonly ProposalUtcWebApplicationFactory _factory;
     private readonly HttpClient _client;

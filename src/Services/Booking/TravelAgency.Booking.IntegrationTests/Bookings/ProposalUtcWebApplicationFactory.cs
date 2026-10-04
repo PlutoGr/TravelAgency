@@ -101,6 +101,30 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
         return (DateTime)value!;
     }
 
+    public async Task<IReadOnlyList<int>> ReadStatusHistoryAsync(Guid bookingId)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT \"Status\" FROM \"BookingStatusHistories\" WHERE \"BookingId\" = @bookingId ORDER BY \"ChangedAt\"";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "bookingId";
+        parameter.Value = bookingId;
+        command.Parameters.Add(parameter);
+
+        var statuses = new List<int>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            statuses.Add(reader.GetInt32(0));
+
+        return statuses;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
