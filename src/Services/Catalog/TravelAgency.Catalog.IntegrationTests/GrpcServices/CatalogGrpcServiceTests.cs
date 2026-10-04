@@ -1,7 +1,6 @@
 using Grpc.Core;
 using Grpc.Net.Client;
-using TravelAgency.Catalog.Domain.Entities;
-using TravelAgency.Catalog.Domain.Enums;
+using TravelAgency.Catalog.IntegrationTests.Helpers;
 using TravelAgency.Contracts.Grpc.Catalog;
 
 namespace TravelAgency.Catalog.IntegrationTests.GrpcServices;
@@ -35,11 +34,8 @@ public class CatalogGrpcServiceTests
     [Fact]
     public async Task GetTourSnapshot_WithExistingTour_ReturnsCorrectResponseShape()
     {
-        var tour = Tour.Create("Grpc Test Tour", "Beach vacation description", TourType.Beach, "Spain", 5, null, null);
-        var validFrom = DateTime.UtcNow.AddDays(-1);
-        var validTo = DateTime.UtcNow.AddDays(30);
-        var price = TourPrice.Create(tour.Id, validFrom, validTo, 1500m, "EUR", 15);
-        tour.SetPrices([price]);
+        var tour = PublishedTourSeed.Create(
+            "Grpc Test Tour", "Beach vacation description", 5, 1500m, "EUR", 15);
 
         _fixture.Factory.UseDbContext(db =>
         {
