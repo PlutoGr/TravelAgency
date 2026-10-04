@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option csharp_namespace = "TravelAgency.Contracts.Grpc.Media";
+
+package media;
+
+// Internal service-to-service API. Not routed through the Gateway.
+// Callers must send the x-internal-auth metadata header (GrpcAuthInterceptor).
+service MediaService {
+  // Batch lookup. Unknown ids are omitted. Deleted files are omitted.
+  rpc GetMediaFiles (GetMediaFilesRequest) returns (GetMediaFilesResponse);
+
+  // Sets IsPublic=true for the given ids. Idempotent.
+  // Never clears the flag. Unknown ids are ignored.
+  rpc MarkMediaFilesPublic (MarkMediaFilesPublicRequest) returns (MarkMediaFilesPublicResponse);
+}
+
+message GetMediaFilesRequest {
+  repeated string ids = 1;
+}
+
+message GetMediaFilesResponse {
+  repeated MediaFileInfo files = 1;
+}
+
+message MediaFileInfo {
+  string id = 1;
+  string owner_id = 2;
+  string content_type = 3;
+  int32 width = 4;
+  int32 height = 5;
+  bool is_public = 6;
+  // Size codes that can be fetched: "w200", "w800", "w1600".
+  repeated string available_sizes = 7;
+}
+
+message MarkMediaFilesPublicRequest {
+  repeated string ids = 1;
+}
+
+message MarkMediaFilesPublicResponse {
+}

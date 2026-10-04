@@ -38,10 +38,7 @@ public sealed class S3StorageService(
         };
 
         var response = await s3Client.GetObjectAsync(request, ct);
-        var ms = new MemoryStream();
-        await response.ResponseStream.CopyToAsync(ms, ct);
-        ms.Position = 0;
-        return ms;
+        return new S3ResponseStream(response);
     }
 
     public async Task DeleteAsync(string key, CancellationToken ct = default)

@@ -9,6 +9,9 @@ COPY ["src/Services/Media/TravelAgency.Media.Application/TravelAgency.Media.Appl
 COPY ["src/Services/Media/TravelAgency.Media.Domain/TravelAgency.Media.Domain.csproj", "src/Services/Media/TravelAgency.Media.Domain/"]
 COPY ["src/Services/Media/TravelAgency.Media.Infrastructure/TravelAgency.Media.Infrastructure.csproj", "src/Services/Media/TravelAgency.Media.Infrastructure/"]
 COPY ["src/Shared/TravelAgency.Shared.Contracts/TravelAgency.Shared.Contracts.csproj", "src/Shared/TravelAgency.Shared.Contracts/"]
+COPY ["src/Shared/TravelAgency.Shared.Infrastructure/TravelAgency.Shared.Infrastructure.csproj", "src/Shared/TravelAgency.Shared.Infrastructure/"]
+COPY ["src/Shared/TravelAgency.Contracts.Grpc/TravelAgency.Contracts.Grpc.csproj", "src/Shared/TravelAgency.Contracts.Grpc/"]
+COPY ["src/Shared/TravelAgency.Contracts.Grpc/Protos/", "src/Shared/TravelAgency.Contracts.Grpc/Protos/"]
 RUN dotnet restore "src/Services/Media/TravelAgency.Media.API/TravelAgency.Media.API.csproj"
 COPY . .
 WORKDIR "/src/src/Services/Media/TravelAgency.Media.API"

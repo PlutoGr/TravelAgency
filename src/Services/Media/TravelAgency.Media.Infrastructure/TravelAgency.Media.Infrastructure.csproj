@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Media.Application\TravelAgency.Media.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\TravelAgency.Contracts.Grpc\TravelAgency.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Contracts\TravelAgency.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Shared\TravelAgency.Shared.Infrastructure\TravelAgency.Shared.Infrastructure.csproj" />
   </ItemGroup>
@@ -14,6 +15,7 @@
     <!-- SQLitePCLRaw.lib.e_sqlite3 2.1.11 уязвим (GHSA-2m69-gcr7-jv3q), поднимаем явно -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
     <PackageReference Include="AWSSDK.S3" Version="4.0.18.8" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

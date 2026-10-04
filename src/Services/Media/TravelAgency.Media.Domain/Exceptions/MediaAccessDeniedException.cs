@@ -4,4 +4,7 @@ public sealed class MediaAccessDeniedException : Exception
 {
     public MediaAccessDeniedException(Guid id)
         : base($"Access to media file '{id}' is denied.") { }
+
+    public MediaAccessDeniedException(string message)
+        : base(message) { }
 }

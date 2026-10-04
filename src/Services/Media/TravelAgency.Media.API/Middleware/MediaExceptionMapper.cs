@@ -20,13 +20,7 @@ internal sealed class MediaExceptionMapper : IExceptionMapper
                 Instance = context.Request.Path,
                 Extensions = { ["errors"] = validationEx.Errors }
             },
-            MediaNotFoundException notFoundEx => new ProblemDetails
-            {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Not Found",
-                Detail = notFoundEx.Message,
-                Instance = context.Request.Path
-            },
+            MediaNotFoundException notFoundEx => MapNotFound(context, notFoundEx),
             MediaAccessDeniedException accessDeniedEx => new ProblemDetails
             {
                 Status = StatusCodes.Status403Forbidden,
@@ -39,5 +33,18 @@ internal sealed class MediaExceptionMapper : IExceptionMapper
 
         result = details is not null ? ((int)(details.Status ?? (int)HttpStatusCode.InternalServerError), details) : default;
         return details is not null;
+    }
+
+    private static ProblemDetails MapNotFound(HttpContext context, MediaNotFoundException notFoundEx)
+    {
+        // A draft photo is 404 until publish. Do not let a shared cache remember that 404.
+        context.Response.Headers.CacheControl = MediaCacheControl.NoStore;
+        return new ProblemDetails
+        {
+            Status = StatusCodes.Status404NotFound,
+            Title = "Not Found",
+            Detail = notFoundEx.Message,
+            Instance = context.Request.Path
+        };
     }
 }
