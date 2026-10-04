@@ -26,41 +26,61 @@ app.Run();
 public partial class Program
 {
     /// <summary>
-    /// REST and gRPC share the public cleartext port (the same 8080 Catalog clients use).
-    /// Kestrel itself cannot accept prior-knowledge h2c on an endpoint that also allows
-    /// HTTP/1, so HTTP and HTTP/2 each get a loopback-only listener.
-    /// <see cref="CleartextH2cProxy"/> owns the public port and splices each connection
-    /// to the matching listener. HTTPS, when configured, stays on Kestrel and uses ALPN.
+    /// Public HTTP (REST, health) stays on the configured URL, HTTP/1.1.
+    /// gRPC is a second listener: port <see cref="MediaPorts.Grpc"/>, HTTP/2 only.
+    /// Cleartext cannot negotiate HTTP/1 and HTTP/2 on one socket (no ALPN), so h2c
+    /// gets its own port. HTTPS, when configured, stays on Kestrel and uses ALPN.
     /// </summary>
     public static void ConfigureHost(IWebHostBuilder host)
     {
         host.ConfigureKestrel((context, options) =>
         {
-            foreach (var raw in PublicEndpointUrls.Resolve(context.Configuration))
+            var urls = PublicEndpointUrls.Resolve(context.Configuration);
+            if (urls.Count == 0)
+                urls = ["http://*:8080"];
+
+            foreach (var raw in urls)
             {
                 var address = BindingAddress.Parse(raw);
-                if (!address.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
                 if (address.IsUnixPipe || address.IsNamedPipe)
-                    continue;
+                    throw new InvalidOperationException($"Media listens on TCP. Unsupported URL: {raw}");
 
-                void UseTls(ListenOptions listen)
+                if (address.Port == MediaPorts.Grpc)
                 {
-                    listen.Protocols = HttpProtocols.Http1AndHttp2;
-                    listen.UseHttps();
+                    throw new InvalidOperationException(
+                        $"Public URL {raw} uses port {MediaPorts.Grpc}, which is reserved for gRPC.");
                 }
 
-                if (address.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
-                    options.ListenLocalhost(address.Port, UseTls);
+                var https = address.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+                void Configure(ListenOptions listen)
+                {
+                    if (https)
+                    {
+                        listen.Protocols = HttpProtocols.Http1AndHttp2;
+                        listen.UseHttps();
+                    }
+                    else
+                    {
+                        listen.Protocols = HttpProtocols.Http1;
+                    }
+                }
+
+                if (address.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                    || address.Host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.ListenLocalhost(address.Port, Configure);
+                }
                 else if (IPAddress.TryParse(address.Host, out var ip))
-                    options.Listen(ip, address.Port, UseTls);
+                {
+                    options.Listen(ip, address.Port, Configure);
+                }
                 else
-                    options.ListenAnyIP(address.Port, UseTls);
+                {
+                    options.ListenAnyIP(address.Port, Configure);
+                }
             }
 
-            options.Listen(IPAddress.Loopback, 0, listen => listen.Protocols = HttpProtocols.Http1);
-            options.Listen(IPAddress.Loopback, 0, listen => listen.Protocols = HttpProtocols.Http2);
+            options.ListenAnyIP(MediaPorts.Grpc, listen => listen.Protocols = HttpProtocols.Http2);
         });
     }
 
@@ -78,11 +98,11 @@ public partial class Program
         services.AddMediaTracing();
         services.AddSingleton<GrpcAuthInterceptor>();
         services.AddGrpc(options => options.Interceptors.Add<GrpcAuthInterceptor>());
-        services.AddHostedService<CleartextH2cProxy>();
     }
 
     public static void ConfigurePipeline(WebApplication app)
     {
+        app.UseMiddleware<GrpcListenPortMiddleware>();
         app.UseMediaCors();
 
         app.UseSerilogRequestLogging();
@@ -100,7 +120,7 @@ public partial class Program
         app.UseAuthorization();
 
         app.MapControllers();
-        app.MapGrpcService<MediaGrpcService>();
+        app.MapGrpcService<MediaGrpcService>().RequireHost(MediaPorts.GrpcHostPattern);
         app.MapMediaHealthChecks();
     }
 }

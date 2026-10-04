@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
 
 namespace TravelAgency.Gateway.Tests.Helpers;
 
@@ -44,8 +47,15 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         var app = builder.Build();
 
+        app.UseWebSockets();
         app.Run(async context =>
         {
+            if (context.WebSockets.IsWebSocketRequest)
+            {
+                await EchoWebSocketAsync(context);
+                return;
+            }
+
             var path = context.Request.Path.Value ?? "/";
             if (authTokenSupport && IsLogoutPath(path))
             {
@@ -67,7 +77,8 @@ public sealed class MockBackendServer : IAsyncDisposable
             {
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { path }, cancellationToken);
+                var routeId = context.Request.Headers[SelectedRouteHeaderTransformProvider.HeaderName].ToString();
+                await context.Response.WriteAsJsonAsync(new { path, routeId }, cancellationToken);
             }
         });
 
@@ -85,6 +96,41 @@ public sealed class MockBackendServer : IAsyncDisposable
     {
         await StopAsync();
         await _app.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Accepts a WebSocket and sends one text frame with the request path so routing tests
+    /// can confirm the upgrade was proxied to this backend.
+    /// </summary>
+    private static async Task EchoWebSocketAsync(HttpContext context)
+    {
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        {
+            path = context.Request.Path.Value ?? "/",
+            routeId = context.Request.Headers[SelectedRouteHeaderTransformProvider.HeaderName].ToString()
+        }));
+        await socket.SendAsync(payload, WebSocketMessageType.Text, endOfMessage: true, context.RequestAborted);
+
+        var buffer = new byte[1024];
+        try
+        {
+            while (socket.State == WebSocketState.Open)
+            {
+                var received = await socket.ReceiveAsync(buffer, context.RequestAborted);
+                if (received.MessageType == WebSocketMessageType.Close)
+                {
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "closed", CancellationToken.None);
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (WebSocketException)
+        {
+        }
     }
 
     private static bool IsLogoutPath(string path) =>

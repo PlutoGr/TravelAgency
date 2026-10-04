@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
 using Testcontainers.PostgreSql;
 using TravelAgency.Media.API.Extensions;
+using TravelAgency.Media.API.Hosting;
 using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Interfaces;
@@ -16,7 +17,7 @@ using TravelAgency.Media.Infrastructure.Persistence;
 namespace TravelAgency.Media.IntegrationTests.Grpc;
 
 /// <summary>
-/// Boots Media on real Kestrel with HTTP/1.1 and HTTP/2 (h2c), backed by PostgreSQL.
+/// Boots Media on real Kestrel: HTTP/1.1 on a public port and HTTP/2 on <see cref="MediaPorts.Grpc"/>.
 /// WebApplicationFactory's TestServer does not exercise cleartext HTTP/2.
 /// </summary>
 public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
@@ -32,6 +33,8 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
     private WebApplication? _app;
 
     public string Address { get; private set; } = string.Empty;
+
+    public string GrpcAddress => $"http://127.0.0.1:{MediaPorts.Grpc}";
 
     public async Task InitializeAsync()
     {
@@ -127,6 +130,6 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
         listener.Start();
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
-        return port;
+        return port == MediaPorts.Grpc ? GetFreePort() : port;
     }
 }

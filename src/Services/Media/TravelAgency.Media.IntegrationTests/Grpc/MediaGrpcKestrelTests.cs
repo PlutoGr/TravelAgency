@@ -2,6 +2,7 @@ using System.Net;
 using Grpc.Core;
 using Grpc.Net.Client;
 using TravelAgency.Contracts.Grpc.Media;
+using TravelAgency.Media.API.Hosting;
 using TravelAgency.Media.Domain;
 
 namespace TravelAgency.Media.IntegrationTests.Grpc;
@@ -16,7 +17,7 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
     }
 
     [Fact]
-    public async Task SamePort_ServesHttp1Health_AndHttp2Grpc()
+    public async Task RestPort_ServesHttp1Health_AndGrpcPort_ServesHttp2()
     {
         using var http = new HttpClient();
         var live = await http.GetAsync($"{_fixture.Address}/health/live");
@@ -62,6 +63,36 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
     }
 
     [Fact]
+    public async Task Grpc_OnRestPort_IsRefused()
+    {
+        var (client, _) = CreateClient(_fixture.Address);
+        var call = client.GetMediaFilesAsync(
+            new GetMediaFilesRequest { Ids = { Guid.NewGuid().ToString() } },
+            AuthHeaders());
+
+        var ex = await Assert.ThrowsAsync<RpcException>(async () => await call.ResponseAsync);
+        ex.StatusCode.Should().Be(StatusCode.Internal);
+        ex.Status.Detail.Should().Contain("HTTP_1_1_REQUIRED");
+    }
+
+    [Fact]
+    public async Task Rest_OnGrpcPort_IsNotServed()
+    {
+        using var handler = new SocketsHttpHandler { EnableMultipleHttp2Connections = true };
+        using var http = new HttpClient(handler);
+        var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{MediaPorts.Grpc}/health/live")
+        {
+            Version = HttpVersion.Version20,
+            VersionPolicy = HttpVersionPolicy.RequestVersionExact
+        };
+
+        var response = await http.SendAsync(request);
+
+        response.Version.Should().Be(HttpVersion.Version20);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task GetMediaFiles_WithoutToken_IsUnauthenticated()
     {
         var (client, _) = CreateClient();
@@ -82,10 +113,10 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
         ex.StatusCode.Should().Be(StatusCode.Unauthenticated);
     }
 
-    private (MediaService.MediaServiceClient Client, VersionRecordingHandler Recorder) CreateClient()
+    private (MediaService.MediaServiceClient Client, VersionRecordingHandler Recorder) CreateClient(string? address = null)
     {
         var recorder = new VersionRecordingHandler();
-        var channel = GrpcChannel.ForAddress(_fixture.Address, new GrpcChannelOptions
+        var channel = GrpcChannel.ForAddress(address ?? _fixture.GrpcAddress, new GrpcChannelOptions
         {
             HttpHandler = recorder
         });
