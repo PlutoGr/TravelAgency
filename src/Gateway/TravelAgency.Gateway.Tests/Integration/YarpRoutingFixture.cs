@@ -15,6 +15,8 @@ public class YarpRoutingFixture : IAsyncLifetime
     {
         MockServer = await Helpers.MockBackendServer.StartAsync();
         Factory = new Helpers.GatewayWebApplicationFactory(MockServer.BaseUrl);
+        // Real sockets: YARP proxies WebSocket upgrades via IHttpUpgradeFeature, which TestServer does not provide.
+        Factory.UseKestrel(0);
     }
 
     public async Task DisposeAsync()

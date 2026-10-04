@@ -69,6 +69,8 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            services.AddSingleton<Yarp.ReverseProxy.Transforms.Builder.ITransformProvider, SelectedRouteHeaderTransformProvider>();
+
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
