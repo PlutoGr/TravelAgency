@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Configuration;
-using TravelAgency.Media.API.Hosting;
+using TravelAgency.Shared.Infrastructure.Hosting;
 
 namespace TravelAgency.Media.IntegrationTests.Hosting;
 

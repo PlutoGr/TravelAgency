@@ -3,11 +3,13 @@ using TravelAgency.Catalog.API.Middleware;
 using TravelAgency.Catalog.Infrastructure.Extensions;
 using TravelAgency.Catalog.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.Hosting;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.AddCatalogSerilog();
+builder.UseServiceListenPorts();
 builder.Services.AddSingleton<IExceptionMapper, CatalogExceptionMapper>();
 
 Program.ConfigureServices(builder.Services, builder.Configuration);
@@ -37,6 +39,7 @@ public partial class Program
 
     public static void ConfigurePipeline(WebApplication app)
     {
+        app.UseGrpcListenPortGuard();
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
         app.UseCatalogCors();
@@ -52,7 +55,7 @@ public partial class Program
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
-        app.MapGrpcService<CatalogGrpcService>();
+        app.MapGrpcServiceOnGrpcPort<CatalogGrpcService>();
         app.MapHealthChecks("/health/live");
         app.MapHealthChecks("/health/ready");
     }

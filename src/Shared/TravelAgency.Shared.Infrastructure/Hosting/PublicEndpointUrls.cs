@@ -1,11 +1,14 @@
-namespace TravelAgency.Media.API.Hosting;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+
+namespace TravelAgency.Shared.Infrastructure.Hosting;
 
 /// <summary>
 /// Resolves the public listen URLs the generic host would have given Kestrel:
 /// <c>urls</c> / <c>ASPNETCORE_URLS</c> win, otherwise <c>ASPNETCORE_HTTP_PORTS</c>
 /// and <c>ASPNETCORE_HTTPS_PORTS</c> expand to <c>http(s)://*:port</c>.
 /// </summary>
-internal static class PublicEndpointUrls
+public static class PublicEndpointUrls
 {
     public static IReadOnlyList<string> Resolve(IConfiguration configuration)
     {

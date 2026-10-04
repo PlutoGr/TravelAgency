@@ -31,7 +31,7 @@ public static class DependencyInjection
 
         var bookingGrpcAddress = configuration["GrpcClients:BookingServiceUrl"]
             ?? configuration["Services:BookingServiceUrl"]
-            ?? "http://localhost:5030";
+            ?? "http://booking-service:8081";
         services.AddGrpcClient<BookingService.BookingServiceClient>(o => o.Address = new Uri(bookingGrpcAddress));
         services.AddScoped<IBookingGrpcClient, BookingGrpcClient>();
 

@@ -1,14 +1,11 @@
-using System.Net;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
 using TravelAgency.Media.API.Extensions;
-using TravelAgency.Media.API.Hosting;
 using TravelAgency.Media.API.Middleware;
 using TravelAgency.Media.Infrastructure;
 using TravelAgency.Media.Infrastructure.Extensions;
 using TravelAgency.Media.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
+using TravelAgency.Shared.Infrastructure.Hosting;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,62 +24,9 @@ public partial class Program
 {
     /// <summary>
     /// Public HTTP (REST, health) stays on the configured URL, HTTP/1.1.
-    /// gRPC is a second listener: port <see cref="MediaPorts.Grpc"/>, HTTP/2 only.
-    /// Cleartext cannot negotiate HTTP/1 and HTTP/2 on one socket (no ALPN), so h2c
-    /// gets its own port. HTTPS, when configured, stays on Kestrel and uses ALPN.
+    /// gRPC is a second listener, HTTP/2 only (8081 by default).
     /// </summary>
-    public static void ConfigureHost(IWebHostBuilder host)
-    {
-        host.ConfigureKestrel((context, options) =>
-        {
-            var urls = PublicEndpointUrls.Resolve(context.Configuration);
-            if (urls.Count == 0)
-                urls = ["http://*:8080"];
-
-            foreach (var raw in urls)
-            {
-                var address = BindingAddress.Parse(raw);
-                if (address.IsUnixPipe || address.IsNamedPipe)
-                    throw new InvalidOperationException($"Media listens on TCP. Unsupported URL: {raw}");
-
-                if (address.Port == MediaPorts.Grpc)
-                {
-                    throw new InvalidOperationException(
-                        $"Public URL {raw} uses port {MediaPorts.Grpc}, which is reserved for gRPC.");
-                }
-
-                var https = address.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
-                void Configure(ListenOptions listen)
-                {
-                    if (https)
-                    {
-                        listen.Protocols = HttpProtocols.Http1AndHttp2;
-                        listen.UseHttps();
-                    }
-                    else
-                    {
-                        listen.Protocols = HttpProtocols.Http1;
-                    }
-                }
-
-                if (address.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-                    || address.Host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase))
-                {
-                    options.ListenLocalhost(address.Port, Configure);
-                }
-                else if (IPAddress.TryParse(address.Host, out var ip))
-                {
-                    options.Listen(ip, address.Port, Configure);
-                }
-                else
-                {
-                    options.ListenAnyIP(address.Port, Configure);
-                }
-            }
-
-            options.ListenAnyIP(MediaPorts.Grpc, listen => listen.Protocols = HttpProtocols.Http2);
-        });
-    }
+    public static void ConfigureHost(IWebHostBuilder host) => host.UseServiceListenPorts();
 
     public static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
@@ -102,7 +46,7 @@ public partial class Program
 
     public static void ConfigurePipeline(WebApplication app)
     {
-        app.UseMiddleware<GrpcListenPortMiddleware>();
+        app.UseGrpcListenPortGuard();
         app.UseMediaCors();
 
         app.UseSerilogRequestLogging();
@@ -120,7 +64,7 @@ public partial class Program
         app.UseAuthorization();
 
         app.MapControllers();
-        app.MapGrpcService<MediaGrpcService>().RequireHost(MediaPorts.GrpcHostPattern);
+        app.MapGrpcServiceOnGrpcPort<MediaGrpcService>();
         app.MapMediaHealthChecks();
     }
 }

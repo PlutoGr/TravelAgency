@@ -54,8 +54,8 @@ public static class DependencyInjection
 
         services.AddGrpcAuthCallOptionsFactory();
 
-        var catalogGrpcAddress = configuration["GrpcClients:CatalogServiceUrl"] ?? "http://catalog-service:8080";
-        var identityGrpcAddress = configuration["GrpcClients:IdentityServiceUrl"] ?? "http://identity-service:8080";
+        var catalogGrpcAddress = configuration["GrpcClients:CatalogServiceUrl"] ?? "http://catalog-service:8081";
+        var identityGrpcAddress = configuration["GrpcClients:IdentityServiceUrl"] ?? "http://identity-service:8081";
 
         services.AddGrpcClient<CatalogService.CatalogServiceClient>(o => o.Address = new Uri(catalogGrpcAddress));
         services.AddGrpcClient<IdentityGrpc.IdentityGrpcClient>(o => o.Address = new Uri(identityGrpcAddress));
