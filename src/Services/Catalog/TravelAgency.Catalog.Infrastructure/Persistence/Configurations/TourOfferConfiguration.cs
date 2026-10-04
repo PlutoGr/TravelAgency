@@ -4,11 +4,11 @@ using TravelAgency.Catalog.Domain.Entities;
 
 namespace TravelAgency.Catalog.Infrastructure.Persistence.Configurations;
 
-public class TourPriceConfiguration : IEntityTypeConfiguration<TourPrice>
+public class TourOfferConfiguration : IEntityTypeConfiguration<TourOffer>
 {
-    public void Configure(EntityTypeBuilder<TourPrice> builder)
+    public void Configure(EntityTypeBuilder<TourOffer> builder)
     {
-        builder.ToTable("TourPrices");
+        builder.ToTable("TourOffers");
 
         builder.HasKey(p => p.Id);
 
@@ -18,5 +18,7 @@ public class TourPriceConfiguration : IEntityTypeConfiguration<TourPrice>
         builder.Property(p => p.Currency)
             .HasMaxLength(3)
             .HasDefaultValue("USD");
+
+        builder.HasIndex(p => p.TourId);
     }
 }

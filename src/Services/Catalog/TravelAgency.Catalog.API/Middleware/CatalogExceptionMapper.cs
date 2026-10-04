@@ -26,6 +26,7 @@ internal sealed class CatalogExceptionMapper : IExceptionMapper
                 Detail = conflict.Message,
                 Instance = context.Request.Path
             },
+            TourNotPublishableException notPublishable => MapNotPublishable(notPublishable, context),
             CatalogDomainException domain => new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
@@ -38,5 +39,19 @@ internal sealed class CatalogExceptionMapper : IExceptionMapper
 
         result = details is not null ? ((int)(details.Status ?? (int)HttpStatusCode.InternalServerError), details) : default;
         return details is not null;
+    }
+
+    private static ProblemDetails MapNotPublishable(TourNotPublishableException exception, HttpContext context)
+    {
+        var details = new ProblemDetails
+        {
+            Status = StatusCodes.Status422UnprocessableEntity,
+            Title = "Tour is not publishable",
+            Type = "https://travelagency/errors/tour-not-publishable",
+            Detail = exception.Message,
+            Instance = context.Request.Path
+        };
+        details.Extensions["missing"] = exception.Missing;
+        return details;
     }
 }

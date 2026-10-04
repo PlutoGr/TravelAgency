@@ -2,7 +2,10 @@ using TravelAgency.Catalog.Domain.Exceptions;
 
 namespace TravelAgency.Catalog.Domain.Entities;
 
-public class TourPrice
+/// <summary>
+/// Предложение: тур на конкретные даты с ценой. Бывший TourPrice.
+/// </summary>
+public class TourOffer
 {
     public Guid Id { get; private set; }
     public Guid TourId { get; private set; }
@@ -12,9 +15,9 @@ public class TourPrice
     public string Currency { get; private set; } = "USD";
     public int AvailableSeats { get; private set; }
 
-    private TourPrice() { }
+    private TourOffer() { }
 
-    public static TourPrice Create(
+    public static TourOffer Create(
         Guid tourId,
         DateTime validFrom,
         DateTime validTo,
@@ -35,7 +38,7 @@ public class TourPrice
         if (normalizedCurrency.Length != 3 || !normalizedCurrency.All(char.IsLetter))
             throw new CatalogDomainException("Currency must be a valid ISO 4217 code (3 letters).");
 
-        return new TourPrice
+        return new TourOffer
         {
             Id = Guid.NewGuid(),
             TourId = tourId,

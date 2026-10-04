@@ -103,9 +103,9 @@ public sealed class CatalogDataSeeder(
             7,
             "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800",
             maldivesDir?.Id);
-        var mPrice = TourPrice.Create(maldives.Id, priceStart, priceEnd, 340_000, "RUB", 12);
-        var mPriceHot = TourPrice.Create(maldives.Id, priceStart, priceEnd.AddDays(7), 289_000, "RUB", 8);
-        maldives.SetPrices([mPrice, mPriceHot]);
+        var mPrice = TourOffer.Create(maldives.Id, priceStart, priceEnd, 340_000, "RUB", 12);
+        var mPriceHot = TourOffer.Create(maldives.Id, priceStart, priceEnd.AddDays(7), 289_000, "RUB", 8);
+        maldives.ReplaceOffers([mPrice, mPriceHot]);
         tours.Add(maldives);
 
         // Таиланд
@@ -117,8 +117,8 @@ public sealed class CatalogDataSeeder(
             11,
             "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800",
             phuketDir?.Id);
-        var pPrice = TourPrice.Create(phuket.Id, priceStart, priceEnd, 124_000, "RUB", 15);
-        phuket.SetPrices([pPrice]);
+        var pPrice = TourOffer.Create(phuket.Id, priceStart, priceEnd, 124_000, "RUB", 15);
+        phuket.ReplaceOffers([pPrice]);
         tours.Add(phuket);
 
         // Греция
@@ -130,8 +130,8 @@ public sealed class CatalogDataSeeder(
             5,
             "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800",
             greeceDir?.Id);
-        var sPrice = TourPrice.Create(santorini.Id, priceStart, priceEnd, 89_000, "RUB", 10);
-        santorini.SetPrices([sPrice]);
+        var sPrice = TourOffer.Create(santorini.Id, priceStart, priceEnd, 89_000, "RUB", 10);
+        santorini.ReplaceOffers([sPrice]);
         tours.Add(santorini);
 
         // Бали
@@ -143,8 +143,8 @@ public sealed class CatalogDataSeeder(
             10,
             "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800",
             null);
-        var bPrice = TourPrice.Create(bali.Id, priceStart, priceEnd, 156_000, "RUB", 8);
-        bali.SetPrices([bPrice]);
+        var bPrice = TourOffer.Create(bali.Id, priceStart, priceEnd, 156_000, "RUB", 8);
+        bali.ReplaceOffers([bPrice]);
         tours.Add(bali);
 
         // Дубай
@@ -156,8 +156,8 @@ public sealed class CatalogDataSeeder(
             7,
             "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800",
             null);
-        var dPrice = TourPrice.Create(dubai.Id, priceStart, priceEnd, 198_000, "RUB", 20);
-        dubai.SetPrices([dPrice]);
+        var dPrice = TourOffer.Create(dubai.Id, priceStart, priceEnd, 198_000, "RUB", 20);
+        dubai.ReplaceOffers([dPrice]);
         tours.Add(dubai);
 
         db.Tours.AddRange(tours);

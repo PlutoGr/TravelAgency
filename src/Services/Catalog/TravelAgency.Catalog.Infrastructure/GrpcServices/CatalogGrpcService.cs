@@ -1,5 +1,6 @@
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 using TravelAgency.Contracts.Grpc.Catalog;
 
@@ -22,19 +23,20 @@ public class CatalogGrpcService : CatalogService.CatalogServiceBase
 
         var now = DateTime.UtcNow;
         var tour = await _db.Tours
-            .Include(t => t.Prices)
-            .FirstOrDefaultAsync(t => t.Id == tourId && t.IsActive, context.CancellationToken);
+            .Include(t => t.Offers)
+            .FirstOrDefaultAsync(t => t.Id == tourId && t.Status == TourStatus.Published, context.CancellationToken);
 
         if (tour == null)
             return new TourSnapshotResponse { Found = false };
 
-        var activePrice = tour.Prices
+        var activePrice = tour.Offers
             .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
             .OrderBy(p => p.PricePerPerson)
             .FirstOrDefault();
 
-        // Fallback: if no price in current date range, use minimum price from any price
-        var priceToUse = activePrice ?? tour.Prices.OrderBy(p => p.PricePerPerson).FirstOrDefault();
+        // Fallback: if no price in current date range, use minimum price from any offer.
+        // Поля снимка не переименовываются: контракт catalog.proto с Booking остаётся прежним.
+        var priceToUse = activePrice ?? tour.Offers.OrderBy(p => p.PricePerPerson).FirstOrDefault();
 
         return new TourSnapshotResponse
         {

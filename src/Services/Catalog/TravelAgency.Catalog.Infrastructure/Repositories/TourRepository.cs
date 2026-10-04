@@ -18,7 +18,12 @@ public class TourRepository : ITourRepository
     }
 
     public Task<Tour?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => _db.Tours.Include(t => t.Prices).FirstOrDefaultAsync(t => t.Id == id, ct);
+        => _db.Tours
+            .Include(t => t.Offers)
+            .Include(t => t.Days)
+            .Include(t => t.Inclusions)
+            .Include(t => t.Images)
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public Task AddAsync(Tour tour, CancellationToken ct = default)
         => _db.Tours.AddAsync(tour, ct).AsTask();

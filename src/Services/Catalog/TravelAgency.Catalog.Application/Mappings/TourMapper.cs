@@ -18,11 +18,11 @@ public static class TourMapper
             tour.IsActive,
             tour.CreatedAt,
             tour.UpdatedAt,
-            tour.Prices.Select(ToPriceDto).ToList().AsReadOnly());
+            tour.Offers.Select(ToPriceDto).ToList().AsReadOnly());
 
     public static TourSummaryDto ToSummaryDto(Tour tour)
     {
-        var cheapest = tour.Prices
+        var cheapest = tour.Offers
             .OrderBy(p => p.PricePerPerson)
             .FirstOrDefault();
 
@@ -38,7 +38,7 @@ public static class TourMapper
             tour.IsActive);
     }
 
-    public static TourPriceDto ToPriceDto(TourPrice price) =>
+    public static TourPriceDto ToPriceDto(TourOffer price) =>
         new(
             price.Id,
             price.ValidFrom,

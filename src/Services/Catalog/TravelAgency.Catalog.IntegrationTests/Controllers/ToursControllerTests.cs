@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
+using TravelAgency.Catalog.IntegrationTests.Helpers;
 
 namespace TravelAgency.Catalog.IntegrationTests.Controllers;
 
@@ -46,7 +47,13 @@ public class ToursControllerTests
     [Fact]
     public async Task GetTours_WithData_ReturnsPagedResult()
     {
-        SeedTour("Unique Tour For Paged Test");
+        var published = PublishedTourSeed.Create(
+            "Unique Tour For Paged Test", "Visible description", 2, 1000m, "EUR", 4);
+        _factory.UseDbContext(db =>
+        {
+            db.Tours.Add(published);
+            db.SaveChanges();
+        });
 
         var response = await _client.GetAsync("/catalog/tours");
         var result = await response.Content.ReadFromJsonAsync<PagedResult<TourSummaryDto>>();

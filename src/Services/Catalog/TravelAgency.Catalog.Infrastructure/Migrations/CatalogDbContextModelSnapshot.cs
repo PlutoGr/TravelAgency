@@ -64,6 +64,10 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AccommodationText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<string>("Country")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -71,6 +75,10 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DepartureCity")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -87,10 +95,29 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                    b.Property<string>("MealPlan")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ShortDescription")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -105,18 +132,157 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Country");
 
-                    b.HasIndex("IsActive");
+                    b.HasIndex("Source");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("TourType");
 
                     b.ToTable("Tours", (string)null);
                 });
 
-            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourPrice", b =>
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourComponent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TourId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TourId");
+
+                    b.ToTable("TourComponents", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComponentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TourId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentId");
+
+                    b.HasIndex("TourId", "DayNumber")
+                        .IsUnique();
+
+                    b.ToTable("TourDays", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Alt")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("IsCover")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("MediaFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TourId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("WidthPx")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TourId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TourImages_OneCoverPerTour")
+                        .HasFilter("\"IsCover\"");
+
+                    b.HasIndex("TourId", "SortOrder")
+                        .HasDatabaseName("IX_TourImages_TourId_SortOrder");
+
+                    b.ToTable("TourImages", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourInclusion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComponentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("TourId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComponentId");
+
+                    b.HasIndex("TourId");
+
+                    b.ToTable("TourInclusions", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourOffer", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -149,13 +315,59 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
 
                     b.HasIndex("TourId");
 
-                    b.ToTable("TourPrices", (string)null);
+                    b.ToTable("TourOffers", (string)null);
                 });
 
-            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourPrice", b =>
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourComponent", b =>
                 {
                     b.HasOne("TravelAgency.Catalog.Domain.Entities.Tour", null)
-                        .WithMany("Prices")
+                        .WithMany()
+                        .HasForeignKey("TourId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourDay", b =>
+                {
+                    b.HasOne("TravelAgency.Catalog.Domain.Entities.TourComponent", null)
+                        .WithMany()
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TravelAgency.Catalog.Domain.Entities.Tour", null)
+                        .WithMany("Days")
+                        .HasForeignKey("TourId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourImage", b =>
+                {
+                    b.HasOne("TravelAgency.Catalog.Domain.Entities.Tour", null)
+                        .WithMany("Images")
+                        .HasForeignKey("TourId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourInclusion", b =>
+                {
+                    b.HasOne("TravelAgency.Catalog.Domain.Entities.TourComponent", null)
+                        .WithMany()
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TravelAgency.Catalog.Domain.Entities.Tour", null)
+                        .WithMany("Inclusions")
+                        .HasForeignKey("TourId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.TourOffer", b =>
+                {
+                    b.HasOne("TravelAgency.Catalog.Domain.Entities.Tour", null)
+                        .WithMany("Offers")
                         .HasForeignKey("TourId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -163,7 +375,13 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
 
             modelBuilder.Entity("TravelAgency.Catalog.Domain.Entities.Tour", b =>
                 {
-                    b.Navigation("Prices");
+                    b.Navigation("Days");
+
+                    b.Navigation("Images");
+
+                    b.Navigation("Inclusions");
+
+                    b.Navigation("Offers");
                 });
 #pragma warning restore 612, 618
         }

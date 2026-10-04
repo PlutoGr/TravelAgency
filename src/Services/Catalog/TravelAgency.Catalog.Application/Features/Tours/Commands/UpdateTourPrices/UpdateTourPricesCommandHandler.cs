@@ -25,7 +25,7 @@ public class UpdateTourPricesCommandHandler : IRequestHandler<UpdateTourPricesCo
             ?? throw new NotFoundException(nameof(Tour), command.TourId);
 
         var newPrices = command.Request.Prices
-            .Select(p => TourPrice.Create(
+            .Select(p => TourOffer.Create(
                 tour.Id,
                 p.ValidFrom,
                 p.ValidTo,
@@ -34,7 +34,7 @@ public class UpdateTourPricesCommandHandler : IRequestHandler<UpdateTourPricesCo
                 p.AvailableSeats))
             .ToList();
 
-        tour.SetPrices(newPrices);
+        tour.ReplaceOffers(newPrices);
         _tourRepository.Update(tour);
         await _unitOfWork.SaveChangesAsync(ct);
 

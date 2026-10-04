@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 
 namespace TravelAgency.Catalog.Infrastructure.Queries;
@@ -32,24 +33,26 @@ public class TourListQuery : ITourListQuery
         if (filter.TourType.HasValue)
             query = query.Where(t => t.TourType == filter.TourType.Value);
 
-        if (filter.IsActive.HasValue)
-            query = query.Where(t => t.IsActive == filter.IsActive.Value);
+        if (filter.IsActive == true)
+            query = query.Where(t => t.Status == TourStatus.Published);
+        else if (filter.IsActive == false)
+            query = query.Where(t => t.Status == TourStatus.Unpublished);
 
         if (filter.MinPrice.HasValue)
-            query = query.Where(t => t.Prices.Any(p =>
+            query = query.Where(t => t.Offers.Any(p =>
                 p.ValidFrom <= now && p.ValidTo >= now &&
                 p.PricePerPerson >= filter.MinPrice.Value));
 
         if (filter.MaxPrice.HasValue)
-            query = query.Where(t => t.Prices.Any(p =>
+            query = query.Where(t => t.Offers.Any(p =>
                 p.ValidFrom <= now && p.ValidTo >= now &&
                 p.PricePerPerson <= filter.MaxPrice.Value));
 
         if (filter.DateFrom.HasValue)
-            query = query.Where(t => t.Prices.Any(p => p.ValidFrom >= filter.DateFrom.Value));
+            query = query.Where(t => t.Offers.Any(p => p.ValidFrom >= filter.DateFrom.Value));
 
         if (filter.DateTo.HasValue)
-            query = query.Where(t => t.Prices.Any(p => p.ValidTo <= filter.DateTo.Value));
+            query = query.Where(t => t.Offers.Any(p => p.ValidTo <= filter.DateTo.Value));
 
         var totalCount = await query.CountAsync(ct);
 
@@ -65,11 +68,11 @@ public class TourListQuery : ITourListQuery
                 ? query.OrderBy(t => t.DurationDays)
                 : query.OrderByDescending(t => t.DurationDays),
             TourSortBy.Price => filter.SortDirection == SortDirection.Asc
-                ? query.OrderBy(t => t.Prices
+                ? query.OrderBy(t => t.Offers
                     .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
                     .Select(p => (decimal?)p.PricePerPerson)
                     .Min() ?? decimal.MaxValue)
-                : query.OrderByDescending(t => t.Prices
+                : query.OrderByDescending(t => t.Offers
                     .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
                     .Select(p => (decimal?)p.PricePerPerson)
                     .Min()),
@@ -88,16 +91,16 @@ public class TourListQuery : ITourListQuery
                 t.TourType,
                 t.DurationDays,
                 t.ImageUrl,
-                t.Prices
+                t.Offers
                     .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
                     .Select(p => (decimal?)p.PricePerPerson)
-                    .Min() ?? t.Prices.Select(p => (decimal?)p.PricePerPerson).Min(),
-                t.Prices
+                    .Min() ?? t.Offers.Select(p => (decimal?)p.PricePerPerson).Min(),
+                t.Offers
                     .Where(p => p.ValidFrom <= now && p.ValidTo >= now)
                     .OrderBy(p => p.PricePerPerson)
                     .Select(p => p.Currency)
-                    .FirstOrDefault() ?? t.Prices.OrderBy(p => p.PricePerPerson).Select(p => p.Currency).FirstOrDefault(),
-                t.IsActive))
+                    .FirstOrDefault() ?? t.Offers.OrderBy(p => p.PricePerPerson).Select(p => p.Currency).FirstOrDefault(),
+                t.Status == TourStatus.Published))
             .ToListAsync(ct);
 
         return new PagedResult<TourSummaryDto>(items, totalCount, page, pageSize);
