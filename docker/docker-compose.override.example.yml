@@ -14,6 +14,8 @@
 #  - образы сервисов берутся из GHCR, тег задаёт переменная IMAGE_TAG (sha коммита),
 #    без неё используется latest. Так работает деплой и откат (см. README, «Как устроен dev»);
 #  - сертификат и htpasswd монтируются с хоста, nginx в образе сам включает HTTPS и пароль.
+#  - .NET-сервисы работают с ASPNETCORE_ENVIRONMENT=Staging; тестовые аккаунты и демо-каталог
+#    на dev включены флагом ASPNETCORE_SEED_DATA=true (только для dev).
 # =====================================================================
 services:
   postgres:
@@ -39,28 +41,47 @@ services:
       - "127.0.0.1:9001:9001"
   gateway:
     image: ghcr.io/plutogr/travelagency-gateway:${IMAGE_TAG:-latest}
+    # dev работает как Staging: без Swagger, стеков в ошибках и подробных логов Development
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      Cookie__Secure: "true"
+      Cors__AllowedOrigins__0: https://185.75.189.253
     # API напрямую только через туннель: ssh -L 5001:127.0.0.1:5001 travelagency-dev-platon
     ports: !override
       - "127.0.0.1:5001:8080"
     restart: unless-stopped
   identity-service:
     image: ghcr.io/plutogr/travelagency-identity:${IMAGE_TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      ASPNETCORE_SEED_DATA: "true"
     ports: !reset []
     restart: unless-stopped
   catalog-service:
     image: ghcr.io/plutogr/travelagency-catalog:${IMAGE_TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      ASPNETCORE_SEED_DATA: "true"
+      # gateway и booking ходят на catalog-service по имени; appsettings.json раньше разрешал только localhost
+      AllowedHosts: "*"
     ports: !reset []
     restart: unless-stopped
   booking-service:
     image: ghcr.io/plutogr/travelagency-booking:${IMAGE_TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
     ports: !reset []
     restart: unless-stopped
   chat-service:
     image: ghcr.io/plutogr/travelagency-chat:${IMAGE_TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
     ports: !reset []
     restart: unless-stopped
   media-service:
     image: ghcr.io/plutogr/travelagency-media:${IMAGE_TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
     ports: !reset []
     restart: unless-stopped
   frontend:
