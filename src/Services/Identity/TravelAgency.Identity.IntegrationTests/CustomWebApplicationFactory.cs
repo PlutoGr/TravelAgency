@@ -18,6 +18,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     // database persists across all requests made during a test class.
     private readonly SqliteConnection _connection;
 
+    /// <summary>
+    /// Лимит политики auth для этого хоста. Не читается из процесса:
+    /// иначе параллельный тест с жёстким лимитом даёт 429 чужим запросам.
+    /// </summary>
+    public int RateLimitPermit { get; set; } = 1000;
+
     public CustomWebApplicationFactory()
     {
         // AddIdentityInfrastructure and AddIdentityAuthentication read config eagerly during host build.
@@ -92,7 +98,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:IdentityDb"] = "Server=localhost;Database=TestDb;",
                 ["ConnectionStrings:Redis"] = string.Empty,
                 ["LockoutSettings:LockoutThreshold"] = "3",
-                ["RateLimit:PermitLimit"] = string.Equals(Environment.GetEnvironmentVariable("RATE_LIMIT_STRICT"), "true", StringComparison.OrdinalIgnoreCase) ? "5" : "1000"
+                ["RateLimit:PermitLimit"] = RateLimitPermit.ToString()
             };
             config.AddInMemoryCollection(testSettings);
         });
