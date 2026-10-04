@@ -11,6 +11,8 @@ public class BookingConfiguration : IEntityTypeConfiguration<Domain.Entities.Boo
         builder.ToTable("Bookings");
 
         builder.HasKey(b => b.Id);
+        // Id ставит домен (Guid.NewGuid()), база его не генерирует.
+        builder.Property(b => b.Id).ValueGeneratedNever();
 
         builder.Property(b => b.ClientId).IsRequired();
         builder.Property(b => b.TourId).IsRequired();

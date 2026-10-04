@@ -11,6 +11,8 @@ public class FavoriteConfiguration : IEntityTypeConfiguration<Favorite>
         builder.ToTable("Favorites");
 
         builder.HasKey(f => f.Id);
+        // Id ставит домен (Guid.NewGuid()), база его не генерирует.
+        builder.Property(f => f.Id).ValueGeneratedNever();
 
         builder.Property(f => f.UserId).IsRequired();
         builder.Property(f => f.TourId).IsRequired();

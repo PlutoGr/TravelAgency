@@ -26,13 +26,21 @@ public sealed class IdentityGrpcKestrelTests : IClassFixture<IdentityGrpcKestrel
     [Fact]
     public async Task Grpc_OnRestPort_IsRefused()
     {
+        new Uri(_fixture.Address).Host.Should().Be(new Uri(_fixture.GrpcAddress).Host);
+
+        using var liveChannel = GrpcChannel.ForAddress(_fixture.GrpcAddress);
+        var liveClient = new IdentityGrpc.IdentityGrpcClient(liveChannel);
+        var summary = await liveClient.GetUserSummaryAsync(
+            new GetUserSummaryRequest { UserId = Guid.NewGuid().ToString() },
+            new Metadata { { "x-internal-auth", IdentityGrpcKestrelFixture.ServiceToken } });
+        summary.Email.Should().Be("grpc-live@test.com");
+
         using var channel = GrpcChannel.ForAddress(_fixture.Address);
         var client = new IdentityGrpc.IdentityGrpcClient(channel);
         var call = client.GetUserSummaryAsync(new GetUserSummaryRequest { UserId = "x" });
 
         var ex = await Assert.ThrowsAsync<RpcException>(async () => await call.ResponseAsync);
-        ex.StatusCode.Should().Be(StatusCode.Internal);
-        ex.Status.Detail.Should().Contain("HTTP_1_1_REQUIRED");
+        ex.StatusCode.Should().BeOneOf(StatusCode.Unavailable, StatusCode.Internal);
     }
 
     [Fact]

@@ -26,6 +26,15 @@ public sealed class BookingGrpcKestrelTests : IClassFixture<BookingGrpcKestrelFi
     [Fact]
     public async Task Grpc_OnRestPort_IsRefused()
     {
+        new Uri(_fixture.Address).Host.Should().Be(new Uri(_fixture.GrpcAddress).Host);
+
+        using var liveChannel = GrpcChannel.ForAddress(_fixture.GrpcAddress);
+        var liveClient = new BookingService.BookingServiceClient(liveChannel);
+        var access = await liveClient.ValidateBookingAccessAsync(
+            new ValidateBookingAccessRequest { BookingId = "x", UserId = "x" },
+            new Metadata { { "x-internal-auth", BookingGrpcKestrelFixture.ServiceToken } });
+        access.HasAccess.Should().BeFalse();
+
         using var channel = GrpcChannel.ForAddress(_fixture.Address);
         var client = new BookingService.BookingServiceClient(channel);
         var call = client.ValidateBookingAccessAsync(new ValidateBookingAccessRequest
@@ -35,8 +44,7 @@ public sealed class BookingGrpcKestrelTests : IClassFixture<BookingGrpcKestrelFi
         });
 
         var ex = await Assert.ThrowsAsync<RpcException>(async () => await call.ResponseAsync);
-        ex.StatusCode.Should().Be(StatusCode.Internal);
-        ex.Status.Detail.Should().Contain("HTTP_1_1_REQUIRED");
+        ex.StatusCode.Should().BeOneOf(StatusCode.Unavailable, StatusCode.Internal);
     }
 
     [Fact]

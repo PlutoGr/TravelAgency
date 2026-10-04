@@ -1,3 +1,4 @@
+using System.Globalization;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.Exceptions;
@@ -33,6 +34,9 @@ public class CatalogGrpcClient : ICatalogGrpcClient
             Price: (decimal)response.Price,
             Currency: response.Currency,
             DurationDays: response.DurationDays,
-            SnapshotTakenAt: DateTime.Parse(response.SnapshotTakenAt));
+            SnapshotTakenAt: DateTime.Parse(
+                response.SnapshotTakenAt,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal));
     }
 }

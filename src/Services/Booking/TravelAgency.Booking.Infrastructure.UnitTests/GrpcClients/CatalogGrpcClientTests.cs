@@ -1,3 +1,4 @@
+using System.Globalization;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Builder;
@@ -44,7 +45,8 @@ public class CatalogGrpcClientTests
         result.Price.Should().Be(1999.99m);
         result.Currency.Should().Be("USD");
         result.DurationDays.Should().Be(7);
-        result.SnapshotTakenAt.Should().Be(DateTime.Parse(snapshotTakenAt));
+        result.SnapshotTakenAt.Kind.Should().Be(DateTimeKind.Utc);
+        result.SnapshotTakenAt.Should().Be(ParseAsUtc(snapshotTakenAt));
     }
 
     [Fact]
@@ -71,7 +73,8 @@ public class CatalogGrpcClientTests
 
         result.Description.Should().Be(response.Description, "description maps from proto");
         result.Price.Should().Be((decimal)response.Price, "price maps from proto");
-        result.SnapshotTakenAt.Should().Be(DateTime.Parse(response.SnapshotTakenAt), "snapshot_taken_at maps from proto");
+        result.SnapshotTakenAt.Kind.Should().Be(DateTimeKind.Utc, "snapshot_taken_at maps from proto as UTC");
+        result.SnapshotTakenAt.Should().Be(ParseAsUtc(response.SnapshotTakenAt), "snapshot_taken_at maps from proto");
         result.TourId.Should().Be(tourId, "tour_id maps from proto");
     }
 
@@ -89,6 +92,38 @@ public class CatalogGrpcClientTests
         await act.Should().ThrowAsync<NotFoundException>()
             .WithMessage($"*Tour '{tourId}' was not found in catalog*");
     }
+
+    [Theory]
+    [InlineData("2026-04-04T10:15:30.0000000Z")]
+    [InlineData("2026-04-04T13:15:30.0000000+03:00")]
+    public async Task GetTourSnapshotAsync_ZoneOrOffset_IsParsedAsTheSameUtcInstant(string snapshotTakenAt)
+    {
+        var tourId = Guid.NewGuid();
+        var expected = new DateTime(2026, 4, 4, 10, 15, 30, DateTimeKind.Utc);
+        var response = new TourSnapshotResponse
+        {
+            TourId = tourId.ToString(),
+            Title = "UTC snapshot",
+            Description = "zone coverage",
+            Price = 289000,
+            Currency = "RUB",
+            DurationDays = 7,
+            SnapshotTakenAt = snapshotTakenAt,
+            Found = true
+        };
+
+        using var host = await CreateTestServerAsync(response);
+        var client = CreateCatalogGrpcClient(host);
+
+        var result = await client.GetTourSnapshotAsync(tourId, CancellationToken.None);
+
+        result.SnapshotTakenAt.Kind.Should().Be(DateTimeKind.Utc);
+        result.SnapshotTakenAt.Should().Be(expected);
+        result.SnapshotTakenAt.ToString("O").Should().Be("2026-04-04T10:15:30.0000000Z");
+    }
+
+    private static DateTime ParseAsUtc(string value) =>
+        DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 
     private static async Task<IHost> CreateTestServerAsync(TourSnapshotResponse response)
     {
