@@ -200,6 +200,27 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         Assert.Equal("/hubs/chat/negotiate", echo.Path);
     }
 
+    [Theory]
+    [InlineData("ACCESS_TOKEN")]
+    [InlineData("Access_Token")]
+    public async Task Chat_PostHubNegotiate_WithCaseVariantAccessTokenQuery_SelectsChatHubRoute(string queryKey)
+    {
+        // Arrange — Request.Query compares keys without case, which the nginx mask in #45 matches with ~*.
+        var client = CreateClient(withAuth: false);
+        var token = Uri.EscapeDataString(Helpers.JwtTokenHelper.GenerateToken(role: AppRoles.Client));
+
+        // Act
+        var response = await client.SendAsync(CreateRequest(
+            HttpMethod.Post,
+            $"/api/v1/chat/hubs/chat/negotiate?negotiateVersion=1&{queryKey}={token}"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echo = await ReadEchoAsync(response);
+        Assert.Equal("chat-hub-route", echo.RouteId);
+        Assert.Equal("/hubs/chat/negotiate", echo.Path);
+    }
+
     [Fact]
     public async Task Chat_PostHubNegotiate_WithoutAuth_Returns401()
     {
@@ -251,6 +272,22 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
 
         // Act
         var response = await client.GetAsync($"/api/v1/bookings?access_token={token}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("ACCESS_TOKEN")]
+    [InlineData("Access_Token")]
+    public async Task Bookings_Get_WithCaseVariantAccessTokenQueryOnly_Returns401(string queryKey)
+    {
+        // Arrange — a case variant that authenticates the hub must not open other routes.
+        var client = CreateClient(withAuth: false);
+        var token = Uri.EscapeDataString(Helpers.JwtTokenHelper.GenerateToken(role: AppRoles.Client));
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/bookings?{queryKey}={token}");
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
