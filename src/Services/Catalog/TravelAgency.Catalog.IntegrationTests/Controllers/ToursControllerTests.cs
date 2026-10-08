@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Domain.Entities;
@@ -18,12 +17,6 @@ public class ToursControllerTests
     {
         _factory = fixture.Factory;
         _client = fixture.Factory.CreateClient();
-    }
-
-    private void AuthorizeAsManager()
-    {
-        var token = _factory.GenerateToken(Guid.NewGuid().ToString(), "Manager");
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     private Tour SeedTour(string title = "Test Tour")
@@ -107,84 +100,19 @@ public class ToursControllerTests
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    [Fact]
-    public async Task CreateTour_WithManagerToken_Returns201()
+    [Theory]
+    [InlineData("POST", "/catalog/tours")]
+    [InlineData("PUT", "/catalog/tours/11111111-1111-1111-1111-111111111111")]
+    [InlineData("PATCH", "/catalog/tours/11111111-1111-1111-1111-111111111111/prices")]
+    [InlineData("DELETE", "/catalog/tours/11111111-1111-1111-1111-111111111111")]
+    public async Task LegacyWriteEndpoints_AreRemoved(string method, string path)
     {
-        AuthorizeAsManager();
-        var request = new CreateTourRequest("New Integration Tour", "Description", TourType.City, "France", 5, null, null);
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        if (method is "POST" or "PUT" or "PATCH")
+            request.Content = JsonContent.Create(new { title = "legacy" });
 
-        var response = await _client.PostAsJsonAsync("/catalog/tours", request);
+        var response = await _client.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<TourDto>();
-        result!.Title.Should().Be("New Integration Tour");
-    }
-
-    [Fact]
-    public async Task CreateTour_WithoutToken_Returns401()
-    {
-        _client.DefaultRequestHeaders.Authorization = null;
-        var request = new CreateTourRequest("Unauthorized Tour", "Desc", TourType.City, "France", 5, null, null);
-
-        var response = await _client.PostAsJsonAsync("/catalog/tours", request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task CreateTour_WithClientToken_Returns403()
-    {
-        var token = _factory.GenerateToken(Guid.NewGuid().ToString(), "Client");
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var request = new CreateTourRequest("Client Tour", "Desc", TourType.City, "France", 5, null, null);
-
-        var response = await _client.PostAsJsonAsync("/catalog/tours", request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task UpdateTour_WithManagerToken_ReturnsOk()
-    {
-        AuthorizeAsManager();
-        var tour = SeedTour("Tour To Update");
-        var request = new UpdateTourRequest("Updated Title", "New Desc", TourType.Mountain, "Italy", 10, null, null);
-
-        var response = await _client.PutAsJsonAsync($"/catalog/tours/{tour.Id}", request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<TourDto>();
-        result!.Title.Should().Be("Updated Title");
-    }
-
-    [Fact]
-    public async Task UpdateTour_WithNonExistingId_Returns404()
-    {
-        AuthorizeAsManager();
-        var request = new UpdateTourRequest("Title", "Desc", TourType.Beach, "Greece", 7, null, null);
-
-        var response = await _client.PutAsJsonAsync($"/catalog/tours/{Guid.NewGuid()}", request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact(Skip = "Intermittent 500; covered by unit tests")]
-    public async Task UpdateTourPrices_WithManagerToken_ReturnsOk()
-    {
-        AuthorizeAsManager();
-        var tour = SeedTour("Tour For Prices Update");
-        var request = new UpdateTourPricesRequest(
-        [
-            new TourPriceRequest(
-                DateTime.UtcNow,
-                DateTime.UtcNow.AddDays(30),
-                1500m,
-                "USD",
-                10)
-        ]);
-
-        var response = await _client.PatchAsJsonAsync($"/catalog/tours/{tour.Id}/prices", request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound);
     }
 }

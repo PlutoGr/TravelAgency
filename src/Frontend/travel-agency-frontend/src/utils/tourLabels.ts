@@ -53,3 +53,14 @@ export function mealPlanLabel(value: string | number | null | undefined): string
 export function isTourAvailable(tour: { available?: boolean }): boolean {
   return tour.available !== false;
 }
+
+const TOUR_STATUS_LABELS: Record<string, string> = {
+  Draft: 'Черновик',
+  Published: 'Опубликован',
+  Unpublished: 'Снят с публикации',
+};
+
+export function tourStatusLabel(status: string | null | undefined): string {
+  if (!status) return '';
+  return TOUR_STATUS_LABELS[status] ?? status;
+}

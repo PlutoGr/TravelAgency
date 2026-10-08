@@ -5,21 +5,6 @@ namespace TravelAgency.Catalog.Application.Mappings;
 
 public static class TourMapper
 {
-    public static TourDto ToDto(Tour tour) =>
-        new(
-            tour.Id,
-            tour.Title,
-            tour.Description,
-            tour.Country,
-            tour.TourType,
-            tour.DurationDays,
-            tour.ImageUrl,
-            tour.DirectionId,
-            tour.IsActive,
-            tour.CreatedAt,
-            tour.UpdatedAt,
-            tour.Offers.Select(ToPriceDto).ToList().AsReadOnly());
-
     public static TourSummaryDto ToSummaryDto(Tour tour) =>
         PublicCatalogMapper.ToSummary(tour, DateTime.UtcNow);
 

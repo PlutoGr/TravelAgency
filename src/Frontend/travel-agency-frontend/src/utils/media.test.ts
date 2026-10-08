@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mediaFileUrl, mediaSrcSet, resolveTourMedia } from './media';
+import { manageMediaFileUrl, mediaFileUrl, mediaSrcSet, resolveTourMedia } from './media';
 
 const FILE = '11111111-1111-1111-1111-111111111111';
 
@@ -21,5 +21,12 @@ describe('media urls', () => {
       'gallery',
     );
     expect(blocked).toBeNull();
+  });
+
+  it('builds a manage preview from the file id', () => {
+    const src = manageMediaFileUrl(FILE, 'w200');
+    expect(src).toBe(`/api/v1/media/manage/files/${FILE}/w200`);
+    expect(src).not.toContain('minio');
+    expect(src).not.toContain('/media/files/');
   });
 });
