@@ -5,9 +5,8 @@ type AuthModalTab = 'login' | 'register';
 type UIState = {
   isAuthModalOpen: boolean;
   authModalTab: AuthModalTab;
-  authReturnTo: string | null;
   isMobileMenuOpen: boolean;
-  openAuthModal: (tab?: AuthModalTab, returnTo?: string) => void;
+  openAuthModal: (tab?: AuthModalTab) => void;
   closeAuthModal: () => void;
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
@@ -16,13 +15,12 @@ type UIState = {
 export const useUIStore = create<UIState>((set) => ({
   isAuthModalOpen: false,
   authModalTab: 'login',
-  authReturnTo: null,
   isMobileMenuOpen: false,
 
-  openAuthModal: (tab = 'login', returnTo) =>
-    set({ isAuthModalOpen: true, authModalTab: tab, authReturnTo: returnTo ?? null }),
+  openAuthModal: (tab = 'login') =>
+    set({ isAuthModalOpen: true, authModalTab: tab }),
 
-  closeAuthModal: () => set({ isAuthModalOpen: false, authReturnTo: null }),
+  closeAuthModal: () => set({ isAuthModalOpen: false }),
 
   toggleMobileMenu: () =>
     set((state) => ({ isMobileMenuOpen: !state.isMobileMenuOpen })),

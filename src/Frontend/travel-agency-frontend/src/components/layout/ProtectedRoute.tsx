@@ -1,7 +1,5 @@
-import { useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { useUIStore } from '@/store/uiStore';
 import { Skeleton } from '@/components/ui';
 import { resolveReturnTo } from '@/utils/safeReturnTo';
 
@@ -29,13 +27,6 @@ function AuthLoadingFallback() {
 export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const location = useLocation();
   const { isAuthenticated, isLoading, user } = useAuthStore();
-  const openAuthModal = useUIStore((s) => s.openAuthModal);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      openAuthModal('login');
-    }
-  }, [isLoading, isAuthenticated, openAuthModal]);
 
   if (isLoading) {
     return <AuthLoadingFallback />;
