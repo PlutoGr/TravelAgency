@@ -4,6 +4,7 @@ using TravelAgency.Catalog.Infrastructure.Extensions;
 using TravelAgency.Catalog.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Hosting;
+using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,6 +41,7 @@ public partial class Program
     public static void ConfigurePipeline(WebApplication app)
     {
         app.UseGrpcListenPortGuard();
+        app.UseTravelAgencyRequestLogging();
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
         app.UseCatalogCors();
