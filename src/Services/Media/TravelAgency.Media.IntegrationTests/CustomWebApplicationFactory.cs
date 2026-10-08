@@ -53,6 +53,18 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         ImageProcessingService.IsImage(Arg.Any<string>()).Returns(false);
 
         ImageProcessingService
+            .GetDimensionsAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(new ImageDimensions(1920, 1080));
+
+        ImageProcessingService
+            .ResizeWithinAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ResizedImage(
+                new MemoryStream("resized"u8.ToArray()),
+                Math.Min(1920, ci.ArgAt<int>(1)),
+                10,
+                "image/jpeg"));
+
+        ImageProcessingService
             .ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<Stream>(new MemoryStream("resized"u8.ToArray())));
     }
