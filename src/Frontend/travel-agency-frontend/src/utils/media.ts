@@ -33,6 +33,11 @@ export function mediaFileUrl(mediaFileId: string, size: MediaSize): string {
   return `/api/v1/media/files/${mediaFileId}/${size}`;
 }
 
+/** Превью черновика. Публичный /media/files/{id} до публикации отвечает 404. */
+export function manageMediaFileUrl(mediaFileId: string, size: MediaSize): string {
+  return `/api/v1/media/manage/files/${mediaFileId}/${size}`;
+}
+
 export function mediaSrcSet(mediaFileId: string, max: MediaSize = 'w1600'): string {
   const limit = WIDTH[max];
   return MEDIA_SIZES.filter((size) => WIDTH[size] <= limit)

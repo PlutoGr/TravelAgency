@@ -15,19 +15,8 @@ import toast from 'react-hot-toast';
 const PAGE_SIZE = 6;
 const MANAGER_PAGE_SIZE = 100;
 
-/** Backend TourType enum values */
-const TOUR_TYPE_VALUES = [
-  'Beach',
-  'Mountain',
-  'City',
-  'Cultural',
-  'Adventure',
-  'Cruise',
-  'Safari',
-] as const;
-
 /** Maps frontend category label to backend TourType */
-const CATEGORY_TO_TOUR_TYPE: Record<string, (typeof TOUR_TYPE_VALUES)[number]> = {
+const CATEGORY_TO_TOUR_TYPE: Record<string, string> = {
   'Пляжный отдых': 'Beach',
   Beach: 'Beach',
   Экзотика: 'Safari',
@@ -42,10 +31,6 @@ const CATEGORY_TO_TOUR_TYPE: Record<string, (typeof TOUR_TYPE_VALUES)[number]> =
   Adventure: 'Adventure',
   Cruise: 'Cruise',
 };
-
-function categoryToTourType(category: string): (typeof TOUR_TYPE_VALUES)[number] {
-  return CATEGORY_TO_TOUR_TYPE[category] ?? 'Cultural';
-}
 
 /** Backend API response types (camelCase from ASP.NET Core JSON) */
 interface PagedResultDto<T> {
@@ -464,88 +449,6 @@ export async function getToursForManager(
   page = 1,
 ): Promise<PaginatedResponse<Tour>> {
   return getTours(filters, page, MANAGER_PAGE_SIZE);
-}
-
-/** Create tour request payload (backend CreateTourRequest) */
-export interface CreateTourRequest {
-  title: string;
-  description: string;
-  tourType: string;
-  country: string;
-  durationDays: number;
-  imageUrl: string | null;
-  directionId: string | null;
-}
-
-/** Update tour request payload (backend UpdateTourRequest) */
-export interface UpdateTourRequest {
-  title: string;
-  description: string;
-  tourType: string;
-  country: string;
-  durationDays: number;
-  imageUrl: string | null;
-  directionId: string | null;
-}
-
-/** Tour price request (backend TourPriceRequest) */
-export interface TourPriceRequest {
-  validFrom: string;
-  validTo: string;
-  pricePerPerson: number;
-  currency: string;
-  availableSeats: number;
-}
-
-export async function createTour(
-  request: CreateTourRequest,
-): Promise<Tour> {
-  const { data } = await apiClient.post<TourDto>('/catalog/tours', {
-    title: request.title,
-    description: request.description,
-    tourType: categoryToTourType(request.tourType),
-    country: request.country,
-    durationDays: request.durationDays,
-    imageUrl: request.imageUrl,
-    directionId: request.directionId,
-  });
-  return mapTourDtoToTour(data);
-}
-
-export async function updateTour(
-  id: string,
-  request: UpdateTourRequest,
-): Promise<Tour> {
-  const { data } = await apiClient.put<TourDto>(`/catalog/tours/${id}`, {
-    title: request.title,
-    description: request.description,
-    tourType: categoryToTourType(request.tourType),
-    country: request.country,
-    durationDays: request.durationDays,
-    imageUrl: request.imageUrl,
-    directionId: request.directionId,
-  });
-  return mapTourDtoToTour(data);
-}
-
-export async function updateTourPrices(
-  id: string,
-  prices: TourPriceRequest[],
-): Promise<Tour> {
-  const { data } = await apiClient.patch<TourDto>(`/catalog/tours/${id}/prices`, {
-    prices: prices.map((p) => ({
-      validFrom: p.validFrom,
-      validTo: p.validTo,
-      pricePerPerson: p.pricePerPerson,
-      currency: p.currency,
-      availableSeats: p.availableSeats,
-    })),
-  });
-  return mapTourDtoToTour(data);
-}
-
-export async function deleteTour(id: string): Promise<void> {
-  await apiClient.delete(`/catalog/tours/${id}`);
 }
 
 const CARD_BATCH = 50;

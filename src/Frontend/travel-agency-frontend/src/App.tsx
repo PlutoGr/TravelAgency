@@ -29,6 +29,7 @@ const ManagerDashboardPage = lazy(() => import('@/pages/ManagerDashboardPage'));
 const ManagerBookingsPage = lazy(() => import('@/pages/ManagerBookingsPage'));
 const ManagerBookingDetailPage = lazy(() => import('@/pages/ManagerBookingDetailPage'));
 const ManagerToursPage = lazy(() => import('@/pages/ManagerToursPage'));
+const TourWizardPage = lazy(() => import('@/pages/TourWizardPage'));
 const ManagerClientsPage = lazy(() => import('@/pages/ManagerClientsPage'));
 
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -100,6 +101,8 @@ export default function App() {
                 <Route path="manager" element={<ManagerDashboardPage />} />
                 <Route path="manager/bookings" element={<ManagerBookingsPage />} />
                 <Route path="manager/bookings/:id" element={<ManagerBookingDetailPage />} />
+                <Route path="manager/tours/new" element={<TourWizardPage />} />
+                <Route path="manager/tours/:tourId" element={<TourWizardPage />} />
                 <Route path="manager/tours" element={<ManagerToursPage />} />
                 <Route path="manager/clients" element={<ManagerClientsPage />} />
               </Route>
