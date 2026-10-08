@@ -109,12 +109,168 @@ public sealed class LegacyDemoSeedPostgresTests : IAsyncLifetime
             var tour = tours.Single(t => t.Title == snapshot.Title);
             tour.Id.Should().Be(snapshot.Id);
             tour.Status.Should().Be(TourStatus.Published);
-            tour.OwnerId.Should().BeNull();
+            tour.OwnerId.Should().Be(DemoSeedIds.ManagerId);
             tour.Images.Should().HaveCount(DemoSeedIds.PhotosPerTour);
             tour.GetMissingPublishRequirements(DateTime.UtcNow).Should().BeEmpty();
             tour.Offers.Select(o => o.Id).Should().Contain(legacy.Offers.Where(o => o.TourId == snapshot.Id).Select(o => o.Id));
         }
     }
+
+    [Fact]
+    public async Task ReadyNullOwner_BecomesManager_ForeignOwnerStays_SecondRunKeepsIdsAndVersion()
+    {
+        var options = new DbContextOptionsBuilder<CatalogDbContext>().UseNpgsql(_postgres.GetConnectionString()).Options;
+        await using (var catalog = new CatalogDbContext(options))
+            await catalog.Database.MigrateAsync();
+
+        var foreignOwner = Guid.Parse("55555555-5555-4555-8555-555555555555");
+        FrozenTour bali;
+        FrozenTour dubai;
+        FrozenTour santorini;
+        FrozenTour phuket;
+
+        await using (var db = new CatalogDbContext(options))
+        {
+            var baliTour = CompletePublishedTour("Бали — остров богов", 4, ownerId: null);
+            var dubaiTour = CompletePublishedTour("Дубай — роскошь и приключения", 5, foreignOwner);
+            var santoriniTour = CompletePublishedTour("Санторини — романтика Эгейского моря", 3, DemoSeedIds.ManagerId);
+            var phuketTour = Tour.Create(
+                "Экзотический Таиланд — Пхукет",
+                "Тропический рай с белоснежными пляжами.",
+                TourType.Beach,
+                "Таиланд",
+                11,
+                "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800",
+                ownerId: foreignOwner);
+            var keptOffer = TourOffer.Create(
+                phuketTour.Id,
+                new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc),
+                new DateTime(2026, 12, 1, 0, 0, 0, DateTimeKind.Utc),
+                124_000,
+                "RUB",
+                15);
+            phuketTour.AddOffer(keptOffer);
+            db.Tours.AddRange(baliTour, dubaiTour, santoriniTour, phuketTour);
+            await db.SaveChangesAsync();
+            bali = Freeze(baliTour);
+            dubai = Freeze(dubaiTour);
+            santorini = Freeze(santoriniTour);
+            phuket = Freeze(phuketTour);
+        }
+
+        await using (var catalog = new CatalogDbContext(options))
+            await CatalogDataSeeder.SeedAsync(catalog, NullLogger.Instance, CancellationToken.None);
+
+        await using (var catalog = new CatalogDbContext(options))
+        {
+            var tours = await LoadToursAsync(catalog);
+            var seededBali = tours.Single(t => t.Id == bali.Id);
+            seededBali.OwnerId.Should().Be(DemoSeedIds.ManagerId);
+            seededBali.Status.Should().Be(TourStatus.Published);
+            seededBali.Version.Should().Be(bali.Version + 1);
+            SameRows(seededBali, bali);
+
+            var seededDubai = tours.Single(t => t.Id == dubai.Id);
+            seededDubai.OwnerId.Should().Be(foreignOwner);
+            seededDubai.Version.Should().Be(dubai.Version);
+            SameRows(seededDubai, dubai);
+
+            var seededSantorini = tours.Single(t => t.Id == santorini.Id);
+            seededSantorini.OwnerId.Should().Be(DemoSeedIds.ManagerId);
+            seededSantorini.Version.Should().Be(santorini.Version);
+            SameRows(seededSantorini, santorini);
+
+            var seededPhuket = tours.Single(t => t.Id == phuket.Id);
+            seededPhuket.OwnerId.Should().Be(foreignOwner);
+            seededPhuket.Status.Should().Be(TourStatus.Published);
+            seededPhuket.Offers.Select(o => o.Id).Should().Contain(phuket.OfferIds);
+
+            tours.Should().ContainSingle(t => t.Status == TourStatus.Draft);
+            tours.Single(t => t.Id == DemoSeedIds.Manager2DraftTourId).OwnerId.Should().Be(DemoSeedIds.Manager2Id);
+            tours.Select(t => t.Title).Should().OnlyHaveUniqueItems();
+        }
+
+        await using (var catalog = new CatalogDbContext(options))
+            await CatalogDataSeeder.SeedAsync(catalog, NullLogger.Instance, CancellationToken.None);
+
+        await using (var catalog = new CatalogDbContext(options))
+        {
+            var tours = await LoadToursAsync(catalog);
+            var againBali = tours.Single(t => t.Id == bali.Id);
+            againBali.OwnerId.Should().Be(DemoSeedIds.ManagerId);
+            againBali.Version.Should().Be(bali.Version + 1);
+            SameRows(againBali, bali);
+
+            var againDubai = tours.Single(t => t.Id == dubai.Id);
+            againDubai.OwnerId.Should().Be(foreignOwner);
+            againDubai.Version.Should().Be(dubai.Version);
+            SameRows(againDubai, dubai);
+
+            var againSantorini = tours.Single(t => t.Id == santorini.Id);
+            againSantorini.OwnerId.Should().Be(DemoSeedIds.ManagerId);
+            againSantorini.Version.Should().Be(santorini.Version);
+
+            var againPhuket = tours.Single(t => t.Id == phuket.Id);
+            againPhuket.OwnerId.Should().Be(foreignOwner);
+            againPhuket.Offers.Select(o => o.Id).Should().Contain(phuket.OfferIds);
+            tours.Single(t => t.Status == TourStatus.Draft).Id.Should().Be(DemoSeedIds.Manager2DraftTourId);
+        }
+    }
+
+    private static Tour CompletePublishedTour(string title, int tourNumber, Guid? ownerId)
+    {
+        var tour = Tour.Create(
+            title,
+            "Описание демо-тура для проверки владельца.",
+            TourType.Beach,
+            "Индонезия",
+            1,
+            "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800",
+            ownerId: ownerId);
+        tour.SetBasics(title, "Краткое описание", "Москва", "Индонезия", TourType.Beach, 1, null);
+        tour.SetDescription("Описание демо-тура для проверки владельца.");
+        tour.ReplaceDays([TourDay.Create(tour.Id, 1, "День 1", "Программа")]);
+        tour.ReplaceConditions(
+            [TourInclusion.Create(tour.Id, "Проживание", TourInclusionKind.Included, 0)],
+            MealPlan.BB,
+            "Вилла");
+        var future = DateTime.UtcNow.AddDays(30);
+        tour.AddOffer(TourOffer.Create(tour.Id, future, future.AddDays(7), 1000m, "RUB", 4));
+        for (var photo = 1; photo <= DemoSeedIds.PhotosPerTour; photo++)
+        {
+            tour.AddImage(TourImage.Create(
+                tour.Id,
+                DemoSeedIds.PhotoId(tourNumber, photo),
+                photo - 1,
+                photo == 1,
+                $"Фото {photo}",
+                DemoSeedIds.PhotoWidthPx));
+        }
+
+        tour.Publish(DateTime.UtcNow, DemoSeedIds.PhotoWidthPx);
+        return tour;
+    }
+
+    private static async Task<List<Tour>> LoadToursAsync(CatalogDbContext db) =>
+        await db.Tours.AsNoTracking()
+            .Include(t => t.Offers)
+            .Include(t => t.Images)
+            .ToListAsync();
+
+    private static FrozenTour Freeze(Tour tour) =>
+        new(
+            tour.Id,
+            tour.Version,
+            tour.Offers.Select(o => o.Id).ToArray(),
+            tour.Images.Select(i => i.Id).ToArray());
+
+    private static void SameRows(Tour tour, FrozenTour snapshot)
+    {
+        tour.Offers.Select(o => o.Id).Should().BeEquivalentTo(snapshot.OfferIds);
+        tour.Images.Select(i => i.Id).Should().BeEquivalentTo(snapshot.ImageIds);
+    }
+
+    private sealed record FrozenTour(Guid Id, long Version, Guid[] OfferIds, Guid[] ImageIds);
 
     private static async Task<string> CreateIdentityDatabaseAsync(string catalogConnection)
     {

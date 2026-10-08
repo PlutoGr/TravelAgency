@@ -8,8 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Domain;
+using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 using TravelAgency.Catalog.Infrastructure.Seeding;
@@ -153,6 +155,99 @@ public class DemoCatalogSeedTests
         list.Should().NotBeNull();
         list!.Items.Select(t => t.Id).Should().NotContain(draft);
         list.Items.Select(t => t.Id).Should().Contain(DemoSeedIds.PublishedTourIds);
+    }
+
+    [Fact]
+    public async Task Admin_PublishesManagerTourWithOwnerPhotos_AndRejectsOwnerlessTourWithForeignPhotos()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+        await factory.InitializeAsync();
+        factory.EnsureDbCreated();
+
+        Guid ownedId;
+        Guid ownerlessId;
+        string ownedEtag;
+        string ownerlessEtag;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+            var owned = PublishableDraft(DemoSeedIds.ManagerId, "Тур менеджера");
+            var ownerless = PublishableDraft(null, "Тур без владельца");
+            db.Tours.AddRange(owned, ownerless);
+            await db.SaveChangesAsync();
+            ownedId = owned.Id;
+            ownerlessId = ownerless.Id;
+            ownedEtag = $"\"{owned.Version}\"";
+            ownerlessEtag = $"\"{ownerless.Version}\"";
+            factory.Media.Files = owned.Images.Concat(ownerless.Images)
+                .Select(image => image.MediaFileId)
+                .Distinct()
+                .ToDictionary(
+                    id => id,
+                    id => new RemoteMediaFile(id, DemoSeedIds.ManagerId.ToString(), DemoSeedIds.PhotoWidthPx, 900));
+        }
+
+        var client = factory.CreateClient();
+        Authorize(factory, client, DemoSeedIds.AdminId, "Admin");
+
+        var published = await SendAsync(
+            client,
+            HttpMethod.Post,
+            $"/catalog/manage/tours/{ownedId}/publish",
+            new { },
+            ownedEtag);
+        published.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await published.Content.ReadFromJsonAsync<TourManageDto>();
+        body.Should().NotBeNull();
+        body!.Status.Should().Be(nameof(TourStatus.Published));
+        body.OwnerId.Should().Be(DemoSeedIds.ManagerId);
+
+        var rejected = await SendAsync(
+            client,
+            HttpMethod.Post,
+            $"/catalog/manage/tours/{ownerlessId}/publish",
+            new { },
+            ownerlessEtag);
+        rejected.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var problem = await rejected.Content.ReadAsStringAsync();
+        problem.Should().Contain("tour-image");
+        problem.Should().Contain("A media file belongs to another user");
+
+        factory.UseDbContext(db =>
+        {
+            var stored = db.Tours.Single(t => t.Id == ownerlessId);
+            stored.OwnerId.Should().BeNull();
+            stored.Status.Should().Be(TourStatus.Draft);
+        });
+    }
+
+    private static Tour PublishableDraft(Guid? ownerId, string title)
+    {
+        var tour = Tour.Create(
+            title,
+            "Полное описание тура для проверки публикации.",
+            TourType.Beach,
+            "Индонезия",
+            1,
+            null,
+            ownerId: ownerId);
+        tour.SetBasics(title, "Кратко о туре", "Москва", "Индонезия", TourType.Beach, 1, null);
+        tour.SetDescription("Полное описание тура для проверки публикации.");
+        tour.ReplaceDays([TourDay.Create(tour.Id, 1, "День 1", "Программа")]);
+        tour.ReplaceConditions(
+            [TourInclusion.Create(tour.Id, "Проживание", TourInclusionKind.Included, 0)],
+            MealPlan.BB,
+            "Вилла");
+        var from = DateTime.UtcNow.AddDays(30);
+        tour.ReplaceOffers([TourOffer.Create(tour.Id, from, from.AddDays(7), 1000m, "RUB", 4)]);
+        var ids = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToArray();
+        tour.ReplaceImages(
+        [
+            TourImage.Create(tour.Id, ids[0], 0, true, "Обложка", DemoSeedIds.PhotoWidthPx),
+            TourImage.Create(tour.Id, ids[1], 1, false, "Второе", 800),
+            TourImage.Create(tour.Id, ids[2], 2, false, "Третье", 800)
+        ], DemoSeedIds.PhotoWidthPx);
+        return tour;
     }
 
     private static UpdateTourBasicsRequest BasicsBody() =>
