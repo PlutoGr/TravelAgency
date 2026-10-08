@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyWizardForm, missingPublishCodes, validateWizardStep, type WizardForm } from './tourWizard';
+import { emptyWizardForm, missingPublishCodes, resolveWizardStep, validateWizardStep, type WizardForm } from './tourWizard';
 
 const NOW = new Date('2026-10-08T12:00:00Z');
 
@@ -50,6 +50,22 @@ describe('publish checklist', () => {
     form.images[0].widthPx = null;
     form.offers[0].validFrom = '2026-10-08';
     expect(missingPublishCodes(form, NOW)).toEqual(['offers.future', 'images.coverMinWidth']);
+  });
+});
+
+describe('wizard step query', () => {
+  it('keeps a step inside 1..7 and clamps everything else', () => {
+    expect(resolveWizardStep('5')).toBe(5);
+    expect(resolveWizardStep('1')).toBe(1);
+    expect(resolveWizardStep('7')).toBe(7);
+    expect(resolveWizardStep('0')).toBe(1);
+    expect(resolveWizardStep('9')).toBe(7);
+    expect(resolveWizardStep('99')).toBe(7);
+    expect(resolveWizardStep('нет')).toBe(1);
+    expect(resolveWizardStep('5.5')).toBe(1);
+    expect(resolveWizardStep(null)).toBe(1);
+    expect(resolveWizardStep(null, 4)).toBe(4);
+    expect(resolveWizardStep('', 3)).toBe(3);
   });
 });
 
