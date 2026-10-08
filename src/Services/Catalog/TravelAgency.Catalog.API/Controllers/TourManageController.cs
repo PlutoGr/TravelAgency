@@ -21,6 +21,17 @@ public class TourManageController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(TourManageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new GetManagedTourQuery(id), cancellationToken);
+        Response.Headers.ETag = result.Etag;
+        return Ok(result);
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(TourManageDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

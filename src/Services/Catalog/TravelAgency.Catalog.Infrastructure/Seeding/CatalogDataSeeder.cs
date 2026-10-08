@@ -6,11 +6,14 @@ using Microsoft.Extensions.Logging;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
 using TravelAgency.Catalog.Infrastructure.Persistence;
+using TravelAgency.Shared.Contracts.Seeding;
+using TravelAgency.Shared.Infrastructure.Seeding;
 
 namespace TravelAgency.Catalog.Infrastructure.Seeding;
 
 /// <summary>
-/// Seeds directions and tours when the database is empty. Demo catalog only, no users. See ShouldSeed.
+/// Дозаполняет 5 демо-туров до модели, которую проходит Publish(), и один черновик второго менеджера.
+/// Повторный запуск не создаёт второй ряд. Колонку ImageUrl не удаляет.
 /// </summary>
 public sealed class CatalogDataSeeder(
     IServiceScopeFactory scopeFactory,
@@ -19,31 +22,23 @@ public sealed class CatalogDataSeeder(
     ILogger<CatalogDataSeeder> logger) : IHostedService
 {
     /// <summary>Флаг демо-каталога вне Development: Seeding__DemoCatalog=true.</summary>
-    public const string DemoCatalogKey = "Seeding:DemoCatalog";
+    public const string DemoCatalogKey = DemoSeedGate.DemoCatalogKey;
 
-    /// <summary>
-    /// Демо-направления и туры: в Development, при Seeding:DemoCatalog=true
-    /// или при устаревшем ASPNETCORE_SEED_DATA=true. Пользователей не создаёт.
-    /// </summary>
+    public const string Manager2DraftTitle = "Личный черновик второго менеджера";
+
     public static bool ShouldSeed(IHostEnvironment environment, IConfiguration configuration) =>
-        environment.IsDevelopment()
-        || configuration.GetValue<bool>(DemoCatalogKey)
-        || string.Equals(configuration["ASPNETCORE_SEED_DATA"], "true", StringComparison.OrdinalIgnoreCase);
+        DemoSeedGate.ShouldSeed(environment, configuration, includeDemoCatalogFlag: true);
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (!ShouldSeed(environment, configuration))
-        {
             return;
-        }
 
         try
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-
-            await SeedDirectionsAsync(db, cancellationToken);
-            await SeedToursAsync(db, cancellationToken);
+            await SeedAsync(db, logger, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -53,115 +48,274 @@ public sealed class CatalogDataSeeder(
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private async Task SeedDirectionsAsync(CatalogDbContext db, CancellationToken ct)
+    public static async Task SeedAsync(CatalogDbContext db, ILogger logger, CancellationToken cancellationToken)
     {
-        if (await db.Directions.AnyAsync(ct))
+        var directions = await EnsureDirectionsAsync(db, cancellationToken);
+        var now = DateTime.UtcNow;
+        var tours = await db.Tours
+            .Include(t => t.Offers)
+            .Include(t => t.Days)
+            .Include(t => t.Inclusions)
+            .Include(t => t.Images)
+            .ToListAsync(cancellationToken);
+
+        foreach (var spec in DemoTours)
         {
-            logger.LogDebug("Directions already exist, skipping");
-            return;
+            directions.TryGetValue(spec.DirectionName, out var direction);
+            var tour = tours.FirstOrDefault(t => t.Id == spec.Id)
+                ?? tours.FirstOrDefault(t => t.Title == spec.Title);
+            if (tour is null)
+            {
+                tour = Tour.Create(
+                    spec.Title,
+                    spec.Description,
+                    spec.Type,
+                    spec.Country,
+                    spec.Days,
+                    spec.ImageUrl,
+                    direction?.Id,
+                    DemoSeedIds.ManagerId,
+                    spec.Id);
+                db.Tours.Add(tour);
+                tours.Add(tour);
+            }
+            else if (IsReady(tour, spec.Number, now))
+            {
+                continue;
+            }
+            else if (tour.Status == TourStatus.Published)
+            {
+                tour.Unpublish();
+            }
+
+            if (tour.Days.Count > 0 || tour.Offers.Count > 0 || tour.Inclusions.Count > 0 || tour.Images.Count > 0)
+            {
+                tour.ReplaceDays([]);
+                tour.ReplaceOffers([]);
+                tour.ReplaceInclusions([]);
+                tour.ReplaceImages([]);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            tour.AssignOwner(DemoSeedIds.ManagerId);
+            tour.SetBasics(
+                spec.Title,
+                spec.ShortDescription,
+                spec.DepartureCity,
+                spec.Country,
+                spec.Type,
+                spec.Days,
+                direction?.Id);
+            tour.SetDescription(spec.Description);
+            tour.ReplaceDays(Days(tour.Id, spec.Days, spec.Title));
+            tour.ReplaceConditions(
+                [
+                    TourInclusion.Create(tour.Id, "Проживание и питание по программе", TourInclusionKind.Included, 0),
+                    TourInclusion.Create(tour.Id, "Трансфер аэропорт — отель — аэропорт", TourInclusionKind.Included, 1),
+                    TourInclusion.Create(tour.Id, "Личные расходы и экскурсии вне программы", TourInclusionKind.NotIncluded, 2)
+                ],
+                spec.Meal,
+                spec.Stay);
+            var futureFrom = now.AddDays(21);
+            tour.ReplaceOffers(
+            [
+                TourOffer.Create(tour.Id, now.AddDays(-14), now.AddDays(90), spec.Price, "RUB", spec.Seats),
+                TourOffer.Create(tour.Id, futureFrom, futureFrom.AddDays(spec.Days), spec.Price, "RUB", spec.Seats)
+            ]);
+            tour.ReplaceImages(Images(tour.Id, spec.Number), DemoSeedIds.PhotoWidthPx);
+            tour.Publish(now, DemoSeedIds.PhotoWidthPx);
         }
 
-        var directions = new[]
-        {
-            Direction.Create("Мальдивы", "Мальдивы", "Райские острова с лазурной водой и белоснежными пляжами"),
-            Direction.Create("Пхукет", "Таиланд", "Тропический рай с храмами, пляжами и экзотической кухней"),
-            Direction.Create("Санторини", "Греция", "Белые дома на скалах с видом на Эгейское море"),
-            Direction.Create("Бали", "Индонезия", "Остров богов с рисовыми террасами и храмами"),
-            Direction.Create("Дубай", "ОАЭ", "Современный мегаполис с небоскрёбами и пустыней"),
-        };
-
-        db.Directions.AddRange(directions);
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("Seeded {Count} directions", directions.Length);
+        await EnsureManager2DraftAsync(db, tours, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Seeded demo catalog");
     }
 
-    private async Task SeedToursAsync(CatalogDbContext db, CancellationToken ct)
+    private static bool IsReady(Tour tour, int tourNumber, DateTime utcNow)
     {
-        if (await db.Tours.AnyAsync(ct))
+        if (tour.Status != TourStatus.Published || tour.OwnerId != DemoSeedIds.ManagerId)
+            return false;
+
+        if (tour.Images.Count != DemoSeedIds.PhotosPerTour)
+            return false;
+
+        for (var photo = 1; photo <= DemoSeedIds.PhotosPerTour; photo++)
         {
-            logger.LogDebug("Tours already exist, skipping");
-            return;
+            var mediaId = DemoSeedIds.PhotoId(tourNumber, photo);
+            if (tour.Images.All(image => image.MediaFileId != mediaId))
+                return false;
         }
 
-        var directions = await db.Directions.ToListAsync(ct);
-        var maldivesDir = directions.FirstOrDefault(d => d.Country == "Мальдивы");
-        var phuketDir = directions.FirstOrDefault(d => d.Name == "Пхукет");
-        var greeceDir = directions.FirstOrDefault(d => d.Country == "Греция");
+        return tour.GetMissingPublishRequirements(utcNow).Count == 0;
+    }
 
-        var now = DateTime.UtcNow;
-        // Prices must have ValidFrom <= now && ValidTo >= now for TourListQuery to return minPrice
-        var priceStart = now.AddDays(-30);
-        var priceEnd = now.AddDays(60);
-        var tours = new List<Tour>();
+    private static async Task EnsureManager2DraftAsync(
+        CatalogDbContext db,
+        List<Tour> tours,
+        CancellationToken cancellationToken)
+    {
+        var draft = tours.FirstOrDefault(t => t.Id == DemoSeedIds.Manager2DraftTourId)
+            ?? tours.FirstOrDefault(t => t.Title == Manager2DraftTitle);
+        if (draft is not null)
+            return;
 
-        // Мальдивы — горящий тур
-        var maldives = Tour.Create(
+        draft = Tour.CreateDraft(DemoSeedIds.Manager2Id, DemoSeedIds.Manager2DraftTourId);
+        draft.SetTitle(Manager2DraftTitle);
+        db.Tours.Add(draft);
+        await Task.CompletedTask;
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private static IEnumerable<TourDay> Days(Guid tourId, int count, string title)
+    {
+        for (var day = 1; day <= count; day++)
+            yield return TourDay.Create(tourId, day, $"День {day}", $"{title}: программа дня {day}.");
+    }
+
+    private static IEnumerable<TourImage> Images(Guid tourId, int tourNumber)
+    {
+        for (var photo = 1; photo <= DemoSeedIds.PhotosPerTour; photo++)
+        {
+            yield return TourImage.Create(
+                tourId,
+                DemoSeedIds.PhotoId(tourNumber, photo),
+                photo - 1,
+                photo == 1,
+                $"Фото {photo}",
+                DemoSeedIds.PhotoWidthPx);
+        }
+    }
+
+    private static async Task<Dictionary<string, Direction>> EnsureDirectionsAsync(
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var existing = await db.Directions.ToListAsync(cancellationToken);
+        var byName = existing.ToDictionary(d => d.Name, StringComparer.Ordinal);
+
+        foreach (var (name, country, description) in Directions)
+        {
+            if (byName.ContainsKey(name))
+                continue;
+
+            var direction = Direction.Create(name, country, description);
+            db.Directions.Add(direction);
+            byName[name] = direction;
+        }
+
+        if (db.ChangeTracker.HasChanges())
+            await db.SaveChangesAsync(cancellationToken);
+
+        return byName;
+    }
+
+    private static readonly (string Name, string Country, string Description)[] Directions =
+    [
+        ("Мальдивы", "Мальдивы", "Райские острова с лазурной водой и белоснежными пляжами"),
+        ("Пхукет", "Таиланд", "Тропический рай с храмами, пляжами и экзотической кухней"),
+        ("Санторини", "Греция", "Белые дома на скалах с видом на Эгейское море"),
+        ("Бали", "Индонезия", "Остров богов с рисовыми террасами и храмами"),
+        ("Дубай", "ОАЭ", "Современный мегаполис с небоскрёбами и пустыней"),
+    ];
+
+    private sealed record DemoTour(
+        int Number,
+        Guid Id,
+        string Title,
+        string ShortDescription,
+        string Description,
+        TourType Type,
+        string Country,
+        string DepartureCity,
+        int Days,
+        string ImageUrl,
+        string DirectionName,
+        MealPlan Meal,
+        string Stay,
+        decimal Price,
+        int Seats);
+
+    private static readonly DemoTour[] DemoTours =
+    [
+        new(
+            1,
+            DemoSeedIds.MaldivesTourId,
             "Мальдивы — рай на земле",
+            "Водные виллы, белый песок и снорклинг на атолле.",
             "Уникальные водные виллы над лазурным океаном. Белоснежный песок, кристально чистая вода и богатый подводный мир.",
             TourType.Beach,
             "Мальдивы",
+            "Москва",
             7,
             "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=800",
-            maldivesDir?.Id);
-        var mPrice = TourOffer.Create(maldives.Id, priceStart, priceEnd, 340_000, "RUB", 12);
-        var mPriceHot = TourOffer.Create(maldives.Id, priceStart, priceEnd.AddDays(7), 289_000, "RUB", 8);
-        maldives.ReplaceOffers([mPrice, mPriceHot]);
-        tours.Add(maldives);
-
-        // Таиланд
-        var phuket = Tour.Create(
+            "Мальдивы",
+            MealPlan.AI,
+            "Водная вилла, всё включено",
+            289_000,
+            8),
+        new(
+            2,
+            DemoSeedIds.PhuketTourId,
             "Экзотический Таиланд — Пхукет",
+            "Пляжи Пхукета, острова Пхи-Пхи и тайская кухня.",
             "Тропический рай с белоснежными пляжами и бирюзовым морем. Экскурсии на острова Пхи-Пхи, храмы и тайская кухня.",
             TourType.Beach,
             "Таиланд",
+            "Москва",
             11,
             "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800",
-            phuketDir?.Id);
-        var pPrice = TourOffer.Create(phuket.Id, priceStart, priceEnd, 124_000, "RUB", 15);
-        phuket.ReplaceOffers([pPrice]);
-        tours.Add(phuket);
-
-        // Греция
-        var santorini = Tour.Create(
+            "Пхукет",
+            MealPlan.BB,
+            "Отель у пляжа Патонг, завтраки",
+            124_000,
+            15),
+        new(
+            3,
+            DemoSeedIds.SantoriniTourId,
             "Санторини — романтика Эгейского моря",
+            "Белые дома, закат в Ое и греческая кухня.",
             "Белые дома с синими куполами на вулканических скалах. Закаты, вино и греческая кухня.",
             TourType.Cultural,
             "Греция",
+            "Москва",
             5,
             "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800",
-            greeceDir?.Id);
-        var sPrice = TourOffer.Create(santorini.Id, priceStart, priceEnd, 89_000, "RUB", 10);
-        santorini.ReplaceOffers([sPrice]);
-        tours.Add(santorini);
-
-        // Бали
-        var bali = Tour.Create(
+            "Санторини",
+            MealPlan.HB,
+            "Пещерный отель в Фире, полупансион",
+            89_000,
+            10),
+        new(
+            4,
+            DemoSeedIds.BaliTourId,
             "Бали — остров богов",
+            "Рисовые террасы, храмы и пляжи Семиньяка.",
             "Рисовые террасы Тегаллаланг, храм Танах Лот, пляжи Семиньяк. Йога, спа и индонезийская кухня.",
             TourType.Adventure,
             "Индонезия",
+            "Москва",
             10,
             "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800",
-            null);
-        var bPrice = TourOffer.Create(bali.Id, priceStart, priceEnd, 156_000, "RUB", 8);
-        bali.ReplaceOffers([bPrice]);
-        tours.Add(bali);
-
-        // Дубай
-        var dubai = Tour.Create(
+            "Бали",
+            MealPlan.BB,
+            "Вилла в Убуде, завтраки",
+            156_000,
+            8),
+        new(
+            5,
+            DemoSeedIds.DubaiTourId,
             "Дубай — роскошь и приключения",
+            "Бурдж-Халифа, пустыня и пальмовые острова.",
             "Бурдж-Халифа, пальмовые острова, пустыня и аквапарки. Шопинг и восточная экзотика.",
             TourType.City,
             "ОАЭ",
+            "Москва",
             7,
             "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800",
-            null);
-        var dPrice = TourOffer.Create(dubai.Id, priceStart, priceEnd, 198_000, "RUB", 20);
-        dubai.ReplaceOffers([dPrice]);
-        tours.Add(dubai);
-
-        db.Tours.AddRange(tours);
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("Seeded {Count} tours", tours.Count);
-    }
+            "Дубай",
+            MealPlan.BB,
+            "Отель в Марине, завтраки",
+            198_000,
+            20),
+    ];
 }

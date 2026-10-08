@@ -24,3 +24,5 @@ public record UnpublishTourCommand(Guid Id, string? IfMatch) : IRequest<TourMana
 public record DeleteManagedTourCommand(Guid Id, string? IfMatch) : IRequest<Unit>;
 
 public record ListManagedToursQuery : IRequest<IReadOnlyList<TourManageDto>>;
+
+public record GetManagedTourQuery(Guid Id) : IRequest<TourManageDto>;

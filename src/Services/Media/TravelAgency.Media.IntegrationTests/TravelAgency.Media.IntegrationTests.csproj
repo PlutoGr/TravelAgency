@@ -28,4 +28,9 @@
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Media.API\TravelAgency.Media.API.csproj" />
   </ItemGroup>
+
+  <!-- Фикстура MinIO живёт в #60. После rebase на main с ней эту строку убрать. -->
+  <ItemGroup>
+    <Compile Remove="Storage/DemoMediaSeedMinioTests.cs" />
+  </ItemGroup>
 </Project>

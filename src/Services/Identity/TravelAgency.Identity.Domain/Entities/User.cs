@@ -23,7 +23,8 @@ public class User
         string firstName,
         string lastName,
         string? phone,
-        UserRole role = UserRole.Client)
+        UserRole role = UserRole.Client,
+        Guid? id = null)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new IdentityDomainException("Email cannot be empty.");
@@ -36,7 +37,7 @@ public class User
 
         return new User
         {
-            Id = Guid.NewGuid(),
+            Id = id is null || id == Guid.Empty ? Guid.NewGuid() : id.Value,
             Email = email.ToLowerInvariant(),
             PasswordHash = passwordHash,
             FirstName = firstName,

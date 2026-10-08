@@ -56,13 +56,14 @@ public class Tour
         int durationDays,
         string? imageUrl,
         Guid? directionId = null,
-        Guid? ownerId = null)
+        Guid? ownerId = null,
+        Guid? id = null)
     {
         ValidateCore(title, description, country, durationDays);
 
         return new Tour
         {
-            Id = Guid.NewGuid(),
+            Id = id is null || id == Guid.Empty ? Guid.NewGuid() : id.Value,
             Title = title.Trim(),
             Description = description.Trim(),
             TourType = tourType,
@@ -80,14 +81,14 @@ public class Tour
     /// <summary>
     /// Пустой черновик мастера. Источник этапа 1 всегда менеджер, владелец — текущий пользователь.
     /// </summary>
-    public static Tour CreateDraft(Guid ownerId)
+    public static Tour CreateDraft(Guid ownerId, Guid? id = null)
     {
         if (ownerId == Guid.Empty)
             throw new CatalogDomainException("Draft owner is required.");
 
         return new Tour
         {
-            Id = Guid.NewGuid(),
+            Id = id is null || id == Guid.Empty ? Guid.NewGuid() : id.Value,
             Title = string.Empty,
             Description = string.Empty,
             Country = string.Empty,
@@ -99,6 +100,19 @@ public class Tour
             Version = 1,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    public void AssignOwner(Guid ownerId)
+    {
+        if (ownerId == Guid.Empty)
+            throw new CatalogDomainException("Tour owner is required.");
+
+        if (OwnerId == ownerId)
+            return;
+
+        var previous = OwnerId;
+        OwnerId = ownerId;
+        CommitOrRevert(() => OwnerId = previous);
     }
 
     public void Update(

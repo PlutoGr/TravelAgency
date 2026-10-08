@@ -11,6 +11,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable("Users");
 
         builder.HasKey(u => u.Id);
+        // Id ставит домен. ValueGeneratedOnAdd заставляет EF слать UPDATE вместо INSERT,
+        // когда сидер записывает заранее известный Guid.
+        builder.Property(u => u.Id).ValueGeneratedNever();
 
         builder.Property(u => u.Email)
             .IsRequired()

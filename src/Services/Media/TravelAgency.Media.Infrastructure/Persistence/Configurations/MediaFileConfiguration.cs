@@ -12,6 +12,9 @@ public sealed class MediaFileConfiguration : IEntityTypeConfiguration<MediaFile>
         builder.ToTable("MediaFiles");
 
         builder.HasKey(f => f.Id);
+        // Id ставит домен. ValueGeneratedOnAdd заставляет EF слать UPDATE вместо INSERT,
+        // когда сидер записывает заранее известный Guid.
+        builder.Property(f => f.Id).ValueGeneratedNever();
 
         builder.Property(f => f.OriginalFileName)
             .IsRequired()
