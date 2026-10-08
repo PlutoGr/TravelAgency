@@ -16,6 +16,8 @@ namespace TravelAgency.Catalog.Infrastructure.Seeding;
 /// Уже существующий тур ищется по названию и сохраняет свой id. Его предложения не удаляются:
 /// добавляется только то, чего не хватает для публикации. Фиксированный id — у новой строки.
 /// Повторный запуск не создаёт второй ряд. Колонку ImageUrl не удаляет.
+/// Пустой владелец демо-тура становится DemoSeedIds.ManagerId через AssignOwner.
+/// Уже записанный другой владелец не перезаписывается.
 /// </summary>
 public sealed class CatalogDataSeeder(
     IServiceScopeFactory scopeFactory,
@@ -83,12 +85,18 @@ public sealed class CatalogDataSeeder(
             }
             else if (IsReady(tour, spec.Number, now))
             {
+                // Уже опубликованный тур не пересобираем: дописываем только пустого владельца.
+                // AssignOwner сам поднимает Version, повторный запуск с тем же владельцем — нет.
+                AssignDemoOwnerIfVacant(tour);
                 continue;
             }
             else if (tour.Status == TourStatus.Published)
             {
                 tour.Unpublish();
             }
+
+            // После снятия с публикации, иначе GuardIfPublished отклонит неполный тур.
+            AssignDemoOwnerIfVacant(tour);
 
             if (!HasExactProgram(tour, spec.Days) && tour.Days.Count > 0)
             {
@@ -142,6 +150,16 @@ public sealed class CatalogDataSeeder(
         await EnsureManager2DraftAsync(db, tours, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Seeded demo catalog");
+    }
+
+    /// <summary>
+    /// Демо-тур без владельца отдаём manager@test.com. Чужого владельца не затираем:
+    /// сидер не должен отбирать тур, который уже закреплён за другим пользователем.
+    /// </summary>
+    private static void AssignDemoOwnerIfVacant(Tour tour)
+    {
+        if (tour.OwnerId is null)
+            tour.AssignOwner(DemoSeedIds.ManagerId);
     }
 
     private static bool IsReady(Tour tour, int tourNumber, DateTime utcNow)
