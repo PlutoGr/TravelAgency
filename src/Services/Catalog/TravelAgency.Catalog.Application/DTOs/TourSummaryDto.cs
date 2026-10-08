@@ -11,4 +11,9 @@ public record TourSummaryDto(
     string? ImageUrl,
     decimal? MinPrice,
     string? Currency,
-    bool IsActive);
+    bool IsActive,
+    decimal? PriceFrom = null,
+    DateTime? NearestDate = null,
+    string? ShortDescription = null,
+    string? DepartureCity = null,
+    IReadOnlyList<PublicTourPreviewDto>? Previews = null);

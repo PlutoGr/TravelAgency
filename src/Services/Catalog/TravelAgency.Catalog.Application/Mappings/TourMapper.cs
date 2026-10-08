@@ -20,23 +20,8 @@ public static class TourMapper
             tour.UpdatedAt,
             tour.Offers.Select(ToPriceDto).ToList().AsReadOnly());
 
-    public static TourSummaryDto ToSummaryDto(Tour tour)
-    {
-        var cheapest = tour.Offers
-            .OrderBy(p => p.PricePerPerson)
-            .FirstOrDefault();
-
-        return new TourSummaryDto(
-            tour.Id,
-            tour.Title,
-            tour.Country,
-            tour.TourType,
-            tour.DurationDays,
-            tour.ImageUrl,
-            cheapest?.PricePerPerson,
-            cheapest?.Currency,
-            tour.IsActive);
-    }
+    public static TourSummaryDto ToSummaryDto(Tour tour) =>
+        PublicCatalogMapper.ToSummary(tour, DateTime.UtcNow);
 
     public static TourPriceDto ToPriceDto(TourOffer price) =>
         new(
