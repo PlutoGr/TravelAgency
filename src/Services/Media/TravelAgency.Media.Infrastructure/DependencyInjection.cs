@@ -10,7 +10,6 @@ using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Interfaces;
 using TravelAgency.Media.Application.Services;
 using TravelAgency.Media.Infrastructure.HealthChecks;
-using TravelAgency.Media.Infrastructure.Maintenance;
 using TravelAgency.Media.Infrastructure.Persistence;
 using TravelAgency.Media.Infrastructure.Repositories;
 using TravelAgency.Media.Infrastructure.Services;
@@ -60,7 +59,6 @@ public static class DependencyInjection
 
         services.AddScoped<IStorageService, S3StorageService>();
         services.AddScoped<IImageProcessingService, ImageProcessingService>();
-        services.AddScoped<MediaDimensionBackfill>();
         services.AddSingleton<S3HealthCheck>();
         services.AddHostedService<BucketInitializer>();
 

@@ -4,35 +4,17 @@ using TravelAgency.Media.API.Middleware;
 using TravelAgency.Media.Infrastructure;
 using TravelAgency.Media.Infrastructure.Extensions;
 using TravelAgency.Media.Infrastructure.GrpcServices;
-using TravelAgency.Media.Infrastructure.Maintenance;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Hosting;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
-var backfillRequested = MediaDimensionBackfillCommand.IsRequested(args);
-var builder = WebApplication.CreateBuilder(MediaDimensionBackfillCommand.WithoutCommandArgs(args));
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.AddMediaSerilog();
 Program.ConfigureHost(builder.WebHost);
 Program.ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
-
-if (backfillRequested)
-{
-    try
-    {
-        await Program.ExecuteDimensionBackfillAsync(
-            app.Services,
-            MediaDimensionBackfillCommand.IsDryRun(args));
-    }
-    finally
-    {
-        await app.DisposeAsync();
-    }
-
-    return;
-}
 
 Program.ConfigurePipeline(app);
 
@@ -84,19 +66,5 @@ public partial class Program
         app.MapControllers();
         app.MapGrpcServiceOnGrpcPort<MediaGrpcService>();
         app.MapMediaHealthChecks();
-    }
-
-    /// <summary>
-    /// Runs only when the process was started with <c>backfill-dimensions</c>.
-    /// Does not start Kestrel, hosted services, or migrations.
-    /// </summary>
-    public static async Task<MediaDimensionBackfillReport> ExecuteDimensionBackfillAsync(
-        IServiceProvider services,
-        bool dryRun,
-        CancellationToken cancellationToken = default)
-    {
-        await using var scope = services.CreateAsyncScope();
-        var backfill = scope.ServiceProvider.GetRequiredService<MediaDimensionBackfill>();
-        return await backfill.RunAsync(dryRun, cancellationToken);
     }
 }
