@@ -35,7 +35,8 @@ public sealed class UploadMediaCommandHandler(
 
         int? width = null;
         int? height = null;
-        if (isTourImage)
+        var isImage = imageProcessor.IsImage(request.ContentType);
+        if (isTourImage || isImage)
         {
             var dimensions = await ReadDimensionsAsync(request.FileContent, ct);
             width = dimensions.Width;
@@ -59,14 +60,14 @@ public sealed class UploadMediaCommandHandler(
 
         if (isTourImage)
             await AddTourPreviewsAsync(request, storageKey, mediaFile, ct);
-        else if (imageProcessor.IsImage(request.ContentType))
-            await AddLegacyThumbnailsAsync(request, storageKey, mediaFile, ct);
+        else if (isImage)
+            await AddLegacyThumbnailsAsync(request, storageKey, mediaFile, width!.Value, ct);
 
         await repository.AddAsync(mediaFile, ct);
         await repository.SaveChangesAsync(ct);
 
         if (isTourImage)
-            return TourImageResponse(mediaFile, width, height);
+            return TourImageResponse(mediaFile);
 
         return await PresignedResponseAsync(mediaFile, ct);
     }
@@ -131,19 +132,32 @@ public sealed class UploadMediaCommandHandler(
         UploadMediaCommand request,
         string storageKey,
         MediaFile mediaFile,
+        int originalWidth,
         CancellationToken ct)
     {
-        foreach (var thumbWidth in uploadOptions.Value.ThumbnailWidths)
+        foreach (var thumbWidth in ThumbnailWidthList.DistinctPositive(uploadOptions.Value.ThumbnailWidths))
         {
-            request.FileContent.Position = 0;
-            using var resized = await imageProcessor.ResizeAsync(request.FileContent, thumbWidth, ct);
-            var thumbKey = $"{storageKey}-thumb-{thumbWidth}";
-            await storage.UploadAsync(resized, thumbKey, request.ContentType, ct);
-            mediaFile.AddThumbnail(thumbKey, thumbWidth, 0);
+            // A thumbnail is not created unless the original is wider. Equal or smaller would upscale or copy.
+            if (originalWidth <= thumbWidth)
+                continue;
+
+            if (request.FileContent.CanSeek)
+                request.FileContent.Position = 0;
+
+            var resized = await imageProcessor.ResizeWithinAsync(request.FileContent, thumbWidth, ct);
+            await using (resized.Content)
+            {
+                if (resized.Width <= 0 || resized.Height <= 0 || resized.Width > originalWidth)
+                    continue;
+
+                var thumbKey = $"{storageKey}-thumb-{thumbWidth}";
+                await storage.UploadAsync(resized.Content, thumbKey, resized.ContentType, ct);
+                mediaFile.AddThumbnail(thumbKey, resized.Width, resized.Height);
+            }
         }
     }
 
-    private static UploadMediaResponse TourImageResponse(MediaFile mediaFile, int? width, int? height)
+    private static UploadMediaResponse TourImageResponse(MediaFile mediaFile)
     {
         var thumbnailResponses = new List<ThumbnailResponse>(mediaFile.Thumbnails.Count);
         foreach (var thumb in mediaFile.Thumbnails)
@@ -164,8 +178,8 @@ public sealed class UploadMediaCommandHandler(
             mediaFile.SizeBytes,
             thumbnailResponses,
             mediaFile.UploadedAt,
-            width,
-            height,
+            mediaFile.Width,
+            mediaFile.Height,
             IsPublic: false);
     }
 
@@ -189,7 +203,9 @@ public sealed class UploadMediaCommandHandler(
             mediaFile.ContentType,
             mediaFile.SizeBytes,
             thumbnailResponses,
-            mediaFile.UploadedAt);
+            mediaFile.UploadedAt,
+            mediaFile.Width,
+            mediaFile.Height);
     }
 
     private static Guid CreateDeterministicGuid(string value)

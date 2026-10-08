@@ -8,7 +8,9 @@ using TravelAgency.Media.Application;
 using TravelAgency.Media.Application.Interfaces;
 using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Interfaces;
+using TravelAgency.Media.Application.Services;
 using TravelAgency.Media.Infrastructure.HealthChecks;
+using TravelAgency.Media.Infrastructure.Maintenance;
 using TravelAgency.Media.Infrastructure.Persistence;
 using TravelAgency.Media.Infrastructure.Repositories;
 using TravelAgency.Media.Infrastructure.Services;
@@ -27,7 +29,7 @@ public static class DependencyInjection
         services.AddSharedMediatRBehaviors();
 
         services.Configure<StorageSettings>(configuration.GetSection("Storage"));
-        services.Configure<UploadSettings>(configuration.GetSection("Upload"));
+        services.AddUploadSettings(configuration);
 
         var connectionString = configuration.GetConnectionString("MediaDb");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -58,11 +60,29 @@ public static class DependencyInjection
 
         services.AddScoped<IStorageService, S3StorageService>();
         services.AddScoped<IImageProcessingService, ImageProcessingService>();
+        services.AddScoped<MediaDimensionBackfill>();
         services.AddSingleton<S3HealthCheck>();
         services.AddHostedService<BucketInitializer>();
 
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Binds upload options and keeps one entry per thumbnail width.
+    /// When configuration does not list any width, <see cref="ThumbnailWidthList.Default"/> is used.
+    /// </summary>
+    public static IServiceCollection AddUploadSettings(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<UploadSettings>()
+            .Bind(configuration.GetSection("Upload"))
+            .PostConfigure(settings =>
+            {
+                var widths = ThumbnailWidthList.DistinctPositive(settings.ThumbnailWidths);
+                settings.ThumbnailWidths = widths.Length == 0 ? ThumbnailWidthList.Default : widths;
+            });
 
         return services;
     }

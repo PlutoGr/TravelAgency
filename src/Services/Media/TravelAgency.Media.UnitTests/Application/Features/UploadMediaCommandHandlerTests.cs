@@ -77,17 +77,16 @@ public class UploadMediaCommandHandlerTests
         var fileContent = new MemoryStream(new byte[100]);
         var command = new UploadMediaCommand(fileContent, "photo.jpg", "image/jpeg", 100);
 
-        _imageProcessor.IsImage("image/jpeg").Returns(true);
-        _imageProcessor.ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Task.FromResult<Stream>(new MemoryStream(new byte[50])));
+        SetupRasterImage("image/jpeg", 1600, 900);
         _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns("https://storage/signed-url");
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
+        result.Width.Should().Be(1600);
+        result.Height.Should().Be(900);
         result.Thumbnails.Should().HaveCount(2);
-        result.Thumbnails.Should().Contain(t => t.Width == 200);
-        result.Thumbnails.Should().Contain(t => t.Width == 800);
+        result.Thumbnails.Select(t => (t.Width, t.Height)).Should().Equal((200, 113), (800, 450));
     }
 
     [Fact]
@@ -96,9 +95,7 @@ public class UploadMediaCommandHandlerTests
         var fileContent = new MemoryStream(new byte[100]);
         var command = new UploadMediaCommand(fileContent, "photo.jpg", "image/jpeg", 100);
 
-        _imageProcessor.IsImage("image/jpeg").Returns(true);
-        _imageProcessor.ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Task.FromResult<Stream>(new MemoryStream(new byte[50])));
+        SetupRasterImage("image/jpeg", 1600, 900);
         _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns("https://storage/signed");
 
@@ -106,6 +103,7 @@ public class UploadMediaCommandHandlerTests
 
         // Original + 2 thumbnails = 3 upload calls
         await _storage.Received(3).UploadAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _imageProcessor.DidNotReceive().ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -121,8 +119,11 @@ public class UploadMediaCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.Thumbnails.Should().BeEmpty();
+        result.Width.Should().BeNull();
+        result.Height.Should().BeNull();
         _imageProcessor.DidNotReceive().IsImage(Arg.Is<string>(ct => ct != "application/pdf"));
         await _imageProcessor.DidNotReceive().ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _imageProcessor.DidNotReceive().GetDimensionsAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -167,9 +168,7 @@ public class UploadMediaCommandHandlerTests
         var command = new UploadMediaCommand(fileContent, "photo.jpg", "image/jpeg", 100);
         var thumbUrl = "https://storage/thumb-signed";
 
-        _imageProcessor.IsImage("image/jpeg").Returns(true);
-        _imageProcessor.ResizeAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Stream>(new MemoryStream(new byte[50])));
+        SetupRasterImage("image/jpeg", 1600, 900);
         _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns("https://storage/main-signed", thumbUrl, thumbUrl);
 
@@ -251,5 +250,19 @@ public class UploadMediaCommandHandlerTests
         var act = () => _handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    private void SetupRasterImage(string contentType, int width, int height)
+    {
+        _imageProcessor.IsImage(contentType).Returns(true);
+        _imageProcessor.GetDimensionsAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(new ImageDimensions(width, height));
+        _imageProcessor.ResizeWithinAsync(Arg.Any<Stream>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var maxWidth = ci.ArgAt<int>(1);
+                var (fittedWidth, fittedHeight) = PreviewSizer.FitWithin(width, height, maxWidth);
+                return new ResizedImage(new MemoryStream(new byte[50]), fittedWidth, fittedHeight, contentType);
+            });
     }
 }
