@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingStatus } from '@/types';
+import {
+  BOOKING_MINIMAL_JSON,
+  BOOKING_WITH_PROPOSAL_JSON,
+  parseBookingJson,
+} from '@/test/bookingDtoJson';
 import * as bookings from './bookings';
 
 const { mockApiClient } = vi.hoisted(() => ({
@@ -22,6 +27,10 @@ const baseBookingDto = {
   status: 0 as const,
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-02T00:00:00Z',
+  proposals: [] as unknown[],
+  clientName: null,
+  clientEmail: null,
+  clientPhone: null,
 };
 
 const tourSnapshotDto = {
@@ -34,50 +43,111 @@ const tourSnapshotDto = {
   snapshotTakenAt: '2025-01-01T00:00:00Z',
 };
 
+const catalogCard = {
+  id: 't1',
+  title: 'Солнечная Греция — Санторини',
+  available: true,
+  priceFrom: 148000,
+  currency: 'RUB',
+  country: 'Греция',
+  durationDays: 7,
+};
+
+function installGet(data: unknown, cards: unknown[] = []) {
+  mockApiClient.get.mockImplementation((url: string) => {
+    if (String(url).startsWith('/catalog/tours/cards')) {
+      return Promise.resolve({ data: cards });
+    }
+    return Promise.resolve({ data });
+  });
+}
+
 describe('bookings API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    installGet(baseBookingDto);
+  });
+
+  describe('mapBookingDto', () => {
+    it('maps JSON in the exact BookingDto shape', () => {
+      const result = bookings.mapBookingDto(parseBookingJson(BOOKING_WITH_PROPOSAL_JSON));
+
+      expect(result).toEqual({
+        id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+        clientId: '11111111-1111-1111-1111-111111111111',
+        tourId: '22222222-2222-2222-2222-222222222222',
+        comment: 'Хочу поехать в мае, двое взрослых',
+        status: 'proposal_sent',
+        createdAt: '2026-04-15T10:30:00Z',
+        updatedAt: '2026-04-16T08:00:00Z',
+        proposals: [
+          {
+            id: '33333333-3333-3333-3333-333333333333',
+            bookingId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+            managerId: '44444444-4444-4444-4444-444444444444',
+            tourSnapshot: {
+              tourId: '22222222-2222-2222-2222-222222222222',
+              title: 'Санторини',
+              description: 'Неделя на кальдере',
+              price: 148000.5,
+              currency: 'RUB',
+              durationDays: 7,
+              snapshotTakenAt: '2026-04-16T08:00:00Z',
+            },
+            notes: 'Отель с видом на кальдеру',
+            isConfirmed: false,
+            createdAt: '2026-04-16T08:00:00Z',
+          },
+        ],
+        clientName: 'Анна Смирнова',
+        clientEmail: 'anna@example.com',
+        clientPhone: '+79990001122',
+      });
+      expect(result).not.toHaveProperty('dateFrom');
+      expect(result).not.toHaveProperty('dateTo');
+      expect(result).not.toHaveProperty('destination');
+      expect(result).not.toHaveProperty('travelers');
+      expect(result).not.toHaveProperty('budget');
+    });
+
+    it('maps a booking with null comment, dates and client fields', () => {
+      const result = bookings.mapBookingDto(parseBookingJson(BOOKING_MINIMAL_JSON));
+
+      expect(result.comment).toBeNull();
+      expect(result.updatedAt).toBeNull();
+      expect(result.clientName).toBeNull();
+      expect(result.proposals).toEqual([]);
+      expect(result.status).toBe('new');
+      expect(result.tourId).toBe('99999999-9999-9999-9999-999999999999');
+    });
+
+    it('throws when the payload is not an object', () => {
+      expect(() => bookings.mapBookingDto(null)).toThrow(/BookingDto/);
+    });
   });
 
   describe('createBooking', () => {
-    it('posts to /bookings with tourId and comment, returns mapped Booking', async () => {
-      const dto = {
-        ...baseBookingDto,
-        proposals: [
-          {
-            id: 'p1',
-            bookingId: 'b1',
-            managerId: 'm1',
-            tourSnapshot: tourSnapshotDto,
-            notes: 'Proposal notes',
-            isConfirmed: false,
-            createdAt: '2025-01-01T12:00:00Z',
-          },
-        ],
-      };
+    it('posts to /bookings with tourId and comment only, returns mapped Booking', async () => {
+      const dto = parseBookingJson(BOOKING_WITH_PROPOSAL_JSON);
       mockApiClient.post.mockResolvedValue({ data: dto });
+      installGet(dto, [
+        { ...catalogCard, id: '22222222-2222-2222-2222-222222222222' },
+      ]);
 
       const result = await bookings.createBooking({
-        tourId: 't1',
-        comment: 'Test comment',
+        tourId: '22222222-2222-2222-2222-222222222222',
+        comment: 'Хочу поехать в мае, двое взрослых',
       });
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/bookings', {
-        tourId: 't1',
-        comment: 'Test comment',
+        tourId: '22222222-2222-2222-2222-222222222222',
+        comment: 'Хочу поехать в мае, двое взрослых',
       });
-      expect(result).toMatchObject({
-        id: 'b1',
-        clientId: 'c1',
-        tourId: 't1',
-        destination: 'Greek Islands Cruise',
-        budget: 2500,
-        status: 'new',
-        managerId: 'm1',
-        notes: 'Test comment',
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-02T00:00:00Z',
-      });
+      const body = mockApiClient.post.mock.calls[0][1] as Record<string, unknown>;
+      expect(Object.keys(body).sort()).toEqual(['comment', 'tourId']);
+      expect(result.status).toBe('proposal_sent');
+      expect(result.comment).toBe('Хочу поехать в мае, двое взрослых');
+      expect(result.tour?.title).toBe('Солнечная Греция — Санторини');
     });
 
     it('posts without comment when not provided', async () => {
@@ -91,9 +161,9 @@ describe('bookings API', () => {
       });
     });
 
-    it('maps DTO without proposals to Booking with empty destination and budget 0', async () => {
+    it('maps a DTO without proposals and marks a missing catalog card unavailable', async () => {
       mockApiClient.post.mockResolvedValue({
-        data: { ...baseBookingDto, comment: 'No proposal' },
+        data: { ...baseBookingDto, comment: 'No proposal', proposals: [] },
       });
 
       const result = await bookings.createBooking({
@@ -101,61 +171,60 @@ describe('bookings API', () => {
         comment: 'No proposal',
       });
 
-      expect(result.destination).toBe('');
-      expect(result.budget).toBe(0);
-      expect(result.managerId).toBeUndefined();
-      expect(result.notes).toBe('No proposal');
+      expect(result.comment).toBe('No proposal');
+      expect(result.proposals).toEqual([]);
+      expect(result.tour?.title).toBe('Тур недоступен');
+      expect(result.tour?.available).toBe(false);
     });
 
     it('throws when API fails', async () => {
       mockApiClient.post.mockRejectedValue(new Error('Network error'));
 
-      await expect(
-        bookings.createBooking({ tourId: 't1' }),
-      ).rejects.toThrow('Network error');
+      await expect(bookings.createBooking({ tourId: 't1' })).rejects.toThrow('Network error');
     });
   });
 
   describe('getMyBookings', () => {
-    it('fetches /bookings/my and maps DTOs to Bookings', async () => {
+    it('fetches /bookings/my, maps DTOs and loads catalog cards by tourId', async () => {
       const dtos = [
-        { ...baseBookingDto, id: 'b1', status: 0 },
+        { ...baseBookingDto, id: 'b1', status: 0, tourId: 't1' },
         {
           ...baseBookingDto,
           id: 'b2',
           status: 2,
+          tourId: 't1',
           proposals: [
             {
               id: 'p2',
               bookingId: 'b2',
               managerId: 'm2',
               tourSnapshot: tourSnapshotDto,
+              notes: null,
               isConfirmed: false,
               createdAt: '2025-01-02T00:00:00Z',
             },
           ],
         },
       ];
-      mockApiClient.get.mockResolvedValue({ data: dtos });
+      installGet(dtos, [catalogCard]);
 
       const result = await bookings.getMyBookings();
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/bookings/my');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/catalog/tours/cards?ids=t1');
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe('b1');
       expect(result[0].status).toBe('new');
-      expect(result[1].id).toBe('b2');
       expect(result[1].status).toBe('proposal_sent');
-      expect(result[1].destination).toBe('Greek Islands Cruise');
+      expect(result[1].tour?.title).toBe('Солнечная Греция — Санторини');
+      expect(result[1].proposals[0]?.tourSnapshot.title).toBe('Greek Islands Cruise');
     });
 
     it('filters by status when provided', async () => {
-      const dtos = [
+      installGet([
         { ...baseBookingDto, id: 'b1', status: 0 },
         { ...baseBookingDto, id: 'b2', status: 2 },
         { ...baseBookingDto, id: 'b3', status: 0 },
-      ];
-      mockApiClient.get.mockResolvedValue({ data: dtos });
+      ]);
 
       const result = await bookings.getMyBookings('new');
 
@@ -164,7 +233,7 @@ describe('bookings API', () => {
     });
 
     it('returns empty array when API returns empty', async () => {
-      mockApiClient.get.mockResolvedValue({ data: [] });
+      installGet([]);
 
       const result = await bookings.getMyBookings();
 
@@ -174,54 +243,36 @@ describe('bookings API', () => {
 
   describe('getBookingById', () => {
     it('fetches /bookings/{id} and maps DTO to Booking', async () => {
-      const dto = {
-        ...baseBookingDto,
-        id: 'b99',
-        proposals: [
-          {
-            id: 'p99',
-            bookingId: 'b99',
-            managerId: 'm99',
-            tourSnapshot: tourSnapshotDto,
-            isConfirmed: true,
-            createdAt: '2025-01-01T00:00:00Z',
-          },
-        ],
-      };
-      mockApiClient.get.mockResolvedValue({ data: dto });
+      installGet(parseBookingJson(BOOKING_WITH_PROPOSAL_JSON), [
+        { ...catalogCard, id: '22222222-2222-2222-2222-222222222222' },
+      ]);
 
-      const result = await bookings.getBookingById('b99');
+      const result = await bookings.getBookingById('3fa85f64-5717-4562-b3fc-2c963f66afa6');
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/bookings/b99');
-      expect(result.id).toBe('b99');
-      expect(result.destination).toBe('Greek Islands Cruise');
-      expect(result.status).toBe('new');
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/bookings/3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      );
+      expect(result.tour?.title).toBe('Солнечная Греция — Санторини');
+      expect(result.status).toBe('proposal_sent');
     });
 
     it('throws when API fails', async () => {
       mockApiClient.get.mockRejectedValue(new Error('Not found'));
 
-      await expect(bookings.getBookingById('nonexistent')).rejects.toThrow(
-        'Not found',
-      );
+      await expect(bookings.getBookingById('nonexistent')).rejects.toThrow('Not found');
     });
   });
 
   describe('updateBookingStatus', () => {
     it('patches /bookings/{id}/status with backend status and returns mapped Booking', async () => {
-      const dto = {
-        ...baseBookingDto,
-        id: 'b1',
-        status: 3,
-      };
-      mockApiClient.patch.mockResolvedValue({ data: dto });
+      installGet({ ...baseBookingDto, id: 'b1', status: 3 });
+      mockApiClient.patch.mockResolvedValue({
+        data: { ...baseBookingDto, id: 'b1', status: 3 },
+      });
 
       const result = await bookings.updateBookingStatus('b1', 'confirmed');
 
-      expect(mockApiClient.patch).toHaveBeenCalledWith(
-        '/bookings/b1/status',
-        { newStatus: 3 },
-      );
+      expect(mockApiClient.patch).toHaveBeenCalledWith('/bookings/b1/status', { newStatus: 3 });
       expect(result.status).toBe('confirmed');
     });
 
@@ -242,24 +293,18 @@ describe('bookings API', () => {
 
         await bookings.updateBookingStatus('b1', frontend);
 
-        expect(mockApiClient.patch).toHaveBeenCalledWith(
-          '/bookings/b1/status',
-          { newStatus: backend },
-        );
+        expect(mockApiClient.patch).toHaveBeenCalledWith('/bookings/b1/status', {
+          newStatus: backend,
+        });
       }
     });
 
     it('uses 0 when unknown status (fallback)', async () => {
-      mockApiClient.patch.mockResolvedValue({
-        data: baseBookingDto,
-      });
+      mockApiClient.patch.mockResolvedValue({ data: baseBookingDto });
 
       await bookings.updateBookingStatus('b1', 'unknown' as BookingStatus);
 
-      expect(mockApiClient.patch).toHaveBeenCalledWith(
-        '/bookings/b1/status',
-        { newStatus: 0 },
-      );
+      expect(mockApiClient.patch).toHaveBeenCalledWith('/bookings/b1/status', { newStatus: 0 });
     });
   });
 
@@ -275,6 +320,7 @@ describe('bookings API', () => {
             bookingId: 'b1',
             managerId: 'm1',
             tourSnapshot: tourSnapshotDto,
+            notes: null,
             isConfirmed: true,
             createdAt: '2025-01-01T00:00:00Z',
           },
@@ -294,14 +340,12 @@ describe('bookings API', () => {
     it('throws when API fails', async () => {
       mockApiClient.post.mockRejectedValue(new Error('Proposal not found'));
 
-      await expect(
-        bookings.confirmProposal('b1', 'invalid'),
-      ).rejects.toThrow('Proposal not found');
+      await expect(bookings.confirmProposal('b1', 'invalid')).rejects.toThrow('Proposal not found');
     });
   });
 
   describe('createProposal', () => {
-    it('posts to /bookings/{bookingId}/proposal with notes, returns ProposalResponse', async () => {
+    it('posts to /bookings/{bookingId}/proposal with notes and maps ProposalDto', async () => {
       const proposalResponse = {
         id: 'p-new',
         bookingId: 'b1',
@@ -322,27 +366,9 @@ describe('bookings API', () => {
     });
 
     it('posts with empty notes when params not provided', async () => {
-      const proposalResponse = {
-        id: 'p2',
-        bookingId: 'b1',
-        managerId: 'm1',
-        tourSnapshot: tourSnapshotDto,
-        isConfirmed: false,
-        createdAt: '2025-01-03T00:00:00Z',
-      };
-      mockApiClient.post.mockResolvedValue({ data: proposalResponse });
-
-      await bookings.createProposal('b1');
-
-      expect(mockApiClient.post).toHaveBeenCalledWith('/bookings/b1/proposal', {
-        notes: undefined,
-      });
-    });
-
-    it('posts with empty object when called with default params', async () => {
       mockApiClient.post.mockResolvedValue({
         data: {
-          id: 'p3',
+          id: 'p2',
           bookingId: 'b1',
           managerId: 'm1',
           tourSnapshot: tourSnapshotDto,
@@ -351,117 +377,34 @@ describe('bookings API', () => {
         },
       });
 
-      await bookings.createProposal('b1', {});
+      const result = await bookings.createProposal('b1');
 
       expect(mockApiClient.post).toHaveBeenCalledWith('/bookings/b1/proposal', {
         notes: undefined,
       });
+      expect(result.notes).toBeNull();
     });
   });
 
-  describe('status mapping (mapDtoToBooking)', () => {
-    it('maps backend status 0 to new', async () => {
-      mockApiClient.get.mockResolvedValue({
-        data: { ...baseBookingDto, status: 0 },
-      });
+  describe('status mapping', () => {
+    it.each([
+      [0, 'new'],
+      [1, 'in_progress'],
+      [2, 'proposal_sent'],
+      [3, 'confirmed'],
+      [4, 'closed'],
+      [5, 'cancelled'],
+    ] as const)('maps backend status %s to %s', async (backend, frontend) => {
+      installGet({ ...baseBookingDto, status: backend });
 
       const result = await bookings.getBookingById('b1');
-      expect(result.status).toBe('new');
-    });
-
-    it('maps backend status 1 to in_progress', async () => {
-      mockApiClient.get.mockResolvedValue({
-        data: { ...baseBookingDto, status: 1 },
-      });
-
-      const result = await bookings.getBookingById('b1');
-      expect(result.status).toBe('in_progress');
-    });
-
-    it('maps backend status 2 to proposal_sent', async () => {
-      mockApiClient.get.mockResolvedValue({
-        data: { ...baseBookingDto, status: 2 },
-      });
-
-      const result = await bookings.getBookingById('b1');
-      expect(result.status).toBe('proposal_sent');
-    });
-
-    it('maps backend status 3 to confirmed', async () => {
-      mockApiClient.get.mockResolvedValue({
-        data: { ...baseBookingDto, status: 3 },
-      });
-
-      const result = await bookings.getBookingById('b1');
-      expect(result.status).toBe('confirmed');
-    });
-
-    it('maps backend status 4 to closed', async () => {
-      mockApiClient.get.mockResolvedValue({
-        data: { ...baseBookingDto, status: 4 },
-      });
-
-      const result = await bookings.getBookingById('b1');
-      expect(result.status).toBe('closed');
-    });
-
-    it('maps backend status 5 (Cancelled) to cancelled', async () => {
-      mockApiClient.get.mockResolvedValue({
-        data: { ...baseBookingDto, status: 5 },
-      });
-
-      const result = await bookings.getBookingById('b1');
-      expect(result.status).toBe('cancelled');
-    });
-  });
-
-  describe('mapDtoToBooking', () => {
-    it('maps DTO with proposal to Booking with destination, budget, managerId from first proposal', async () => {
-      const dto = {
-        ...baseBookingDto,
-        comment: 'My comment',
-        proposals: [
-          {
-            id: 'p1',
-            bookingId: 'b1',
-            managerId: 'manager-123',
-            tourSnapshot: {
-              ...tourSnapshotDto,
-              title: 'Alpine Trek',
-              price: 1500,
-            },
-            isConfirmed: false,
-            createdAt: '2025-01-01T00:00:00Z',
-          },
-        ],
-      };
-      mockApiClient.get.mockResolvedValue({ data: dto });
-
-      const result = await bookings.getBookingById('b1');
-
-      expect(result.destination).toBe('Alpine Trek');
-      expect(result.budget).toBe(1500);
-      expect(result.managerId).toBe('manager-123');
-      expect(result.notes).toBe('My comment');
-      expect(result.clientName).toBe('');
-      expect(result.country).toBe('');
-      expect(result.dateFrom).toBe('');
-      expect(result.dateTo).toBe('');
-      expect(result.travelers).toBe(1);
-    });
-
-    it('maps null/undefined comment to empty string notes', async () => {
-      const dto = { ...baseBookingDto, comment: undefined };
-      mockApiClient.get.mockResolvedValue({ data: dto });
-
-      const result = await bookings.getBookingById('b1');
-      expect(result.notes).toBe('');
+      expect(result.status).toBe(frontend);
     });
   });
 
   describe('getAllBookings', () => {
     it('fetches /bookings and returns mapped bookings', async () => {
-      mockApiClient.get.mockResolvedValue({ data: [] });
+      installGet([]);
 
       const result = await bookings.getAllBookings();
       expect(result).toEqual([]);
@@ -469,13 +412,16 @@ describe('bookings API', () => {
     });
 
     it('returns filtered bookings when filters provided', async () => {
-      mockApiClient.get.mockResolvedValue({ data: [] });
+      installGet([
+        { ...baseBookingDto, id: 'b1', status: 3 },
+        { ...baseBookingDto, id: 'b2', status: 0 },
+      ]);
 
       const result = await bookings.getAllBookings({
         status: 'confirmed',
         search: 'test',
       });
-      expect(result).toEqual([]);
+      expect(result.map((booking) => booking.id)).toEqual(['b1']);
       expect(mockApiClient.get).toHaveBeenCalledWith('/bookings');
     });
   });

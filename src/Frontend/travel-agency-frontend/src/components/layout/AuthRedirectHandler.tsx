@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/uiStore';
  * Opens AuthModal and clears the param from URL.
  */
 export default function AuthRedirectHandler() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const openAuthModal = useUIStore((s) => s.openAuthModal);
 

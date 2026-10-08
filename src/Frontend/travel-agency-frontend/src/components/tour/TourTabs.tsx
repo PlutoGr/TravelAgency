@@ -14,7 +14,6 @@ import {
   Anchor,
   Palmtree,
   Mountain,
-  Plane,
   ShieldCheck,
   Calendar,
 } from 'lucide-react';
