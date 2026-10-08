@@ -1,4 +1,3 @@
-using Serilog;
 using TravelAgency.Media.API.Extensions;
 using TravelAgency.Media.API.Middleware;
 using TravelAgency.Media.Infrastructure;
@@ -6,6 +5,7 @@ using TravelAgency.Media.Infrastructure.Extensions;
 using TravelAgency.Media.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Hosting;
+using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,7 +49,7 @@ public partial class Program
         app.UseGrpcListenPortGuard();
         app.UseMediaCors();
 
-        app.UseSerilogRequestLogging();
+        app.UseTravelAgencyRequestLogging();
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 

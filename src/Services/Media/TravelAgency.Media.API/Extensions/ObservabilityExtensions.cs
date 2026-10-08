@@ -8,11 +8,12 @@ public static class ObservabilityExtensions
 {
     public static IHostBuilder AddMediaSerilog(this IHostBuilder builder)
     {
+        // Sinks come only from configuration (Serilog:WriteTo in appsettings.json).
+        // A second WriteTo.Console() here printed every log line twice (issue #57).
         builder.UseSerilog((context, config) =>
         {
             config.ReadFrom.Configuration(context.Configuration)
-                  .Enrich.FromLogContext()
-                  .WriteTo.Console();
+                  .Enrich.FromLogContext();
         });
         return builder;
     }

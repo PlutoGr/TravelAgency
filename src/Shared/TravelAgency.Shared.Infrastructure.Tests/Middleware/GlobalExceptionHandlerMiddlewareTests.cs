@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TravelAgency.Shared.Infrastructure.Middleware;
+using TravelAgency.Shared.Infrastructure.Tests.Helpers;
 
 namespace TravelAgency.Shared.Infrastructure.Tests.Middleware;
 
@@ -19,7 +20,8 @@ public class GlobalExceptionHandlerMiddlewareTests
     private static async Task<IHost> CreateHostAsync(
         bool isDevelopment,
         RequestDelegate next,
-        IEnumerable<IExceptionMapper>? exceptionMappers = null)
+        IEnumerable<IExceptionMapper>? exceptionMappers = null,
+        CapturingLoggerProvider? logs = null)
     {
         var env = Substitute.For<IHostEnvironment>();
         env.EnvironmentName.Returns(isDevelopment ? Environments.Development : Environments.Production);
@@ -32,7 +34,12 @@ public class GlobalExceptionHandlerMiddlewareTests
                     .ConfigureServices(services =>
                     {
                         services.AddSingleton(env);
-                        services.AddLogging(builder => builder.AddConsole());
+                        services.AddLogging(builder =>
+                        {
+                            builder.AddConsole();
+                            if (logs != null)
+                                builder.AddProvider(logs);
+                        });
                         if (exceptionMappers != null)
                         {
                             foreach (var mapper in exceptionMappers)
@@ -255,5 +262,106 @@ public class GlobalExceptionHandlerMiddlewareTests
         root.GetProperty("instance").GetString().Should().Be("/api/items");
         root.TryGetProperty("traceId", out var traceId).Should().BeTrue();
         traceId.ValueKind.Should().Be(JsonValueKind.String);
+    }
+
+    // --- Logging policy (issue #57): one log entry per failed request ---
+
+    private static readonly string MiddlewareCategory = typeof(GlobalExceptionHandlerMiddleware).FullName!;
+
+    private static IReadOnlyList<CapturedLogEntry> MiddlewareEntries(CapturingLoggerProvider logs) =>
+        logs.Entries.Where(e => e.Category == MiddlewareCategory).ToList();
+
+    [Fact]
+    public async Task InvokeAsync_WhenConflictException_Returns409AndLogsOneWarningWithoutException()
+    {
+        var logs = new CapturingLoggerProvider();
+        RequestDelegate next = _ => throw new ConflictException("The tour was changed.");
+        using var host = await CreateHostAsync(isDevelopment: true, next, new[] { new ConflictExceptionMapper() }, logs);
+        var client = host.GetTestClient();
+
+        var response = await client.PutAsync("/api/v1/catalog/tours/42", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        var entry = entries[0];
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull("expected 4xx are logged without stack trace");
+        entry.Message.Should().Contain("PUT").And.Contain("/api/v1/catalog/tours/42")
+            .And.Contain("409").And.Contain(nameof(ConflictException)).And.Contain("traceId=");
+        logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenValidationException_LogsOneWarningWithoutException()
+    {
+        var logs = new CapturingLoggerProvider();
+        RequestDelegate next = _ => throw new ValidationException(
+            new[] { new FluentValidation.Results.ValidationFailure("Name", "Name is required") });
+        using var host = await CreateHostAsync(isDevelopment: true, next, logs: logs);
+        var client = host.GetTestClient();
+
+        var response = await client.PostAsync("/bookings", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Warning);
+        entries[0].Exception.Should().BeNull();
+        entries[0].Message.Should().Contain("400").And.Contain(nameof(ValidationException));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenUnhandledException_Returns500AndLogsOneErrorWithException()
+    {
+        var logs = new CapturingLoggerProvider();
+        var thrown = new NullReferenceException("boom");
+        RequestDelegate next = _ => throw thrown;
+        using var host = await CreateHostAsync(isDevelopment: false, next, logs: logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/api/items");
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+        entries[0].Exception.Should().BeSameAs(thrown);
+        entries[0].Message.Should().Contain("500").And.Contain(nameof(NullReferenceException));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenMapperReturns5xx_LogsOneErrorWithException()
+    {
+        var logs = new CapturingLoggerProvider();
+        var mapper = new TestExceptionMapper(503, new ProblemDetails { Title = "Service Unavailable" });
+        RequestDelegate next = _ => throw new InvalidOperationException("storage down");
+        using var host = await CreateHostAsync(isDevelopment: true, next, new[] { mapper }, logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/");
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+        entries[0].Exception.Should().BeOfType<InvalidOperationException>();
+    }
+
+    private sealed class ConflictException(string message) : Exception(message);
+
+    private sealed class ConflictExceptionMapper : IExceptionMapper
+    {
+        public bool TryMap(Exception exception, HttpContext context, out (int StatusCode, ProblemDetails Details) result)
+        {
+            if (exception is ConflictException conflict)
+            {
+                result = (StatusCodes.Status409Conflict, new ProblemDetails { Title = "Conflict", Detail = conflict.Message });
+                return true;
+            }
+
+            result = default;
+            return false;
+        }
     }
 }

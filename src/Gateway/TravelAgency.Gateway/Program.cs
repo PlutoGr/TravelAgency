@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.HttpOverrides;
-using Serilog;
 using System.Net;
 using TravelAgency.Gateway.Extensions;
 using TravelAgency.Gateway.Middleware;
+using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,7 +42,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
     await next();
 });
-app.UseSerilogRequestLogging();
+app.UseTravelAgencyRequestLogging();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseCors(CorsExtensions.GatewayCorsPolicyName);

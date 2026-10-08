@@ -2,13 +2,13 @@ using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
-using Serilog;
 using TravelAgency.Identity.API.Extensions;
 using TravelAgency.Identity.API.Middleware;
 using TravelAgency.Identity.Infrastructure.Extensions;
 using TravelAgency.Identity.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Hosting;
+using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -77,7 +77,7 @@ public partial class Program
         app.UseIdentityMigrations();
         app.UseIdentityCors();
 
-        app.UseSerilogRequestLogging();
+        app.UseTravelAgencyRequestLogging();
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
