@@ -48,6 +48,28 @@ export function formatPrice(price: number): string {
   return price.toLocaleString('ru-RU') + ' ₽';
 }
 
+const CURRENCY_SYMBOL: Record<string, string> = {
+  RUB: '₽',
+  RUR: '₽',
+  USD: '$',
+  EUR: '€',
+};
+
+/** Сумма в валюте предложения. Неизвестная валюта остаётся кодом, а не знаком рубля. */
+export function formatMoney(amount: number, currency?: string | null): string {
+  const code = (currency || 'RUB').toUpperCase();
+  const formatted = amount.toLocaleString('ru-RU');
+  const symbol = CURRENCY_SYMBOL[code];
+  if (symbol === '$' || symbol === '€') return `${symbol}${formatted}`;
+  if (symbol) return `${formatted} ${symbol}`;
+  return `${formatted} ${code}`;
+}
+
+/** Цена каталога: минимум по будущим датам, с префиксом «от». */
+export function formatFromMoney(amount: number, currency?: string | null): string {
+  return `от ${formatMoney(amount, currency)}`;
+}
+
 /**
  * Formats a booking ID for display (e.g. "#BK-001").
  */

@@ -1,25 +1,16 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ChevronRight,
-  MapPin,
-  Heart,
-  Minus,
-  Plus,
-  MessageCircle,
-  Hotel,
-  Clock,
-} from 'lucide-react';
+import { ChevronRight, MapPin, Heart, Plane, Clock } from 'lucide-react';
 import clsx from 'clsx';
-import { format, parseISO } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import type { Tour } from '@/types';
-import { formatPrice } from '@/utils/format';
+import type { Tour, TourOffer } from '@/types';
+import { formatDate, formatFromMoney, formatMoney, formatDateRange } from '@/utils/format';
+import { isTourAvailable, tourTypeLabel } from '@/utils/tourLabels';
 import { PageTransition, FadeInOnScroll } from '@/components/common';
-import { Button, StarRating, Skeleton, Badge, Select, Modal } from '@/components/ui';
-import { TourGallery, TourTabs, TourCard } from '@/components/tour';
+import { Button, Skeleton, Badge, Modal } from '@/components/ui';
+import { TourGallery, TourCard } from '@/components/tour';
+import { TourAccommodation, TourInclusions, TourOffers, TourProgram } from '@/components/tour/TourSections';
 import { BookingForm } from '@/components/booking';
 import { getTourById, getTours } from '@/api/catalog';
 import { useFavoritesStore } from '@/store/favoritesStore';
@@ -30,14 +21,14 @@ function DetailSkeleton() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Skeleton className="mb-6 h-4 w-48" />
-      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <Skeleton variant="rectangular" className="aspect-[16/10] w-full" />
           <Skeleton className="h-8 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton variant="rectangular" className="h-64 w-full" />
         </div>
-        <div className="space-y-4">
+        <div className="hidden space-y-4 lg:block">
           <Skeleton variant="rectangular" className="h-80 w-full" />
         </div>
       </div>
@@ -45,130 +36,60 @@ function DetailSkeleton() {
   );
 }
 
-function BookingSidebar({ tour, onBookClick }: { tour: Tour; onBookClick: () => void }) {
+function isNotFound(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('не найден');
+}
+
+function offerComment(offer: TourOffer | null): string {
+  if (!offer) return '';
+  return `Хочу поехать ${formatDateRange(offer.start, offer.end)}, ${formatMoney(offer.price, offer.currency)} за человека.`;
+}
+
+function RequestButton({ onClick, fullWidth = false }: { onClick: () => void; fullWidth?: boolean }) {
+  return (
+    <Button variant="terracotta" size="lg" fullWidth={fullWidth} onClick={onClick}>
+      Оставить заявку
+    </Button>
+  );
+}
+
+function BookingRail({
+  tour,
+  offer,
+  onRequest,
+}: {
+  tour: Tour;
+  offer: TourOffer | null;
+  onRequest: () => void;
+}) {
   const { toggleFavorite, isFavorite } = useFavoritesStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const openAuthModal = useUIStore((s) => s.openAuthModal);
-  const [travelers, setTravelers] = useState(1);
-  const [selectedDateIndex, setSelectedDateIndex] = useState<string>('0');
   const favorite = isFavorite(tour.id);
-
-  const dateOptions = useMemo(
-    () =>
-      tour.dates.map((d, i) => ({
-        value: String(i),
-        label: `${format(parseISO(d.start), 'd MMM', { locale: ru })} — ${format(parseISO(d.end), 'd MMM', { locale: ru })}`,
-      })),
-    [tour.dates],
-  );
-
-  const totalPrice = tour.price * travelers;
-
-  const decrementTravelers = useCallback(() => {
-    setTravelers((p) => Math.max(1, p - 1));
-  }, []);
-
-  const incrementTravelers = useCallback(() => {
-    setTravelers((p) => Math.min(tour.maxTravelers, p + 1));
-  }, [tour.maxTravelers]);
+  const amount = offer?.price ?? tour.priceFrom ?? (tour.price > 0 ? tour.price : null);
+  const currency = offer?.currency ?? tour.currency;
+  const available = isTourAvailable(tour);
 
   return (
     <div className="sticky top-24 space-y-5 rounded-[16px] bg-white p-6 shadow-card">
-      {/* Price */}
       <div>
-        {tour.originalPrice && (
-          <span className="text-sm text-warm-gray line-through">
-            {formatPrice(tour.originalPrice)}
-          </span>
+        <p className="text-xs uppercase tracking-wide text-warm-gray">
+          {offer ? 'Выбранные даты' : 'Цена за человека'}
+        </p>
+        {amount != null && (
+          <p className="mt-1 font-heading text-3xl font-bold text-primary">
+            {offer ? formatMoney(amount, currency) : formatFromMoney(amount, currency)}
+          </p>
         )}
-        <div className="flex items-baseline gap-2">
-          <span className="font-heading text-3xl font-bold text-primary">
-            {formatPrice(tour.price)}
-          </span>
-          <span className="text-sm text-warm-gray">/ чел.</span>
-        </div>
-        {tour.originalPrice && (
-          <Badge variant="green" size="sm">
-            Экономия {formatPrice(tour.originalPrice - tour.price)}
-          </Badge>
+        {offer && (
+          <p className="mt-1 text-sm text-dark/70">{formatDateRange(offer.start, offer.end)}</p>
         )}
       </div>
 
-      {/* Date selector */}
-      <Select
-        label="Дата поездки"
-        options={dateOptions}
-        value={selectedDateIndex}
-        onChange={setSelectedDateIndex}
-        placeholder="Выберите дату"
-      />
+      {available && <RequestButton fullWidth onClick={onRequest} />}
 
-      {/* Travelers */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-primary">
-          Количество путешественников
-        </label>
-        <div className="flex items-center gap-4 rounded-[12px] border border-sand px-4 py-2.5">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={decrementTravelers}
-            disabled={travelers <= 1}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-sand text-dark transition-colors hover:bg-warm-gray/20 disabled:opacity-30"
-          >
-            <Minus size={16} />
-          </motion.button>
-          <span className="min-w-[24px] text-center font-heading text-lg font-semibold text-dark">
-            {travelers}
-          </span>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={incrementTravelers}
-            disabled={travelers >= tour.maxTravelers}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-sand text-dark transition-colors hover:bg-warm-gray/20 disabled:opacity-30"
-          >
-            <Plus size={16} />
-          </motion.button>
-          <span className="ml-auto text-xs text-warm-gray">
-            макс. {tour.maxTravelers}
-          </span>
-        </div>
-      </div>
-
-      {/* Total */}
-      <div className="rounded-[12px] bg-sand/50 p-4">
-        <div className="flex items-center justify-between text-sm text-dark">
-          <span>
-            {formatPrice(tour.price)} × {travelers}{' '}
-            {travelers === 1 ? 'чел.' : 'чел.'}
-          </span>
-          <span className="font-heading text-xl font-bold text-primary">
-            {formatPrice(totalPrice)}
-          </span>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <Button
-        variant="terracotta"
-        size="lg"
-        fullWidth
-        onClick={() => {
-          if (!isAuthenticated) {
-            openAuthModal('login');
-            return;
-          }
-          onBookClick();
-        }}
-      >
-        Забронировать
-      </Button>
-
-      <Button variant="secondary" size="md" fullWidth leftIcon={<MessageCircle size={18} />}>
-        Задать вопрос
-      </Button>
-
-      {/* Favorite */}
       <motion.button
+        type="button"
         whileTap={{ scale: 0.95 }}
         onClick={() => {
           if (!isAuthenticated) {
@@ -178,10 +99,8 @@ function BookingSidebar({ tour, onBookClick }: { tour: Tour; onBookClick: () => 
           toggleFavorite(tour.id, tour);
         }}
         className={clsx(
-          'flex w-full items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-medium transition-colors',
-          favorite
-            ? 'bg-red-50 text-red-500'
-            : 'text-warm-gray hover:bg-sand hover:text-dark',
+          'flex w-full items-center justify-center gap-2 rounded-[12px] py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+          favorite ? 'bg-red-50 text-red-500' : 'text-warm-gray hover:bg-sand hover:text-dark',
         )}
       >
         <AnimatePresence mode="wait">
@@ -192,10 +111,7 @@ function BookingSidebar({ tour, onBookClick }: { tour: Tour; onBookClick: () => 
             exit={{ scale: 0.5 }}
             transition={{ type: 'spring', stiffness: 500, damping: 20 }}
           >
-            <Heart
-              size={18}
-              className={favorite ? 'fill-red-500 text-red-500' : ''}
-            />
+            <Heart size={18} className={favorite ? 'fill-red-500 text-red-500' : ''} />
           </motion.div>
         </AnimatePresence>
         {favorite ? 'В избранном' : 'Добавить в избранное'}
@@ -208,10 +124,11 @@ function SimilarTours({ tour }: { tour: Tour }) {
   const { data } = useQuery({
     queryKey: ['similar-tours', tour.country],
     queryFn: () => getTours({ country: [tour.country] }),
+    enabled: Boolean(tour.country),
   });
 
   const similar = useMemo(
-    () => (data?.items ?? []).filter((t) => t.id !== tour.id).slice(0, 4),
+    () => (data?.items ?? []).filter((item) => item.id !== tour.id).slice(0, 4),
     [data, tour.id],
   );
 
@@ -220,12 +137,10 @@ function SimilarTours({ tour }: { tour: Tour }) {
   return (
     <FadeInOnScroll>
       <section className="mt-16">
-        <h2 className="mb-6 font-heading text-xl font-bold text-dark sm:text-2xl">
-          Похожие туры
-        </h2>
+        <h2 className="mb-6 font-heading text-xl font-bold text-dark sm:text-2xl">Похожие туры</h2>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {similar.map((t) => (
-            <TourCard key={t.id} tour={t} />
+          {similar.map((item) => (
+            <TourCard key={item.id} tour={item} />
           ))}
         </div>
       </section>
@@ -236,27 +151,38 @@ function SimilarTours({ tour }: { tour: Tour }) {
 export default function TourDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [offerId, setOfferId] = useState<string | null>(null);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const openAuthModal = useUIStore((s) => s.openAuthModal);
 
-  const { data: tour, isLoading, error } = useQuery({
+  const { data: tour, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['tour', id],
     queryFn: () => getTourById(id!),
     enabled: Boolean(id),
   });
 
+  const selectedOffer =
+    tour?.offers?.find((offer) => offer.id === offerId) ?? tour?.offers?.[0] ?? null;
+  const available = tour ? isTourAvailable(tour) : false;
+  const typeLabel = tour ? tourTypeLabel(tour.category) : '';
+  const priceFrom = tour?.priceFrom ?? (tour && tour.price > 0 ? tour.price : null);
+
+  function openRequest() {
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
+    setShowBookingModal(true);
+  }
+
   if (isLoading) return <DetailSkeleton />;
 
-  if (error || !tour) {
+  if (isError && isNotFound(error)) {
     return (
       <PageTransition>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-          <h1 className="font-heading text-2xl font-bold text-dark">
-            Тур не найден
-          </h1>
-          <p className="text-warm-gray">
-            Возможно, тур был удалён или ссылка неверна
-          </p>
+          <h1 className="font-heading text-2xl font-bold text-dark">Тур не найден</h1>
+          <p className="text-warm-gray">Черновик и снятый тур по прямой ссылке не открываются</p>
           <Link to="/tours">
             <Button variant="primary">Вернуться в каталог</Button>
           </Link>
@@ -265,11 +191,23 @@ export default function TourDetailPage() {
     );
   }
 
+  if (isError || !tour) {
+    return (
+      <PageTransition>
+        <div role="alert" className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <h1 className="font-heading text-2xl font-bold text-dark">Не удалось загрузить тур</h1>
+          <Button variant="secondary" onClick={() => refetch()}>
+            Повторить
+          </Button>
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Breadcrumbs */}
-        <nav className="mb-6 flex items-center gap-2 text-sm text-warm-gray">
+        <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm text-warm-gray">
           <Link to="/" className="transition-colors hover:text-primary">
             Главная
           </Link>
@@ -281,96 +219,96 @@ export default function TourDetailPage() {
           <span className="line-clamp-1 text-dark">{tour.title}</span>
         </nav>
 
-        {/* Main Grid */}
-        <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-          {/* Left Column */}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-8">
-            <TourGallery photos={tour.photos} />
+            <TourGallery images={tour.images} photos={tour.photos} title={tour.title} />
 
-            {/* Title & Meta */}
             <div>
-              <div className="mb-3 flex flex-wrap items-center gap-3">
-                {tour.isHot && (
-                  <Badge variant="red" size="sm">
-                    🔥 Горящий тур
+              {typeLabel && (
+                <div className="mb-3">
+                  <Badge variant="blue" size="sm">
+                    {typeLabel}
                   </Badge>
-                )}
-                <Badge variant="blue" size="sm">
-                  {tour.category}
-                </Badge>
-              </div>
+                </div>
+              )}
 
-              <h1 className="mb-3 font-heading text-2xl font-bold text-dark sm:text-3xl">
+              <h1 className="mb-3 text-balance font-heading text-2xl font-bold text-dark sm:text-3xl">
                 {tour.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-4 text-sm text-warm-gray">
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={15} className="text-terracotta" />
-                  {tour.country}, {tour.city}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Hotel size={15} className="text-primary" />
-                  {tour.hotel}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock size={15} className="text-olive" />
-                  {tour.duration} дней
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <StarRating rating={tour.rating} size="sm" />
-                  <span className="font-medium text-dark">{tour.rating}</span>
-                  ({tour.reviewCount} отзывов)
-                </span>
+              {tour.shortDescription && (
+                <p className="mb-4 max-w-3xl text-pretty text-base leading-relaxed text-dark/80">
+                  {tour.shortDescription}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-warm-gray">
+                {tour.country && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin size={15} className="text-terracotta" />
+                    {tour.country}
+                  </span>
+                )}
+                {tour.departureCity && (
+                  <span className="flex items-center gap-1.5">
+                    <Plane size={15} className="text-primary" />
+                    Вылет из {tour.departureCity}
+                  </span>
+                )}
+                {tour.duration > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={15} className="text-olive" />
+                    {tour.duration} дней
+                  </span>
+                )}
+                {tour.nearestDate && (
+                  <span>ближайший выезд {formatDate(tour.nearestDate, 'd MMM')}</span>
+                )}
               </div>
             </div>
 
-            {/* Tabs */}
-            <TourTabs tour={tour} />
-          </div>
+            {tour.description && (
+              <section aria-labelledby="tour-about">
+                <h2 id="tour-about" className="mb-3 font-heading text-xl font-bold text-dark">
+                  Описание
+                </h2>
+                <p className="whitespace-pre-line text-pretty leading-relaxed text-dark/80">{tour.description}</p>
+              </section>
+            )}
 
-          {/* Right Sidebar */}
-          <div className="hidden lg:block">
-            <BookingSidebar
+            <TourProgram tour={tour} />
+            <TourInclusions tour={tour} />
+            <TourAccommodation tour={tour} />
+            <TourOffers
               tour={tour}
-              onBookClick={() => setShowBookingModal(true)}
+              selectedId={selectedOffer?.id ?? null}
+              onSelect={(offer) => setOfferId(offer.id)}
             />
           </div>
-        </div>
 
-        {/* Mobile Booking Bar */}
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-sand bg-white px-4 py-3 shadow-header lg:hidden">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              {tour.originalPrice && (
-                <span className="text-xs text-warm-gray line-through">
-                  {formatPrice(tour.originalPrice)}
-                </span>
-              )}
-              <p className="font-heading text-xl font-bold text-primary">
-                {formatPrice(tour.price)}
-              </p>
-            </div>
-            <Button
-              variant="terracotta"
-              size="md"
-              onClick={() => {
-                if (!isAuthenticated) {
-                  openAuthModal('login');
-                  return;
-                }
-                setShowBookingModal(true);
-              }}
-            >
-              Забронировать
-            </Button>
+          <div className="hidden lg:block">
+            <BookingRail tour={tour} offer={selectedOffer} onRequest={openRequest} />
           </div>
         </div>
 
-        {/* Similar Tours */}
-        <SimilarTours tour={tour} />
+        {available && (
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-sand bg-white px-4 py-3 shadow-header lg:hidden">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                {priceFrom != null && (
+                  <p className="font-heading text-xl font-bold text-primary">
+                    {selectedOffer
+                      ? formatMoney(selectedOffer.price, selectedOffer.currency)
+                      : formatFromMoney(priceFrom, tour.currency)}
+                  </p>
+                )}
+              </div>
+              <RequestButton onClick={openRequest} />
+            </div>
+          </div>
+        )}
 
-        {/* Bottom spacer for mobile booking bar */}
+        <SimilarTours tour={tour} />
         <div className="h-20 lg:hidden" />
       </div>
 
@@ -381,8 +319,10 @@ export default function TourDetailPage() {
         size="lg"
       >
         <BookingForm
+          key={selectedOffer?.id ?? tour.id}
           tourId={tour.id}
           tours={[tour]}
+          initialComment={offerComment(selectedOffer)}
           onSuccess={() => setShowBookingModal(false)}
           onClose={() => setShowBookingModal(false)}
         />

@@ -47,6 +47,16 @@ describe('catalog API', () => {
         category: 'hiking',
         isHot: false,
         maxTravelers: 0,
+        available: true,
+        departureCity: '',
+        mealPlan: null,
+        accommodation: '',
+        currency: null,
+        nearestDate: null,
+        priceFrom: null,
+        images: [],
+        days: [],
+        offers: [],
       });
     });
 
@@ -357,6 +367,16 @@ describe('catalog API', () => {
             category: 'hiking',
             isHot: false,
             maxTravelers: 0,
+            available: true,
+            departureCity: '',
+            mealPlan: null,
+            accommodation: '',
+            currency: 'EUR',
+            nearestDate: null,
+            priceFrom: 1200,
+            images: [],
+            days: [],
+            offers: [],
           },
         ],
         total: 1,
@@ -614,6 +634,110 @@ describe('catalog API', () => {
   describe('searchTours', () => {
     it('returns empty array (stub until API available)', async () => {
       const result = await catalog.searchTours('beach');
+      expect(result).toEqual([]);
+      expect(mockApiClient.get).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('public tour page', () => {
+    it('maps days, inclusions, stay, offers and media ids', async () => {
+      mockApiClient.get.mockResolvedValue({
+        data: {
+          id: 'tour-1',
+          title: 'Мальдивы',
+          description: 'Описание',
+          shortDescription: 'Кратко',
+          departureCity: 'Москва',
+          country: 'Мальдивы',
+          tourType: 0,
+          durationDays: 7,
+          imageUrl: 'http://minio:9000/bucket/photo.jpg',
+          directionId: null,
+          isActive: true,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: null,
+          mealPlan: 'AI',
+          accommodationText: 'Водная вилла',
+          priceFrom: 289000,
+          currency: 'RUB',
+          nearestDate: '2026-11-01T00:00:00Z',
+          prices: [
+            {
+              id: 'offer-1',
+              validFrom: '2026-11-01',
+              validTo: '2026-11-08',
+              pricePerPerson: 289000,
+              currency: 'RUB',
+              availableSeats: 8,
+            },
+          ],
+          days: [{ dayNumber: 1, title: 'Прилёт', description: 'Трансфер' }],
+          inclusions: [
+            { text: 'Проживание', kind: 'Included', sortOrder: 0 },
+            { text: 'Виза', kind: 1, sortOrder: 1 },
+          ],
+          images: [
+            {
+              mediaFileId: '11111111-1111-1111-1111-111111111111',
+              url: '/api/v1/media/files/11111111-1111-1111-1111-111111111111/w800',
+              alt: 'Вилла',
+              isCover: true,
+              sortOrder: 0,
+            },
+          ],
+        },
+      });
+
+      const result = await catalog.getTourById('tour-1');
+
+      expect(result.shortDescription).toBe('Кратко');
+      expect(result.departureCity).toBe('Москва');
+      expect(result.mealPlan).toBe('Всё включено');
+      expect(result.accommodation).toBe('Водная вилла');
+      expect(result.priceFrom).toBe(289000);
+      expect(result.days).toEqual([{ dayNumber: 1, title: 'Прилёт', description: 'Трансфер' }]);
+      expect(result.included).toEqual(['Проживание']);
+      expect(result.notIncluded).toEqual(['Виза']);
+      expect(result.offers?.[0]?.price).toBe(289000);
+      expect(result.photos[0]).toContain('/w800');
+      expect(result.photos.join(' ')).not.toContain('minio');
+    });
+  });
+
+  describe('getTourCards', () => {
+    it('asks cards by repeated ids and keeps an unavailable tour', async () => {
+      mockApiClient.get.mockResolvedValue({
+        data: [
+          {
+            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            title: 'Снятый тур',
+            cover: {
+              mediaFileId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+              url: '/api/v1/media/files/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/w800',
+              alt: 'Обложка',
+              isCover: true,
+              sortOrder: 0,
+            },
+            available: false,
+          },
+        ],
+      });
+
+      const result = await catalog.getTourCards([
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      ]);
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/catalog/tours/cards?ids=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      );
+      expect(result[0]?.available).toBe(false);
+      expect(result[0]?.title).toBe('Снятый тур');
+      expect(result[0]?.priceFrom).toBeNull();
+      expect(result[0]?.images?.[0]?.mediaFileId).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+    });
+
+    it('does not call the API for an empty id list', async () => {
+      const result = await catalog.getTourCards([]);
       expect(result).toEqual([]);
       expect(mockApiClient.get).not.toHaveBeenCalled();
     });
