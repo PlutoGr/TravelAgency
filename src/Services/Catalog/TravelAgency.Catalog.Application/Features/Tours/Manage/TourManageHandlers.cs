@@ -251,6 +251,18 @@ public sealed class DeleteManagedTourCommandHandler(TourManageStore store)
     }
 }
 
+public sealed class GetManagedTourQueryHandler(TourManageStore store)
+    : IRequestHandler<GetManagedTourQuery, TourManageDto>
+{
+    public async Task<TourManageDto> Handle(GetManagedTourQuery request, CancellationToken cancellationToken)
+    {
+        var tour = await store.Tours.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof(Tour), request.Id);
+        store.EnsureCanManage(tour);
+        return TourManageMapper.ToManageDto(tour);
+    }
+}
+
 public sealed class ListManagedToursQueryHandler(TourManageStore store)
     : IRequestHandler<ListManagedToursQuery, IReadOnlyList<TourManageDto>>
 {

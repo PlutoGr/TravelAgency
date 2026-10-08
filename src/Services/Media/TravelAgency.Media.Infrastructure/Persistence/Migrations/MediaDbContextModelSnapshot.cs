@@ -25,7 +25,6 @@ namespace TravelAgency.Media.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("TravelAgency.Media.Domain.Entities.MediaFile", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ContentType")
