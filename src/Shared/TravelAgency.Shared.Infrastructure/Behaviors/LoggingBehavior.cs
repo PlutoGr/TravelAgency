@@ -6,6 +6,7 @@ namespace TravelAgency.Shared.Infrastructure.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that logs request handling and elapsed time.
+/// Exceptions are not logged here, only rethrown; see GlobalExceptionHandlerMiddleware.
 /// </summary>
 public sealed class LoggingBehavior<TRequest, TResponse>(
     ILogger<LoggingBehavior<TRequest, TResponse>> logger)
@@ -22,29 +23,17 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
         logger.LogInformation("Handling {RequestName}", requestName);
 
         var stopwatch = Stopwatch.StartNew();
-        try
-        {
-            var response = await next(cancellationToken);
-            stopwatch.Stop();
 
-            logger.LogInformation(
-                "Handled {RequestName} in {ElapsedMs}ms",
-                requestName,
-                stopwatch.ElapsedMilliseconds);
+        // No catch here: a failed request is logged once at the HTTP boundary
+        // (GlobalExceptionHandlerMiddleware), 4xx as Warning without stack, 5xx as Error (issue #57).
+        var response = await next(cancellationToken);
+        stopwatch.Stop();
 
-            return response;
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
+        logger.LogInformation(
+            "Handled {RequestName} in {ElapsedMs}ms",
+            requestName,
+            stopwatch.ElapsedMilliseconds);
 
-            logger.LogError(
-                ex,
-                "Error handling {RequestName} after {ElapsedMs}ms",
-                requestName,
-                stopwatch.ElapsedMilliseconds);
-
-            throw;
-        }
+        return response;
     }
 }

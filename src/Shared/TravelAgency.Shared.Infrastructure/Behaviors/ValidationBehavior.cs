@@ -6,6 +6,7 @@ namespace TravelAgency.Shared.Infrastructure.Behaviors;
 /// <summary>
 /// MediatR pipeline behavior that validates requests using FluentValidation.
 /// Throws <see cref="FluentValidation.ValidationException"/> when validation fails.
+/// Does not log: the exception is logged once (Warning, 400) by GlobalExceptionHandlerMiddleware.
 /// </summary>
 public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>

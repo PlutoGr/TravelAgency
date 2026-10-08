@@ -1,7 +1,7 @@
-using Serilog;
 using TravelAgency.Chat.API.Extensions;
 using TravelAgency.Chat.API.Middleware;
 using TravelAgency.Chat.Infrastructure;
+using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,7 +24,7 @@ var app = builder.Build();
 app.UseChatMigrations();
 app.UseChatCors();
 
-app.UseSerilogRequestLogging();
+app.UseTravelAgencyRequestLogging();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 

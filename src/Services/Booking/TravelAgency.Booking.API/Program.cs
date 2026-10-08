@@ -1,9 +1,9 @@
-using Serilog;
 using TravelAgency.Booking.API.Extensions;
 using TravelAgency.Booking.API.Middleware;
 using TravelAgency.Booking.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.Hosting;
+using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,7 +41,7 @@ public partial class Program
         app.UseBookingMigrations();
         app.UseBookingCors();
 
-        app.UseSerilogRequestLogging();
+        app.UseTravelAgencyRequestLogging();
         app.UseMiddleware<CorrelationIdMiddleware>();
         app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
