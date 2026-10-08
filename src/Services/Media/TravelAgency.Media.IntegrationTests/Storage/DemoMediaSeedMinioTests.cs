@@ -12,8 +12,7 @@ namespace TravelAgency.Media.IntegrationTests.Storage;
 
 /// <summary>
 /// Тот же сидер, что и на dev, но бакет читается мимо Media.
-/// Фикстура и образ — <see cref="MinioStorageFixture"/> из #60. Этот файл не компилируется,
-/// пока фикстуры нет в ветке: после rebase на main с #60 уберите Compile Remove в csproj.
+/// Контейнер и образ — <see cref="MinioStorageFixture"/> из main.
 /// </summary>
 public class DemoMediaSeedMinioTests(MinioStorageFixture fixture) : IClassFixture<MinioStorageFixture>
 {
@@ -52,7 +51,7 @@ public class DemoMediaSeedMinioTests(MinioStorageFixture fixture) : IClassFixtur
         }
 
         await SeedAsync();
-        using var check = await s3.GetObjectMetadataAsync(MinioStorageFixture.BucketName, missing.Key);
+        var check = await s3.GetObjectMetadataAsync(MinioStorageFixture.BucketName, missing.Key);
         check.ContentLength.Should().BeGreaterThan(0);
     }
 
