@@ -63,15 +63,41 @@ public class ToursControllerTests
     }
 
     [Fact]
-    public async Task GetTourById_WithExistingTour_ReturnsOk()
+    public async Task GetTourById_WithPublishedTour_ReturnsOkAndEmptyComponents()
     {
-        var tour = SeedTour("Tour For GetById");
+        var tour = PublishedTourSeed.Create("Tour For GetById", "Visible description", 2, 1000m, "EUR", 4);
+        _factory.UseDbContext(db =>
+        {
+            db.Tours.Add(tour);
+            db.SaveChanges();
+        });
 
         var response = await _client.GetAsync($"/catalog/tours/{tour.Id}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<TourDto>();
+        var result = await response.Content.ReadFromJsonAsync<PublicTourDto>();
         result!.Id.Should().Be(tour.Id);
+        result.Components.Should().BeEmpty();
+        result.Days.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetTourById_DraftAndUnpublished_Return404()
+    {
+        var draft = SeedTour("Hidden Draft");
+        var draftResponse = await _client.GetAsync($"/catalog/tours/{draft.Id}");
+        draftResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var hidden = PublishedTourSeed.Create("Hidden Unpublished", "Gone", 2, 800m, "EUR", 2);
+        hidden.Unpublish();
+        _factory.UseDbContext(db =>
+        {
+            db.Tours.Add(hidden);
+            db.SaveChanges();
+        });
+
+        var hiddenResponse = await _client.GetAsync($"/catalog/tours/{hidden.Id}");
+        hiddenResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
