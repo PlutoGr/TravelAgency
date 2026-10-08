@@ -13,6 +13,9 @@ public sealed class S3StorageService(
 {
     private readonly StorageSettings _settings = options.Value;
 
+    // По http тело обязано быть подписано, иначе SDK бросает AmazonClientException (#59).
+    private readonly bool _disablePayloadSigning = S3PayloadSigning.CanDisablePayloadSigning(options.Value.ServiceUrl);
+
     public async Task<string> UploadAsync(Stream content, string key, string contentType, CancellationToken ct = default)
     {
         var request = new PutObjectRequest
@@ -21,7 +24,7 @@ public sealed class S3StorageService(
             Key = key,
             InputStream = content,
             ContentType = contentType,
-            DisablePayloadSigning = true,
+            DisablePayloadSigning = _disablePayloadSigning,
             AutoCloseStream = false
         };
 
