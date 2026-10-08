@@ -13,7 +13,7 @@ const BREADCRUMBS = [
 ];
 
 export default function FavoritesPage() {
-  const { favoriteTours, loadFavorites, isLoading } = useFavoritesStore();
+  const { favoriteTours, loadFavorites, isLoading, error } = useFavoritesStore();
 
   useEffect(() => {
     loadFavorites();
@@ -28,7 +28,14 @@ export default function FavoritesPage() {
           Избранное
         </h1>
 
-        {isLoading ? (
+        {error ? (
+          <div role="alert" className="rounded-[16px] border border-terracotta/30 bg-terracotta/5 px-4 py-6 text-center">
+            <p className="text-dark">{error}</p>
+            <Button className="mt-4" variant="secondary" onClick={() => loadFavorites()}>
+              Повторить
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex flex-col">
@@ -55,8 +62,8 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {favoriteTours.map((tour) => (
-              <TourCard key={tour.id} tour={tour} />
+            {favoriteTours.map((tour, index) => (
+              <TourCard key={tour.id} tour={tour} priority={index === 0} />
             ))}
           </div>
         )}

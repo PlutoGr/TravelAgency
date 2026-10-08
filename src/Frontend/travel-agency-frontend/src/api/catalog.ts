@@ -1,4 +1,14 @@
-import type { Destination, PaginatedResponse, Tour, TourFilters } from '@/types';
+import type {
+  Destination,
+  PaginatedResponse,
+  Tour,
+  TourDay,
+  TourFilters,
+  TourImage,
+  TourOffer,
+} from '@/types';
+import { mediaFileUrl, mediaIdFromUrl, isSafePhotoUrl } from '@/utils/media';
+import { mealPlanLabel } from '@/utils/tourLabels';
 import { apiClient } from './client';
 import toast from 'react-hot-toast';
 
@@ -77,10 +87,26 @@ interface BuildTourParams {
   price?: number;
   dates?: { start: string; end: string }[];
   maxTravelers?: number;
+  available?: boolean;
+  departureCity?: string;
+  mealPlan?: string | null;
+  accommodation?: string;
+  currency?: string | null;
+  nearestDate?: string | null;
+  priceFrom?: number | null;
+  images?: TourImage[];
+  days?: TourDay[];
+  offers?: TourOffer[];
+  included?: string[];
+  notIncluded?: string[];
 }
 
 /** Builds a Tour from common DTO fields; varying parts passed as overrides. Exported for testing. */
 export function buildTourFromDtoFields(params: BuildTourParams): Tour {
+  const images = params.images ?? [];
+  const photosFromMedia = images.map((image) => mediaFileUrl(image.mediaFileId, 'w800'));
+  const fallbackPhoto = isSafePhotoUrl(params.imageUrl) ? [params.imageUrl] : [];
+
   return {
     id: params.id,
     title: params.title,
@@ -94,14 +120,32 @@ export function buildTourFromDtoFields(params: BuildTourParams): Tour {
     reviewCount: 0,
     dates: params.dates ?? [],
     duration: params.durationDays,
-    photos: params.imageUrl ? [params.imageUrl] : [],
+    photos: photosFromMedia.length > 0 ? photosFromMedia : fallbackPhoto,
     amenities: [],
-    included: [],
-    notIncluded: [],
+    included: params.included ?? [],
+    notIncluded: params.notIncluded ?? [],
     category: mapTourTypeToCategory(params.tourType),
     isHot: false,
     maxTravelers: params.maxTravelers ?? 0,
+    available: params.available ?? true,
+    departureCity: params.departureCity ?? '',
+    mealPlan: params.mealPlan ?? null,
+    accommodation: params.accommodation ?? '',
+    currency: params.currency ?? null,
+    nearestDate: params.nearestDate ?? null,
+    priceFrom: params.priceFrom ?? null,
+    images,
+    days: params.days ?? [],
+    offers: params.offers ?? [],
   };
+}
+
+interface PublicPreviewDto {
+  mediaFileId?: string;
+  url?: string | null;
+  alt?: string | null;
+  isCover?: boolean;
+  sortOrder?: number;
 }
 
 interface TourSummaryDto {
@@ -114,6 +158,24 @@ interface TourSummaryDto {
   minPrice: number | null;
   currency: string | null;
   isActive: boolean;
+  priceFrom?: number | null;
+  nearestDate?: string | null;
+  shortDescription?: string | null;
+  departureCity?: string | null;
+  previews?: PublicPreviewDto[] | null;
+}
+
+interface PublicTourCardDto {
+  id: string;
+  title: string;
+  cover?: PublicPreviewDto | null;
+  available: boolean;
+  priceFrom?: number | null;
+  currency?: string | null;
+  nearestDate?: string | null;
+  shortDescription?: string | null;
+  country?: string | null;
+  durationDays?: number | null;
 }
 
 interface TourPriceDto {
@@ -125,10 +187,24 @@ interface TourPriceDto {
   availableSeats: number;
 }
 
+interface PublicDayDto {
+  dayNumber: number;
+  title: string;
+  description: string;
+}
+
+interface PublicInclusionDto {
+  text?: string | null;
+  kind?: string | number;
+  sortOrder?: number;
+}
+
 interface TourDto {
   id: string;
   title: string;
   description?: string | null;
+  shortDescription?: string | null;
+  departureCity?: string | null;
   country: string;
   tourType: string | number;
   durationDays: number;
@@ -137,29 +213,130 @@ interface TourDto {
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;
-  prices: TourPriceDto[];
+  mealPlan?: string | number | null;
+  accommodationText?: string | null;
+  priceFrom?: number | null;
+  currency?: string | null;
+  nearestDate?: string | null;
+  prices?: TourPriceDto[] | null;
+  days?: PublicDayDto[] | null;
+  inclusions?: PublicInclusionDto[] | null;
+  images?: PublicPreviewDto[] | null;
+}
+
+function mapImages(previews?: PublicPreviewDto[] | null): TourImage[] {
+  const images: TourImage[] = [];
+  for (const preview of previews ?? []) {
+    const mediaFileId = preview.mediaFileId || mediaIdFromUrl(preview.url);
+    if (!mediaFileId) continue;
+    images.push({
+      mediaFileId,
+      alt: preview.alt ?? null,
+      isCover: Boolean(preview.isCover),
+      sortOrder: preview.sortOrder ?? 0,
+    });
+  }
+  return images;
+}
+
+function mapOffers(prices?: TourPriceDto[] | null): TourOffer[] {
+  return (prices ?? []).map((price) => ({
+    id: price.id,
+    start: price.validFrom,
+    end: price.validTo,
+    price: price.pricePerPerson,
+    currency: price.currency,
+    seats: price.availableSeats,
+  }));
+}
+
+function mapDays(days?: PublicDayDto[] | null): TourDay[] {
+  return [...(days ?? [])].sort((a, b) => a.dayNumber - b.dayNumber);
+}
+
+function splitInclusions(items?: PublicInclusionDto[] | null): {
+  included: string[];
+  notIncluded: string[];
+} {
+  const included: string[] = [];
+  const notIncluded: string[] = [];
+  const ordered = [...(items ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  for (const item of ordered) {
+    const text = item.text?.trim();
+    if (!text) continue;
+    const includedKind = item.kind === 0 || item.kind === '0' || item.kind === 'Included';
+    if (includedKind) included.push(text);
+    else notIncluded.push(text);
+  }
+  return { included, notIncluded };
+}
+
+function toShortDescription(description: string, shortDescription?: string | null): string {
+  if (shortDescription) return shortDescription;
+  if (description.length <= 150) return description;
+  return `${description.slice(0, 150)}...`;
 }
 
 function mapTourSummaryToTour(dto: TourSummaryDto): Tour {
+  const images = mapImages(dto.previews);
+  const priceFrom = dto.priceFrom ?? dto.minPrice ?? null;
   return buildTourFromDtoFields({
     id: dto.id,
     title: dto.title,
     country: dto.country,
     tourType: dto.tourType,
     durationDays: dto.durationDays,
-    imageUrl: dto.imageUrl,
-    price: dto.minPrice ?? 0,
+    imageUrl: images.length > 0 ? null : dto.imageUrl,
+    shortDescription: dto.shortDescription ?? '',
+    price: priceFrom ?? 0,
+    priceFrom,
+    currency: dto.currency,
+    departureCity: dto.departureCity ?? '',
+    nearestDate: dto.nearestDate ?? null,
+    images,
+    available: dto.isActive !== false,
+  });
+}
+
+export function mapPublicCardToTour(dto: PublicTourCardDto): Tour {
+  const images = dto.cover ? mapImages([dto.cover]) : [];
+  return buildTourFromDtoFields({
+    id: dto.id,
+    title: dto.title,
+    country: dto.country ?? '',
+    tourType: '',
+    durationDays: dto.durationDays ?? 0,
+    imageUrl: null,
+    shortDescription: dto.shortDescription ?? '',
+    price: dto.priceFrom ?? 0,
+    priceFrom: dto.priceFrom ?? null,
+    currency: dto.currency ?? null,
+    nearestDate: dto.nearestDate ?? null,
+    images,
+    available: dto.available,
+  });
+}
+
+/** Карточка для id, которого нет в публичной выдаче (черновик или удалённый тур). */
+export function unavailableTour(id: string): Tour {
+  return buildTourFromDtoFields({
+    id,
+    title: 'Тур недоступен',
+    country: '',
+    tourType: '',
+    durationDays: 0,
+    imageUrl: null,
+    available: false,
   });
 }
 
 function mapTourDtoToTour(dto: TourDto): Tour {
   const desc = dto.description ?? '';
-  const firstPrice = dto.prices?.[0];
-  const dates =
-    dto.prices?.map((p) => ({
-      start: p.validFrom,
-      end: p.validTo,
-    })) ?? [];
+  const images = mapImages(dto.images);
+  const offers = mapOffers(dto.prices);
+  const dates = offers.map((offer) => ({ start: offer.start, end: offer.end }));
+  const { included, notIncluded } = splitInclusions(dto.inclusions);
+  const priceFrom = dto.priceFrom ?? offers[0]?.price ?? null;
 
   return buildTourFromDtoFields({
     id: dto.id,
@@ -167,12 +344,24 @@ function mapTourDtoToTour(dto: TourDto): Tour {
     country: dto.country,
     tourType: dto.tourType,
     durationDays: dto.durationDays,
-    imageUrl: dto.imageUrl,
+    imageUrl: images.length > 0 ? null : dto.imageUrl,
     description: desc,
-    shortDescription: desc.slice(0, 150) + (desc.length > 150 ? '...' : ''),
-    price: firstPrice?.pricePerPerson ?? 0,
+    shortDescription: toShortDescription(desc, dto.shortDescription),
+    price: priceFrom ?? 0,
+    priceFrom,
+    currency: dto.currency ?? offers[0]?.currency ?? null,
     dates,
-    maxTravelers: firstPrice?.availableSeats ?? 0,
+    offers,
+    maxTravelers: offers[0]?.seats ?? 0,
+    departureCity: dto.departureCity ?? '',
+    mealPlan: mealPlanLabel(dto.mealPlan),
+    accommodation: dto.accommodationText ?? '',
+    nearestDate: dto.nearestDate ?? null,
+    images,
+    days: mapDays(dto.days),
+    included,
+    notIncluded,
+    available: dto.isActive !== false,
   });
 }
 
@@ -204,7 +393,7 @@ function buildToursQueryParams(
     params.DateTo = filters.dateTo;
   }
   if (filters.category) {
-    params.TourType = filters.category;
+    params.TourType = CATEGORY_TO_TOUR_TYPE[filters.category] ?? filters.category;
   }
   if (filters.sortBy) {
     switch (filters.sortBy) {
@@ -220,6 +409,18 @@ function buildToursQueryParams(
         params.SortBy = 'CreatedAt';
         params.SortDirection = 'Desc';
         break;
+      case 'title':
+        params.SortBy = 'Title';
+        params.SortDirection = 'Asc';
+        break;
+      case 'duration_asc':
+        params.SortBy = 'DurationDays';
+        params.SortDirection = 'Asc';
+        break;
+      case 'duration_desc':
+        params.SortBy = 'DurationDays';
+        params.SortDirection = 'Desc';
+        break;
       case 'rating':
       case 'popularity':
       default:
@@ -227,6 +428,10 @@ function buildToursQueryParams(
         params.SortDirection = 'Desc';
         break;
     }
+  }
+
+  if (filters.directionId) {
+    params.DirectionId = filters.directionId;
   }
 
   return params;
@@ -341,6 +546,23 @@ export async function updateTourPrices(
 
 export async function deleteTour(id: string): Promise<void> {
   await apiClient.delete(`/catalog/tours/${id}`);
+}
+
+const CARD_BATCH = 50;
+
+/** Карточки избранного: опубликованный тур целиком, снятый — с available: false. */
+export async function getTourCards(ids: string[]): Promise<Tour[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const tours: Tour[] = [];
+
+  for (let offset = 0; offset < unique.length; offset += CARD_BATCH) {
+    const chunk = unique.slice(offset, offset + CARD_BATCH);
+    const query = chunk.map((id) => `ids=${encodeURIComponent(id)}`).join('&');
+    const { data } = await apiClient.get<PublicTourCardDto[]>(`/catalog/tours/cards?${query}`);
+    tours.push(...(data ?? []).map(mapPublicCardToTour));
+  }
+
+  return tours;
 }
 
 export async function getTourById(id: string): Promise<Tour> {

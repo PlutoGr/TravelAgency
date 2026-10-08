@@ -12,6 +12,8 @@ interface BookingFormProps {
   tourId?: string;
   /** Tours to choose from; when absent, fetches from catalog */
   tours?: Tour[];
+  /** Даты выбранного предложения, чтобы менеджер увидел их в комментарии. */
+  initialComment?: string;
   onSuccess?: () => void;
   onClose?: () => void;
 }
@@ -37,6 +39,7 @@ const slideVariants = {
 export default function BookingForm({
   tourId: initialTourId,
   tours: initialTours,
+  initialComment = '',
   onSuccess,
   onClose,
 }: BookingFormProps) {
@@ -49,7 +52,7 @@ export default function BookingForm({
       ? initialTours.find((t) => t.id === initialTourId) ?? null
       : null,
   );
-  const [comment, setComment] = useState('');
+  const [comment, setComment] = useState(initialComment);
   const [isLoadingTours, setIsLoadingTours] = useState(!initialTours?.length);
 
   useEffect(() => {
