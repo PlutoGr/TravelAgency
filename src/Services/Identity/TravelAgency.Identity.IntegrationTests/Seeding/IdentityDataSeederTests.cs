@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Domain.Entities;
@@ -39,7 +40,7 @@ public class IdentityDataSeederTests
     }
 
     [Fact]
-    public async Task ExistingUserWithAnotherId_IsAligned_WithoutASecondRow()
+    public async Task ExistingUserWithAnotherId_IsKept_WithoutASecondRow()
     {
         await using var db = await CreateDbAsync();
         var hasher = new PasswordHasherService();
@@ -52,20 +53,29 @@ public class IdentityDataSeederTests
 
         var managers = await db.Users.AsNoTracking().Where(u => u.Email == "manager@test.com").ToListAsync();
         managers.Should().ContainSingle();
-        managers[0].Id.Should().Be(DemoSeedIds.ManagerId);
-        managers[0].Id.Should().NotBe(oldId);
+        managers[0].Id.Should().Be(oldId);
+        managers[0].Id.Should().NotBe(DemoSeedIds.ManagerId);
         (await db.Users.CountAsync(u => u.Email == "manager2@test.com")).Should().Be(1);
+        (await db.Users.SingleAsync(u => u.Email == "manager2@test.com")).Id.Should().Be(DemoSeedIds.Manager2Id);
     }
 
     [Fact]
-    public async Task WithoutConfiguredSecret_DoesNotCreateUsers()
+    public async Task WithoutConfiguredSecret_DoesNotCreateUsers_AndLogsOneWarning()
     {
         await using var db = await CreateDbAsync();
-        var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [DemoSeedGate.TestUserPasswordKey] = "  "
+        }).Build();
+        var logger = new CollectingLogger();
 
-        await IdentityDataSeeder.SeedAsync(db, new PasswordHasherService(), config, NullLogger.Instance, CancellationToken.None);
+        await IdentityDataSeeder.SeedAsync(db, new PasswordHasherService(), config, logger, CancellationToken.None);
 
         (await db.Users.CountAsync()).Should().Be(0);
+        var warnings = logger.Entries.Where(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning).ToList();
+        warnings.Should().ContainSingle();
+        warnings[0].Exception.Should().BeNull();
+        warnings[0].Message.Should().Contain(DemoSeedGate.TestUserPasswordKey);
     }
 
     [Fact]
@@ -111,6 +121,25 @@ public class IdentityDataSeederTests
         services.AddSingleton(db);
         services.AddScoped<IPasswordHasher, PasswordHasherService>();
         return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+    }
+
+    private sealed class CollectingLogger : ILogger
+    {
+        public List<(Microsoft.Extensions.Logging.LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            Microsoft.Extensions.Logging.LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, formatter(state, exception), exception));
+        }
     }
 
     private sealed class TestEnvironment(string name) : IHostEnvironment

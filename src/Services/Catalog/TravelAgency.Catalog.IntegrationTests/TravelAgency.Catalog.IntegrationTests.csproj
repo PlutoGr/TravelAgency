@@ -29,5 +29,6 @@
     <ProjectReference Include="..\TravelAgency.Catalog.Application\TravelAgency.Catalog.Application.csproj" />
     <ProjectReference Include="..\TravelAgency.Catalog.Infrastructure\TravelAgency.Catalog.Infrastructure.csproj" />
     <ProjectReference Include="..\TravelAgency.Catalog.API\TravelAgency.Catalog.API.csproj" />
+    <ProjectReference Include="..\..\Identity\TravelAgency.Identity.Infrastructure\TravelAgency.Identity.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

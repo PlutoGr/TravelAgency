@@ -13,6 +13,8 @@ namespace TravelAgency.Catalog.Infrastructure.Seeding;
 
 /// <summary>
 /// Дозаполняет 5 демо-туров до модели, которую проходит Publish(), и один черновик второго менеджера.
+/// Уже существующий тур ищется по названию и сохраняет свой id. Его предложения не удаляются:
+/// добавляется только то, чего не хватает для публикации. Фиксированный id — у новой строки.
 /// Повторный запуск не создаёт второй ряд. Колонку ImageUrl не удаляет.
 /// </summary>
 public sealed class CatalogDataSeeder(
@@ -62,8 +64,8 @@ public sealed class CatalogDataSeeder(
         foreach (var spec in DemoTours)
         {
             directions.TryGetValue(spec.DirectionName, out var direction);
-            var tour = tours.FirstOrDefault(t => t.Id == spec.Id)
-                ?? tours.FirstOrDefault(t => t.Title == spec.Title);
+            var tour = tours.FirstOrDefault(t => t.Title == spec.Title)
+                ?? tours.FirstOrDefault(t => t.Id == spec.Id);
             if (tour is null)
             {
                 tour = Tour.Create(
@@ -88,16 +90,12 @@ public sealed class CatalogDataSeeder(
                 tour.Unpublish();
             }
 
-            if (tour.Days.Count > 0 || tour.Offers.Count > 0 || tour.Inclusions.Count > 0 || tour.Images.Count > 0)
+            if (!HasExactProgram(tour, spec.Days) && tour.Days.Count > 0)
             {
                 tour.ReplaceDays([]);
-                tour.ReplaceOffers([]);
-                tour.ReplaceInclusions([]);
-                tour.ReplaceImages([]);
                 await db.SaveChangesAsync(cancellationToken);
             }
 
-            tour.AssignOwner(DemoSeedIds.ManagerId);
             tour.SetBasics(
                 spec.Title,
                 spec.ShortDescription,
@@ -107,22 +105,37 @@ public sealed class CatalogDataSeeder(
                 spec.Days,
                 direction?.Id);
             tour.SetDescription(spec.Description);
-            tour.ReplaceDays(Days(tour.Id, spec.Days, spec.Title));
-            tour.ReplaceConditions(
-                [
-                    TourInclusion.Create(tour.Id, "Проживание и питание по программе", TourInclusionKind.Included, 0),
-                    TourInclusion.Create(tour.Id, "Трансфер аэропорт — отель — аэропорт", TourInclusionKind.Included, 1),
-                    TourInclusion.Create(tour.Id, "Личные расходы и экскурсии вне программы", TourInclusionKind.NotIncluded, 2)
-                ],
-                spec.Meal,
-                spec.Stay);
-            var futureFrom = now.AddDays(21);
-            tour.ReplaceOffers(
-            [
-                TourOffer.Create(tour.Id, now.AddDays(-14), now.AddDays(90), spec.Price, "RUB", spec.Seats),
-                TourOffer.Create(tour.Id, futureFrom, futureFrom.AddDays(spec.Days), spec.Price, "RUB", spec.Seats)
-            ]);
-            tour.ReplaceImages(Images(tour.Id, spec.Number), DemoSeedIds.PhotoWidthPx);
+            if (!HasExactProgram(tour, spec.Days))
+                tour.ReplaceDays(Days(tour.Id, spec.Days, spec.Title));
+
+            if (tour.Inclusions.All(i => i.Kind != TourInclusionKind.Included)
+                || tour.MealPlan is null
+                || string.IsNullOrWhiteSpace(tour.AccommodationText))
+            {
+                tour.ReplaceConditions(
+                    [
+                        TourInclusion.Create(tour.Id, "Проживание и питание по программе", TourInclusionKind.Included, 0),
+                        TourInclusion.Create(tour.Id, "Трансфер аэропорт — отель — аэропорт", TourInclusionKind.Included, 1),
+                        TourInclusion.Create(tour.Id, "Личные расходы и экскурсии вне программы", TourInclusionKind.NotIncluded, 2)
+                    ],
+                    spec.Meal,
+                    spec.Stay);
+            }
+
+            if (!tour.Offers.Any(o => o.ValidFrom <= now && o.ValidTo >= now))
+            {
+                tour.AddOffer(TourOffer.Create(
+                    tour.Id, now.AddDays(-14), now.AddDays(90), spec.Price, "RUB", spec.Seats));
+            }
+
+            if (!tour.Offers.Any(o => o.ValidFrom > now))
+            {
+                var futureFrom = now.AddDays(21);
+                tour.AddOffer(TourOffer.Create(
+                    tour.Id, futureFrom, futureFrom.AddDays(spec.Days), spec.Price, "RUB", spec.Seats));
+            }
+
+            AddMissingImages(tour, spec.Number);
             tour.Publish(now, DemoSeedIds.PhotoWidthPx);
         }
 
@@ -133,10 +146,7 @@ public sealed class CatalogDataSeeder(
 
     private static bool IsReady(Tour tour, int tourNumber, DateTime utcNow)
     {
-        if (tour.Status != TourStatus.Published || tour.OwnerId != DemoSeedIds.ManagerId)
-            return false;
-
-        if (tour.Images.Count != DemoSeedIds.PhotosPerTour)
+        if (tour.Status != TourStatus.Published)
             return false;
 
         for (var photo = 1; photo <= DemoSeedIds.PhotosPerTour; photo++)
@@ -147,6 +157,42 @@ public sealed class CatalogDataSeeder(
         }
 
         return tour.GetMissingPublishRequirements(utcNow).Count == 0;
+    }
+
+    private static bool HasExactProgram(Tour tour, int durationDays)
+    {
+        if (tour.Days.Count != durationDays)
+            return false;
+
+        for (var day = 1; day <= durationDays; day++)
+        {
+            if (tour.Days.All(d => d.DayNumber != day))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static void AddMissingImages(Tour tour, int tourNumber)
+    {
+        var hasCover = tour.Images.Any(image => image.IsCover);
+        for (var photo = 1; photo <= DemoSeedIds.PhotosPerTour; photo++)
+        {
+            var mediaId = DemoSeedIds.PhotoId(tourNumber, photo);
+            if (tour.Images.Any(image => image.MediaFileId == mediaId))
+                continue;
+
+            var isCover = !hasCover && photo == 1;
+            tour.AddImage(TourImage.Create(
+                tour.Id,
+                mediaId,
+                photo - 1,
+                isCover,
+                $"Фото {photo}",
+                DemoSeedIds.PhotoWidthPx));
+            if (isCover)
+                hasCover = true;
+        }
     }
 
     private static async Task EnsureManager2DraftAsync(
@@ -170,20 +216,6 @@ public sealed class CatalogDataSeeder(
     {
         for (var day = 1; day <= count; day++)
             yield return TourDay.Create(tourId, day, $"День {day}", $"{title}: программа дня {day}.");
-    }
-
-    private static IEnumerable<TourImage> Images(Guid tourId, int tourNumber)
-    {
-        for (var photo = 1; photo <= DemoSeedIds.PhotosPerTour; photo++)
-        {
-            yield return TourImage.Create(
-                tourId,
-                DemoSeedIds.PhotoId(tourNumber, photo),
-                photo - 1,
-                photo == 1,
-                $"Фото {photo}",
-                DemoSeedIds.PhotoWidthPx);
-        }
     }
 
     private static async Task<Dictionary<string, Direction>> EnsureDirectionsAsync(

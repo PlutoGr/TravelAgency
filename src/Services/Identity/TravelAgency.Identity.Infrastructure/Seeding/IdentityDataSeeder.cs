@@ -13,8 +13,10 @@ using TravelAgency.Shared.Infrastructure.Seeding;
 namespace TravelAgency.Identity.Infrastructure.Seeding;
 
 /// <summary>
-/// Тестовые аккаунты с фиксированными идентификаторами.
+/// Тестовые аккаунты. Уже существующий email сохраняет свой id.
+/// Фиксированный id получает только новая строка.
 /// Пароль берётся из конфигурации <see cref="DemoSeedGate.TestUserPasswordKey"/> и в код не записывается.
+/// Пустой пароль — одно предупреждение, новые пользователи не создаются, процесс не падает.
 /// </summary>
 public sealed class IdentityDataSeeder(
     IServiceScopeFactory scopeFactory,
@@ -60,43 +62,32 @@ public sealed class IdentityDataSeeder(
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        string? passwordHash = null;
+        var passwordHash = HashConfiguredPassword(passwordHasher, configuration);
+        var skippedNewUser = false;
 
         foreach (var (id, email, firstName, lastName, role) in TestUsers)
         {
             var normalized = email.ToLowerInvariant();
             var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
-            if (existing is null)
-            {
-                passwordHash ??= HashConfiguredPassword(passwordHasher, configuration);
-                if (passwordHash is null)
-                {
-                    logger.LogWarning(
-                        "Skipping seed user {Email}: {Setting} is not configured",
-                        normalized,
-                        DemoSeedGate.TestUserPasswordKey);
-                    continue;
-                }
+            if (existing is not null)
+                continue;
 
-                db.Users.Add(User.Create(normalized, passwordHash, firstName, lastName, null, role, id));
-                await db.SaveChangesAsync(cancellationToken);
-                logger.LogInformation("Seeded user {Email} with role {Role}", normalized, role);
+            if (passwordHash is null)
+            {
+                skippedNewUser = true;
                 continue;
             }
 
-            if (existing.Id == id)
-                continue;
-
-            var hash = existing.PasswordHash;
-            var phone = existing.Phone;
-            var tokens = await db.RefreshTokens.Where(t => t.UserId == existing.Id).ToListAsync(cancellationToken);
-            db.RefreshTokens.RemoveRange(tokens);
-            db.Users.Remove(existing);
+            db.Users.Add(User.Create(normalized, passwordHash, firstName, lastName, null, role, id));
             await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Seeded user {Email} with role {Role}", normalized, role);
+        }
 
-            db.Users.Add(User.Create(normalized, hash, firstName, lastName, phone, role, id));
-            await db.SaveChangesAsync(cancellationToken);
-            logger.LogInformation("Aligned seed user {Email} to the stable id", normalized);
+        if (skippedNewUser)
+        {
+            logger.LogWarning(
+                "Skipping new seed users because {Setting} is empty",
+                DemoSeedGate.TestUserPasswordKey);
         }
     }
 
