@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Serilog.Extensions.Hosting;
 using TravelAgency.Catalog.API.Extensions;
 using TravelAgency.Catalog.API.Middleware;
 using TravelAgency.Catalog.Infrastructure.Extensions;
@@ -36,6 +38,11 @@ public partial class Program
         services.AddEndpointsApiExplorer();
         services.AddSingleton<GrpcAuthInterceptor>();
         services.AddGrpc(options => options.Interceptors.Add<GrpcAuthInterceptor>());
+
+        // Request logging middleware needs DiagnosticContext. In the real host UseSerilog (AddCatalogSerilog)
+        // already registers it, so this is a no-op there; test hosts that call only ConfigureServices
+        // and ConfigurePipeline (without Serilog) get a context that writes to the silent static Log.Logger.
+        services.TryAddSingleton(new DiagnosticContext(null));
     }
 
     public static void ConfigurePipeline(WebApplication app)
