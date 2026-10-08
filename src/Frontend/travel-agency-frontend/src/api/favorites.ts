@@ -1,6 +1,6 @@
 import type { Tour } from '@/types';
 import { apiClient } from './client';
-import { getTourById } from './catalog';
+import { getTourCards, unavailableTour } from './catalog';
 
 interface FavoriteDto {
   id: string;
@@ -10,18 +10,18 @@ interface FavoriteDto {
 }
 
 /**
- * Fetches favorite tours for the current user.
- * Fetches favorite IDs from /favorites, then getTourById for each (N+1 pattern).
- * A batch endpoint would require a backend change to avoid N+1 requests.
+ * Избранное: id из Booking, карточки из публичного каталога.
+ * Снятый тур приходит с available: false и остаётся в списке.
+ * Черновик и неизвестный id в cards не попадают — для них пометка «Тур недоступен».
  */
 export async function getFavorites(): Promise<Tour[]> {
   const { data } = await apiClient.get<FavoriteDto[]>('/favorites');
-  const results = await Promise.allSettled(
-    (data ?? []).map((f) => getTourById(f.tourId)),
-  );
-  return results
-    .filter((r): r is PromiseFulfilledResult<Tour> => r.status === 'fulfilled')
-    .map((r) => r.value);
+  const ids = (data ?? []).map((favorite) => favorite.tourId).filter(Boolean);
+  if (ids.length === 0) return [];
+
+  const cards = await getTourCards(ids);
+  const byId = new Map(cards.map((tour) => [tour.id, tour]));
+  return ids.map((id) => byId.get(id) ?? unavailableTour(id));
 }
 
 export async function addFavorite(tourId: string): Promise<void> {

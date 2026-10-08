@@ -1,3 +1,25 @@
+export type TourImage = {
+  mediaFileId: string;
+  alt: string | null;
+  isCover: boolean;
+  sortOrder: number;
+};
+
+export type TourDay = {
+  dayNumber: number;
+  title: string;
+  description: string;
+};
+
+export type TourOffer = {
+  id: string;
+  start: string;
+  end: string;
+  price: number;
+  currency: string;
+  seats: number;
+};
+
 export type Tour = {
   id: string;
   title: string;
@@ -19,6 +41,17 @@ export type Tour = {
   category: string;
   isHot: boolean;
   maxTravelers: number;
+  /** false — тур снят с публикации и остаётся только в избранном. */
+  available?: boolean;
+  departureCity?: string;
+  mealPlan?: string | null;
+  accommodation?: string;
+  currency?: string | null;
+  nearestDate?: string | null;
+  priceFrom?: number | null;
+  images?: TourImage[];
+  days?: TourDay[];
+  offers?: TourOffer[];
 };
 
 export type Destination = {
@@ -132,7 +165,16 @@ export type TourFilters = {
   rating?: number;
   amenities?: string[];
   category?: string;
-  sortBy?: 'popularity' | 'price_asc' | 'price_desc' | 'date' | 'rating';
+  directionId?: string;
+  sortBy?:
+    | 'popularity'
+    | 'price_asc'
+    | 'price_desc'
+    | 'date'
+    | 'rating'
+    | 'title'
+    | 'duration_asc'
+    | 'duration_desc';
 };
 
 export type PaginatedResponse<T> = {

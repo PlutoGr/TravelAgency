@@ -8,40 +8,33 @@ import { PageTransition } from '@/components/common';
 import { Select, Button } from '@/components/ui';
 import { TourGrid, TourFilters } from '@/components/tour';
 import { getTours } from '@/api/catalog';
+import { tourTypeLabel } from '@/utils/tourLabels';
 
 const INITIAL_FILTERS: TourFiltersType = {};
 
 const sortOptions = [
-  { value: 'popularity', label: 'По популярности' },
+  { value: 'date', label: 'Сначала новые' },
   { value: 'price_asc', label: 'Сначала дешевле' },
   { value: 'price_desc', label: 'Сначала дороже' },
-  { value: 'rating', label: 'По рейтингу' },
-  { value: 'date', label: 'По дате' },
+  { value: 'title', label: 'По названию' },
+  { value: 'duration_asc', label: 'Короче по сроку' },
+  { value: 'duration_desc', label: 'Длиннее по сроку' },
 ];
 
 function filterLabel(key: string, val: unknown): string {
   const labels: Record<string, string> = {
-    search: `«${val}»`,
     country: String(val),
     priceMin: `от ${Number(val).toLocaleString('ru-RU')} ₽`,
     priceMax: `до ${Number(val).toLocaleString('ru-RU')} ₽`,
-    rating: `★ ${val}+`,
-    amenities: String(val),
     category: String(val),
+    dateFrom: `с ${val}`,
+    dateTo: `по ${val}`,
   };
   return labels[key] ?? String(val);
 }
 
 function getActiveFilterPills(filters: TourFiltersType) {
   const pills: { key: string; label: string; remove: (f: TourFiltersType) => TourFiltersType }[] = [];
-
-  if (filters.search) {
-    pills.push({
-      key: 'search',
-      label: filterLabel('search', filters.search),
-      remove: (f) => ({ ...f, search: undefined }),
-    });
-  }
 
   filters.country?.forEach((c) => {
     pills.push({
@@ -70,29 +63,34 @@ function getActiveFilterPills(filters: TourFiltersType) {
     });
   }
 
-  if (filters.rating) {
+  if (filters.dateFrom) {
     pills.push({
-      key: 'rating',
-      label: filterLabel('rating', filters.rating),
-      remove: (f) => ({ ...f, rating: undefined }),
+      key: 'dateFrom',
+      label: filterLabel('dateFrom', filters.dateFrom),
+      remove: (f) => ({ ...f, dateFrom: undefined }),
     });
   }
 
-  filters.amenities?.forEach((a) => {
+  if (filters.dateTo) {
     pills.push({
-      key: `amenity-${a}`,
-      label: a,
-      remove: (f) => ({
-        ...f,
-        amenities: f.amenities?.filter((x) => x !== a),
-      }),
+      key: 'dateTo',
+      label: filterLabel('dateTo', filters.dateTo),
+      remove: (f) => ({ ...f, dateTo: undefined }),
     });
-  });
+  }
+
+  if (filters.directionId) {
+    pills.push({
+      key: 'direction',
+      label: 'Направление',
+      remove: (f) => ({ ...f, directionId: undefined }),
+    });
+  }
 
   if (filters.category) {
     pills.push({
       key: 'category',
-      label: filters.category,
+      label: tourTypeLabel(filters.category),
       remove: (f) => ({ ...f, category: undefined }),
     });
   }
@@ -104,7 +102,7 @@ export default function TourCatalogPage() {
   const [filters, setFilters] = useState<TourFiltersType>(INITIAL_FILTERS);
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['tours', filters, page],
     queryFn: () => getTours(filters, page),
     placeholderData: keepPreviousData,
@@ -186,7 +184,7 @@ export default function TourCatalogPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
             <div className="lg:hidden">
               <TourFilters
                 filters={filters}
@@ -194,10 +192,10 @@ export default function TourCatalogPage() {
                 onReset={handleReset}
               />
             </div>
-            <div className="w-48">
+            <div className="w-full sm:w-52">
               <Select
                 options={sortOptions}
-                value={filters.sortBy ?? 'popularity'}
+                value={filters.sortBy ?? 'date'}
                 onChange={handleSortChange}
                 placeholder="Сортировка"
               />
@@ -250,7 +248,21 @@ export default function TourCatalogPage() {
 
           {/* Tour Grid */}
           <div className="min-w-0 flex-1">
-            <TourGrid tours={displayedTours} isLoading={isLoading} />
+            {isError && (
+              <div role="alert" className="mb-6 rounded-[16px] border border-terracotta/30 bg-terracotta/5 px-4 py-3 text-sm text-dark">
+                <p>Не удалось загрузить каталог</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-2 font-medium text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Повторить
+                </button>
+              </div>
+            )}
+            {(data || isLoading) && (
+              <TourGrid tours={displayedTours} isLoading={isLoading && !data} />
+            )}
 
             {/* Load More */}
             {hasMore && !isLoading && (

@@ -7,6 +7,7 @@ type FavoritesState = {
   favoriteIds: string[];
   favoriteTours: Tour[];
   isLoading: boolean;
+  error: string | null;
   count: number;
   toggleFavorite: (tourId: string, tour?: Tour) => void;
   isFavorite: (tourId: string) => boolean;
@@ -17,6 +18,7 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   favoriteIds: [],
   favoriteTours: [],
   isLoading: false,
+  error: null,
   count: 0,
 
   toggleFavorite: (tourId, tour) => {
@@ -41,6 +43,7 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
         if (status === 401) toast.error('Войдите, чтобы добавить в избранное');
         else if (status === 404) toast.error('Тур не найден');
         else if (status === 409) toast.error('Уже в избранном');
+        else if (status === 422) toast.error('Этот тур сейчас нельзя добавить в избранное');
         else toast.error('Не удалось добавить в избранное');
       });
     }
@@ -49,13 +52,13 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   isFavorite: (tourId) => get().favoriteIds.includes(tourId),
 
   loadFavorites: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       const tours = await favoritesApi.getFavorites();
       const ids = tours.map((t) => t.id);
-      set({ favoriteIds: ids, favoriteTours: tours, count: ids.length });
+      set({ favoriteIds: ids, favoriteTours: tours, count: ids.length, error: null });
     } catch {
-      set({ favoriteIds: [], favoriteTours: [], count: 0 });
+      set({ error: 'Не удалось загрузить избранное' });
       toast.error('Не удалось загрузить избранное');
     } finally {
       set({ isLoading: false });

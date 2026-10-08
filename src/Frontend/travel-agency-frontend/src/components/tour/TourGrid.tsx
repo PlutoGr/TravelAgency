@@ -73,9 +73,9 @@ export default function TourGrid({ tours, isLoading }: TourGridProps) {
       animate="visible"
       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
     >
-      {tours.map((tour) => (
-        <motion.div key={tour.id} variants={itemVariants}>
-          <TourCard tour={tour} />
+      {tours.map((tour, index) => (
+        <motion.div key={tour.id} variants={itemVariants} className="min-w-0">
+          <TourCard tour={tour} priority={index === 0} />
         </motion.div>
       ))}
     </motion.div>
