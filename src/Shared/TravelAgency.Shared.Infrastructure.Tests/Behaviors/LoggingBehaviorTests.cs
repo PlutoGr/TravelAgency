@@ -70,8 +70,9 @@ public class LoggingBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_WhenNextThrows_LogsError()
+    public async Task Handle_WhenNextThrows_DoesNotLogException()
     {
+        // The failed request is logged once by GlobalExceptionHandlerMiddleware (issue #57).
         RequestHandlerDelegate<TestResponse> next = _ => throw new InvalidOperationException("boom");
 
         try
@@ -82,12 +83,20 @@ public class LoggingBehaviorTests
 
         _loggerMock.Verify(
             x => x.Log(
-                LogLevel.Error,
+                It.Is<LogLevel>(level => level >= LogLevel.Warning),
                 It.IsAny<EventId>(),
                 It.IsAny<It.IsAnyType>(),
                 It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            Times.Never);
+        _loggerMock.Verify(
+            x => x.Log(
+                It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsNotNull<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
     }
 
     public record TestRequest : IRequest<TestResponse>;

@@ -42,36 +42,58 @@ public class GlobalExceptionHandlerMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception occurred while processing {Method} {Path}",
-                context.Request.Method, context.Request.Path);
-
             await HandleExceptionAsync(context, ex);
         }
     }
 
+    /// <summary>
+    /// The single place where a failed HTTP request is logged (issue #57):
+    /// 4xx (expected client errors such as 400/403/404/409/422/428) are logged once as Warning without stack trace;
+    /// 5xx and unmapped exceptions are logged once as Error with the exception.
+    /// MediatR behaviors only rethrow and do not log the exception again.
+    /// </summary>
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        var correlationId = context.Items["CorrelationId"]?.ToString() ?? context.TraceIdentifier;
+
         if (context.Response.HasStarted)
         {
-            _logger.LogWarning("Response already started, cannot write ProblemDetails for exception.");
+            _logger.LogError(exception,
+                "Unhandled exception after the response started for {Method} {Path} traceId={TraceId}",
+                context.Request.Method, context.Request.Path, correlationId);
             return;
         }
-
-        context.Response.ContentType = "application/problem+json";
 
         var (problemDetails, mappedStatusCode) = TryMapWithCustomMappers(context, exception);
         var details = problemDetails ?? MapToProblemDetails(context, exception);
 
-        var correlationId = context.Items["CorrelationId"]?.ToString() ?? context.TraceIdentifier;
-        details.Extensions["traceId"] = correlationId;
-
         var statusCode = mappedStatusCode ?? details.Status ?? (int)HttpStatusCode.InternalServerError;
         if (details.Status == null)
             details.Status = statusCode;
+
+        LogException(context, exception, statusCode, correlationId);
+
+        details.Extensions["traceId"] = correlationId;
+        context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = statusCode;
 
         var json = JsonSerializer.Serialize(details, JsonOptions);
         await context.Response.WriteAsync(json);
+    }
+
+    private void LogException(HttpContext context, Exception exception, int statusCode, string correlationId)
+    {
+        if (statusCode is >= StatusCodes.Status400BadRequest and < StatusCodes.Status500InternalServerError)
+        {
+            _logger.LogWarning(
+                "{Method} {Path} {StatusCode} {ExceptionType} traceId={TraceId}",
+                context.Request.Method, context.Request.Path, statusCode, exception.GetType().Name, correlationId);
+            return;
+        }
+
+        _logger.LogError(exception,
+            "{Method} {Path} {StatusCode} {ExceptionType} traceId={TraceId}",
+            context.Request.Method, context.Request.Path, statusCode, exception.GetType().Name, correlationId);
     }
 
     private (ProblemDetails? Details, int? StatusCode) TryMapWithCustomMappers(HttpContext context, Exception exception)
