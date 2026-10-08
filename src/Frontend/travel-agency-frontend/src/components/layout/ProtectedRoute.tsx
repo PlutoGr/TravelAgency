@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { Skeleton } from '@/components/ui';
+import { resolveReturnTo } from '@/utils/safeReturnTo';
 
 interface ProtectedRouteProps {
   allowedRoles?: ('client' | 'manager' | 'admin')[];
@@ -10,7 +11,12 @@ interface ProtectedRouteProps {
 
 function AuthLoadingFallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center p-8">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Проверка входа"
+      className="flex min-h-[40vh] items-center justify-center p-8"
+    >
       <div className="w-full max-w-md space-y-4">
         <Skeleton className="h-8 w-3/4" />
         <Skeleton className="h-4 w-full" />
@@ -36,7 +42,8 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    const returnTo = encodeURIComponent(location.pathname + location.search);
+    const requested = `${location.pathname}${location.search}`;
+    const returnTo = encodeURIComponent(resolveReturnTo(requested));
     return <Navigate to={`/?auth=login&returnTo=${returnTo}`} replace />;
   }
 
