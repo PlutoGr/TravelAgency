@@ -3,6 +3,20 @@ import type { ManagedTour } from '@/api/tourManage';
 export const COVER_MIN_WIDTH_PX = 1280;
 export const MIN_IMAGES_TO_PUBLISH = 3;
 export const MAX_IMAGES = 20;
+export const WIZARD_STEP_COUNT = 7;
+
+function clampWizardStep(value: number): number {
+  if (!Number.isInteger(value) || value < 1) return 1;
+  if (value > WIZARD_STEP_COUNT) return WIZARD_STEP_COUNT;
+  return value;
+}
+
+/** Шаг из ?step. Пустое значение берёт fallback, мусор — 1, число за пределами 1..7 прижимается к границе. */
+export function resolveWizardStep(raw: string | null | undefined, fallback = 1): number {
+  if (raw == null || raw.trim() === '') return clampWizardStep(fallback);
+  if (!/^\d+$/.test(raw.trim())) return 1;
+  return clampWizardStep(Number(raw.trim()));
+}
 
 export interface WizardImage {
   mediaFileId: string;
