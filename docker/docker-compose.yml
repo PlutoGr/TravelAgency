@@ -103,6 +103,7 @@ services:
       - JwtSettings__Audience=TravelAgency
       # REQUIRED for gRPC service-to-service auth. Set GRPC_INTERNAL_SERVICE_TOKEN in your .env file.
       - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
+      - Seeding__TestUserPassword=${SEEDING_TEST_USER_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy

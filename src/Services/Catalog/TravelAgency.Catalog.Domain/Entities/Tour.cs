@@ -56,13 +56,14 @@ public class Tour
         int durationDays,
         string? imageUrl,
         Guid? directionId = null,
-        Guid? ownerId = null)
+        Guid? ownerId = null,
+        Guid? id = null)
     {
         ValidateCore(title, description, country, durationDays);
 
         return new Tour
         {
-            Id = Guid.NewGuid(),
+            Id = id is null || id == Guid.Empty ? Guid.NewGuid() : id.Value,
             Title = title.Trim(),
             Description = description.Trim(),
             TourType = tourType,
@@ -80,14 +81,14 @@ public class Tour
     /// <summary>
     /// Пустой черновик мастера. Источник этапа 1 всегда менеджер, владелец — текущий пользователь.
     /// </summary>
-    public static Tour CreateDraft(Guid ownerId)
+    public static Tour CreateDraft(Guid ownerId, Guid? id = null)
     {
         if (ownerId == Guid.Empty)
             throw new CatalogDomainException("Draft owner is required.");
 
         return new Tour
         {
-            Id = Guid.NewGuid(),
+            Id = id is null || id == Guid.Empty ? Guid.NewGuid() : id.Value,
             Title = string.Empty,
             Description = string.Empty,
             Country = string.Empty,
@@ -99,6 +100,19 @@ public class Tour
             Version = 1,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    public void AssignOwner(Guid ownerId)
+    {
+        if (ownerId == Guid.Empty)
+            throw new CatalogDomainException("Tour owner is required.");
+
+        if (OwnerId == ownerId)
+            return;
+
+        var previous = OwnerId;
+        OwnerId = ownerId;
+        CommitOrRevert(() => OwnerId = previous);
     }
 
     public void Update(
@@ -266,6 +280,18 @@ public class Tour
         Replace(_offers, incoming);
     }
 
+    /// <summary>
+    /// Дописывает предложение, не трогая уже сохранённые. Их id нужны броням.
+    /// </summary>
+    public void AddOffer(TourOffer offer)
+    {
+        if (offer.TourId != Id)
+            throw new CatalogDomainException("Offer belongs to another tour.");
+
+        _offers.Add(offer);
+        CommitOrRevert(() => _offers.Remove(offer));
+    }
+
     public void ReplaceImages(IEnumerable<TourImage> images, int? coverWidthPx = null)
     {
         var incoming = images.ToList();
@@ -279,6 +305,25 @@ public class Tour
             throw new CatalogDomainException("A tour can have only one cover image.");
 
         Replace(_images, incoming, coverWidthPx);
+    }
+
+    /// <summary>
+    /// Дописывает фото, не снимая уже лежащие в туре.
+    /// </summary>
+    public void AddImage(TourImage image)
+    {
+        if (image.TourId != Id)
+            throw new CatalogDomainException("Image belongs to another tour.");
+
+        if (_images.Count >= TourContentLimits.MaxImagesPerTour)
+            throw new CatalogDomainException(
+                $"A tour cannot have more than {TourContentLimits.MaxImagesPerTour} images.");
+
+        if (image.IsCover && _images.Any(i => i.IsCover))
+            throw new CatalogDomainException("A tour can have only one cover image.");
+
+        _images.Add(image);
+        CommitOrRevert(() => _images.Remove(image), image.IsCover ? image.WidthPx : null);
     }
 
     /// <summary>

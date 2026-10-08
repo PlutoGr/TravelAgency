@@ -66,16 +66,17 @@ Tokens are stored in **httpOnly cookies** (XSS-safe). See [Cookie-Based Auth](ai
 
 When running in Development or with `ASPNETCORE_SEED_DATA=true`, Identity and Catalog seed test data. Logins:
 
-| Email            | Role   |
-|------------------|--------|
-| client@test.com  | Client |
-| manager@test.com | Manager|
-| admin@test.com   | Admin  |
+| Email             | Role    |
+|-------------------|---------|
+| client@test.com   | Client  |
+| manager@test.com  | Manager |
+| manager2@test.com | Manager |
+| admin@test.com    | Admin   |
 
-The password is set in [`src/Services/Identity/TravelAgency.Identity.Infrastructure/Seeding/IdentityDataSeeder.cs`](src/Services/Identity/TravelAgency.Identity.Infrastructure/Seeding/IdentityDataSeeder.cs) and noted in [`docker/.env.example`](docker/.env.example). The value is not repeated here.
+The password is not stored in the repository. Set `Seeding__TestUserPassword` for Identity (environment variable or user secrets). An empty value logs one warning and skips new users; Identity still starts. Accounts that already exist keep their id and hash.
 
-Catalog seeds directions (Мальдивы, Пхукет, Санторини, Бали, Дубай) and sample tours.
-Catalog demo data alone (without test users) can be enabled with `Seeding__DemoCatalog=true`.
+Catalog matches demo tours by title. An existing tour keeps its id and its offers; the seeder only adds what `Publish()` still needs. A tour created from scratch gets a stable id, is owned by `manager@test.com`, and is published. `manager2@test.com` gets one draft. Directions: Мальдивы, Пхукет, Санторини, Бали, Дубай.
+Catalog demo data alone (without test users) can be enabled with `Seeding__DemoCatalog=true`. Media uses the same flag to store demo photos.
 
 ## Как устроен dev
 
@@ -96,7 +97,7 @@ ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 
 - Все .NET-сервисы на dev работают с `ASPNETCORE_ENVIRONMENT=Staging` (задаётся в `docker-compose.override.yml` на сервере). Swagger и OpenAPI выключены, в ответах 500 нет стека, подробные логи Development не используются.
 - Миграции применяются при старте (`ASPNETCORE_RUN_MIGRATIONS=true`).
-- Тестовые аккаунты и демо-каталог на dev оставлены специально: включены флагом `ASPNETCORE_SEED_DATA=true` (таблица аккаунтов выше). Это только для dev, на production флаг не ставить.
+- Тестовые аккаунты и демо-каталог на dev оставлены специально: включены флагом `ASPNETCORE_SEED_DATA=true` (таблица аккаунтов выше). Пароль задаётся `Seeding__TestUserPassword` (в compose это `SEEDING_TEST_USER_PASSWORD`) и в репозиторий не входит. Пустое значение не останавливает Identity: новые пользователи пропускаются. Уже существующие аккаунты и туры сохраняют свои id. На production флаг не ставить.
 - Cookie авторизации с флагом `Secure` (сайт только по HTTPS), CORS разрешён для адреса dev-сайта (адрес у команды).
 
 ### SSH

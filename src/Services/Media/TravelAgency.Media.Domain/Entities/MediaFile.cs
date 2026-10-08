@@ -42,11 +42,12 @@ public sealed class MediaFile
         string ownerId,
         string purpose = MediaPurposes.General,
         int? width = null,
-        int? height = null)
+        int? height = null,
+        Guid? id = null)
     {
         return new MediaFile
         {
-            Id = Guid.NewGuid(),
+            Id = id is null || id == Guid.Empty ? Guid.NewGuid() : id.Value,
             OriginalFileName = originalFileName,
             ContentType = contentType,
             SizeBytes = sizeBytes,

@@ -11,6 +11,7 @@ using TravelAgency.Media.Domain.Interfaces;
 using TravelAgency.Media.Infrastructure.HealthChecks;
 using TravelAgency.Media.Infrastructure.Persistence;
 using TravelAgency.Media.Infrastructure.Repositories;
+using TravelAgency.Media.Infrastructure.Seeding;
 using TravelAgency.Media.Infrastructure.Services;
 using TravelAgency.Media.Infrastructure.Storage;
 using TravelAgency.Shared.Infrastructure.Extensions;
@@ -60,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<IImageProcessingService, ImageProcessingService>();
         services.AddSingleton<S3HealthCheck>();
         services.AddHostedService<BucketInitializer>();
+        services.AddHostedService<MediaDataSeeder>();
 
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
