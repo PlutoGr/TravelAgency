@@ -16,7 +16,10 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: false,
+  // True until the first auth/me check finishes. A direct load or F5 of
+  // /dashboard/* must not treat "user still null" as a guest: checkAuth()
+  // runs in an effect, after the first render of ProtectedRoute.
+  isLoading: true,
 
   login: async (email, password) => {
     set({ isLoading: true });

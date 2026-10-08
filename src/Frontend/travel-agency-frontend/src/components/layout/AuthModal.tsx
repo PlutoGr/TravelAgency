@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { Modal, Tabs, Input, Button } from '@/components/ui';
+import { resolveReturnTo } from '@/utils/safeReturnTo';
 
 const AUTH_TABS = [
   { id: 'login', label: 'Вход' },
@@ -43,7 +44,7 @@ export default function AuthModal() {
                     toast.success('Добро пожаловать!');
                     closeAuthModal();
                     if (authReturnTo) {
-                      navigate(authReturnTo);
+                      navigate(resolveReturnTo(authReturnTo));
                     }
                   } catch {
                     toast.error('Неверный email или пароль');
@@ -67,7 +68,7 @@ export default function AuthModal() {
                     toast.success('Регистрация прошла успешно!');
                     closeAuthModal();
                     if (authReturnTo) {
-                      navigate(authReturnTo);
+                      navigate(resolveReturnTo(authReturnTo));
                     }
                   } catch (err) {
                     const messages = extractValidationErrors(err);
