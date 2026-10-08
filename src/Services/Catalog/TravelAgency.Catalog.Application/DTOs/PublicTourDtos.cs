@@ -3,10 +3,11 @@ using TravelAgency.Catalog.Domain.Enums;
 
 namespace TravelAgency.Catalog.Application.DTOs;
 
-/// <summary>Превью фото. Url — публичный путь Gateway на размер w800.</summary>
+/// <summary>
+/// Фото тура. Адрес клиент собирает сам: /api/v1/media/files/{mediaFileId}/w200|w800|w1600.
+/// </summary>
 public record PublicTourPreviewDto(
     Guid MediaFileId,
-    string Url,
     string? Alt,
     bool IsCover,
     int SortOrder);
@@ -24,6 +25,7 @@ public record PublicTourComponentDto(Guid Id, string Name);
 public record PublicTourCardDto(
     Guid Id,
     string Title,
+    Guid? CoverMediaFileId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     PublicTourPreviewDto? Cover,
     bool Available,
@@ -50,7 +52,7 @@ public record PublicTourDto(
     string Country,
     TourType TourType,
     int DurationDays,
-    string? ImageUrl,
+    Guid? CoverMediaFileId,
     Guid? DirectionId,
     bool IsActive,
     DateTime CreatedAt,

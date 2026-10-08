@@ -115,10 +115,17 @@ public class TourImageTests : IClassFixture<CustomWebApplicationFactory>
     {
         var response = await UploadRawAsync(role, userId, "image/jpeg", [0xFF, 0xD8, 0xFF, 0x00, 0x00, 0x00]);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var body = await response.Content.ReadFromJsonAsync<UploadMediaResponse>();
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().NotContain("minio");
+        json.Should().NotContain("X-Amz-");
+        json.Should().NotContain("unsplash");
+        json.Should().NotContain("http://");
+        json.Should().NotContain("https://");
+        var body = System.Text.Json.JsonSerializer.Deserialize<UploadMediaResponse>(
+            json,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
         body.Should().NotBeNull();
         body!.IsPublic.Should().BeFalse();
-        body.Url.Should().NotContain("minio");
         body.Width.Should().Be(2000);
         return body;
     }

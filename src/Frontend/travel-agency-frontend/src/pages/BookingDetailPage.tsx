@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { mediaImageUrl } from '@/utils/media';
 import toast from 'react-hot-toast';
 import type { Booking, BookingStatus } from '@/types';
 import {
@@ -85,10 +86,10 @@ function TourPreview({ booking }: { booking: Booking }) {
         Предложенный тур
       </h3>
       <Card className="overflow-hidden">
-        {tour.photos[0] && (
+        {tour.coverMediaFileId && (
           <div className="relative h-48 w-full overflow-hidden">
             <img
-              src={tour.photos[0]}
+              src={mediaImageUrl(tour.coverMediaFileId, 'w800')}
               alt={tour.title}
               className="h-full w-full object-cover"
             />

@@ -150,14 +150,14 @@ describe('TourWizard', () => {
     expect(alert).toHaveTextContent(/другому пользователю/);
   });
 
-  it('builds the photo preview from mediaFileId and ignores a minio upload url', async () => {
+  it('builds the photo preview from the file id and does not read an upload url', async () => {
     const user = userEvent.setup();
     vi.mocked(uploadTourImage).mockResolvedValue({
       id: FILE,
-      url: 'http://minio:9000/bucket/photo.webp',
       width: 1600,
       height: 900,
-    });
+      url: 'http://minio:9000/bucket/photo.webp?X-Amz-Signature=abc',
+    } as Awaited<ReturnType<typeof uploadTourImage>> & { url: string });
 
     renderPage(<TourWizard tourId="tour-1" initialStep={6} />);
     const input = await screen.findByLabelText('Загрузить фото');
@@ -166,9 +166,9 @@ describe('TourWizard', () => {
 
     const preview = await screen.findByRole('img', { name: 'Фото тура' });
     expect(preview).toHaveAttribute('src', manageMediaFileUrl(FILE, 'w200'));
-    expect(preview.getAttribute('src')).not.toContain('minio');
     expect(document.body.innerHTML).not.toContain('minio');
-    expect(document.body.innerHTML).not.toContain('minio:9000');
+    expect(document.body.innerHTML).not.toContain('X-Amz-');
+    expect(document.body.innerHTML).not.toContain('unsplash');
   });
 
   it('shows a clear message when upload returns 413', async () => {

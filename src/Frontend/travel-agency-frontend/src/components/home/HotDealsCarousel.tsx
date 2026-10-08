@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { getTours } from '@/api/catalog';
 import { formatPrice } from '@/utils/format';
+import { coverMediaFileId, mediaImageUrl } from '@/utils/media';
 
 const HOT_DEALS_PAGE_SIZE = 50;
 
@@ -106,9 +107,9 @@ export default function HotDealsCarousel() {
                   className="group overflow-hidden rounded-2xl bg-white shadow-card"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden">
-                    {tour.photos?.[0] ? (
+                    {coverMediaFileId(tour) ? (
                     <img
-                      src={tour.photos[0]}
+                      src={mediaImageUrl(coverMediaFileId(tour)!, 'w800')}
                       alt={tour.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       loading="lazy"

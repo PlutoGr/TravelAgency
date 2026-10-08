@@ -300,8 +300,8 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
         high.Previews.Should().HaveCount(5);
         high.Previews![0].IsCover.Should().BeTrue();
         high.Previews[0].MediaFileId.Should().Be(fixture.HighCoverId);
+        high.CoverMediaFileId.Should().Be(fixture.HighCoverId);
         high.NearestDate.Should().BeCloseTo(fixture.Now.AddDays(20), TimeSpan.FromSeconds(1));
-        high.Previews[0].Url.Should().Be($"/api/v1/media/files/{fixture.HighCoverId:D}/w800");
     }
 
     [Fact]

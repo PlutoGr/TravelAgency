@@ -36,7 +36,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         StorageService
             .GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult("https://example.com/file"));
+            .Returns(Task.FromResult(
+                "http://minio:9000/media/file?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=abc"));
 
         StorageService
             .DownloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())

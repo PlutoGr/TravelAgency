@@ -4,10 +4,7 @@ import { apiClient } from './client';
 /** Backend BookingStatus enum: New=0, InProgress=1, ProposalSent=2, Confirmed=3, Closed=4, Cancelled=5 */
 type BackendBookingStatus = 0 | 1 | 2 | 3 | 4 | 5;
 
-/**
- * Tour snapshot DTO from backend (TourSnapshot in Booking domain).
- * Note: imageUrl is optional and not populated by backend; reserved for future use.
- */
+/** Tour snapshot DTO from backend (TourSnapshot in Booking domain). Картинок в снимке нет. */
 interface TourSnapshotDto {
   tourId: string;
   title: string;
@@ -16,8 +13,6 @@ interface TourSnapshotDto {
   currency: string;
   durationDays: number;
   snapshotTakenAt: string;
-  /** Optional; not populated by backend, reserved for future use */
-  imageUrl?: string | null;
 }
 
 interface ProposalDto {
@@ -81,7 +76,8 @@ function mapTourSnapshotToTour(snapshot: TourSnapshotDto, tourId: string): Tour 
     reviewCount: 0,
     dates: [],
     duration: snapshot.durationDays,
-    photos: snapshot.imageUrl ? [snapshot.imageUrl] : [],
+    coverMediaFileId: null,
+    photos: [],
     amenities: [],
     included: [],
     notIncluded: [],
