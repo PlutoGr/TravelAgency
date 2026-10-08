@@ -275,6 +275,17 @@ public class TourManageControllerTests
     }
 
     [Fact]
+    public async Task Unpublish_WithoutIfMatch_OnPublishedTour_Returns428_AndStaysPublished()
+    {
+        var tour = CompletePublished();
+
+        var response = await SendAsync(HttpMethod.Post, $"/catalog/manage/tours/{tour.Id}/unpublish", null, null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.PreconditionRequired);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
     public async Task Publish_AfterUnpublish_PublishesAgain()
     {
         var tour = CompletePublished();

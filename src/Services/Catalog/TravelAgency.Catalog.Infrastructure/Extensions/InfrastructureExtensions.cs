@@ -57,6 +57,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
         services.AddScoped<ITourRepository, TourRepository>();
         services.AddScoped<ITourListQuery, TourListQuery>();
+        services.AddScoped<IPublicTourCardQuery, PublicTourCardQuery>();
         services.AddScoped<IDirectionRepository, DirectionRepository>();
         services.AddHostedService<CatalogDataSeeder>();
 

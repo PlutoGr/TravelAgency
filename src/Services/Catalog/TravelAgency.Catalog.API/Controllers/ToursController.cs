@@ -7,6 +7,7 @@ using TravelAgency.Catalog.Application.Features.Tours.Commands.DeleteTour;
 using TravelAgency.Catalog.Application.Features.Tours.Commands.UpdateTour;
 using TravelAgency.Catalog.Application.Features.Tours.Commands.UpdateTourPrices;
 using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourById;
+using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourCards;
 using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTours;
 
 namespace TravelAgency.Catalog.API.Controllers;
@@ -27,8 +28,17 @@ public class ToursController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("cards")]
+    [ProducesResponseType(typeof(IReadOnlyList<PublicTourCardDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetCards([FromQuery] string[]? ids, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetTourCardsQuery(ids), ct);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(TourDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PublicTourDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTour(Guid id, CancellationToken ct)
     {
