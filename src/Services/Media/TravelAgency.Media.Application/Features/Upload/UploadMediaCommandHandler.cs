@@ -19,7 +19,6 @@ public sealed class UploadMediaCommandHandler(
     IImageProcessingService imageProcessor,
     IMediaFileRepository repository,
     ICurrentUserService currentUser,
-    IOptions<StorageSettings> storageOptions,
     IOptions<UploadSettings> uploadOptions
 ) : IRequestHandler<UploadMediaCommand, UploadMediaResponse>
 {
@@ -66,10 +65,7 @@ public sealed class UploadMediaCommandHandler(
         await repository.AddAsync(mediaFile, ct);
         await repository.SaveChangesAsync(ct);
 
-        if (isTourImage)
-            return TourImageResponse(mediaFile);
-
-        return await PresignedResponseAsync(mediaFile, ct);
+        return ToResponse(mediaFile, isTourImage ? false : null);
     }
 
     private void EnsureManagerOrAdmin()
@@ -157,22 +153,19 @@ public sealed class UploadMediaCommandHandler(
         }
     }
 
-    private static UploadMediaResponse TourImageResponse(MediaFile mediaFile)
+    private static UploadMediaResponse ToResponse(MediaFile mediaFile, bool? isPublic)
     {
         var thumbnailResponses = new List<ThumbnailResponse>(mediaFile.Thumbnails.Count);
         foreach (var thumb in mediaFile.Thumbnails)
         {
-            var size = thumb.SizeCode ?? string.Empty;
             thumbnailResponses.Add(new ThumbnailResponse(
                 CreateDeterministicGuid(thumb.StorageKey),
                 thumb.Width,
-                thumb.Height,
-                TourImagePaths.Manage(mediaFile.Id, size)));
+                thumb.Height));
         }
 
         return new UploadMediaResponse(
             mediaFile.Id,
-            TourImagePaths.Manage(mediaFile.Id, TourImageSizes.W1600),
             mediaFile.OriginalFileName,
             mediaFile.ContentType,
             mediaFile.SizeBytes,
@@ -180,32 +173,7 @@ public sealed class UploadMediaCommandHandler(
             mediaFile.UploadedAt,
             mediaFile.Width,
             mediaFile.Height,
-            IsPublic: false);
-    }
-
-    private async Task<UploadMediaResponse> PresignedResponseAsync(MediaFile mediaFile, CancellationToken ct)
-    {
-        var ttl = TimeSpan.FromMinutes(storageOptions.Value.PresignTtlMinutes);
-        var url = await storage.GeneratePresignedUrlAsync(mediaFile.StorageKey, ttl, ct);
-
-        var thumbnailResponses = new List<ThumbnailResponse>(mediaFile.Thumbnails.Count);
-        foreach (var thumb in mediaFile.Thumbnails)
-        {
-            var thumbUrl = await storage.GeneratePresignedUrlAsync(thumb.StorageKey, ttl, ct);
-            var thumbId = CreateDeterministicGuid(thumb.StorageKey);
-            thumbnailResponses.Add(new ThumbnailResponse(thumbId, thumb.Width, thumb.Height, thumbUrl));
-        }
-
-        return new UploadMediaResponse(
-            mediaFile.Id,
-            url,
-            mediaFile.OriginalFileName,
-            mediaFile.ContentType,
-            mediaFile.SizeBytes,
-            thumbnailResponses,
-            mediaFile.UploadedAt,
-            mediaFile.Width,
-            mediaFile.Height);
+            isPublic);
     }
 
     private static Guid CreateDeterministicGuid(string value)

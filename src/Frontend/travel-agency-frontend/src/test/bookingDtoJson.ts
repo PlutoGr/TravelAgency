@@ -59,7 +59,13 @@ export const TOUR_CARD_JSON = `{
   "durationDays": 7,
   "shortDescription": "Кальдера и белые дома",
   "nearestDate": null,
-  "cover": null
+  "coverMediaFileId": "55555555-5555-5555-5555-555555555555",
+  "cover": {
+    "mediaFileId": "55555555-5555-5555-5555-555555555555",
+    "alt": "Санторини",
+    "isCover": true,
+    "sortOrder": 0
+  }
 }`;
 
 export function parseBookingJson(json: string): unknown {

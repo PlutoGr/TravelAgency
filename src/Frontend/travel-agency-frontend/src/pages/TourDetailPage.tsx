@@ -221,7 +221,7 @@ export default function TourDetailPage() {
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-8">
-            <TourGallery images={tour.images} photos={tour.photos} title={tour.title} />
+            <TourGallery images={tour.images} title={tour.title} />
 
             <div>
               {typeLabel && (

@@ -5,6 +5,7 @@ import type { Booking } from '@/types';
 import BookingStatusBadge from './BookingStatusBadge';
 import { bookingTourTitle } from '@/api/bookings';
 import { formatDate } from '@/utils/format';
+import { mediaImageUrl } from '@/utils/media';
 
 interface BookingCardProps {
   booking: Booking;
@@ -24,9 +25,9 @@ export default function BookingCard({ booking }: BookingCardProps) {
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-1 gap-4">
-          {booking.tour?.photos[0] && (
+          {booking.tour?.coverMediaFileId && (
             <img
-              src={booking.tour.photos[0]}
+              src={mediaImageUrl(booking.tour.coverMediaFileId, 'w200')}
               alt={title}
               className="hidden h-16 w-16 flex-shrink-0 rounded-[12px] object-cover sm:block"
             />

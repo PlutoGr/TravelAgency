@@ -8,7 +8,7 @@ public record TourSummaryDto(
     string Country,
     TourType TourType,
     int DurationDays,
-    string? ImageUrl,
+    Guid? CoverMediaFileId,
     decimal? MinPrice,
     string? Currency,
     bool IsActive,

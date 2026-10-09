@@ -3,6 +3,7 @@ import type {
   BookingProposal,
   BookingStatus,
   BookingTourSnapshot,
+  Tour,
 } from '@/types';
 import { apiClient } from './client';
 import { getTourCards, unavailableTour } from './catalog';
@@ -123,16 +124,25 @@ async function withCatalogTour(booking: Booking): Promise<Booking> {
   return withTour ?? { ...booking, tour: unavailableTour(booking.tourId || 'unknown') };
 }
 
+function withUnavailableTours(bookings: Booking[]): Booking[] {
+  return bookings.map((booking) => ({
+    ...booking,
+    tour: unavailableTour(booking.tourId || 'unknown'),
+  }));
+}
+
 async function withCatalogTours(bookings: Booking[]): Promise<Booking[]> {
   const ids = bookings.map((booking) => booking.tourId).filter(Boolean);
-  if (ids.length === 0) {
-    return bookings.map((booking) => ({
-      ...booking,
-      tour: unavailableTour(booking.tourId || 'unknown'),
-    }));
+  if (ids.length === 0) return withUnavailableTours(bookings);
+
+  // Каталог вторичен: его отказ не должен прятать уже загруженные брони.
+  let cards: Tour[] = [];
+  try {
+    cards = await getTourCards(ids);
+  } catch {
+    return withUnavailableTours(bookings);
   }
 
-  const cards = await getTourCards(ids);
   const byId = new Map(cards.map((tour) => [tour.id, tour]));
   return bookings.map((booking) => ({
     ...booking,

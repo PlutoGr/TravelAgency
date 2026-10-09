@@ -17,6 +17,7 @@ import {
   formatMoney,
   formatBookingId,
 } from '@/utils/format';
+import { mediaImageUrl } from '@/utils/media';
 import type { Booking, BookingStatus } from '@/types';
 import {
   getBookingById,
@@ -361,9 +362,9 @@ export default function ManagerBookingDetailPage() {
                   animate={{ opacity: 1, height: 'auto' }}
                   className="mt-3 overflow-hidden rounded-[12px] border border-sand"
                 >
-                  {booking.tour.photos[0] && (
+                  {booking.tour.coverMediaFileId && (
                     <img
-                      src={booking.tour.photos[0]}
+                      src={mediaImageUrl(booking.tour.coverMediaFileId, 'w800')}
                       alt={booking.tour.title}
                       className="h-28 w-full object-cover"
                     />

@@ -36,7 +36,7 @@ public class PublicCatalogMapperTests
         page.Prices.Should().OnlyContain(price => price.PricePerPerson >= 40m);
         page.Prices.Select(price => price.PricePerPerson).Should().NotContain(10m);
         page.Images.Should().NotBeEmpty();
-        page.ImageUrl.Should().Be(PublicMediaUrls.File(page.Images.First(image => image.IsCover).MediaFileId));
+        page.CoverMediaFileId.Should().Be(page.Images.First(image => image.IsCover).MediaFileId);
     }
 
     [Fact]

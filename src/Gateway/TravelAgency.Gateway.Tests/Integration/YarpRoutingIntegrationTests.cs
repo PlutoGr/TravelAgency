@@ -411,19 +411,16 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
     }
 
     [Fact]
-    public async Task Media_GetPresign_WithJwt_ProxiesToMediaPresign()
+    public async Task Media_Presign_IsNotExposedThroughGateway()
     {
-        // Arrange
-        var client = CreateClient(withAuth: true);
+        var anonymous = CreateClient(withAuth: false);
+        var authenticated = CreateClient(withAuth: true);
 
-        // Act
-        var response = await client.GetAsync("/api/v1/media/presign");
+        var get = await anonymous.GetAsync("/api/v1/media/presign");
+        var post = await authenticated.PostAsync("/api/v1/media/presign", new StringContent("{}"));
 
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var path = await GetEchoedPathAsync(response);
-        Assert.Equal("/media/presign", path);
-        Assert.Equal("media-route", (await ReadEchoAsync(response)).RouteId);
+        Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, post.StatusCode);
     }
 
     [Fact]

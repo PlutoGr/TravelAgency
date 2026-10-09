@@ -8,35 +8,23 @@ import ResponsiveTourImage from './ResponsiveTourImage';
 
 interface TourGalleryProps {
   images?: TourImage[];
-  photos?: string[];
   title: string;
 }
 
 type Slide = {
   key: string;
-  mediaFileId?: string;
-  fallbackUrl?: string;
+  mediaFileId: string;
   alt: string;
 };
 
-function slidesFrom(images: TourImage[] | undefined, photos: string[] | undefined, title: string): Slide[] {
-  const fromImages = [...(images ?? [])].sort(
-    (a, b) => Number(b.isCover) - Number(a.isCover) || a.sortOrder - b.sortOrder,
-  );
-  if (fromImages.length > 0) {
-    return fromImages.map((image) => ({
+function slidesFrom(images: TourImage[] | undefined, title: string): Slide[] {
+  return [...(images ?? [])]
+    .filter((image) => image.mediaFileId)
+    .sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.sortOrder - b.sortOrder)
+    .map((image) => ({
       key: image.mediaFileId,
       mediaFileId: image.mediaFileId,
       alt: image.alt || title,
-    }));
-  }
-
-  return (photos ?? [])
-    .filter((photo) => photo && !photo.toLowerCase().includes('minio'))
-    .map((photo, index) => ({
-      key: `${photo}-${index}`,
-      fallbackUrl: photo,
-      alt: `${title}, фото ${index + 1}`,
     }));
 }
 
@@ -60,8 +48,8 @@ function NavButton({
   );
 }
 
-export default function TourGallery({ images, photos, title }: TourGalleryProps) {
-  const slides = slidesFrom(images, photos, title);
+export default function TourGallery({ images, title }: TourGalleryProps) {
+  const slides = slidesFrom(images, title);
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -117,7 +105,6 @@ export default function TourGallery({ images, photos, title }: TourGalleryProps)
             >
               <ResponsiveTourImage
                 mediaFileId={active.mediaFileId}
-                fallbackUrl={active.fallbackUrl}
                 alt={active.alt}
                 variant="gallery"
                 priority
@@ -171,7 +158,6 @@ export default function TourGallery({ images, photos, title }: TourGalleryProps)
               >
                 <ResponsiveTourImage
                   mediaFileId={slide.mediaFileId}
-                  fallbackUrl={slide.fallbackUrl}
                   alt=""
                   variant="thumb"
                   className="h-full w-full object-cover"
@@ -210,7 +196,6 @@ export default function TourGallery({ images, photos, title }: TourGalleryProps)
               >
                 <ResponsiveTourImage
                   mediaFileId={active.mediaFileId}
-                  fallbackUrl={active.fallbackUrl}
                   alt={active.alt}
                   variant="gallery"
                   priority

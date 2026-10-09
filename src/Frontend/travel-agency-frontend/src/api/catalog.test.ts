@@ -24,7 +24,6 @@ describe('catalog API', () => {
         country: 'Switzerland',
         tourType: 'hiking',
         durationDays: 7,
-        imageUrl: 'https://example.com/img.jpg',
       });
 
       expect(result).toEqual({
@@ -40,7 +39,8 @@ describe('catalog API', () => {
         reviewCount: 0,
         dates: [],
         duration: 7,
-        photos: ['https://example.com/img.jpg'],
+        coverMediaFileId: null,
+        photos: [],
         amenities: [],
         included: [],
         notIncluded: [],
@@ -67,7 +67,6 @@ describe('catalog API', () => {
         country: 'Greece',
         tourType: 'cruise',
         durationDays: 10,
-        imageUrl: null,
         description: 'Sail the Aegean.',
         shortDescription: 'Sail the Aegean.',
         price: 2500,
@@ -89,7 +88,6 @@ describe('catalog API', () => {
         country: 'X',
         tourType: 0,
         durationDays: 1,
-        imageUrl: null,
       }).category).toBe('Beach');
 
       expect(catalog.buildTourFromDtoFields({
@@ -98,7 +96,6 @@ describe('catalog API', () => {
         country: 'X',
         tourType: 4,
         durationDays: 1,
-        imageUrl: null,
       }).category).toBe('Adventure');
 
       expect(catalog.buildTourFromDtoFields({
@@ -107,7 +104,6 @@ describe('catalog API', () => {
         country: 'X',
         tourType: 6,
         durationDays: 1,
-        imageUrl: null,
       }).category).toBe('Safari');
     });
 
@@ -118,33 +114,35 @@ describe('catalog API', () => {
         country: 'X',
         tourType: 'custom-type',
         durationDays: 1,
-        imageUrl: null,
       });
       expect(result.category).toBe('custom-type');
     });
 
-    it('returns photos empty when imageUrl is null', () => {
+    it('returns no photos when the tour has no media file id', () => {
       const result = catalog.buildTourFromDtoFields({
         id: 'a',
         title: 'T',
         country: 'X',
         tourType: 'x',
         durationDays: 1,
-        imageUrl: null,
       });
       expect(result.photos).toEqual([]);
+      expect(result.coverMediaFileId).toBeNull();
     });
 
-    it('returns photos with single url when imageUrl is provided', () => {
+    it('builds photo addresses only from media file ids', () => {
+      const fileId = '11111111-1111-1111-1111-111111111111';
       const result = catalog.buildTourFromDtoFields({
         id: 'a',
         title: 'T',
         country: 'X',
         tourType: 'x',
         durationDays: 1,
-        imageUrl: 'https://cdn.example.com/photo.jpg',
+        coverMediaFileId: fileId,
+        images: [{ mediaFileId: fileId, alt: null, isCover: true, sortOrder: 0 }],
       });
-      expect(result.photos).toEqual(['https://cdn.example.com/photo.jpg']);
+      expect(result.coverMediaFileId).toBe(fileId);
+      expect(result.photos).toEqual([`/api/v1/media/files/${fileId}/w800`]);
     });
 
     it('defaults price to 0 when omitted', () => {
@@ -154,7 +152,6 @@ describe('catalog API', () => {
         country: 'X',
         tourType: 'x',
         durationDays: 1,
-        imageUrl: null,
       });
       expect(result.price).toBe(0);
     });
@@ -166,7 +163,6 @@ describe('catalog API', () => {
         country: 'X',
         tourType: 'x',
         durationDays: 1,
-        imageUrl: null,
       });
       expect(result.dates).toEqual([]);
     });
@@ -328,7 +324,8 @@ describe('catalog API', () => {
         country: 'Switzerland',
         tourType: 'hiking',
         durationDays: 7,
-        imageUrl: 'https://example.com/img.jpg',
+        imageUrl: 'https://images.unsplash.com/photo-1?w=800',
+        coverMediaFileId: null,
         minPrice: 1200,
         currency: 'EUR',
         isActive: true,
@@ -360,7 +357,8 @@ describe('catalog API', () => {
             reviewCount: 0,
             dates: [],
             duration: 7,
-            photos: ['https://example.com/img.jpg'],
+            coverMediaFileId: null,
+            photos: [],
             amenities: [],
             included: [],
             notIncluded: [],
@@ -386,7 +384,7 @@ describe('catalog API', () => {
       });
     });
 
-    it('maps TourSummaryDto with null imageUrl and minPrice to Tour', async () => {
+    it('maps TourSummaryDto with null cover and minPrice to Tour', async () => {
       mockApiClient.get.mockResolvedValue({
         data: {
           items: [
@@ -396,7 +394,7 @@ describe('catalog API', () => {
               country: 'France',
               tourType: 'cultural',
               durationDays: 3,
-              imageUrl: null,
+              coverMediaFileId: null,
               minPrice: null,
               currency: null,
               isActive: true,
@@ -417,6 +415,7 @@ describe('catalog API', () => {
         country: 'France',
         duration: 3,
         price: 0,
+        coverMediaFileId: null,
         photos: [],
         category: 'cultural',
       });
@@ -449,7 +448,8 @@ describe('catalog API', () => {
         country: 'Greece',
         tourType: 'cruise',
         durationDays: 10,
-        imageUrl: 'https://example.com/greece.jpg',
+        imageUrl: 'https://images.unsplash.com/photo-greece',
+        coverMediaFileId: null,
         directionId: null,
         isActive: true,
         createdAt: '2025-01-01T00:00:00Z',
@@ -479,7 +479,8 @@ describe('catalog API', () => {
         price: 2500,
         maxTravelers: 20,
         category: 'cruise',
-        photos: ['https://example.com/greece.jpg'],
+        coverMediaFileId: null,
+        photos: [],
       });
       expect(result.dates).toEqual([
         { start: '2025-06-01', end: '2025-06-10' },
@@ -497,7 +498,7 @@ describe('catalog API', () => {
           country: 'Spain',
           tourType: 'cultural',
           durationDays: 5,
-          imageUrl: null,
+          coverMediaFileId: null,
           directionId: null,
           isActive: true,
           createdAt: '2025-01-01T00:00:00Z',
@@ -520,7 +521,7 @@ describe('catalog API', () => {
           country: 'Italy',
           tourType: 'adventure',
           durationDays: 3,
-          imageUrl: null,
+          coverMediaFileId: null,
           directionId: null,
           isActive: true,
           createdAt: '2025-01-01T00:00:00Z',
@@ -651,7 +652,8 @@ describe('catalog API', () => {
           country: 'Мальдивы',
           tourType: 0,
           durationDays: 7,
-          imageUrl: 'http://minio:9000/bucket/photo.jpg',
+          imageUrl: 'http://minio:9000/bucket/photo.jpg?X-Amz-Signature=abc',
+          coverMediaFileId: '11111111-1111-1111-1111-111111111111',
           directionId: null,
           isActive: true,
           createdAt: '2026-01-01T00:00:00Z',
@@ -679,7 +681,7 @@ describe('catalog API', () => {
           images: [
             {
               mediaFileId: '11111111-1111-1111-1111-111111111111',
-              url: '/api/v1/media/files/11111111-1111-1111-1111-111111111111/w800',
+              url: 'http://minio:9000/bucket/photo.jpg?X-Amz-Signature=abc',
               alt: 'Вилла',
               isCover: true,
               sortOrder: 0,
@@ -699,8 +701,13 @@ describe('catalog API', () => {
       expect(result.included).toEqual(['Проживание']);
       expect(result.notIncluded).toEqual(['Виза']);
       expect(result.offers?.[0]?.price).toBe(289000);
-      expect(result.photos[0]).toContain('/w800');
-      expect(result.photos.join(' ')).not.toContain('minio');
+      expect(result.coverMediaFileId).toBe('11111111-1111-1111-1111-111111111111');
+      expect(result.photos).toEqual([
+        '/api/v1/media/files/11111111-1111-1111-1111-111111111111/w800',
+      ]);
+      expect(JSON.stringify(result)).not.toContain('minio');
+      expect(JSON.stringify(result)).not.toContain('X-Amz-');
+      expect(JSON.stringify(result)).not.toContain('unsplash');
     });
   });
 
@@ -711,9 +718,10 @@ describe('catalog API', () => {
           {
             id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             title: 'Снятый тур',
+            coverMediaFileId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
             cover: {
               mediaFileId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-              url: '/api/v1/media/files/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/w800',
+              url: 'https://images.unsplash.com/photo-x',
               alt: 'Обложка',
               isCover: true,
               sortOrder: 0,
@@ -733,7 +741,10 @@ describe('catalog API', () => {
       expect(result[0]?.available).toBe(false);
       expect(result[0]?.title).toBe('Снятый тур');
       expect(result[0]?.priceFrom).toBeNull();
+      expect(result[0]?.coverMediaFileId).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
       expect(result[0]?.images?.[0]?.mediaFileId).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+      expect(JSON.stringify(result)).not.toContain('unsplash');
+      expect(JSON.stringify(result)).not.toContain('http');
     });
 
     it('does not call the API for an empty id list', async () => {
