@@ -345,6 +345,54 @@ describe('dashboard direct entry', () => {
     },
   );
 
+  it('stays on /dashboard/bookings when login finishes before the page-load auth/me 401', async () => {
+    await renderAt('/?auth=login&returnTo=%2Fdashboard%2Fbookings');
+
+    await vi.waitFor(() => {
+      expect(mockGetMe).toHaveBeenCalledOnce();
+      expect(locationText()).toBe('/?returnTo=%2Fdashboard%2Fbookings');
+      expect(document.querySelector('form')).not.toBeNull();
+    });
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+
+    await act(async () => {
+      const email = document.getElementById('email');
+      const password = document.getElementById('пароль');
+      if (!(email instanceof HTMLInputElement) || !(password instanceof HTMLInputElement)) {
+        throw new Error('login form is not open');
+      }
+      setNativeValue(email, 'client@test.com');
+      setNativeValue(password, 'secret');
+    });
+
+    const form = document.querySelector('form');
+    if (!form) throw new Error('login form is not open');
+    // The submit button is disabled while the page-load check is in flight.
+    // A fast login still runs the same handler; dispatch the submit event so
+    // the test can finish login before auth/me answers.
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().user).toEqual(clientUser);
+      expect(locationText()).toBe('/dashboard/bookings');
+    });
+
+    await act(async () => {
+      rejectMe({ response: { status: 401 } });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(useAuthStore.getState().user).toEqual(clientUser);
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    expect(locationText()).toBe('/dashboard/bookings');
+    expect(document.body.textContent).toContain('Мои бронирования');
+    const arrived = seenLocations.lastIndexOf('/dashboard/bookings');
+    expect(arrived).toBeGreaterThanOrEqual(0);
+    expect(seenLocations.slice(arrived).every((href) => href === '/dashboard/bookings')).toBe(true);
+  });
+
   it('sends a logged-in client away from a manager route only after auth/me resolves', async () => {
     await renderAt('/manager');
 
