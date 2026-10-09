@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { getDestinations } from '@/api/catalog';
 import { uploadTourImage } from '@/api/mediaUpload';
@@ -33,6 +33,7 @@ import {
   emptyWizardForm,
   formFromTour,
   missingPublishCodes,
+  resolveWizardStep,
   validateWizardStep,
   type WizardForm,
   type WizardImage,
@@ -122,11 +123,20 @@ function imagesInput(form: WizardForm): TourImageInput[] {
   }));
 }
 
+function withStep(pathname: string, current: URLSearchParams, step: number): string {
+  const params = new URLSearchParams(current);
+  params.set('step', String(step));
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 export default function TourWizard({ tourId, initialStep = 1 }: TourWizardProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const step = resolveWizardStep(searchParams.get('step'), initialStep);
   const [tour, setTour] = useState<ManagedTour | null>(null);
   const [form, setForm] = useState<WizardForm>(emptyWizardForm);
-  const [step, setStep] = useState(Math.min(7, Math.max(1, initialStep)));
   const [loading, setLoading] = useState(Boolean(tourId));
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<ManageFailure | null>(null);
@@ -168,6 +178,19 @@ export default function TourWizard({ tourId, initialStep = 1 }: TourWizardProps)
     };
   }, [tourId]);
 
+  useEffect(() => {
+    const raw = searchParams.get('step');
+    const resolved = resolveWizardStep(raw, initialStep);
+    if (raw === String(resolved)) return;
+    navigate(withStep(location.pathname, searchParams, resolved), { replace: true });
+  }, [searchParams, initialStep, location.pathname, navigate]);
+
+  function moveToStep(next: number, history: 'push' | 'replace') {
+    const clamped = resolveWizardStep(String(next));
+    if (searchParams.get('step') === String(clamped)) return;
+    navigate(withStep(location.pathname, searchParams, clamped), { replace: history === 'replace' });
+  }
+
   async function persist(current: number): Promise<ManagedTour> {
     if (current === 1) {
       if (!tour) {
@@ -191,10 +214,19 @@ export default function TourWizard({ tourId, initialStep = 1 }: TourWizardProps)
   function applySaved(saved: ManagedTour, nextStep: number) {
     setTour(saved);
     setForm(formFromTour(saved));
-    setStep(nextStep);
+    const clamped = resolveWizardStep(String(nextStep));
     if (!tourId || tourId !== saved.id) {
-      navigate(`/manager/tours/${saved.id}?step=${nextStep}`, { replace: true });
+      const created = `/manager/tours/${saved.id}`;
+      if (clamped === step) {
+        navigate(withStep(created, searchParams, clamped), { replace: true });
+        return;
+      }
+      // /new не должен оставаться в истории: replace на тот же шаг с id, затем push следующего.
+      navigate(withStep(created, searchParams, step), { replace: true });
+      navigate(withStep(created, searchParams, clamped), { replace: false });
+      return;
     }
+    moveToStep(clamped, clamped === step ? 'replace' : 'push');
   }
 
   async function saveAnd(next: number | null) {
@@ -349,7 +381,7 @@ export default function TourWizard({ tourId, initialStep = 1 }: TourWizardProps)
                     aria-current={current ? 'step' : undefined}
                     disabled={number > step || saving}
                     onClick={() => {
-                      if (number < step) setStep(number);
+                      if (number < step) moveToStep(number, 'push');
                     }}
                     className={
                       current
@@ -411,7 +443,7 @@ export default function TourWizard({ tourId, initialStep = 1 }: TourWizardProps)
             )}
 
             <div className="flex flex-col-reverse gap-3 border-t border-sand pt-4 sm:flex-row sm:justify-between">
-              <Button variant="ghost" onClick={() => setStep((value) => Math.max(1, value - 1))} disabled={step === 1 || saving}>
+              <Button variant="ghost" onClick={() => moveToStep(step - 1, 'push')} disabled={step === 1 || saving}>
                 Назад
               </Button>
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -991,10 +1023,16 @@ function ReviewStep({
           </ul>
         )}
       </div>
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={onPublish} disabled={saving} isLoading={saving}>
-          Опубликовать
-        </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        {status === 'Published' ? (
+          <p role="status" className="text-sm font-medium text-dark">
+            {tourStatusLabel(status)}
+          </p>
+        ) : (
+          <Button onClick={onPublish} disabled={saving} isLoading={saving}>
+            Опубликовать
+          </Button>
+        )}
         {status === 'Published' && (
           <Button variant="secondary" onClick={onUnpublish} disabled={saving}>
             Снять с публикации

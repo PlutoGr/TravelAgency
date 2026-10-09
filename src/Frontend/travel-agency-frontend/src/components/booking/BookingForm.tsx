@@ -233,11 +233,14 @@ export default function BookingForm({
                 <label className="mb-1.5 block text-xs font-medium text-primary">
                   Пожелания и комментарии
                 </label>
+                <p className="mb-2 text-xs text-warm-gray">
+                  Если важны даты поездки, напишите их здесь. Отдельных полей дат пока нет.
+                </p>
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={5}
-                  placeholder="Расскажите о ваших пожеланиях..."
+                  placeholder="Например: хочу поехать 1–8 июня, двое взрослых"
                   className="w-full rounded-[12px] border border-sand bg-white px-4 py-3 text-dark outline-none transition-all placeholder:text-warm-gray focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </div>

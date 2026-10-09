@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { Modal, Tabs, Input, Button } from '@/components/ui';
+import { readReturnToParam, resolveReturnTo } from '@/utils/safeReturnTo';
 
 const AUTH_TABS = [
   { id: 'login', label: 'Вход' },
@@ -14,9 +15,15 @@ const AUTH_TABS = [
 
 export default function AuthModal() {
   const navigate = useNavigate();
-  const { isAuthModalOpen, authModalTab, authReturnTo, closeAuthModal, openAuthModal } =
-    useUIStore();
+  const [searchParams] = useSearchParams();
+  const returnToRaw = searchParams.get('returnTo');
+  const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal } = useUIStore();
   const { login, register, isLoading } = useAuthStore();
+
+  function followReturnTo() {
+    if (returnToRaw == null) return;
+    navigate(resolveReturnTo(readReturnToParam(returnToRaw)));
+  }
 
   return (
     <Modal isOpen={isAuthModalOpen} onClose={closeAuthModal} size="sm">
@@ -42,9 +49,7 @@ export default function AuthModal() {
                     await login(email, password);
                     toast.success('Добро пожаловать!');
                     closeAuthModal();
-                    if (authReturnTo) {
-                      navigate(authReturnTo);
-                    }
+                    followReturnTo();
                   } catch {
                     toast.error('Неверный email или пароль');
                   }
@@ -66,9 +71,7 @@ export default function AuthModal() {
                     await register(data);
                     toast.success('Регистрация прошла успешно!');
                     closeAuthModal();
-                    if (authReturnTo) {
-                      navigate(authReturnTo);
-                    }
+                    followReturnTo();
                   } catch (err) {
                     const messages = extractValidationErrors(err);
                     if (messages.length > 0) {
