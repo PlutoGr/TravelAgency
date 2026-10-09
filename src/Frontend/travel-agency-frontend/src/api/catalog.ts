@@ -7,7 +7,7 @@ import type {
   TourImage,
   TourOffer,
 } from '@/types';
-import { mediaFileUrl, mediaIdFromUrl, isSafePhotoUrl } from '@/utils/media';
+import { mediaImageUrl } from '@/utils/media';
 import { mealPlanLabel } from '@/utils/tourLabels';
 import { apiClient } from './client';
 import toast from 'react-hot-toast';
@@ -66,7 +66,7 @@ interface BuildTourParams {
   country: string;
   tourType: string | number;
   durationDays: number;
-  imageUrl: string | null;
+  coverMediaFileId?: string | null;
   description?: string;
   shortDescription?: string;
   price?: number;
@@ -88,9 +88,16 @@ interface BuildTourParams {
 
 /** Builds a Tour from common DTO fields; varying parts passed as overrides. Exported for testing. */
 export function buildTourFromDtoFields(params: BuildTourParams): Tour {
-  const images = params.images ?? [];
-  const photosFromMedia = images.map((image) => mediaFileUrl(image.mediaFileId, 'w800'));
-  const fallbackPhoto = isSafePhotoUrl(params.imageUrl) ? [params.imageUrl] : [];
+  const images = params.images?.length
+    ? params.images
+    : params.coverMediaFileId
+      ? [{ mediaFileId: params.coverMediaFileId, alt: null, isCover: true, sortOrder: 0 }]
+      : [];
+  const coverMediaFileId = params.coverMediaFileId
+    ?? images.find((image) => image.isCover)?.mediaFileId
+    ?? images[0]?.mediaFileId
+    ?? null;
+  const photos = images.map((image) => mediaImageUrl(image.mediaFileId, 'w800'));
 
   return {
     id: params.id,
@@ -105,7 +112,8 @@ export function buildTourFromDtoFields(params: BuildTourParams): Tour {
     reviewCount: 0,
     dates: params.dates ?? [],
     duration: params.durationDays,
-    photos: photosFromMedia.length > 0 ? photosFromMedia : fallbackPhoto,
+    coverMediaFileId,
+    photos,
     amenities: [],
     included: params.included ?? [],
     notIncluded: params.notIncluded ?? [],
@@ -127,7 +135,6 @@ export function buildTourFromDtoFields(params: BuildTourParams): Tour {
 
 interface PublicPreviewDto {
   mediaFileId?: string;
-  url?: string | null;
   alt?: string | null;
   isCover?: boolean;
   sortOrder?: number;
@@ -139,7 +146,7 @@ interface TourSummaryDto {
   country: string;
   tourType: string | number;
   durationDays: number;
-  imageUrl: string | null;
+  coverMediaFileId?: string | null;
   minPrice: number | null;
   currency: string | null;
   isActive: boolean;
@@ -153,6 +160,7 @@ interface TourSummaryDto {
 interface PublicTourCardDto {
   id: string;
   title: string;
+  coverMediaFileId?: string | null;
   cover?: PublicPreviewDto | null;
   available: boolean;
   priceFrom?: number | null;
@@ -193,7 +201,7 @@ interface TourDto {
   country: string;
   tourType: string | number;
   durationDays: number;
-  imageUrl: string | null;
+  coverMediaFileId?: string | null;
   directionId: string | null;
   isActive: boolean;
   createdAt: string;
@@ -212,7 +220,7 @@ interface TourDto {
 function mapImages(previews?: PublicPreviewDto[] | null): TourImage[] {
   const images: TourImage[] = [];
   for (const preview of previews ?? []) {
-    const mediaFileId = preview.mediaFileId || mediaIdFromUrl(preview.url);
+    const mediaFileId = preview.mediaFileId;
     if (!mediaFileId) continue;
     images.push({
       mediaFileId,
@@ -271,7 +279,7 @@ function mapTourSummaryToTour(dto: TourSummaryDto): Tour {
     country: dto.country,
     tourType: dto.tourType,
     durationDays: dto.durationDays,
-    imageUrl: images.length > 0 ? null : dto.imageUrl,
+    coverMediaFileId: dto.coverMediaFileId,
     shortDescription: dto.shortDescription ?? '',
     price: priceFrom ?? 0,
     priceFrom,
@@ -291,7 +299,7 @@ export function mapPublicCardToTour(dto: PublicTourCardDto): Tour {
     country: dto.country ?? '',
     tourType: '',
     durationDays: dto.durationDays ?? 0,
-    imageUrl: null,
+    coverMediaFileId: dto.coverMediaFileId ?? dto.cover?.mediaFileId ?? null,
     shortDescription: dto.shortDescription ?? '',
     price: dto.priceFrom ?? 0,
     priceFrom: dto.priceFrom ?? null,
@@ -310,7 +318,7 @@ export function unavailableTour(id: string): Tour {
     country: '',
     tourType: '',
     durationDays: 0,
-    imageUrl: null,
+    coverMediaFileId: null,
     available: false,
   });
 }
@@ -329,7 +337,7 @@ function mapTourDtoToTour(dto: TourDto): Tour {
     country: dto.country,
     tourType: dto.tourType,
     durationDays: dto.durationDays,
-    imageUrl: images.length > 0 ? null : dto.imageUrl,
+    coverMediaFileId: dto.coverMediaFileId,
     description: desc,
     shortDescription: toShortDescription(desc, dto.shortDescription),
     price: priceFrom ?? 0,

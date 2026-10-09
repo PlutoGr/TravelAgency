@@ -5,20 +5,11 @@ using TravelAgency.Catalog.Domain.Enums;
 
 namespace TravelAgency.Catalog.Application.Mappings;
 
-public static class PublicMediaUrls
-{
-    public const string CardSize = "w800";
-
-    public static string File(Guid mediaFileId, string size = CardSize) =>
-        $"/api/v1/media/files/{mediaFileId:D}/{size}";
-}
-
 public static class PublicCatalogMapper
 {
     public static TourSummaryDto ToSummary(Tour tour, DateTime utcNow)
     {
         var previews = ToPreviews(tour.Images, PublicCatalogLimits.MaxListPreviews);
-        var cover = previews.FirstOrDefault(preview => preview.IsCover) ?? previews.FirstOrDefault();
         var priceFrom = PublicCatalogPricing.PriceFrom(tour.Offers, utcNow);
 
         return new TourSummaryDto(
@@ -27,7 +18,7 @@ public static class PublicCatalogMapper
             tour.Country,
             tour.TourType,
             tour.DurationDays,
-            cover?.Url ?? tour.ImageUrl,
+            CoverMediaFileId(previews),
             priceFrom,
             PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, utcNow),
             tour.Status == TourStatus.Published,
@@ -41,7 +32,6 @@ public static class PublicCatalogMapper
     public static PublicTourDto ToPublicTour(Tour tour, DateTime utcNow)
     {
         var images = ToPreviews(tour.Images, limit: null);
-        var cover = images.FirstOrDefault(image => image.IsCover) ?? images.FirstOrDefault();
 
         return new PublicTourDto(
             tour.Id,
@@ -52,7 +42,7 @@ public static class PublicCatalogMapper
             tour.Country,
             tour.TourType,
             tour.DurationDays,
-            cover?.Url ?? tour.ImageUrl,
+            CoverMediaFileId(images),
             tour.DirectionId,
             tour.Status == TourStatus.Published,
             tour.CreatedAt,
@@ -93,6 +83,7 @@ public static class PublicCatalogMapper
             return new PublicTourCardDto(
                 tour.Id,
                 tour.Title,
+                cover?.MediaFileId,
                 cover,
                 false,
                 null,
@@ -106,6 +97,7 @@ public static class PublicCatalogMapper
         return new PublicTourCardDto(
             tour.Id,
             tour.Title,
+            cover?.MediaFileId,
             cover,
             true,
             PublicCatalogPricing.PriceFrom(tour.Offers, utcNow),
@@ -132,8 +124,16 @@ public static class PublicCatalogMapper
     public static PublicTourPreviewDto ToPreview(TourImage image) =>
         new(
             image.MediaFileId,
-            PublicMediaUrls.File(image.MediaFileId),
             image.Alt,
             image.IsCover,
             image.SortOrder);
+
+    /// <summary>
+    /// Обложка есть только если в Media лежит фото. Колонка Tour.ImageUrl в ответ не попадает.
+    /// </summary>
+    private static Guid? CoverMediaFileId(IReadOnlyList<PublicTourPreviewDto> photos)
+    {
+        var cover = photos.FirstOrDefault(photo => photo.IsCover) ?? photos.FirstOrDefault();
+        return cover?.MediaFileId;
+    }
 }

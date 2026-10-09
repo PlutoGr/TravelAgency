@@ -3,6 +3,7 @@ import { Edit3, Trash2, Star, MapPin, Flame } from 'lucide-react';
 import type { Tour } from '@/types';
 import { Card, Badge } from '@/components/ui';
 import { formatPrice } from '@/utils/format';
+import { mediaImageUrl } from '@/utils/media';
 
 interface TourMobileCardProps {
   tour: Tour;
@@ -25,9 +26,9 @@ export default function TourMobileCard({
     >
       <Card className="overflow-hidden">
         <div className="flex gap-3 p-4">
-          {tour.photos?.[0] ? (
+          {tour.coverMediaFileId ? (
             <img
-              src={tour.photos[0]}
+              src={mediaImageUrl(tour.coverMediaFileId, 'w200')}
               alt={tour.title}
               className="h-20 w-20 shrink-0 rounded-[12px] object-cover"
             />

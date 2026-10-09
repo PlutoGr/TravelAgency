@@ -6,6 +6,7 @@ import type { Tour } from '@/types';
 import { Button } from '@/components/ui';
 import { createBooking } from '@/api/bookings';
 import { getTours, getTourById } from '@/api/catalog';
+import { mediaImageUrl } from '@/utils/media';
 
 interface BookingFormProps {
   /** Pre-selected tour (e.g. from tour detail page) */
@@ -192,9 +193,9 @@ export default function BookingForm({
                           : 'border-sand hover:bg-cream'
                       }`}
                     >
-                      {tour.photos[0] && (
+                      {tour.coverMediaFileId && (
                         <img
-                          src={tour.photos[0]}
+                          src={mediaImageUrl(tour.coverMediaFileId, 'w200')}
                           alt={tour.title}
                           className="h-14 w-14 shrink-0 rounded-lg object-cover"
                         />

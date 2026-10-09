@@ -3,7 +3,6 @@ import { resolveTourMedia, type MediaVariant } from '@/utils/media';
 
 interface ResponsiveTourImageProps {
   mediaFileId?: string | null;
-  fallbackUrl?: string | null;
   alt: string;
   variant: MediaVariant;
   className?: string;
@@ -13,14 +12,13 @@ interface ResponsiveTourImageProps {
 
 export default function ResponsiveTourImage({
   mediaFileId,
-  fallbackUrl,
   alt,
   variant,
   className,
   priority = false,
   onLoad,
 }: ResponsiveTourImageProps) {
-  const media = resolveTourMedia({ mediaFileId, fallbackUrl }, variant);
+  const media = resolveTourMedia(mediaFileId, variant);
   if (!media) {
     return <div className={clsx('bg-sand', className)} aria-hidden />;
   }

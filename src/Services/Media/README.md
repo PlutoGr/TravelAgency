@@ -85,7 +85,7 @@ dotnet test src/Services/Media/TravelAgency.Media.IntegrationTests/
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| POST | `/media/upload` | Загрузка файла (multipart/form-data, JWT) |
+| POST | `/media/upload` | Загрузка файла (multipart/form-data, JWT). Ответ: id и метаданные, без `url` |
 | GET | `/media/{id}` | Скачивание файла |
 | POST | `/media/presign` | Генерация presigned URL (JWT) |
 | DELETE | `/media/{id}` | Удаление (только владелец, JWT) |
@@ -105,7 +105,7 @@ TravelAgency.Media.IntegrationTests/
 
 ## Key Features
 
-- **Upload:** multipart, валидация MIME и размера, автогенерация превью для изображений
-- **Presigned URLs:** безопасный доступ без проксирования
+- **Upload:** multipart, валидация MIME и размера, автогенерация превью для изображений. В ответе нет адреса хранилища: клиент строит ссылку по id.
+- **Presign:** `POST /media/presign` остаётся на самом сервисе, через Gateway маршрут не публикуется.
 - **Auth:** JWT, роли (Client, Manager, Admin), удаление только владельцем
 - **Observability:** Serilog, OpenTelemetry, Correlation ID, health checks

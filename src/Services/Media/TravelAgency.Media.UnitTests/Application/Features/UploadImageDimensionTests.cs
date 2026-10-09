@@ -116,7 +116,6 @@ public class UploadImageDimensionTests
             new ImageProcessingService(),
             _repository,
             _currentUser,
-            Options.Create(new StorageSettings { PresignTtlMinutes = 15 }),
             Options.Create(settings));
     }
 

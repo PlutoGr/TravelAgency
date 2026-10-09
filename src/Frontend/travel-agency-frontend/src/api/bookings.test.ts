@@ -239,6 +239,47 @@ describe('bookings API', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('keeps bookings and marks tours unavailable when the catalog rejects', async () => {
+      mockApiClient.get.mockImplementation((url: string) => {
+        if (String(url).startsWith('/catalog/tours/cards')) {
+          return Promise.reject(new Error('catalog down'));
+        }
+        return Promise.resolve({
+          data: [
+            { ...baseBookingDto, id: 'b1', tourId: 't1' },
+            { ...baseBookingDto, id: 'b2', tourId: 't2', comment: 'Вторая заявка' },
+          ],
+        });
+      });
+
+      const result = await bookings.getMyBookings();
+
+      expect(result).toHaveLength(2);
+      expect(result.map((booking) => booking.tour?.title)).toEqual([
+        'Тур недоступен',
+        'Тур недоступен',
+      ]);
+      expect(result[1]?.comment).toBe('Вторая заявка');
+    });
+
+    it('marks only ids missing from a partial catalog result as unavailable', async () => {
+      installGet(
+        [
+          { ...baseBookingDto, id: 'b1', tourId: 't1' },
+          { ...baseBookingDto, id: 'b2', tourId: 't-missing' },
+        ],
+        [catalogCard],
+      );
+
+      const result = await bookings.getMyBookings();
+
+      expect(result.find((booking) => booking.id === 'b1')?.tour?.title).toBe(
+        'Солнечная Греция — Санторини',
+      );
+      expect(result.find((booking) => booking.id === 'b2')?.tour?.title).toBe('Тур недоступен');
+      expect(result.find((booking) => booking.id === 'b2')?.tour?.available).toBe(false);
+    });
   });
 
   describe('getBookingById', () => {
@@ -260,6 +301,21 @@ describe('bookings API', () => {
       mockApiClient.get.mockRejectedValue(new Error('Not found'));
 
       await expect(bookings.getBookingById('nonexistent')).rejects.toThrow('Not found');
+    });
+
+    it('returns the booking with «Тур недоступен» when the catalog rejects', async () => {
+      mockApiClient.get.mockImplementation((url: string) => {
+        if (String(url).startsWith('/catalog/tours/cards')) {
+          return Promise.reject(new Error('catalog down'));
+        }
+        return Promise.resolve({ data: baseBookingDto });
+      });
+
+      const result = await bookings.getBookingById('b1');
+
+      expect(result.id).toBe('b1');
+      expect(result.comment).toBe('Test comment');
+      expect(result.tour?.title).toBe('Тур недоступен');
     });
   });
 
@@ -423,6 +479,42 @@ describe('bookings API', () => {
       });
       expect(result.map((booking) => booking.id)).toEqual(['b1']);
       expect(mockApiClient.get).toHaveBeenCalledWith('/bookings');
+    });
+
+    it('keeps manager bookings when the catalog rejects', async () => {
+      mockApiClient.get.mockImplementation((url: string) => {
+        if (String(url).startsWith('/catalog/tours/cards')) {
+          return Promise.reject(new Error('catalog down'));
+        }
+        return Promise.resolve({
+          data: [
+            { ...baseBookingDto, id: 'b1', tourId: 't1', clientName: 'Анна' },
+            { ...baseBookingDto, id: 'b2', tourId: 't-missing', clientName: 'Борис' },
+          ],
+        });
+      });
+
+      const result = await bookings.getAllBookings();
+
+      expect(result.map((booking) => booking.clientName)).toEqual(['Анна', 'Борис']);
+      expect(result.every((booking) => booking.tour?.title === 'Тур недоступен')).toBe(true);
+    });
+
+    it('marks only missing ids as unavailable in a partial catalog result', async () => {
+      installGet(
+        [
+          { ...baseBookingDto, id: 'b1', tourId: 't1' },
+          { ...baseBookingDto, id: 'b2', tourId: 't-missing' },
+        ],
+        [catalogCard],
+      );
+
+      const result = await bookings.getAllBookings();
+
+      expect(result.find((booking) => booking.id === 'b1')?.tour?.title).toBe(
+        'Солнечная Греция — Санторини',
+      );
+      expect(result.find((booking) => booking.id === 'b2')?.tour?.title).toBe('Тур недоступен');
     });
   });
 });

@@ -4,6 +4,7 @@ import TourCatalogPage from './TourCatalogPage';
 import { getDestinations, getTours } from '@/api/catalog';
 import { sampleTour } from '@/test/sampleTour';
 import { renderPage } from '@/test/render';
+import { mediaImageUrl } from '@/utils/media';
 
 vi.mock('@/api/catalog', () => ({
   getTours: vi.fn(),
@@ -33,6 +34,7 @@ describe('TourCatalogPage', () => {
         sampleTour({
           id: 'tour-2',
           title: 'Бали — остров богов',
+          coverMediaFileId: '22222222-2222-2222-2222-222222222222',
           images: [
             {
               mediaFileId: '22222222-2222-2222-2222-222222222222',
@@ -41,7 +43,7 @@ describe('TourCatalogPage', () => {
               sortOrder: 0,
             },
           ],
-          photos: ['/api/v1/media/files/22222222-2222-2222-2222-222222222222/w800'],
+          photos: ['http://minio:9000/bucket/bali.jpg?X-Amz-Signature=abc'],
         }),
       ],
       total: 2,
@@ -54,11 +56,13 @@ describe('TourCatalogPage', () => {
     expect(screen.getAllByText(/от\s*289/).length).toBeGreaterThan(0);
 
     const cover = screen.getByRole('img', { name: 'Террасы' });
-    expect(cover).toHaveAttribute('src', expect.stringContaining('/w800'));
+    expect(cover).toHaveAttribute('src', mediaImageUrl('22222222-2222-2222-2222-222222222222', 'w800'));
     expect(cover.getAttribute('srcset')).toContain('w200');
     expect(cover.getAttribute('srcset')).toContain('w1600');
     expect(cover).toHaveAttribute('loading', 'lazy');
-    expect(cover.getAttribute('src')).not.toContain('minio');
+    expect(document.body.innerHTML).not.toContain('minio');
+    expect(document.body.innerHTML).not.toContain('X-Amz-');
+    expect(document.body.innerHTML).not.toContain('unsplash');
   });
 
   it('shows an error when the catalog API fails', async () => {

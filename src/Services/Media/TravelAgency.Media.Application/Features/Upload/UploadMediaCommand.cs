@@ -12,7 +12,6 @@ public sealed record UploadMediaCommand(
 
 public sealed record UploadMediaResponse(
     Guid Id,
-    string Url,
     string FileName,
     string ContentType,
     long SizeBytes,
@@ -23,4 +22,4 @@ public sealed record UploadMediaResponse(
     bool? IsPublic = null
 );
 
-public sealed record ThumbnailResponse(Guid Id, int Width, int Height, string Url);
+public sealed record ThumbnailResponse(Guid Id, int Width, int Height);

@@ -2,7 +2,6 @@ import { apiClient } from './client';
 
 export interface UploadedTourImage {
   id: string;
-  url?: string;
   width?: number | null;
   height?: number | null;
 }

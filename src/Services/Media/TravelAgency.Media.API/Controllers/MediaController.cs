@@ -15,7 +15,8 @@ namespace TravelAgency.Media.API.Controllers;
 public sealed class MediaController(IMediator mediator) : ControllerBase
 {
     /// <summary>
-    /// Upload a file. Returns the media ID and a presigned URL.
+    /// Upload a file. Returns the media id and metadata, without a storage address.
+    /// The caller builds /api/v1/media/files/{id}/{size} or the manage path for a draft.
     /// Supports images (JPEG, PNG, WebP, GIF) and PDF.
     /// Thumbnails are auto-generated for images.
     /// </summary>

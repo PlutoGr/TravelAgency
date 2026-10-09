@@ -3,6 +3,7 @@ import { Edit3, Trash2, Star, MapPin, Flame } from 'lucide-react';
 import type { Tour } from '@/types';
 import { Badge } from '@/components/ui';
 import { formatPrice } from '@/utils/format';
+import { mediaImageUrl } from '@/utils/media';
 
 interface TourTableRowProps {
   tour: Tour;
@@ -25,9 +26,9 @@ export default function TourTableRow({
       className="border-b border-sand/60 transition-colors last:border-0 hover:bg-cream/40"
     >
       <td className="px-5 py-3">
-        {tour.photos?.[0] ? (
+        {tour.coverMediaFileId ? (
           <img
-            src={tour.photos[0]}
+            src={mediaImageUrl(tour.coverMediaFileId, 'w200')}
             alt={tour.title}
             className="h-12 w-16 rounded-lg object-cover"
           />

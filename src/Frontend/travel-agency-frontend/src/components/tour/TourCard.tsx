@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { formatDate, formatFromMoney } from '@/utils/format';
 import { isTourAvailable, tourTypeLabel } from '@/utils/tourLabels';
+import { coverMediaFileId } from '@/utils/media';
 import ResponsiveTourImage from './ResponsiveTourImage';
 
 interface TourCardProps {
@@ -18,7 +19,12 @@ interface TourCardProps {
 }
 
 function coverOf(tour: Tour): TourImage | undefined {
-  return tour.images?.find((image) => image.isCover) ?? tour.images?.[0];
+  const id = coverMediaFileId(tour);
+  if (!id) return undefined;
+  return tour.images?.find((image) => image.mediaFileId === id)
+    ?? tour.images?.find((image) => image.isCover)
+    ?? tour.images?.[0]
+    ?? { mediaFileId: id, alt: null, isCover: true, sortOrder: 0 };
 }
 
 export default function TourCard({ tour, priority = false }: TourCardProps) {
@@ -80,7 +86,6 @@ export default function TourCard({ tour, priority = false }: TourCardProps) {
             />
             <ResponsiveTourImage
               mediaFileId={cover?.mediaFileId}
-              fallbackUrl={tour.photos[0]}
               alt={cover?.alt || tour.title}
               variant="card"
               priority={priority}
@@ -92,7 +97,6 @@ export default function TourCard({ tour, priority = false }: TourCardProps) {
           <div className="block h-full">
             <ResponsiveTourImage
               mediaFileId={cover?.mediaFileId}
-              fallbackUrl={tour.photos[0]}
               alt={cover?.alt || tour.title}
               variant="card"
               onLoad={() => setImgLoaded(true)}

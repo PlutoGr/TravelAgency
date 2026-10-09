@@ -46,10 +46,16 @@ public class UploadTests : IClassFixture<CustomWebApplicationFactory>
         var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var body = await response.Content.ReadFromJsonAsync<UploadMediaResponse>();
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().NotContain("minio");
+        json.Should().NotContain("X-Amz-");
+        json.Should().NotContain("unsplash");
+        json.Should().NotContain("http://");
+        json.Should().NotContain("https://");
+        json.Should().NotContain("\"url\"");
+        var body = System.Text.Json.JsonSerializer.Deserialize<UploadMediaResponse>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
         body.Should().NotBeNull();
         body!.Id.Should().NotBeEmpty();
-        body.Url.Should().NotBeNullOrEmpty();
         body.FileName.Should().Be("photo.jpg");
         body.ContentType.Should().Be("image/jpeg");
     }

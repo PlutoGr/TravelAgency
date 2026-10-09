@@ -20,6 +20,13 @@ public static class YarpExtensions
 
     public static WebApplication MapGatewayYarp(this WebApplication app)
     {
+        // POST /media/presign отдаёт адрес хранилища. Снаружи его никто не вызывает
+        // (фронт и другие сервисы ходят в файлы по id), поэтому Gateway маршрут не публикует.
+        app.MapMethods(
+            "/api/v1/media/presign",
+            [HttpMethods.Get, HttpMethods.Post, HttpMethods.Put, HttpMethods.Delete],
+            () => Results.NotFound());
+
         app.MapReverseProxy();
         return app;
     }

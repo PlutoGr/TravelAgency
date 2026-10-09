@@ -19,11 +19,6 @@ public class UploadMediaCommandHandlerTests
     private readonly IMediaFileRepository _repository = Substitute.For<IMediaFileRepository>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
 
-    private readonly StorageSettings _storageSettings = new()
-    {
-        PresignTtlMinutes = 60
-    };
-
     private readonly UploadSettings _uploadSettings = new()
     {
         MaxFileSizeBytes = 10 * 1024 * 1024,
@@ -44,7 +39,6 @@ public class UploadMediaCommandHandlerTests
             _imageProcessor,
             _repository,
             _currentUser,
-            Options.Create(_storageSettings),
             Options.Create(_uploadSettings));
     }
 
@@ -53,17 +47,15 @@ public class UploadMediaCommandHandlerTests
     {
         var fileContent = new MemoryStream([1, 2, 3]);
         var command = new UploadMediaCommand(fileContent, "document.pdf", "application/pdf", 3);
-        var expectedUrl = "https://storage/document.pdf?signed";
 
         _imageProcessor.IsImage("application/pdf").Returns(false);
         _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns(expectedUrl);
+            .Returns("http://minio:9000/media/document.pdf?X-Amz-Signature=abc");
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.Should().NotBeNull();
         result.Id.Should().NotBe(Guid.Empty);
-        result.Url.Should().Be(expectedUrl);
         result.FileName.Should().Be("document.pdf");
         result.ContentType.Should().Be("application/pdf");
         result.SizeBytes.Should().Be(3);
@@ -78,8 +70,6 @@ public class UploadMediaCommandHandlerTests
         var command = new UploadMediaCommand(fileContent, "photo.jpg", "image/jpeg", 100);
 
         SetupRasterImage("image/jpeg", 1600, 900);
-        _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns("https://storage/signed-url");
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -96,8 +86,6 @@ public class UploadMediaCommandHandlerTests
         var command = new UploadMediaCommand(fileContent, "photo.jpg", "image/jpeg", 100);
 
         SetupRasterImage("image/jpeg", 1600, 900);
-        _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns("https://storage/signed");
 
         await _handler.Handle(command, CancellationToken.None);
 
@@ -113,8 +101,6 @@ public class UploadMediaCommandHandlerTests
         var command = new UploadMediaCommand(fileContent, "file.pdf", "application/pdf", 3);
 
         _imageProcessor.IsImage("application/pdf").Returns(false);
-        _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns("https://storage/signed");
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -133,8 +119,6 @@ public class UploadMediaCommandHandlerTests
         var command = new UploadMediaCommand(fileContent, "file.pdf", "application/pdf", 1);
 
         _imageProcessor.IsImage("application/pdf").Returns(false);
-        _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns("https://url");
 
         await _handler.Handle(command, CancellationToken.None);
 
@@ -152,8 +136,6 @@ public class UploadMediaCommandHandlerTests
         _imageProcessor.IsImage("application/pdf").Returns(false);
         _storage.UploadAsync(Arg.Any<Stream>(), Arg.Do<string>(k => capturedKey = k), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(string.Empty));
-        _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns("https://url");
 
         await _handler.Handle(command, CancellationToken.None);
 
@@ -162,19 +144,24 @@ public class UploadMediaCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ThumbnailResponses_HavePresignedUrls()
+    public async Task Handle_ThumbnailResponses_HaveDimensionsWithoutStorageAddress()
     {
         var fileContent = new MemoryStream(new byte[100]);
         var command = new UploadMediaCommand(fileContent, "photo.jpg", "image/jpeg", 100);
-        var thumbUrl = "https://storage/thumb-signed";
 
         SetupRasterImage("image/jpeg", 1600, 900);
         _storage.GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
-            .Returns("https://storage/main-signed", thumbUrl, thumbUrl);
+            .Returns("http://minio:9000/media/photo.jpg?X-Amz-Signature=abc");
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        result.Thumbnails.Should().AllSatisfy(t => t.Url.Should().NotBeNullOrEmpty());
+        result.Thumbnails.Should().NotBeEmpty();
+        result.Thumbnails.Should().OnlyContain(thumb => thumb.Width > 0 && thumb.Height > 0);
+        var json = System.Text.Json.JsonSerializer.Serialize(result, WebJson());
+        json.Should().NotContain("minio");
+        json.Should().NotContain("X-Amz-");
+        json.Should().NotContain("http://");
+        json.Should().NotContain("https://");
     }
 
     [Fact]
@@ -213,9 +200,12 @@ public class UploadMediaCommandHandlerTests
         result.IsPublic.Should().BeFalse();
         result.Width.Should().Be(100);
         result.Height.Should().Be(50);
-        result.Url.Should().Be(TourImagePaths.Manage(saved.Id, TourImageSizes.W1600));
-        result.Url.Should().NotContain("minio");
-        result.Thumbnails.Should().OnlyContain(t => t.Url.StartsWith("/api/v1/media/manage/files/"));
+        result.Thumbnails.Should().HaveCount(3);
+        var json = System.Text.Json.JsonSerializer.Serialize(result, WebJson());
+        json.Should().NotContain("minio");
+        json.Should().NotContain("X-Amz-");
+        json.Should().NotContain("http://");
+        json.Should().NotContain("https://");
 
         await _storage.DidNotReceive()
             .GeneratePresignedUrlAsync(Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
@@ -251,6 +241,9 @@ public class UploadMediaCommandHandlerTests
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
+
+    private static System.Text.Json.JsonSerializerOptions WebJson() =>
+        new(System.Text.Json.JsonSerializerDefaults.Web);
 
     private void SetupRasterImage(string contentType, int width, int height)
     {

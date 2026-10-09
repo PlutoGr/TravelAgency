@@ -34,6 +34,8 @@ export type Tour = {
   reviewCount: number;
   dates: { start: string; end: string }[];
   duration: number;
+  /** Id обложки в Media. Картинка собирается через mediaImageUrl. */
+  coverMediaFileId?: string | null;
   photos: string[];
   amenities: string[];
   included: string[];

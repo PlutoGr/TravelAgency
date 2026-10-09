@@ -26,10 +26,8 @@ export const MEDIA_SIZES_ATTR: Record<MediaVariant, string> = {
   thumb: '96px',
 };
 
-const MEDIA_FILE =
-  /\/media\/files\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\//;
-
-export function mediaFileUrl(mediaFileId: string, size: MediaSize): string {
+/** Публичный адрес картинки. Клиент собирает его из id файла, сервер адрес не отдаёт. */
+export function mediaImageUrl(mediaFileId: string, size: MediaSize): string {
   return `/api/v1/media/files/${mediaFileId}/${size}`;
 }
 
@@ -41,18 +39,8 @@ export function manageMediaFileUrl(mediaFileId: string, size: MediaSize): string
 export function mediaSrcSet(mediaFileId: string, max: MediaSize = 'w1600'): string {
   const limit = WIDTH[max];
   return MEDIA_SIZES.filter((size) => WIDTH[size] <= limit)
-    .map((size) => `${mediaFileUrl(mediaFileId, size)} ${WIDTH[size]}w`)
+    .map((size) => `${mediaImageUrl(mediaFileId, size)} ${WIDTH[size]}w`)
     .join(', ');
-}
-
-export function mediaIdFromUrl(url: string | null | undefined): string | null {
-  if (!url || url.toLowerCase().includes('minio')) return null;
-  return url.match(MEDIA_FILE)?.[1] ?? null;
-}
-
-export function isSafePhotoUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  return !url.toLowerCase().includes('minio');
 }
 
 export type ResolvedMedia = {
@@ -64,26 +52,27 @@ export type ResolvedMedia = {
 };
 
 export function resolveTourMedia(
-  source: { mediaFileId?: string | null; fallbackUrl?: string | null },
+  mediaFileId: string | null | undefined,
   variant: MediaVariant,
 ): ResolvedMedia | null {
+  if (!mediaFileId) return null;
   const size = VARIANT_SIZE[variant];
-  const mediaFileId = source.mediaFileId || mediaIdFromUrl(source.fallbackUrl);
-  if (mediaFileId) {
-    const width = WIDTH[size];
-    return {
-      src: mediaFileUrl(mediaFileId, size),
-      srcSet: mediaSrcSet(mediaFileId, VARIANT_MAX[variant]),
-      sizes: MEDIA_SIZES_ATTR[variant],
-      width,
-      height: Math.round(width * (variant === 'gallery' ? 10 / 16 : 3 / 4)),
-    };
-  }
-
-  if (!isSafePhotoUrl(source.fallbackUrl)) return null;
+  const width = WIDTH[size];
   return {
-    src: source.fallbackUrl,
-    width: WIDTH[size],
-    height: Math.round(WIDTH[size] * (variant === 'gallery' ? 10 / 16 : 3 / 4)),
+    src: mediaImageUrl(mediaFileId, size),
+    srcSet: mediaSrcSet(mediaFileId, VARIANT_MAX[variant]),
+    sizes: MEDIA_SIZES_ATTR[variant],
+    width,
+    height: Math.round(width * (variant === 'gallery' ? 10 / 16 : 3 / 4)),
   };
+}
+
+export function coverMediaFileId(tour: {
+  coverMediaFileId?: string | null;
+  images?: { mediaFileId: string; isCover: boolean }[] | null;
+}): string | null {
+  return tour.coverMediaFileId
+    || tour.images?.find((image) => image.isCover)?.mediaFileId
+    || tour.images?.[0]?.mediaFileId
+    || null;
 }
