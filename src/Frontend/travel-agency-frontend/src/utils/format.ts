@@ -1,16 +1,22 @@
-import { format, parseISO } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 /**
- * Formats an ISO date string using parseISO for consistent parsing.
- * @param dateStr - ISO 8601 date string
- * @param formatStr - date-fns format pattern (default: 'd MMM yyyy')
+ * Formats an ISO date string. Empty and unparseable values become an em dash
+ * so a missing field cannot throw RangeError and blank the page.
  */
 export function formatDate(
-  dateStr: string,
+  dateStr: string | null | undefined,
   formatStr: string = 'd MMM yyyy',
 ): string {
-  return format(parseISO(dateStr), formatStr, { locale: ru });
+  if (!dateStr) return '—';
+  const date = parseISO(dateStr);
+  if (!isValid(date)) return '—';
+  try {
+    return format(date, formatStr, { locale: ru });
+  } catch {
+    return '—';
+  }
 }
 
 /**
@@ -23,7 +29,10 @@ export function formatDateFull(dateStr: string): string {
 /**
  * Formats a date range.
  */
-export function formatDateRange(from: string, to: string): string {
+export function formatDateRange(
+  from: string | null | undefined,
+  to: string | null | undefined,
+): string {
   return `${formatDate(from, 'd MMM')} — ${formatDate(to, 'd MMM yyyy')}`;
 }
 

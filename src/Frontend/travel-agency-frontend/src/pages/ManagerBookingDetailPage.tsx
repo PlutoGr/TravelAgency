@@ -4,9 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   MapPin,
-  Calendar,
-  Users,
-  Wallet,
   StickyNote,
   Clock,
   Save,
@@ -17,7 +14,7 @@ import {
 } from 'lucide-react';
 import {
   formatDateFull,
-  formatBudget,
+  formatMoney,
   formatBookingId,
 } from '@/utils/format';
 import type { Booking, BookingStatus } from '@/types';
@@ -25,6 +22,7 @@ import {
   getBookingById,
   updateBookingStatus,
   createProposal,
+  bookingTourTitle,
 } from '@/api/bookings';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -74,7 +72,6 @@ export default function ManagerBookingDetailPage() {
         if (cancelled) return;
         setBooking(data);
         setSelectedStatus(data.status);
-        setManagerNotes(data.notes);
       })
       .catch(() => {
         if (!cancelled) toast.error('Не удалось загрузить бронирование');
@@ -114,7 +111,6 @@ export default function ManagerBookingDetailPage() {
       const refreshed = await getBookingById(id);
       setBooking(refreshed);
       setSelectedStatus(refreshed.status);
-      setManagerNotes(refreshed.notes);
       showToast('Предложение отправлено');
     } catch {
       showToast('Ошибка при отправке предложения');
@@ -209,34 +205,32 @@ export default function ManagerBookingDetailPage() {
               <div className="space-y-3 text-sm">
                 <InfoRow
                   icon={MapPin}
-                  label="Направление"
-                  value={`${booking.destination}, ${booking.country}`}
-                />
-                <InfoRow
-                  icon={Calendar}
-                  label="Даты"
-                  value={`${formatDateFull(booking.dateFrom)} — ${formatDateFull(booking.dateTo)}`}
-                />
-                <InfoRow
-                  icon={Users}
-                  label="Туристы"
-                  value={String(booking.travelers)}
-                />
-                <InfoRow
-                  icon={Wallet}
-                  label="Бюджет"
-                  value={formatBudget(booking.budget)}
+                  label="Тур"
+                  value={bookingTourTitle(booking)}
                 />
                 <InfoRow
                   icon={StickyNote}
-                  label="Заметки клиента"
-                  value={booking.notes || '—'}
+                  label="Комментарий клиента"
+                  value={booking.comment?.trim() || '—'}
                 />
                 <InfoRow
                   icon={Clock}
                   label="Дата создания"
                   value={formatDateFull(booking.createdAt)}
                 />
+                {booking.proposals.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs text-warm-gray">Предложения</p>
+                    <ul className="space-y-1 text-dark">
+                      {booking.proposals.map((proposal) => (
+                        <li key={proposal.id}>
+                          {proposal.tourSnapshot.title || 'Тур'}
+                          {proposal.isConfirmed ? ' · подтверждено' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -393,7 +387,7 @@ export default function ManagerBookingDetailPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm font-bold text-primary">
-                      {formatBudget(booking.tour.price)}
+                      {formatMoney(booking.tour.price, booking.tour.currency)}
                     </p>
                   </div>
                 </motion.div>

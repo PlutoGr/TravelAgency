@@ -95,29 +95,46 @@ export type BookingStatus =
   | 'closed'
   | 'cancelled';
 
+/** Снимок тура внутри предложения. Поля совпадают с BookingTourSnapshotDto. */
+export type BookingTourSnapshot = {
+  tourId: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  durationDays: number;
+  snapshotTakenAt: string;
+};
+
+/** Предложение менеджера. Поля совпадают с ProposalDto. */
+export type BookingProposal = {
+  id: string;
+  bookingId: string;
+  managerId: string;
+  tourSnapshot: BookingTourSnapshot;
+  notes: string | null;
+  isConfirmed: boolean;
+  createdAt: string;
+};
+
+/**
+ * Бронь как её отдаёт BookingDto.
+ * Название тура в ответе нет: карточка каталога подставляется отдельно, по tourId.
+ */
 export type Booking = {
   id: string;
   clientId: string;
-  clientName: string;
-  /** Optional; from Identity enrichment when manager views booking */
-  clientEmail?: string | null;
-  /** Optional; from Identity enrichment when manager views booking */
-  clientPhone?: string | null;
-  destination: string;
-  country: string;
-  dateFrom: string;
-  dateTo: string;
-  travelers: number;
-  budget: number;
+  tourId: string;
+  comment: string | null;
   status: BookingStatus;
-  managerId?: string;
-  managerName?: string;
-  tourId?: string;
-  tour?: Tour;
-  proposalId?: string;
-  notes: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | null;
+  proposals: BookingProposal[];
+  clientName: string | null;
+  clientEmail: string | null;
+  clientPhone: string | null;
+  /** Карточка публичного каталога. В BookingDto её нет. */
+  tour?: Tour;
 };
 
 export type ChatMessage = {

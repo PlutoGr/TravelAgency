@@ -3,10 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   MapPin,
-  Calendar,
-  Users,
-  Wallet,
-  UserCircle,
   StickyNote,
   Clock,
   ArrowLeft,
@@ -21,13 +17,15 @@ import {
   getBookingById,
   updateBookingStatus,
   confirmProposal,
+  bookingTourTitle,
+  pendingProposal,
 } from '@/api/bookings';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { BookingStatusBadge, ChatWindow } from '@/components/booking';
 import { Card, Button, Skeleton, StarRating } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
-import { formatDateFull, formatBudgetFrom } from '@/utils/format';
+import { formatDateFull, formatFromMoney } from '@/utils/format';
 
 function InfoRow({
   icon: Icon,
@@ -73,7 +71,8 @@ function TourPreview({ booking }: { booking: Booking }) {
   if (!tour) return null;
 
   const showPayButton =
-    booking.status === 'proposal_sent' || booking.status === 'confirmed';
+    tour.available !== false &&
+    (booking.status === 'proposal_sent' || booking.status === 'confirmed');
 
   return (
     <motion.div
@@ -95,7 +94,7 @@ function TourPreview({ booking }: { booking: Booking }) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
             <div className="absolute bottom-3 left-4 right-4">
               <p className="text-lg font-heading font-bold text-white drop-shadow">
-                {tour.price.toLocaleString('ru-RU')} ₽
+                {formatFromMoney(tour.priceFrom ?? tour.price, tour.currency)}
               </p>
             </div>
           </div>
@@ -128,11 +127,13 @@ function TourPreview({ booking }: { booking: Booking }) {
           </p>
 
           <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-            <Link to={`/tours/${tour.id}`}>
-              <Button variant="secondary" size="sm" leftIcon={<ExternalLink size={16} />}>
-                Подробнее
-              </Button>
-            </Link>
+            {tour.available !== false && (
+              <Link to={`/tours/${tour.id}`}>
+                <Button variant="secondary" size="sm" leftIcon={<ExternalLink size={16} />}>
+                  Подробнее
+                </Button>
+              </Link>
+            )}
             {showPayButton && (
               <Button variant="primary" size="sm" leftIcon={<CreditCard size={16} />}>
                 Оплатить
@@ -184,10 +185,11 @@ export default function BookingDetailPage() {
   };
 
   const handleConfirmProposal = async () => {
-    if (!id || !booking?.proposalId || isUpdating) return;
+    const proposal = booking ? pendingProposal(booking) : undefined;
+    if (!id || !booking || !proposal || isUpdating) return;
     setIsUpdating(true);
     try {
-      const updated = await confirmProposal(booking.id, booking.proposalId);
+      const updated = await confirmProposal(booking.id, proposal.id);
       setBooking(updated);
     } catch {
       toast.error('Не удалось подтвердить предложение. Попробуйте ещё раз.');
@@ -251,30 +253,40 @@ export default function BookingDetailPage() {
                 transition={{ delay: 0.1 }}
               >
                 <Card className="divide-y divide-sand p-5">
-                  <InfoRow icon={MapPin} label="Направление">
-                    {booking.destination}, {booking.country}
+                  <InfoRow icon={MapPin} label="Тур">
+                    {bookingTourTitle(booking)}
                   </InfoRow>
-                  <InfoRow icon={Calendar} label="Даты">
-                    {formatDateFull(booking.dateFrom)} — {formatDateFull(booking.dateTo)}
+                  <InfoRow icon={StickyNote} label="Комментарий">
+                    {booking.comment?.trim() || '—'}
                   </InfoRow>
-                  <InfoRow icon={Users} label="Путешественники">
-                    {booking.travelers}
-                  </InfoRow>
-                  <InfoRow icon={Wallet} label="Бюджет">
-                    {formatBudgetFrom(booking.budget)}
-                  </InfoRow>
-                  <InfoRow icon={UserCircle} label="Менеджер">
-                    {booking.managerName ?? 'Не назначен'}
-                  </InfoRow>
-                  {booking.notes && (
-                    <InfoRow icon={StickyNote} label="Заметки">
-                      {booking.notes}
-                    </InfoRow>
-                  )}
                   <InfoRow icon={Clock} label="Дата создания">
                     {formatDateFull(booking.createdAt)}
                   </InfoRow>
+                  {booking.updatedAt && (
+                    <InfoRow icon={Clock} label="Обновлена">
+                      {formatDateFull(booking.updatedAt)}
+                    </InfoRow>
+                  )}
                 </Card>
+
+                {booking.proposals.length > 0 && (
+                  <Card className="space-y-3 p-5">
+                    <h3 className="font-heading text-base font-semibold text-dark">
+                      Предложения
+                    </h3>
+                    {booking.proposals.map((proposal) => (
+                      <div key={proposal.id} className="text-sm">
+                        <p className="font-medium text-dark">
+                          {proposal.tourSnapshot.title || 'Тур'}
+                        </p>
+                        <p className="text-warm-gray">
+                          {proposal.isConfirmed ? 'Подтверждено' : 'Ожидает подтверждения'}
+                          {proposal.notes ? ` · ${proposal.notes}` : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </Card>
+                )}
               </motion.div>
 
               {booking.tour && <TourPreview booking={booking} />}
@@ -286,7 +298,7 @@ export default function BookingDetailPage() {
                 className="flex flex-col gap-3 sm:flex-row"
               >
                 {booking.status === 'proposal_sent' &&
-                  booking.proposalId && (
+                  pendingProposal(booking) && (
                     <Button
                       variant="primary"
                       leftIcon={<CheckCircle size={18} />}
@@ -330,11 +342,6 @@ export default function BookingDetailPage() {
                   <h2 className="font-heading text-base font-semibold text-dark">
                     Чат с менеджером
                   </h2>
-                  {booking.managerName && (
-                    <p className="text-xs text-warm-gray">
-                      {booking.managerName}
-                    </p>
-                  )}
                 </div>
                 <ChatWindow
                   bookingId={booking.id}

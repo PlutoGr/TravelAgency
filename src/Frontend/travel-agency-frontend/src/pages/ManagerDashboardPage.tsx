@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import type { BookingStatus } from '@/types';
-import { getAllBookings } from '@/api/bookings';
+import { getAllBookings, bookingTourTitle } from '@/api/bookings';
 import { useAuthStore } from '@/store/authStore';
 import { Card, Button, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
@@ -201,7 +201,7 @@ export default function ManagerDashboardPage() {
                       Клиент
                     </th>
                     <th className="px-5 py-3 font-medium text-warm-gray">
-                      Направление
+                      Тур
                     </th>
                     <th className="px-5 py-3 font-medium text-warm-gray">Дата</th>
                     <th className="px-5 py-3 font-medium text-warm-gray">
@@ -234,12 +234,12 @@ export default function ManagerDashboardPage() {
                         {formatBookingId(booking.id)}
                       </td>
                       <td className="px-5 py-3.5 font-medium text-dark">
-                        {booking.clientName}
+                        {booking.clientName || booking.clientId}
                       </td>
                       <td className="px-5 py-3.5 text-dark">
                         <span className="flex items-center gap-1.5">
                           <MapPin size={14} className="text-warm-gray" />
-                          {[booking.destination, booking.country].filter(Boolean).join(', ') || '—'}
+                          {bookingTourTitle(booking)}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-warm-gray">
@@ -288,10 +288,10 @@ export default function ManagerDashboardPage() {
                           {formatBookingId(booking.id)}
                         </p>
                         <p className="mt-1 font-heading text-sm font-semibold text-dark">
-                          {booking.clientName}
+                          {booking.clientName || booking.clientId}
                         </p>
                         <p className="mt-0.5 text-sm text-warm-gray">
-                          {[booking.destination, booking.country].filter(Boolean).join(', ') || '—'}
+                          {bookingTourTitle(booking)}
                         </p>
                       </div>
                       <BookingStatusBadge status={booking.status} size="sm" />

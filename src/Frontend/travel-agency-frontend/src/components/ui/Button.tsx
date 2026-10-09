@@ -44,13 +44,17 @@ export default function Button({
   children,
   disabled,
   className,
-  // Exclude handlers that conflict with framer-motion
-  onAnimationStart: _onAnimStart,
-  onDrag: _onDrag,
-  onDragEnd: _onDragEnd,
-  onDragStart: _onDragStart,
+  // Pulled out so they are not forwarded to motion.button (handler types clash).
+  onAnimationStart,
+  onDrag,
+  onDragEnd,
+  onDragStart,
   ...rest
 }: ButtonProps) {
+  void onAnimationStart;
+  void onDrag;
+  void onDragEnd;
+  void onDragStart;
   return (
     <motion.button
       whileHover={disabled || isLoading ? undefined : { scale: 1.02 }}
