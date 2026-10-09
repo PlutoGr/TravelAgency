@@ -13,6 +13,15 @@ type AuthState = {
   checkAuth: () => void;
 };
 
+// Latest login, register, or logout. checkAuth remembers the value at
+// start and writes its result only while the value is unchanged, so a
+// page-load auth/me that answers after login cannot clear the session.
+let authGeneration = 0;
+
+function bumpAuthGeneration(): void {
+  authGeneration += 1;
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
@@ -22,6 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   login: async (email, password) => {
+    bumpAuthGeneration();
     set({ isLoading: true });
     try {
       const { user } = await authApi.login({ email, password });
@@ -32,6 +42,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   register: async (data) => {
+    bumpAuthGeneration();
     set({ isLoading: true });
     try {
       const { user } = await authApi.register(data);
@@ -42,21 +53,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    bumpAuthGeneration();
     try {
       await authApi.logout();
     } finally {
-      set({ user: null, isAuthenticated: false });
+      // The in-flight checkAuth will not clear isLoading: its generation
+      // is already stale. Logout leaves the store as a settled guest.
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 
   setUser: (user) => set({ user }),
 
   checkAuth: () => {
+    const generation = authGeneration;
     set({ isLoading: true });
     authApi
       .getMe()
-      .then((user) => set({ user, isAuthenticated: true, isLoading: false }))
+      .then((user) => {
+        if (generation !== authGeneration) return;
+        set({ user, isAuthenticated: true, isLoading: false });
+      })
       .catch((error) => {
+        if (generation !== authGeneration) return;
         const isAuthFailure = error?.response?.status === 401;
         if (isAuthFailure) {
           set({ user: null, isAuthenticated: false, isLoading: false });

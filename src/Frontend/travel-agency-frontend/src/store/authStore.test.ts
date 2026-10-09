@@ -139,6 +139,36 @@ describe('authStore', () => {
     });
   });
 
+  describe('stale auth/me', () => {
+    it('keeps user null when logout happens during checkAuth and me later returns a user', async () => {
+      let resolveMe: (user: User) => void = () => {};
+      mockGetMe.mockImplementation(
+        () =>
+          new Promise<User>((resolve) => {
+            resolveMe = resolve;
+          }),
+      );
+      mockLogout.mockResolvedValue(undefined);
+
+      useAuthStore.getState().checkAuth();
+      expect(mockGetMe).toHaveBeenCalledOnce();
+      expect(useAuthStore.getState().isLoading).toBe(true);
+
+      await useAuthStore.getState().logout();
+
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+
+      resolveMe(sampleUser);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+  });
+
   describe('checkAuth', () => {
     it('always calls getMe to determine auth state', async () => {
       mockGetMe.mockResolvedValue(sampleUser);
