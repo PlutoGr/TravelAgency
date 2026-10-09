@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveReturnTo } from './safeReturnTo';
+import { readReturnToParam, resolveReturnTo } from './safeReturnTo';
 
 describe('resolveReturnTo', () => {
   it('accepts an internal path', () => {
@@ -19,6 +19,13 @@ describe('resolveReturnTo', () => {
     expect(resolveReturnTo('http://evil.com')).toBe('/');
     expect(resolveReturnTo('javascript:alert(1)')).toBe('/');
     expect(resolveReturnTo('javascript:alert(document.cookie)')).toBe('/');
+  });
+
+  it('reads a query value and leaves a broken escape as no path', () => {
+    expect(readReturnToParam('%2Fdashboard%2Fbookings')).toBe('/dashboard/bookings');
+    expect(readReturnToParam('/dashboard/favorites')).toBe('/dashboard/favorites');
+    expect(readReturnToParam('%')).toBeNull();
+    expect(readReturnToParam(null)).toBeNull();
   });
 
   it('falls back when the value is missing', () => {
