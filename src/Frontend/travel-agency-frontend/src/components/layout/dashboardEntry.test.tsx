@@ -126,7 +126,6 @@ function resetStores() {
   useUIStore.setState({
     isAuthModalOpen: false,
     authModalTab: 'login',
-    authReturnTo: null,
     isMobileMenuOpen: false,
   });
   useFavoritesStore.setState({
@@ -245,12 +244,16 @@ describe('dashboard direct entry', () => {
       const returnTo = encodeURIComponent(path);
       await vi.waitFor(() => {
         expect(seenLocations).toContain(`/?auth=login&returnTo=${returnTo}`);
-        expect(useUIStore.getState().authReturnTo).toBe(path);
+        expect(locationText()).toBe(`/?returnTo=${returnTo}`);
       });
 
-      expect(locationText()).toBe('/');
       expect(document.body.textContent).toContain('Войти');
       expect(document.body.textContent).not.toContain(heading);
+
+      await act(async () => {
+        useUIStore.getState().openAuthModal('login');
+      });
+      expect(locationText()).toBe(`/?returnTo=${returnTo}`);
 
       await submitLogin();
 
@@ -260,6 +263,56 @@ describe('dashboard direct entry', () => {
       });
     },
   );
+
+  it('guest stays on the requested page when the login tab is activated again after redirect', async () => {
+    await renderAt('/dashboard/bookings');
+
+    await act(async () => {
+      rejectMe({ response: { status: 401 } });
+    });
+
+    await vi.waitFor(() => {
+      expect(locationText()).toBe('/?returnTo=%2Fdashboard%2Fbookings');
+      expect(useUIStore.getState().isAuthModalOpen).toBe(true);
+    });
+
+    const loginTab = [...document.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Вход',
+    );
+    if (!(loginTab instanceof HTMLButtonElement)) throw new Error('login tab is not open');
+    await act(async () => {
+      loginTab.click();
+    });
+
+    await submitLogin();
+
+    await vi.waitFor(() => {
+      expect(locationText()).toBe('/dashboard/bookings');
+      expect(document.body.textContent).toContain('Мои бронирования');
+    });
+  });
+
+  it('direct /?auth=login&returnTo=/dashboard/favorites returns there after login', async () => {
+    const returnTo = encodeURIComponent('/dashboard/favorites');
+    await renderAt(`/?auth=login&returnTo=${returnTo}`);
+
+    await act(async () => {
+      rejectMe({ response: { status: 401 } });
+    });
+
+    await vi.waitFor(() => {
+      expect(seenLocations).toContain(`/?auth=login&returnTo=${returnTo}`);
+      expect(locationText()).toBe(`/?returnTo=${returnTo}`);
+      expect(document.body.textContent).toContain('Войти');
+    });
+
+    await submitLogin();
+
+    await vi.waitFor(() => {
+      expect(locationText()).toBe('/dashboard/favorites');
+      expect(document.body.textContent).toContain('Избранное');
+    });
+  });
 
   it.each(['//evil.com', '/\\evil.com', 'https://evil.com', 'javascript:alert(1)'])(
     'rejects returnTo %s and stays on the home page after login',
@@ -272,11 +325,12 @@ describe('dashboard direct entry', () => {
 
       await vi.waitFor(() => {
         expect(useUIStore.getState().isAuthModalOpen).toBe(true);
-        expect(useUIStore.getState().authReturnTo).toBe('/');
-        expect(locationText()).toBe('/');
+        const params = new URLSearchParams(locationText().split('?')[1] ?? '');
+        expect(params.get('auth')).toBeNull();
+        expect(params.get('returnTo')).toBe(unsafe);
       });
 
-      expect(seenLocations.every((href) => href === '/' || href.startsWith('/?auth=login'))).toBe(true);
+      expect(seenLocations.every((href) => href.split('?')[0] === '/')).toBe(true);
 
       await submitLogin();
 

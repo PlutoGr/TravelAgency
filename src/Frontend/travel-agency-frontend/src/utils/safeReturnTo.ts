@@ -25,3 +25,17 @@ export function resolveReturnTo(
 ): string {
   return isSafeReturnTo(returnTo) ? returnTo : fallback;
 }
+
+/**
+ * Read `returnTo` from the current query.
+ * `URLSearchParams` already decodes once; a second decode accepts a value
+ * that was encoded twice. A broken escape sequence is not a path.
+ */
+export function readReturnToParam(raw: string | null): string | null {
+  if (raw == null) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
