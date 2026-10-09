@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PlusCircle, Briefcase, Heart } from 'lucide-react';
 import type { Booking } from '@/types';

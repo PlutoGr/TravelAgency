@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Tour } from '@/types';
 import { Modal, Button, Tabs } from '@/components/ui';
 import FormField from './FormField';
@@ -39,12 +39,14 @@ export default function TourFormModal({
     onClose();
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormTour(tour);
-      setActiveTab('basic');
-    }
-  }, [isOpen, tour]);
+  const [openedTour, setOpenedTour] = useState<Tour | null>(isOpen ? tour : null);
+  if (isOpen && openedTour !== tour) {
+    setOpenedTour(tour);
+    setFormTour(tour);
+    setActiveTab('basic');
+  } else if (!isOpen && openedTour !== null) {
+    setOpenedTour(null);
+  }
 
   return (
     <Modal

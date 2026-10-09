@@ -17,7 +17,8 @@ import { Card, Select, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
 import { Breadcrumbs } from '@/components/layout';
 import { PageTransition } from '@/components/common';
-import { formatDate, formatDateRange, formatBookingId } from '@/utils/format';
+import { bookingTourTitle } from '@/api/bookings';
+import { formatDate, formatBookingId } from '@/utils/format';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Все статусы' },
@@ -40,8 +41,8 @@ export default function ManagerBookingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   const loadBookings = useCallback(async () => {
@@ -65,7 +66,7 @@ export default function ManagerBookingsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, dateFrom, dateTo]);
+  }, [searchQuery, statusFilter, createdFrom, createdTo]);
 
   const filteredBookings = useMemo(() => {
     let result = bookings;
@@ -74,24 +75,24 @@ export default function ManagerBookingsPage() {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(
         (b) =>
-          b.clientName.toLowerCase().includes(q) ||
-          b.destination.toLowerCase().includes(q) ||
-          (b.country && b.country.toLowerCase().includes(q)),
+          (b.clientName ?? '').toLowerCase().includes(q) ||
+          bookingTourTitle(b).toLowerCase().includes(q) ||
+          (b.comment ?? '').toLowerCase().includes(q),
       );
     }
 
-    if (dateFrom) {
-      result = result.filter((b) => (b.createdAt ?? '').slice(0, 10) >= dateFrom);
+    if (createdFrom) {
+      result = result.filter((b) => (b.createdAt ?? '').slice(0, 10) >= createdFrom);
     }
-    if (dateTo) {
-      result = result.filter((b) => (b.createdAt ?? '').slice(0, 10) <= dateTo);
+    if (createdTo) {
+      result = result.filter((b) => (b.createdAt ?? '').slice(0, 10) <= createdTo);
     }
 
     return result.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [bookings, searchQuery, dateFrom, dateTo]);
+  }, [bookings, searchQuery, createdFrom, createdTo]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
   const paginatedBookings = filteredBookings.slice(
@@ -119,7 +120,7 @@ export default function ManagerBookingsPage() {
               />
               <input
                 type="text"
-                placeholder="Поиск по клиенту или направлению..."
+                placeholder="Поиск по клиенту или туру..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-[12px] border border-sand bg-white py-2.5 pl-10 pr-4 text-sm text-dark outline-none transition-all placeholder:text-warm-gray focus:border-primary focus:ring-2 focus:ring-primary/10"
@@ -137,12 +138,12 @@ export default function ManagerBookingsPage() {
             {/* Date from */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-warm-gray">
-                Дата от
+                Создана с
               </label>
               <input
                 type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                value={createdFrom}
+                onChange={(e) => setCreatedFrom(e.target.value)}
                 className="w-full rounded-[12px] border border-sand bg-white px-4 py-2.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
               />
             </div>
@@ -150,12 +151,12 @@ export default function ManagerBookingsPage() {
             {/* Date to */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-warm-gray">
-                Дата до
+                Создана по
               </label>
               <input
                 type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                value={createdTo}
+                onChange={(e) => setCreatedTo(e.target.value)}
                 className="w-full rounded-[12px] border border-sand bg-white px-4 py-2.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
               />
             </div>
@@ -192,10 +193,10 @@ export default function ManagerBookingsPage() {
                         Клиент
                       </th>
                       <th className="px-5 py-3.5 font-medium text-warm-gray">
-                        Направление
+                        Тур
                       </th>
                       <th className="px-5 py-3.5 font-medium text-warm-gray">
-                        Даты
+                        Создана
                       </th>
                       <th className="px-5 py-3.5 font-medium text-warm-gray">
                         Статус
@@ -221,18 +222,18 @@ export default function ManagerBookingsPage() {
                           {formatBookingId(booking.id)}
                         </td>
                         <td className="px-5 py-4 font-medium text-dark">
-                          {booking.clientName}
+                          {booking.clientName || booking.clientId}
                         </td>
                         <td className="px-5 py-4 text-dark">
                           <span className="flex items-center gap-1.5">
                             <MapPin size={14} className="shrink-0 text-warm-gray" />
-                            {booking.destination}, {booking.country}
+                            {bookingTourTitle(booking)}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-warm-gray">
                           <span className="flex items-center gap-1.5">
                             <Calendar size={14} className="shrink-0" />
-                            {formatDateRange(booking.dateFrom, booking.dateTo)}
+                            {formatDate(booking.createdAt)}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -288,11 +289,11 @@ export default function ManagerBookingsPage() {
                             {formatBookingId(booking.id)}
                           </p>
                           <p className="mt-1 font-heading text-sm font-semibold text-dark">
-                            {booking.clientName}
+                            {booking.clientName || booking.clientId}
                           </p>
                           <p className="mt-0.5 flex items-center gap-1 text-sm text-warm-gray">
                             <MapPin size={13} />
-                            {booking.destination}, {booking.country}
+                            {bookingTourTitle(booking)}
                           </p>
                         </div>
                         <BookingStatusBadge status={booking.status} size="sm" />
@@ -300,7 +301,7 @@ export default function ManagerBookingsPage() {
                       <div className="mt-3 flex items-center justify-between border-t border-sand pt-3 text-xs text-warm-gray">
                         <span className="flex items-center gap-1">
                           <Calendar size={13} />
-                          {formatDateRange(booking.dateFrom, booking.dateTo)}
+                          {formatDate(booking.createdAt)}
                         </span>
                         <span>Обн: {formatDate(booking.updatedAt)}</span>
                       </div>

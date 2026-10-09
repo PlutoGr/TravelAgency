@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import type { Booking, BookingStatus } from '@/types';
 import { PageTransition } from '@/components/common';
@@ -23,30 +22,39 @@ const BREADCRUMBS = [
 ];
 
 export default function MyBookingsPage() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-
-  function loadBookings() {
-    setIsLoading(true);
-    const statusFilter = activeTab === 'all' ? undefined : (activeTab as BookingStatus);
-    getMyBookings(statusFilter)
-      .then(setBookings)
-      .catch(() => {
-        toast.error('Не удалось загрузить бронирования');
-      })
-      .finally(() => setIsLoading(false));
-  }
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    loadBookings();
-  }, [activeTab]);
+    let cancelled = false;
+    const statusFilter = activeTab === 'all' ? undefined : (activeTab as BookingStatus);
+    getMyBookings(statusFilter)
+      .then((data) => {
+        if (!cancelled) setBookings(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Не удалось загрузить бронирования');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, reloadKey]);
+
+  function changeTab(tab: string) {
+    setActiveTab(tab);
+    setIsLoading(true);
+  }
 
   function handleBookingCreated() {
     setShowForm(false);
-    loadBookings();
+    setIsLoading(true);
+    setReloadKey((key) => key + 1);
   }
 
   return (
@@ -67,7 +75,7 @@ export default function MyBookingsPage() {
           </Button>
         </div>
 
-        <Tabs tabs={STATUS_TABS} activeTab={activeTab} onChange={setActiveTab} />
+        <Tabs tabs={STATUS_TABS} activeTab={activeTab} onChange={changeTab} />
 
         {isLoading ? (
           <div className="space-y-4">
