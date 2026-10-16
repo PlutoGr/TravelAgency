@@ -191,7 +191,10 @@ jobs:
           set -e
           export IMAGE_TAG
           cd /opt/travelagency
-          git pull --ff-only
+          # После переписывания истории main fast-forward невозможен; reset --keep
+          # переносит на origin/main и останавливается, если на сервере есть локальные правки.
+          git fetch origin main
+          git reset --keep origin/main
           cd docker
           docker compose pull
           docker compose up -d
