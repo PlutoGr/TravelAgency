@@ -13,6 +13,8 @@ updates:
       time: "06:00"
       timezone: Europe/Moscow
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "зависимости"
     groups:
       nuget-minor-patch:
         update-types: [minor, patch]
@@ -26,6 +28,8 @@ updates:
       time: "06:00"
       timezone: Europe/Moscow
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "зависимости"
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
@@ -46,6 +50,8 @@ updates:
       time: "06:00"
       timezone: Europe/Moscow
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "зависимости"
     groups:
       docker-images:
         patterns: ["*"]
@@ -59,6 +65,8 @@ updates:
       time: "06:00"
       timezone: Europe/Moscow
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "зависимости"
     groups:
       github-actions:
         patterns: ["*"]
