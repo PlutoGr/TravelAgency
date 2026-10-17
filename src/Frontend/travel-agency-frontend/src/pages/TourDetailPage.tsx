@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, MapPin, Heart, Plane, Clock } from 'lucide-react';
 import clsx from 'clsx';
@@ -206,6 +207,7 @@ export default function TourDetailPage() {
     if (!isError || !id) return;
     if (authIntent?.type === 'request' && authIntent.tourId === id) {
       clearAuthIntent();
+      toast.error('Не удалось открыть тур, заявка не отправлена. Обновите страницу и попробуйте снова');
     }
   }, [isError, id, authIntent, clearAuthIntent]);
   const available = tour ? isTourAvailable(tour) : false;

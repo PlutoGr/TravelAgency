@@ -13,6 +13,7 @@ import { useFavoritesStore } from '@/store/favoritesStore';
 import { useUIStore } from '@/store/uiStore';
 import { sampleTour } from '@/test/sampleTour';
 import { formatDateRange, formatFromMoney, formatMoney } from '@/utils/format';
+import toast from 'react-hot-toast';
 
 vi.mock('@/api/catalog', () => ({
   getTourById: vi.fn(),
@@ -65,6 +66,8 @@ describe('TourDetailPage', () => {
     vi.mocked(createBooking).mockReset();
     vi.mocked(createBooking).mockResolvedValue({ id: 'booking-42' } as Awaited<ReturnType<typeof createBooking>>);
     vi.mocked(addFavorite).mockClear();
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.success).mockClear();
     useAuthStore.setState({ isAuthenticated: true, user: null, isLoading: false });
     useUIStore.setState({
       isAuthModalOpen: false,
@@ -122,6 +125,9 @@ describe('TourDetailPage', () => {
     renderDetail();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить тур');
+    expect(toast.error).not.toHaveBeenCalledWith(
+      'Не удалось открыть тур, заявка не отправлена. Обновите страницу и попробуйте снова',
+    );
   });
 
   it('clears a deferred request when the tour fails to load', async () => {
@@ -140,7 +146,12 @@ describe('TourDetailPage', () => {
     await waitFor(() => {
       expect(useUIStore.getState().authIntent).toBeNull();
     });
+    expect(toast.error).toHaveBeenCalledWith(
+      'Не удалось открыть тур, заявка не отправлена. Обновите страницу и попробуйте снова',
+    );
+    expect(toast.error).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('heading', { name: 'Оформить заявку' })).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить тур');
   });
 
   it('opens the request on the selected date after login and links to the booking', async () => {

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import toast from 'react-hot-toast';
 import { addFavorite, getFavorites, removeFavorite } from '@/api/favorites';
 import { resumeFavoriteIntent } from './authIntent';
 import { useFavoritesStore } from './favoritesStore';
@@ -19,6 +20,8 @@ describe('auth intent', () => {
   beforeEach(() => {
     vi.mocked(addFavorite).mockClear();
     vi.mocked(removeFavorite).mockClear();
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.success).mockClear();
     vi.mocked(getFavorites).mockReset();
     vi.mocked(getFavorites).mockResolvedValue([]);
     useUIStore.setState({
@@ -95,6 +98,7 @@ describe('auth intent', () => {
 
     expect(addFavorite).not.toHaveBeenCalled();
     expect(removeFavorite).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
     expect(useFavoritesStore.getState().isFavorite(tour.id)).toBe(true);
     expect(useUIStore.getState().authIntent).toBeNull();
   });
@@ -112,6 +116,7 @@ describe('auth intent', () => {
     expect(useFavoritesStore.getState().error).toBe('Не удалось загрузить избранное');
     expect(addFavorite).not.toHaveBeenCalled();
     expect(removeFavorite).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Не удалось добавить тур в избранное. Попробуйте ещё раз');
     expect(useFavoritesStore.getState().isFavorite(tour.id)).toBe(false);
     expect(useUIStore.getState().authIntent).toBeNull();
   });
