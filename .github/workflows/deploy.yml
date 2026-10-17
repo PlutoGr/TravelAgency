@@ -25,7 +25,6 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/plutogr/travelagency
-  DEV_HOST: 185.75.189.253
 
 # Встроенный GITHUB_TOKEN по умолчанию только читает код. Публикация образов (packages: write)
 # разрешена только задаче сборки, чтение образов только задаче деплоя.
@@ -148,6 +147,10 @@ jobs:
     permissions:
       contents: read
       packages: read
+    # Адрес для SSH хранится в секрете окружения dev (DEV_SSH_HOST), в репозитории его нет.
+    # Адрес сайта здесь не задаётся вовсе: он берётся из SITE_DOMAIN в docker/.env на сервере.
+    env:
+      DEV_HOST: ${{ secrets.DEV_SSH_HOST }}
     steps:
       # Кладём приватный ключ deploy и отпечаток сервера из секретов
       # Секреты передаём через env, а не подставляем в текст скрипта
@@ -185,9 +188,9 @@ jobs:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "$REGISTRY_TOKEN" | ssh deploy@${{ env.DEV_HOST }} \
+          echo "$REGISTRY_TOKEN" | ssh "deploy@$DEV_HOST" \
             "docker login ghcr.io -u '$REGISTRY_USER' --password-stdin"
-          ssh deploy@${{ env.DEV_HOST }} "IMAGE_TAG=$IMAGE_TAG bash -s" <<'EOF'
+          ssh "deploy@$DEV_HOST" "IMAGE_TAG=$IMAGE_TAG bash -s" <<'EOF'
           set -e
           export IMAGE_TAG
           cd /opt/travelagency
@@ -205,21 +208,39 @@ jobs:
           docker logout ghcr.io
           EOF
 
-      # Проверка здоровья (dev закрыт basic auth, сертификат самоподписанный, поэтому curl -k):
-      #  - HTTP редиректит на HTTPS (301);
-      #  - HTTPS без пароля отвечает 401 (доступ закрыт);
-      #  - /healthz через nginx и gateway отвечает Healthy (все сервисы живы, путь открыт без пароля);
-      #  - API через gateway на сервере отвечает 200.
+      # Проверка здоровья. Домен читаем из SITE_DOMAIN на сервере. Режим зависит от того, выпущен ли
+      # сертификат Let's Encrypt (/etc/letsencrypt/live/<домен>/, проверяем наличие ссылки, без чтения):
+      #  - сертификата нет (fallback): по адресу сервера всё как раньше, HTTP 301 на https того же адреса,
+      #    HTTPS без пароля 401;
+      #  - сертификат есть (redirect): по адресу сервера HTTP 301 на https://<домен>/, HTTPS домена без пароля 401
+      #    (через curl --resolve на адрес сервера, проверка не зависит от DNS у раннера).
+      # В обоих режимах /healthz отвечает Healthy, API через gateway на сервере отвечает 200.
       # Ждём до 5 минут, иначе пайплайн красный.
       - name: Проверка здоровья
         run: |
+          domain=$(ssh "deploy@$DEV_HOST" "sed -n 's/^SITE_DOMAIN=//p' /opt/travelagency/docker/.env | tail -n1" | tr -d "\"' \r")
+          if [ -z "$domain" ]; then echo "SITE_DOMAIN на сервере не задан"; exit 1; fi
+          if ssh "deploy@$DEV_HOST" "test -L '/etc/letsencrypt/live/$domain/fullchain.pem'"; then
+            mode=redirect
+            site="https://$domain"; resolve="--resolve $domain:443:$DEV_HOST"; want_redirect="301 https://$domain/"
+          else
+            mode=fallback
+            site="https://$DEV_HOST"; resolve=""; want_redirect="301 https://$DEV_HOST/"
+          fi
+          echo "Домен: $domain, режим: $mode"
           for i in $(seq 1 30); do
-            http=$(curl -s -o /dev/null -w '%{http_code}' "http://${{ env.DEV_HOST }}/" || true)
-            auth=$(curl -sk -o /dev/null -w '%{http_code}' "https://${{ env.DEV_HOST }}/" || true)
-            health=$(curl -sk "https://${{ env.DEV_HOST }}/healthz" || true)
-            api=$(ssh deploy@${{ env.DEV_HOST }} "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/api/v1/catalog/tours" || true)
-            echo "Попытка $i: http=$http (ждём 301), https без пароля=$auth (ждём 401), healthz=$health, API=$api"
-            if [ "$http" = "301" ] && [ "$auth" = "401" ] && [ "$health" = "Healthy" ] && [ "$api" = "200" ]; then
+            redirect=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "http://$DEV_HOST/" || true)
+            auth=$(curl -sk $resolve -o /dev/null -w '%{http_code}' "$site/" || true)
+            health=$(curl -sk $resolve "$site/healthz" || true)
+            api=$(ssh "deploy@$DEV_HOST" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/api/v1/catalog/tours" || true)
+            [ "$redirect" = "$want_redirect" ] && r=ok || r="не тот (${redirect%% *})"
+            echo "Попытка $i: http по адресу: $r, https без пароля=$auth (ждём 401), healthz=$health, API=$api"
+            if [ "$r" = ok ] && [ "$auth" = "401" ] && [ "$health" = "Healthy" ] && [ "$api" = "200" ]; then
+              if [ "$mode" = redirect ]; then
+                # В режиме redirect сертификат домена обязан быть валидным (без -k)
+                curl -s $resolve -o /dev/null "$site/healthz" || { echo "Сертификат для $domain не проходит проверку"; exit 1; }
+                echo "Сертификат для $domain валиден"
+              fi
               echo "HTTPS, пароль, API и все сервисы в порядке"; exit 0
             fi
             sleep 10
@@ -233,7 +254,7 @@ jobs:
       # в контейнере), другой код или обрыв рукопожатия = провал.
       - name: Смоук gRPC (порт 8081)
         run: |
-          ssh deploy@${{ env.DEV_HOST }} 'bash -s' <<'EOF'
+          ssh "deploy@$DEV_HOST" 'bash -s' <<'EOF'
           set -u
           cid=$(docker ps -q -f label=com.docker.compose.service=catalog-service | head -1)
           net=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' "$cid")
