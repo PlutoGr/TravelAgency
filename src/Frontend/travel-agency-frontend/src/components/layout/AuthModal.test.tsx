@@ -95,6 +95,21 @@ describe('AuthModal unavailable auth service', () => {
     expect(screen.getByLabelText('Пароль')).toHaveValue('');
   });
 
+  it('shows a wrong password under the form, keeps the email and clears the password', async () => {
+    vi.spyOn(authApi, 'login').mockRejectedValue({ response: { status: 401 } });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderLogin();
+
+    await user.type(screen.getByLabelText('Email'), 'a@b.com');
+    await user.type(screen.getByLabelText('Пароль'), 'secret');
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Неверный email или пароль');
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Email')).toHaveValue('a@b.com');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
   it('keeps email and name and clears the password when register returns 502', async () => {
     vi.spyOn(authApi, 'register').mockRejectedValue({ response: { status: 502 } });
     useUIStore.setState({ isAuthModalOpen: true, authModalTab: 'register' });

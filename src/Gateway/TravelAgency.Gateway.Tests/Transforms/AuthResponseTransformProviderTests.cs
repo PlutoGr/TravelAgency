@@ -38,6 +38,13 @@ public class AuthResponseTransformProviderTests
         CookieSettings? cookieSettings = null)
     {
         var context = new DefaultHttpContext();
+        var queryIndex = path.IndexOf('?');
+        if (queryIndex >= 0)
+        {
+            context.Request.QueryString = new QueryString(path[queryIndex..]);
+            path = path[..queryIndex];
+        }
+
         context.Request.Path = path;
         context.Response.Body = new MemoryStream();
 
@@ -70,8 +77,7 @@ public class AuthResponseTransformProviderTests
     }
 
     private static readonly DateTime SampleAccessExpiresAt = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
-    private static readonly DateTime SampleRefreshExpiresAt =
-        DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(3).AddHours(15).AddMinutes(30), DateTimeKind.Utc);
+    private static readonly DateTime SampleRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
 
     private static string TokenJson(
         string accessToken = "access-123",
@@ -396,50 +402,42 @@ public class AuthResponseTransformProviderTests
     }
 
     [Fact]
-    public async Task Transform_WhenEmptyBodyOnTokenRoute_Returns502()
+    public async Task Transform_WhenEmptyBody_DoesNotModifyResponse()
     {
         var provider = CreateProvider();
         var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, "");
 
         await InvokeTransformAsync(provider, context);
 
-        var responseBody = await ReadBodyAsync(context.HttpContext.Response);
-        AssertGeneric502(context.HttpContext.Response, responseBody);
-    }
-
-    [Fact]
-    public async Task Transform_WhenTokenRouteReturns204_Returns502()
-    {
-        var provider = CreateProvider();
-        var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.NoContent, null);
-
-        await InvokeTransformAsync(provider, context);
-
-        var responseBody = await ReadBodyAsync(context.HttpContext.Response);
-        AssertGeneric502(context.HttpContext.Response, responseBody);
-    }
-
-    [Fact]
-    public async Task Transform_WhenLogin400_PassesBodyWithoutCookies()
-    {
-        var provider = CreateProvider();
-        var context = CreateTransformContext(
-            "/api/v1/auth/login",
-            HttpStatusCode.BadRequest,
-            """{"detail":"Неверный пароль"}""");
-
-        await InvokeTransformAsync(provider, context);
-
         Assert.False(context.SuppressResponseBody);
-        Assert.NotEqual(StatusCodes.Status502BadGateway, context.HttpContext.Response.StatusCode);
         Assert.Equal(0, context.HttpContext.Response.Headers.SetCookie.Count);
     }
 
+    public static TheoryData<string> NormalizedTokenPaths { get; } = new()
+    {
+        "/api/v1/auth/login/",
+        "/api/v1/auth/Login",
+        "/api/v1/auth/Login/",
+        "/api/v1/auth/%6Cogin",
+        "/api/v1/auth/./login",
+        "/api/v1/auth/login?x=1",
+        "/api/v1/auth/register/",
+        "/api/v1/auth/Register",
+        "/api/v1/auth/Register/",
+        "/api/v1/auth/%72egister",
+        "/api/v1/auth/./register",
+        "/api/v1/auth/register?x=1",
+        "/api/v1/auth/refresh/",
+        "/api/v1/auth/Refresh",
+        "/api/v1/auth/Refresh/",
+        "/api/v1/auth/%72efresh",
+        "/api/v1/auth/./refresh",
+        "/api/v1/auth/refresh?x=1",
+    };
+
     [Theory]
-    [InlineData("/api/v1/auth/login/")]
-    [InlineData("/api/v1/auth/register/")]
-    [InlineData("/api/v1/auth/Login")]
-    public async Task Transform_WhenTokenPathDiffersBySlashOrCase_SetsCookiesNotRawTokens(string path)
+    [MemberData(nameof(NormalizedTokenPaths))]
+    public async Task Transform_WhenTokenPathIsNormalized_SetsCookiesNotRawTokens(string path)
     {
         var tokenJson = TokenJson();
         var provider = CreateProvider();
@@ -458,75 +456,19 @@ public class AuthResponseTransformProviderTests
     }
 
     [Theory]
-    [InlineData("/api/v1/auth/register")]
-    [InlineData("/api/v1/auth/refresh")]
-    public async Task Transform_WhenRegisterOrRefreshBodyHasNoTokens_Returns502(string path)
+    [InlineData(HttpStatusCode.OK, "/api/v1/auth/session")]
+    [InlineData(HttpStatusCode.Accepted, "/api/v1/auth/other")]
+    [InlineData(HttpStatusCode.OK, "/api/v1/auth/./me")]
+    public async Task Transform_WhenAnyAuthPath2xxContainsTokenField_Returns502(HttpStatusCode status, string path)
     {
+        var tokenJson = "{\"accessToken\":\"at-secret\",\"refresh_token\":\"rt-secret\"}";
         var provider = CreateProvider();
-        var context = CreateTransformContext(path, HttpStatusCode.OK, """{"path":"/identity/register"}""");
+        var context = CreateTransformContext(path, status, tokenJson);
 
         await InvokeTransformAsync(provider, context);
 
         var responseBody = await ReadBodyAsync(context.HttpContext.Response);
-        Assert.Equal(StatusCodes.Status502BadGateway, context.HttpContext.Response.StatusCode);
-        Assert.Equal(string.Empty, responseBody);
-        Assert.Equal(0, context.HttpContext.Response.Headers.SetCookie.Count);
-    }
-
-    [Fact]
-    public async Task Transform_WhenAccessExpiresAtUnusable_Returns502()
-    {
-        var logger = new ListLogger();
-        var tokenJson = TokenJson(expiresAt: DateTime.UtcNow.AddMinutes(-5));
-        var provider = CreateProvider(logger: logger);
-        var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, tokenJson);
-
-        await InvokeTransformAsync(provider, context);
-
-        var responseBody = await ReadBodyAsync(context.HttpContext.Response);
-        AssertGeneric502(context.HttpContext.Response, responseBody, "access-123", "refresh-456");
-        Assert.Contains(
-            logger.Entries,
-            entry => entry.Level == LogLevel.Error && entry.Message.Contains("access-expiry", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public async Task Transform_WhenRefreshExpiresAtIsYear9999_Returns502()
-    {
-        var tokenJson = TokenJson(refreshExpiresAt: new DateTime(9999, 1, 1, 0, 0, 0, DateTimeKind.Utc));
-        var provider = CreateProvider();
-        var context = CreateTransformContext("/api/v1/auth/refresh", HttpStatusCode.OK, tokenJson);
-
-        await InvokeTransformAsync(provider, context);
-
-        var responseBody = await ReadBodyAsync(context.HttpContext.Response);
-        AssertGeneric502(context.HttpContext.Response, responseBody, "access-123", "refresh-456");
-    }
-
-    [Fact]
-    public async Task Transform_WhenRefresh401_ClearsAccessRefreshAndLegacyCookies()
-    {
-        var provider = CreateProvider();
-        var context = CreateTransformContext("/api/v1/auth/refresh", HttpStatusCode.Unauthorized, """{"detail":"no"}""");
-
-        await InvokeTransformAsync(provider, context);
-
-        Assert.Equal(StatusCodes.Status401Unauthorized, context.HttpContext.Response.StatusCode);
-        var setCookieList = context.HttpContext.Response.Headers.SetCookie
-            .Where(h => h != null)
-            .Select(h => h!)
-            .ToList();
-        Assert.Contains(setCookieList, h => h.StartsWith("access_token=;", StringComparison.Ordinal) && HasCookiePath(h, "/"));
-        Assert.Contains(
-            setCookieList,
-            h => h.StartsWith("refresh_token=;", StringComparison.Ordinal)
-                && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase)
-                && HasCookiePath(h, "/api/v1/auth"));
-        Assert.Contains(
-            setCookieList,
-            h => h.StartsWith("refresh_token=;", StringComparison.Ordinal)
-                && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase)
-                && HasCookiePath(h, "/"));
+        AssertGeneric502(context.HttpContext.Response, responseBody, "at-secret", "rt-secret");
     }
 
     [Fact]

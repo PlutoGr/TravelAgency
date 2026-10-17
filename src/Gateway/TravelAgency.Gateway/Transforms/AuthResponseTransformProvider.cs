@@ -12,10 +12,8 @@ namespace TravelAgency.Gateway.Transforms;
 /// YARP transform for login, register, refresh and logout.
 /// A usable token response becomes httpOnly cookies and {"success":true}.
 /// Access cookie Expires is the JWT expiry. Refresh cookie Expires is refreshExpiresAt.
-/// Token paths are matched without a trailing slash and without regard to case.
-/// A token route answer other than a usable 200 or 201 is 502, except Identity 4xx, which is passed through with no cookies.
-/// A 2xx on any other auth path is 502 when the body contains a token field.
-/// refreshExpiresAt later than RefreshTokenExpirationDays plus one day is 502.
+/// Token paths are compared after decoding, dropping "." segments and a trailing slash, without regard to case.
+/// Any 2xx on this auth route whose body contains a token field is intercepted and does not reach JavaScript.
 /// Refresh cookie path is the auth prefix. Login, register, refresh and logout also
 /// delete the previous refresh cookie on Cookie:Path.
 /// </summary>
@@ -55,10 +53,8 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     private async ValueTask ApplyAuthResponseTransform(ResponseTransformContext transformContext)
     {
         var status = transformContext.ProxyResponse?.StatusCode;
-        var path = NormalizePath(transformContext.HttpContext.Request.Path.Value);
+        var path = NormalizeRequestPath(transformContext.HttpContext.Request);
         var isLogout = path.Equals(NormalizePath(_authRouteSettings.LogoutPath), StringComparison.OrdinalIgnoreCase);
-        var isRefresh = path.Equals(NormalizePath(_authRouteSettings.RefreshPath), StringComparison.OrdinalIgnoreCase);
-        var isTokenPath = IsTokenResponsePath(path);
 
         if (isLogout && status is HttpStatusCode.NoContent or HttpStatusCode.Unauthorized)
         {
@@ -70,33 +66,12 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
             return;
         }
 
-        if (isRefresh && status == HttpStatusCode.Unauthorized)
-        {
-            var refreshResponse = transformContext.HttpContext.Response;
-            refreshResponse.StatusCode = StatusCodes.Status401Unauthorized;
-            AppendClearCookies(refreshResponse);
-            return;
-        }
-
-        if (isTokenPath && status is not (HttpStatusCode.OK or HttpStatusCode.Created))
-        {
-            if (Is4xx(status))
-                return;
-            if (Is2xx(status))
-                await RejectAuthResponseAsync(transformContext, "unexpected-status");
-            return;
-        }
-
         if (!Is2xx(status))
             return;
 
         var content = transformContext.ProxyResponse?.Content;
         if (content is null)
-        {
-            if (isTokenPath)
-                await RejectAuthResponseAsync(transformContext, "empty");
             return;
-        }
 
         string? body;
         await using (var stream = await content.ReadAsStreamAsync(transformContext.CancellationToken))
@@ -106,13 +81,10 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         }
 
         if (string.IsNullOrWhiteSpace(body))
-        {
-            if (isTokenPath)
-                await RejectAuthResponseAsync(transformContext, "empty");
             return;
-        }
 
-        if (!isTokenPath)
+        var isTokenPath = IsTokenResponsePath(path);
+        if (!(isTokenPath && status is HttpStatusCode.OK or HttpStatusCode.Created))
         {
             if (JsonContainsTokenField(body))
                 await RejectAuthResponseAsync(transformContext, "unexpected-tokens");
@@ -146,7 +118,7 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
             return;
         }
 
-        if (!IsUsableRefreshExpiry(tokens.RefreshExpiresAt, out var refreshExpires))
+        if (!IsUsableExpiry(tokens.RefreshExpiresAt, out var refreshExpires))
         {
             await RejectAuthResponseAsync(transformContext, "refresh-expiry");
             return;
@@ -294,13 +266,43 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         _authRouteSettings.TokenResponsePaths.Any(p =>
             string.Equals(NormalizePath(p), normalizedPath, StringComparison.OrdinalIgnoreCase));
 
+    private static string NormalizeRequestPath(HttpRequest request)
+    {
+        var path = request.Path.Value ?? string.Empty;
+        return NormalizePath(path);
+    }
+
     /// <summary>
-    /// Trailing slash and letter case are not different routes.
-    /// /api/v1/auth/login/ and /api/v1/auth/Login are the login path.
+    /// Percent-decoding, "." segments, a trailing slash and letter case are not a different route.
+    /// /api/v1/auth/%6Cogin, /api/v1/auth/./login and /api/v1/auth/Login/ are the login path.
+    /// The query string is not part of the path.
     /// </summary>
     private static string NormalizePath(string? path)
     {
         var value = (path ?? string.Empty).Trim();
+        var query = value.IndexOfAny(['?', '#']);
+        if (query >= 0)
+            value = value[..query];
+
+        try
+        {
+            value = Uri.UnescapeDataString(value);
+        }
+        catch (UriFormatException)
+        {
+            // Keep the raw path when the escape sequence is not valid.
+        }
+
+        var segments = value.Split('/');
+        var kept = new List<string>(segments.Length);
+        foreach (var segment in segments)
+        {
+            if (segment == ".")
+                continue;
+            kept.Add(segment);
+        }
+
+        value = string.Join('/', kept);
         if (value.Length > 1)
             value = value.TrimEnd('/');
         return value;
@@ -309,29 +311,15 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     private static bool Is2xx(HttpStatusCode? status) =>
         status is >= HttpStatusCode.OK and < HttpStatusCode.MultipleChoices;
 
-    private static bool Is4xx(HttpStatusCode? status) =>
-        status is >= HttpStatusCode.BadRequest and < HttpStatusCode.InternalServerError;
-
     /// <summary>
-    /// accessToken and refreshToken in any case, including snake_case.
+    /// accessToken and refreshToken anywhere in the JSON, any case, including snake_case.
     /// </summary>
     private static bool JsonContainsTokenField(string body)
     {
         try
         {
             using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object)
-                return false;
-
-            foreach (var property in doc.RootElement.EnumerateObject())
-            {
-                var name = new string(property.Name.Where(ch => ch != '_').ToArray());
-                if (name.Equals("accessToken", StringComparison.OrdinalIgnoreCase)
-                    || name.Equals("refreshToken", StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
+            return ContainsTokenField(doc.RootElement);
         }
         catch (JsonException)
         {
@@ -339,13 +327,33 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         }
     }
 
-    private bool IsUsableRefreshExpiry(DateTime? value, out DateTimeOffset expires)
+    private static bool ContainsTokenField(JsonElement element)
     {
-        if (!IsUsableExpiry(value, out expires))
-            return false;
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    var name = new string(property.Name.Where(static ch => ch != '_').ToArray());
+                    if (name.Equals("accessToken", StringComparison.OrdinalIgnoreCase)
+                        || name.Equals("refreshToken", StringComparison.OrdinalIgnoreCase))
+                        return true;
+                    if (ContainsTokenField(property.Value))
+                        return true;
+                }
 
-        var limit = DateTimeOffset.UtcNow.AddDays(_authRouteSettings.RefreshTokenExpirationDays + 1);
-        return expires <= limit;
+                return false;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (ContainsTokenField(item))
+                        return true;
+                }
+
+                return false;
+            default:
+                return false;
+        }
     }
 
     private static bool IsUsableExpiry(DateTime? value, out DateTimeOffset expires)

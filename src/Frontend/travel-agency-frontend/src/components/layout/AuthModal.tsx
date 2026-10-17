@@ -98,9 +98,11 @@ function LoginForm({
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState<string | undefined>();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(undefined);
     if (!email.trim() || !password.trim()) {
       toast.error('Заполните все поля');
       return;
@@ -111,6 +113,11 @@ function LoginForm({
       if (httpStatus(err) === 502) {
         setPassword('');
         toast.error(AUTH_UNAVAILABLE);
+        return;
+      }
+      if (httpStatus(err) === 401) {
+        setPassword('');
+        setFormError('Неверный email или пароль');
         return;
       }
       toast.error('Неверный email или пароль');
@@ -138,6 +145,11 @@ function LoginForm({
       <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
         Войти
       </Button>
+      {formError && (
+        <p role="alert" className="-mt-2 text-sm text-red-500">
+          {formError}
+        </p>
+      )}
     </form>
   );
 }

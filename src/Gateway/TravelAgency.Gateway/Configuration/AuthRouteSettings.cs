@@ -30,14 +30,8 @@ public sealed class AuthRouteSettings
 
     /// <summary>
     /// Paths that return tokens on success (login, register, refresh).
-    /// Compared after trimming a trailing slash, without regard to case.
+    /// Compared after percent-decoding, dropping "." segments and a trailing slash, without regard to case.
     /// </summary>
     public string[] TokenResponsePaths { get; set; } =
         ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh"];
-
-    /// <summary>
-    /// Refresh token lifetime in days. Same default as Identity JwtSettings:RefreshTokenExpirationDays.
-    /// A refreshExpiresAt later than this plus one day is rejected.
-    /// </summary>
-    public int RefreshTokenExpirationDays { get; set; } = 7;
 }
