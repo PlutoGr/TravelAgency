@@ -209,7 +209,9 @@ jobs:
           EOF
 
       # Проверка здоровья. Домен читаем из SITE_DOMAIN на сервере. Режим зависит от того, выпущен ли
-      # сертификат Let's Encrypt (/etc/letsencrypt/live/<домен>/, проверяем наличие ссылки, без чтения):
+      # сертификат Let's Encrypt. Проверка идёт от пользователя deploy, а /etc/letsencrypt/live закрыт (700 root):
+      # test -L там молча даёт «нет». Поэтому смотрим /etc/letsencrypt/renewal/<домен>.conf (каталог открыт
+      # на чтение, файл certbot создаёт при выпуске), live/ только если он виден. В лог пишем, по какому пути решили:
       #  - сертификата нет (fallback): по адресу сервера всё как раньше, HTTP 301 на https того же адреса,
       #    HTTPS без пароля 401;
       #  - сертификат есть (redirect): по адресу сервера HTTP 301 на https://<домен>/, HTTPS домена без пароля 401
@@ -220,14 +222,20 @@ jobs:
         run: |
           domain=$(ssh "deploy@$DEV_HOST" "sed -n 's/^SITE_DOMAIN=//p' /opt/travelagency/docker/.env | tail -n1" | tr -d "\"' \r")
           if [ -z "$domain" ]; then echo "SITE_DOMAIN на сервере не задан"; exit 1; fi
-          if ssh "deploy@$DEV_HOST" "test -L '/etc/letsencrypt/live/$domain/fullchain.pem'"; then
+          if ! echo "$domain" | grep -Eq '^[a-zA-Z0-9.-]+$'; then echo "Недопустимый SITE_DOMAIN на сервере"; exit 1; fi
+          # Домен проверен регуляркой выше, кавычки не нужны. Ответ: путь, где нашли сертификат, или «нет»;
+          # ошибка ssh = провал шага (иначе её можно было бы принять за fallback)
+          renewal="/etc/letsencrypt/renewal/$domain.conf"; live="/etc/letsencrypt/live/$domain/fullchain.pem"
+          cert_path=$(ssh "deploy@$DEV_HOST" \
+            "if test -r $renewal; then echo $renewal; elif test -L $live; then echo $live; else echo нет; fi")
+          if [ "$cert_path" != "нет" ]; then
             mode=redirect
             site="https://$domain"; resolve="--resolve $domain:443:$DEV_HOST"; want_redirect="301 https://$domain/"
           else
             mode=fallback
             site="https://$DEV_HOST"; resolve=""; want_redirect="301 https://$DEV_HOST/"
           fi
-          echo "Домен: $domain, режим: $mode"
+          echo "Домен: $domain, режим: $mode (сертификат Let's Encrypt: $cert_path)"
           for i in $(seq 1 30); do
             redirect=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "http://$DEV_HOST/" || true)
             auth=$(curl -sk $resolve -o /dev/null -w '%{http_code}' "$site/" || true)
