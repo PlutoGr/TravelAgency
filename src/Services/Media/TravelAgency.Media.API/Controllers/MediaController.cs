@@ -5,6 +5,7 @@ using TravelAgency.Media.Application.Features.Delete;
 using TravelAgency.Media.Application.Features.Get;
 using TravelAgency.Media.Application.Features.Presign;
 using TravelAgency.Media.Application.Features.Upload;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Media.API.Controllers;
@@ -12,7 +13,7 @@ namespace TravelAgency.Media.API.Controllers;
 [ApiController]
 [Route("media")]
 [Authorize(Policy = AuthPolicies.RequireAuthenticated)]
-public sealed class MediaController(IMediator mediator) : ControllerBase
+public sealed class MediaController(IMediator mediator, ICurrentUserService currentUser) : ControllerBase
 {
     /// <summary>
     /// Upload a file. Returns the media id and metadata, without a storage address.
@@ -39,14 +40,27 @@ public sealed class MediaController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
-    /// Download a file by its ID. Returns the raw file content.
+    /// Download the original file.
+    /// A public file is readable by any authenticated user.
+    /// A private file is readable by its owner and by Manager or Admin.
+    /// Anyone else gets 404, the same response as a missing or deleted file.
+    /// A non-public response is sent with Cache-Control: private, no-store.
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetMediaQuery(id), ct);
+        // User id and role come from the same ICurrentUserService as GetManagedMediaFileQueryHandler.
+        var roles = string.IsNullOrEmpty(currentUser.Role)
+            ? Array.Empty<string>()
+            : new[] { currentUser.Role };
+
+        var result = await mediator.Send(new GetMediaQuery(id, currentUser.UserId, roles), ct);
+        if (!result.IsPublic)
+            Response.Headers.CacheControl = MediaCacheControl.PrivateNoStore;
+
         Response.OnCompleted(async () => await result.Content.DisposeAsync());
         return File(result.Content, result.ContentType, result.FileName);
     }
