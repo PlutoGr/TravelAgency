@@ -38,6 +38,19 @@ jobs:
       - name: dotnet test
         run: dotnet test TravelAgency.sln -c Release --no-build --verbosity normal
 
+      # ВРЕМЕННО (#206): проверка, что флак "address already in use" ушёл. Отменить до мержа.
+      # MockBackendServer в Gateway — хелпер, его используют YarpRoutingIntegrationTests и AuthResponseTransformIntegrationTests.
+      - name: "ВРЕМЕННО: 20 прогонов тестов портов (#206)"
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            echo "=== Итерация $i/20"
+            dotnet test TravelAgency.sln -c Release --no-build \
+              --filter "FullyQualifiedName~GrpcKestrelTests|FullyQualifiedName~YarpRoutingIntegrationTests|FullyQualifiedName~AuthResponseTransformIntegrationTests" \
+              --logger "console;verbosity=normal"
+          done
+
   frontend:
     name: Фронтенд сборка и тесты
     runs-on: ubuntu-latest
