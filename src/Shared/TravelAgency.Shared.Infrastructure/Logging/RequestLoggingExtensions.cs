@@ -17,7 +17,11 @@ public static class RequestLoggingExtensions
 
     /// <summary>
     /// Adds Serilog request logging with the shared level policy:
-    /// health checks below 500 are Debug, 5xx or an exception is Error, everything else is Information.
+    /// health checks below 500 are Debug,
+    /// 5xx is Error,
+    /// an exception attached to a response that is not an expected 4xx is Error,
+    /// expected 4xx (401, 403, 404, validation and the rest of 400-499) stay Information even when an exception is attached,
+    /// everything else is Information.
     /// </summary>
     public static IApplicationBuilder UseTravelAgencyRequestLogging(this IApplicationBuilder app)
     {
@@ -38,7 +42,12 @@ public static class RequestLoggingExtensions
     /// </summary>
     public static LogEventLevel GetLevel(PathString path, int statusCode, Exception? exception)
     {
-        if (exception is not null || statusCode >= StatusCodes.Status500InternalServerError)
+        if (statusCode >= StatusCodes.Status500InternalServerError)
+            return LogEventLevel.Error;
+
+        // A wrong password is a 401 with UnauthorizedException. That must not become Error
+        // just because the exception object is still attached to the request log (issue #13).
+        if (exception is not null && !IsExpectedClientError(statusCode))
             return LogEventLevel.Error;
 
         return IsHealthCheckPath(path) ? LogEventLevel.Debug : LogEventLevel.Information;
@@ -57,4 +66,7 @@ public static class RequestLoggingExtensions
 
         return false;
     }
+
+    private static bool IsExpectedClientError(int statusCode) =>
+        statusCode is >= StatusCodes.Status400BadRequest and < StatusCodes.Status500InternalServerError;
 }

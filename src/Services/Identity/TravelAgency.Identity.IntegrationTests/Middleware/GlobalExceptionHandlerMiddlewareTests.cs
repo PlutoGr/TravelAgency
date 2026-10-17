@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using FluentAssertions;
 using FluentValidation;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using TravelAgency.Identity.API.Middleware;
 using TravelAgency.Identity.Application.Exceptions;
 using TravelAgency.Shared.Infrastructure.Middleware;
@@ -16,7 +18,8 @@ public class GlobalExceptionHandlerMiddlewareTests
 {
     private static async Task<HttpClient> CreateClientThatThrowsAsync(
         Exception exceptionToThrow,
-        string environment = "Development")
+        string environment = "Development",
+        CapturingLoggerProvider? logs = null)
     {
         var ex = exceptionToThrow;
         var host = await new HostBuilder()
@@ -26,7 +29,12 @@ public class GlobalExceptionHandlerMiddlewareTests
                 webBuilder.UseEnvironment(environment);
                 webBuilder.ConfigureServices(services =>
                 {
-                    services.AddLogging();
+                    services.AddLogging(builder =>
+                    {
+                        builder.SetMinimumLevel(LogLevel.Information);
+                        if (logs != null)
+                            builder.AddProvider(logs);
+                    });
                     services.AddSingleton<IExceptionMapper, IdentityExceptionMapper>();
                 });
                 webBuilder.Configure(app =>
@@ -75,6 +83,44 @@ public class GlobalExceptionHandlerMiddlewareTests
         var response = await client.GetAsync("/");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task WhenUnauthorizedExceptionThrown_Returns401AndLogsWarningWithoutStackTrace()
+    {
+        var logs = new CapturingLoggerProvider();
+        var thrown = new UnauthorizedException("Invalid credentials.");
+        var client = await CreateClientThatThrowsAsync(thrown, logs: logs);
+
+        var response = await client.PostAsync("/identity/login", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Warning);
+        entries[0].Exception.Should().BeNull();
+        entries[0].Message.Should().Contain("401")
+            .And.Contain(nameof(UnauthorizedException))
+            .And.Contain("Invalid credentials");
+        entries[0].Message.Should().NotContain("Unhandled exception");
+        logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task WhenGenericExceptionThrown_Returns500AndLogsErrorWithException()
+    {
+        var logs = new CapturingLoggerProvider();
+        var thrown = new InvalidOperationException("Unexpected error");
+        var client = await CreateClientThatThrowsAsync(thrown, logs: logs);
+
+        var response = await client.GetAsync("/identity/login");
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+        entries[0].Exception.Should().BeSameAs(thrown);
+        entries[0].Message.Should().Contain("500").And.Contain(nameof(InvalidOperationException));
     }
 
     [Fact]
@@ -142,4 +188,41 @@ public class GlobalExceptionHandlerMiddlewareTests
 
         content.Should().Contain("traceId");
     }
+
+    private static readonly string MiddlewareCategory = typeof(GlobalExceptionHandlerMiddleware).FullName!;
+
+    private static IReadOnlyList<CapturedLogEntry> MiddlewareEntries(CapturingLoggerProvider logs) =>
+        logs.Entries.Where(e => e.Category == MiddlewareCategory).ToList();
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<CapturedLogEntry> _entries = new();
+
+        public IReadOnlyList<CapturedLogEntry> Entries => _entries.ToArray();
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, _entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class CapturingLogger(string category, ConcurrentQueue<CapturedLogEntry> entries) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                entries.Enqueue(new CapturedLogEntry(category, logLevel, formatter(state, exception), exception));
+            }
+        }
+    }
+
+    private sealed record CapturedLogEntry(string Category, LogLevel Level, string Message, Exception? Exception);
 }
