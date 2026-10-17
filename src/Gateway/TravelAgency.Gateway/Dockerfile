@@ -17,4 +17,8 @@ RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Каталог ключей DataProtection (в compose на него смонтирован volume gateway-dp-keys).
+# Владелец app (пользователь образа aspnet): новый volume берёт права из образа,
+# и запись не сломается, когда сервис перейдёт на запуск не от root (#33).
+RUN mkdir -p /keys && chown app:app /keys
 ENTRYPOINT ["dotnet", "TravelAgency.Gateway.dll"]
