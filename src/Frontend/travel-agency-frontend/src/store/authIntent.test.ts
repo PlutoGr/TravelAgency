@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import toast from 'react-hot-toast';
 import { addFavorite, getFavorites, removeFavorite } from '@/api/favorites';
-import { resumeFavoriteIntent } from './authIntent';
+import { closeLoginKeepingIntent, resumeFavoriteIntent } from './authIntent';
 import { useFavoritesStore } from './favoritesStore';
 import { useUIStore } from './uiStore';
 import { sampleTour } from '@/test/sampleTour';
@@ -68,6 +68,23 @@ describe('auth intent', () => {
     useUIStore.getState().closeAuthModal();
     useUIStore.getState().openAuthModal('login');
     expect(useUIStore.getState().authIntent).toBeNull();
+  });
+
+  it('closes the login window when the session appears and keeps the intent', () => {
+    useUIStore.getState().openAuthModal('login', {
+      type: 'request',
+      tourId: 'tour-1',
+      offerId: 'offer-2',
+    });
+
+    closeLoginKeepingIntent();
+
+    expect(useUIStore.getState().isAuthModalOpen).toBe(false);
+    expect(useUIStore.getState().authIntent).toEqual({
+      type: 'request',
+      tourId: 'tour-1',
+      offerId: 'offer-2',
+    });
   });
 
   it('adds the tour after login when the guest clicked the heart, and leaves a request intent', () => {

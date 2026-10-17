@@ -47,9 +47,12 @@ public class RegisterCommandHandlerTests
         _userRepoMock.Setup(r => r.ExistsAsync("new@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _passwordHasherMock.Setup(h => h.Hash("Password1")).Returns("hashed");
+        RefreshToken? staged = null;
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto(accessToken, string.Empty, expiresAt));
+            .Returns(new AuthTokensDto(accessToken, string.Empty, expiresAt, DateTime.UtcNow.AddDays(1)));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(refreshToken);
+        _refreshTokenRepoMock.Setup(r => r.Stage(It.IsAny<RefreshToken>()))
+            .Callback<RefreshToken>(token => staged = token);
 
         var request = new RegisterRequest("new@example.com", "Password1", "John", "Doe", null);
         var result = await _handler.Handle(new RegisterCommand(request), CancellationToken.None);
@@ -57,6 +60,9 @@ public class RegisterCommandHandlerTests
         result.AccessToken.Should().Be(accessToken);
         result.RefreshToken.Should().Be(refreshToken);
         result.ExpiresAt.Should().Be(expiresAt);
+        result.RefreshExpiresAt.Should().Be(staged!.ExpiresAt);
+        result.RefreshExpiresAt.Should().NotBe(result.ExpiresAt);
+        result.RefreshExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(7), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -79,7 +85,7 @@ public class RegisterCommandHandlerTests
             .ReturnsAsync(false);
         _passwordHasherMock.Setup(h => h.Hash("PlainPass")).Returns("hashedPass");
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1)));
+            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("rt");
 
         var request = new RegisterRequest("u@example.com", "PlainPass", "J", "D", null);
@@ -95,7 +101,7 @@ public class RegisterCommandHandlerTests
             .ReturnsAsync(false);
         _passwordHasherMock.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed");
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1)));
+            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("rt");
 
         var request = new RegisterRequest("u@example.com", "Pass1", "J", "D", null);
@@ -113,7 +119,7 @@ public class RegisterCommandHandlerTests
             .ReturnsAsync(false);
         _passwordHasherMock.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed");
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1)));
+            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("rt");
         _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(2);
@@ -131,7 +137,7 @@ public class RegisterCommandHandlerTests
             .ReturnsAsync(false);
         _passwordHasherMock.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed");
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1)));
+            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("rt");
         _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("DB failure"));

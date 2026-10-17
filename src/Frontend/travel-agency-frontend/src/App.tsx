@@ -1,11 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import toast, { Toaster } from 'react-hot-toast';
-import { favoriteIntentErrorToast, resumeFavoriteIntent } from '@/store/authIntent';
+import { Toaster } from 'react-hot-toast';
+import { setAuthSessionHandler } from '@/api/client';
+import { afterSessionEstablished } from '@/store/authIntent';
 import { useAuthStore } from '@/store/authStore';
-import { useFavoritesStore } from '@/store/favoritesStore';
-import { useUIStore } from '@/store/uiStore';
 import {
   PublicLayout,
   DashboardLayout,
@@ -60,7 +59,13 @@ function PageFallback() {
 export default function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const loadFavorites = useFavoritesStore((s) => s.loadFavorites);
+
+  useEffect(() => {
+    setAuthSessionHandler(() => {
+      useAuthStore.getState().markSessionExpired();
+    });
+    return () => setAuthSessionHandler(null);
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -69,26 +74,11 @@ export default function App() {
   useEffect(() => {
     if (!isAuthenticated) return;
     let cancelled = false;
-    (async () => {
-      await loadFavorites();
-      if (cancelled) return;
-      const favorites = useFavoritesStore.getState();
-      const intent = useUIStore.getState().authIntent;
-      if (intent?.type === 'favorite' && favorites.error) {
-        useUIStore.getState().clearAuthIntent();
-        toast.error(favoriteIntentErrorToast);
-        return;
-      }
-      if (intent?.type === 'favorite' && favorites.isFavorite(intent.tourId)) {
-        useUIStore.getState().clearAuthIntent();
-        return;
-      }
-      resumeFavoriteIntent();
-    })();
+    void afterSessionEstablished(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, loadFavorites]);
+  }, [isAuthenticated]);
 
   return (
     <QueryClientProvider client={queryClient}>

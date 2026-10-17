@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
@@ -12,16 +13,30 @@ namespace TravelAgency.Gateway.Tests.Helpers;
 public sealed class MockBackendServer : IAsyncDisposable
 {
     private readonly WebApplication _app;
+    private readonly ConcurrentQueue<string> _requestPaths;
 
-    private MockBackendServer(WebApplication app)
+    private MockBackendServer(WebApplication app, ConcurrentQueue<string> requestPaths)
     {
         _app = app;
+        _requestPaths = requestPaths;
     }
+
+    /// <summary>
+    /// Paths the mock actually received, after YARP rewrote them.
+    /// </summary>
+    public IReadOnlyList<string> RequestPaths => _requestPaths.ToArray();
 
     /// <summary>
     /// Base URL of the mock server (e.g. http://127.0.0.1:12345).
     /// </summary>
     public string BaseUrl { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Срок refresh-токена, который мок отдаёт в JSON как refreshExpiresAt.
+    /// </summary>
+    public static readonly DateTime AuthAccessExpiresAt = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
+
+    public static readonly DateTime AuthRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
 
     /// <summary>
     /// Starts a mock backend on a random port. Returns 200 for any path and echoes
@@ -43,6 +58,7 @@ public sealed class MockBackendServer : IAsyncDisposable
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
         var app = builder.Build();
+        var requestPaths = new ConcurrentQueue<string>();
 
         app.UseWebSockets();
         app.Run(async context =>
@@ -54,6 +70,7 @@ public sealed class MockBackendServer : IAsyncDisposable
             }
 
             var path = context.Request.Path.Value ?? "/";
+            requestPaths.Enqueue(path);
             if (authTokenSupport && IsLogoutPath(path))
             {
                 context.Response.StatusCode = 204;
@@ -67,7 +84,8 @@ public sealed class MockBackendServer : IAsyncDisposable
                 {
                     accessToken,
                     refreshToken = "test-refresh-token",
-                    expiresAt = DateTime.UtcNow.AddHours(1)
+                    expiresAt = AuthAccessExpiresAt,
+                    refreshExpiresAt = AuthRefreshExpiresAt
                 }, cancellationToken);
             }
             else
@@ -81,7 +99,7 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         await app.StartAsync(cancellationToken);
 
-        return new MockBackendServer(app) { BaseUrl = app.Urls.First() };
+        return new MockBackendServer(app, requestPaths) { BaseUrl = app.Urls.First() };
     }
 
     public async Task StopAsync()

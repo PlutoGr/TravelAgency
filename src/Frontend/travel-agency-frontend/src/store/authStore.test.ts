@@ -185,6 +185,27 @@ describe('authStore', () => {
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
 
+    it('does not apply a checkAuth result that arrives after login', async () => {
+      let resolveMe: (user: User) => void = () => {};
+      mockGetMe.mockImplementation(
+        () =>
+          new Promise<User>((resolve) => {
+            resolveMe = resolve;
+          }),
+      );
+      mockLogin.mockResolvedValue({ user: sampleUser });
+
+      useAuthStore.getState().checkAuth();
+      await useAuthStore.getState().login('a@b.com', 'secret');
+
+      resolveMe({ ...sampleUser, id: 'stale' });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(useAuthStore.getState().user?.id).toBe('u1');
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    });
+
     it('clears auth state on 401 (auth failure)', async () => {
       const err401 = { response: { status: 401 } };
       mockGetMe.mockImplementation(() => Promise.reject(err401));
@@ -194,6 +215,20 @@ describe('authStore', () => {
       await vi.waitFor(() => mockGetMe.mock.calls.length > 0, { timeout: 500 });
       await new Promise((r) => setTimeout(r, 0));
 
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    });
+
+    it('treats 502 as a guest without calling logout', async () => {
+      mockGetMe.mockRejectedValue({ response: { status: 502 } });
+
+      useAuthStore.getState().checkAuth();
+
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().isLoading).toBe(false);
+      });
+
+      expect(mockLogout).not.toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });

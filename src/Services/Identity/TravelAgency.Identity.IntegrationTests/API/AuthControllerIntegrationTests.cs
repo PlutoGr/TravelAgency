@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -280,5 +281,77 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
         var profile = await response.Content.ReadFromJsonAsync<UserProfileDto>();
         profile.Should().NotBeNull();
         profile!.FirstName.Should().Be("Updated");
+    }
+
+    [Theory]
+    [InlineData("login")]
+    [InlineData("register")]
+    [InlineData("refresh")]
+    public async Task AuthResponses_IncludeRefreshExpiresAt(string action)
+    {
+        HttpResponseMessage response;
+        if (action == "register")
+        {
+            response = await _client.PostAsJsonAsync(
+                "/identity/register",
+                new RegisterRequest("expiry-register@example.com", "Password1", "New", "User", null));
+            response.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+        else if (action == "login")
+        {
+            await SeedUserAsync("expiry-login@example.com", "Password1");
+            response = await _client.PostAsJsonAsync(
+                "/identity/login",
+                new LoginRequest("expiry-login@example.com", "Password1"));
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+        else
+        {
+            await SeedUserAsync("expiry-refresh@example.com", "Password1");
+            var loginResp = await _client.PostAsJsonAsync(
+                "/identity/login",
+                new LoginRequest("expiry-refresh@example.com", "Password1"));
+            var tokens = await loginResp.Content.ReadFromJsonAsync<AuthTokensDto>();
+            response = await _client.PostAsJsonAsync(
+                "/identity/refresh",
+                new RefreshTokenRequest(tokens!.RefreshToken));
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.TryGetProperty("refreshExpiresAt", out var refreshExpiresAt).Should().BeTrue(
+            "ответ {0} обязан содержать refreshExpiresAt, запасного срока нет", action);
+        refreshExpiresAt.ValueKind.Should().Be(JsonValueKind.String);
+        refreshExpiresAt.GetDateTime().Should().BeCloseTo(DateTime.UtcNow.AddDays(7), TimeSpan.FromMinutes(1));
+
+        var accessExpiresAt = doc.RootElement.GetProperty("expiresAt").GetDateTime();
+        refreshExpiresAt.GetDateTime().Should().BeAfter(accessExpiresAt.AddHours(1));
+    }
+
+    [Fact]
+    public async Task Refresh_WithValidToken_RevokesPreviousToken()
+    {
+        await SeedUserAsync("rotate@example.com", "Password1");
+        var loginResp = await _client.PostAsJsonAsync(
+            "/identity/login",
+            new LoginRequest("rotate@example.com", "Password1"));
+        var tokens = await loginResp.Content.ReadFromJsonAsync<AuthTokensDto>();
+
+        var refreshResp = await _client.PostAsJsonAsync(
+            "/identity/refresh",
+            new RefreshTokenRequest(tokens!.RefreshToken));
+        refreshResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var reuse = await _client.PostAsJsonAsync(
+            "/identity/refresh",
+            new RefreshTokenRequest(tokens.RefreshToken));
+        reuse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var stored = await db.RefreshTokens.SingleAsync(t => t.Token == tokens.RefreshToken);
+        stored.RevokedAt.Should().NotBeNull();
+        stored.IsRevoked.Should().BeTrue();
     }
 }

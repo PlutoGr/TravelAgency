@@ -13,6 +13,14 @@ const AUTH_TABS = [
   { id: 'register', label: 'Регистрация' },
 ] as const;
 
+const AUTH_UNAVAILABLE = 'Не удалось войти. Попробуйте ещё раз через минуту';
+
+function httpStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
+  const response = (error as { response?: { status?: number } }).response;
+  return response?.status;
+}
+
 export default function AuthModal() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -51,13 +59,9 @@ export default function AuthModal() {
               <LoginForm
                 isLoading={isLoading}
                 onSubmit={async (email, password) => {
-                  try {
-                    await login(email, password);
-                    toast.success('Добро пожаловать!');
-                    finishAuth();
-                  } catch {
-                    toast.error('Неверный email или пароль');
-                  }
+                  await login(email, password);
+                  toast.success('Добро пожаловать!');
+                  finishAuth();
                 }}
               />
             </motion.div>
@@ -72,19 +76,9 @@ export default function AuthModal() {
               <RegisterForm
                 isLoading={isLoading}
                 onSubmit={async (data) => {
-                  try {
-                    await register(data);
-                    toast.success('Регистрация прошла успешно!');
-                    finishAuth();
-                  } catch (err) {
-                    const messages = extractValidationErrors(err);
-                    if (messages.length > 0) {
-                      toast.error(messages.join('. '));
-                    } else {
-                      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-                      toast.error(detail || 'Ошибка регистрации. Попробуйте ещё раз.');
-                    }
-                  }
+                  await register(data);
+                  toast.success('Регистрация прошла успешно!');
+                  finishAuth();
                 }}
               />
             </motion.div>
@@ -100,18 +94,34 @@ function LoginForm({
   onSubmit,
 }: {
   isLoading: boolean;
-  onSubmit: (email: string, password: string) => void;
+  onSubmit: (email: string, password: string) => Promise<void>;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState<string | undefined>();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(undefined);
     if (!email.trim() || !password.trim()) {
       toast.error('Заполните все поля');
       return;
     }
-    onSubmit(email, password);
+    try {
+      await onSubmit(email, password);
+    } catch (err) {
+      if (httpStatus(err) === 502) {
+        setPassword('');
+        toast.error(AUTH_UNAVAILABLE);
+        return;
+      }
+      if (httpStatus(err) === 401) {
+        setPassword('');
+        setFormError('Неверный email или пароль');
+        return;
+      }
+      toast.error('Неверный email или пароль');
+    }
   }
 
   return (
@@ -135,6 +145,11 @@ function LoginForm({
       <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
         Войти
       </Button>
+      {formError && (
+        <p role="alert" className="-mt-2 text-sm text-red-500">
+          {formError}
+        </p>
+      )}
     </form>
   );
 }
@@ -181,7 +196,7 @@ function RegisterForm({
     firstName: string;
     lastName: string;
     phone: string;
-  }) => void;
+  }) => Promise<void>;
 }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -190,7 +205,7 @@ function RegisterForm({
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | undefined>();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPasswordError(undefined);
 
@@ -211,7 +226,22 @@ function RegisterForm({
       return;
     }
 
-    onSubmit({ email, password, firstName, lastName, phone });
+    try {
+      await onSubmit({ email, password, firstName, lastName, phone });
+    } catch (err) {
+      if (httpStatus(err) === 502) {
+        setPassword('');
+        toast.error(AUTH_UNAVAILABLE);
+        return;
+      }
+      const messages = extractValidationErrors(err);
+      if (messages.length > 0) {
+        toast.error(messages.join('. '));
+        return;
+      }
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || 'Ошибка регистрации. Попробуйте ещё раз.');
+    }
   }
 
   return (

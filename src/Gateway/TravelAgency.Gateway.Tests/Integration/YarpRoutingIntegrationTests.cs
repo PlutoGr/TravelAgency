@@ -99,10 +99,12 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "test@test.com", password = "x" });
 
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var path = await GetEchoedPathAsync(response);
-        Assert.Equal("/identity/login", path);
+        // Assert: the echo has no tokens, so the gateway answers 502 with an empty body.
+        // The rewritten path is visible on the mock, which did receive the login.
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
+        Assert.False(response.Headers.Contains("Set-Cookie"));
+        Assert.Contains("/identity/login", _fixture.MockServer.RequestPaths);
     }
 
     [Fact]

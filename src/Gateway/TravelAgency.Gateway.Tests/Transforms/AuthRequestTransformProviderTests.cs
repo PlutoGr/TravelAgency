@@ -189,6 +189,25 @@ public class AuthRequestTransformProviderTests
         Assert.Equal("value", doc.RootElement.GetProperty("otherField").GetString());
     }
 
+    [Theory]
+    [InlineData("/api/v1/auth/refresh")]
+    [InlineData("/api/v1/auth/logout")]
+    public async Task Transform_WhenTwoRefreshCookies_UsesFirstOccurrence(string path)
+    {
+        var provider = CreateProvider();
+        var context = CreateRequestContext(path, body: "{}");
+        context.HttpContext.Request.Headers.Cookie =
+            "refresh_token=from-auth-path; refresh_token=from-legacy-path";
+
+        await InvokeTransformAsync(provider, context);
+
+        context.HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(context.HttpContext.Request.Body);
+        var body = await reader.ReadToEndAsync();
+        var doc = System.Text.Json.JsonDocument.Parse(body);
+        Assert.Equal("from-auth-path", doc.RootElement.GetProperty("refreshToken").GetString());
+    }
+
     [Fact]
     public async Task Transform_WhenRefreshPathNoRefreshTokenCookie_DoesNotModifyBody()
     {

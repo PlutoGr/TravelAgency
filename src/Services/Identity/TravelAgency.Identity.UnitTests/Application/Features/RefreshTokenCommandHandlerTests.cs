@@ -46,9 +46,12 @@ public class RefreshTokenCommandHandlerTests
             .ReturnsAsync(oldToken);
         _userRepoMock.Setup(r => r.GetByIdAsync(oldToken.UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
+        RefreshToken? staged = null;
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(user))
-            .Returns(new AuthTokensDto(newAccessToken, string.Empty, expiresAt));
+            .Returns(new AuthTokensDto(newAccessToken, string.Empty, expiresAt, DateTime.UtcNow.AddDays(1)));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(newRefreshStr);
+        _refreshTokenRepoMock.Setup(r => r.Stage(It.IsAny<RefreshToken>()))
+            .Callback<RefreshToken>(token => staged = token);
         _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var command = new RefreshTokenCommand(new RefreshTokenRequest("old-refresh"));
@@ -57,6 +60,9 @@ public class RefreshTokenCommandHandlerTests
         result.AccessToken.Should().Be(newAccessToken);
         result.RefreshToken.Should().Be(newRefreshStr);
         result.ExpiresAt.Should().Be(expiresAt);
+        result.RefreshExpiresAt.Should().Be(staged!.ExpiresAt);
+        result.RefreshExpiresAt.Should().NotBe(result.ExpiresAt);
+        result.RefreshExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(7), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -71,7 +77,7 @@ public class RefreshTokenCommandHandlerTests
         _userRepoMock.Setup(r => r.GetByIdAsync(oldToken.UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1)));
+            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("new-rt");
         _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 

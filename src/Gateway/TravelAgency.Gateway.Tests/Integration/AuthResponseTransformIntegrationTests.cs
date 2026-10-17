@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -160,5 +161,86 @@ public class AuthResponseTransformIntegrationTests : IClassFixture<AuthResponseT
         var setCookieHeaders = setCookieValues.ToList();
         Assert.Contains(setCookieHeaders, h => h.StartsWith("access_token=;", StringComparison.Ordinal) && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(setCookieHeaders, h => h.StartsWith("refresh_token=;", StringComparison.Ordinal) && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("/api/v1/auth/login")]
+    [InlineData("/api/v1/auth/register")]
+    [InlineData("/api/v1/auth/refresh")]
+    public async Task AuthRoute_SetsBothCookiesToRefreshExpiresAt(string path)
+    {
+        var client = _fixture.Factory.CreateClient();
+        using var content = JsonContent.Create(new { email = "test@test.com", password = "Password1!", refreshToken = "test-refresh-token" });
+        var response = await client.PostAsync(path, content);
+
+        Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created);
+        var headers = response.Headers.GetValues("Set-Cookie").ToList();
+        var access = Assert.Single(headers, h => h.StartsWith("access_token=test-access-token", StringComparison.Ordinal) || h.StartsWith("access_token=ey", StringComparison.Ordinal));
+        var refresh = Assert.Single(headers, h => h.StartsWith("refresh_token=test-refresh-token", StringComparison.Ordinal));
+        var accessExpires = "expires=" + Helpers.MockBackendServer.AuthAccessExpiresAt
+            .ToUniversalTime()
+            .ToString("r", CultureInfo.InvariantCulture);
+        var refreshExpires = "expires=" + Helpers.MockBackendServer.AuthRefreshExpiresAt
+            .ToUniversalTime()
+            .ToString("r", CultureInfo.InvariantCulture);
+
+        Assert.Contains(accessExpires, access, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(refreshExpires, refresh, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(refreshExpires, access, StringComparison.OrdinalIgnoreCase);
+
+        foreach (var header in new[] { access, refresh })
+        {
+            Assert.Contains("httponly", header, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("samesite=lax", header, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.True(HasCookiePath(access, "/"));
+        Assert.True(HasCookiePath(refresh, "/api/v1/auth"));
+        Assert.False(HasCookiePath(refresh, "/api/v1/auth/refresh"));
+    }
+
+    [Theory]
+    [InlineData("/api/v1/auth/login")]
+    [InlineData("/api/v1/auth/register")]
+    [InlineData("/api/v1/auth/refresh")]
+    public async Task AuthTokenRoute_ClearsLegacyRefreshCookieOnRootPath(string path)
+    {
+        var client = _fixture.Factory.CreateClient();
+        var response = await client.PostAsJsonAsync(path, new { email = "test@test.com", password = "x", refreshToken = "test-refresh-token" });
+
+        var headers = response.Headers.GetValues("Set-Cookie").ToList();
+        var legacy = Assert.Single(headers, h =>
+            h.StartsWith("refresh_token=;", StringComparison.Ordinal)
+            && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase));
+        Assert.True(HasCookiePath(legacy, "/"));
+    }
+
+    [Fact]
+    public async Task AuthLogout_ClearsRefreshCookieOnAuthPathAndLegacyRoot()
+    {
+        var client = _fixture.Factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/v1/auth/logout", new { refreshToken = "test-refresh-token" });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var headers = response.Headers.GetValues("Set-Cookie").ToList();
+        var refreshClears = headers
+            .Where(h => h.StartsWith("refresh_token=;", StringComparison.Ordinal)
+                && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.Contains(refreshClears, h => HasCookiePath(h, "/api/v1/auth"));
+        Assert.Contains(refreshClears, h => HasCookiePath(h, "/"));
+        Assert.DoesNotContain(refreshClears, h => HasCookiePath(h, "/api/v1/auth/refresh"));
+    }
+
+    private static bool HasCookiePath(string header, string path)
+    {
+        var marker = $"path={path}";
+        var index = header.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return false;
+
+        var end = index + marker.Length;
+        return end >= header.Length || header[end] is ';' or ' ';
     }
 }

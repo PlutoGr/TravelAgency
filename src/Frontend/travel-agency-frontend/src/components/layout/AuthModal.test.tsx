@@ -3,8 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import * as authApi from '@/api/auth';
+import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import AuthModal from './AuthModal';
+
+vi.mock('react-hot-toast', () => ({
+  default: { error: vi.fn(), success: vi.fn() },
+}));
 
 vi.mock('framer-motion', async () => {
   const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
@@ -63,6 +70,67 @@ describe('AuthModal close control', () => {
     await user.click(screen.getByRole('button', { name: 'Закрыть' }));
     expect(useUIStore.getState().isAuthModalOpen).toBe(false);
     expect(screen.queryByRole('button', { name: 'Войти' })).not.toBeInTheDocument();
+  });
+});
+
+describe('AuthModal unavailable auth service', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
+    useUIStore.setState({ isAuthModalOpen: true, authModalTab: 'login', isMobileMenuOpen: false });
+  });
+
+  it('keeps email and clears the password when login returns 502', async () => {
+    vi.spyOn(authApi, 'login').mockRejectedValue({ response: { status: 502 } });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderLogin();
+
+    await user.type(screen.getByLabelText('Email'), 'a@b.com');
+    await user.type(screen.getByLabelText('Пароль'), 'secret');
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+
+    expect(toast.error).toHaveBeenCalledWith('Не удалось войти. Попробуйте ещё раз через минуту');
+    expect(screen.getByLabelText('Email')).toHaveValue('a@b.com');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
+  it('shows a wrong password under the form, keeps the email and clears the password', async () => {
+    vi.spyOn(authApi, 'login').mockRejectedValue({ response: { status: 401 } });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderLogin();
+
+    await user.type(screen.getByLabelText('Email'), 'a@b.com');
+    await user.type(screen.getByLabelText('Пароль'), 'secret');
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Неверный email или пароль');
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Email')).toHaveValue('a@b.com');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
+  it('keeps email and name and clears the password when register returns 502', async () => {
+    vi.spyOn(authApi, 'register').mockRejectedValue({ response: { status: 502 } });
+    useUIStore.setState({ isAuthModalOpen: true, authModalTab: 'register' });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    render(
+      <MemoryRouter>
+        <AuthModal />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText('Имя'), 'Анна');
+    await user.type(screen.getByLabelText('Фамилия'), 'Смирнова');
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com');
+    await user.type(screen.getByLabelText('Телефон'), '+79990001122');
+    await user.type(screen.getByLabelText('Пароль'), 'Password1');
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
+
+    expect(toast.error).toHaveBeenCalledWith('Не удалось войти. Попробуйте ещё раз через минуту');
+    expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
+    expect(screen.getByLabelText('Email')).toHaveValue('anna@example.com');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
   });
 });
 
