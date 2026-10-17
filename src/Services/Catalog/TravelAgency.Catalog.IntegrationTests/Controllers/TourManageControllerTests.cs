@@ -301,6 +301,39 @@ public class TourManageControllerTests
     }
 
     [Fact]
+    public async Task Images_OnPublishedTour_WhenPurposeIsNotTourImage_Returns422_AndDoesNotMarkPublic()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        var general = Guid.NewGuid();
+        _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
+        {
+            [general] = new(general, _managerId.ToString(), 2000, 1000, "general"),
+            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900),
+            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900)
+        };
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(general, 0, true, "Не фото тура"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(response)).Should().Equal(TourImageRules.NotFound);
+        _factory.Media.Marked.Should().BeEmpty();
+        StoredImageIds(tour.Id).Should().Equal(previous);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
     public async Task Images_OnPublishedTour_WhenAnotherManager_Returns403_AndDoesNotChangeImages()
     {
         var tour = CompletePublished();

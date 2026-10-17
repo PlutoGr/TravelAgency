@@ -40,6 +40,7 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
         response.Files[0].Width.Should().Be(2400);
         response.Files[0].Height.Should().Be(1350);
         response.Files[0].IsPublic.Should().BeFalse();
+        response.Files[0].Purpose.Should().Be(MediaPurposes.TourImage);
         response.Files[0].AvailableSizes.Should().Equal(
             TourImageSizes.W200, TourImageSizes.W800, TourImageSizes.W1600);
     }
@@ -60,6 +61,26 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
 
         listed.Files.Should().ContainSingle();
         listed.Files[0].IsPublic.Should().BeTrue();
+        listed.Files[0].Purpose.Should().Be(MediaPurposes.TourImage);
+    }
+
+    [Fact]
+    public async Task MarkMediaFilesPublic_LeavesOtherPurposesPrivate()
+    {
+        var general = await _fixture.SeedFileAsync(MediaPurposes.General);
+        var (client, _) = CreateClient();
+
+        await client.MarkMediaFilesPublicAsync(
+            new MarkMediaFilesPublicRequest { Ids = { general.Id.ToString() } },
+            AuthHeaders());
+
+        var listed = await client.GetMediaFilesAsync(
+            new GetMediaFilesRequest { Ids = { general.Id.ToString() } },
+            AuthHeaders());
+
+        listed.Files.Should().ContainSingle();
+        listed.Files[0].Purpose.Should().Be(MediaPurposes.General);
+        listed.Files[0].IsPublic.Should().BeFalse();
     }
 
     [Fact]

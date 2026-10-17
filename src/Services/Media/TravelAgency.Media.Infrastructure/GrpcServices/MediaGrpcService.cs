@@ -76,7 +76,8 @@ public sealed class MediaGrpcService(IMediaFileRepository repository) : MediaSer
             ContentType = file.ContentType,
             Width = file.Width ?? 0,
             Height = file.Height ?? 0,
-            IsPublic = file.IsPublic
+            IsPublic = file.IsPublic,
+            Purpose = file.Purpose
         };
 
         foreach (var (code, _) in TourImageSizes.All)

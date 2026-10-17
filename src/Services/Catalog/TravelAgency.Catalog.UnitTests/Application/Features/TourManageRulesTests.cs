@@ -195,6 +195,27 @@ public class TourManageRulesTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task Images_WhenPublishedAndPurposeIsNotTourImage_ThrowsSameCodeAndDoesNotMarkPublic()
+    {
+        var owner = Guid.NewGuid();
+        var tour = OwnedPublished(owner);
+        var previous = tour.Images.Select(image => image.MediaFileId).ToList();
+        var general = Guid.NewGuid();
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        ReturnFiles(new RemoteMediaFile(general, owner.ToString(), 2000, 1000, "general"));
+
+        var act = () => ImagesHandler().Handle(ImagesCommand(tour, general, isCover: false), CancellationToken.None);
+
+        var error = await act.Should().ThrowAsync<TourImageRuleException>();
+        error.Which.Code.Should().Be(TourImageRules.NotFound);
+        error.Which.Message.Should().Be(TourImageRules.RejectedMessage);
+        tour.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo(previous);
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1279)]

@@ -26,15 +26,16 @@ public static class TourImageRules
         var owner = tourOwnerId?.ToString();
         foreach (var id in ids.Distinct())
         {
-            if (!byId.TryGetValue(id, out var file) || !BelongsToOwner(file, owner))
+            if (!byId.TryGetValue(id, out var file) || !CanAttach(file, owner))
                 throw new TourImageRuleException(NotFound, RejectedMessage);
         }
 
         return byId;
     }
 
-    private static bool BelongsToOwner(RemoteMediaFile file, string? owner) =>
-        string.Equals(file.OwnerId, owner, StringComparison.OrdinalIgnoreCase);
+    private static bool CanAttach(RemoteMediaFile file, string? owner) =>
+        string.Equals(file.OwnerId, owner, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(file.Purpose, RemoteMediaPurposes.TourImage, StringComparison.OrdinalIgnoreCase);
 
     public static void EnsureCoverWidth(int width)
     {
