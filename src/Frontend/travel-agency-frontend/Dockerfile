@@ -19,6 +19,7 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/travelagency/http.conf
 COPY nginx-domain.conf.template /etc/nginx/travelagency/domain.conf.template
+COPY nginx-default/ /etc/nginx/travelagency/default/
 COPY nginx-app.conf /etc/nginx/travelagency/app.conf
 COPY nginx-headers.conf /etc/nginx/travelagency/headers.conf
 COPY nginx-logging.conf /etc/nginx/conf.d/01-travelagency-logging.conf

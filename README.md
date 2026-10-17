@@ -86,7 +86,7 @@ Dev-среда работает на одном сервере Selectel (Ubuntu 
 
 Адрес сайта: `https://<SITE_DOMAIN>` (сейчас `dev.travelagencyonline.ru`), сертификат Let's Encrypt. Пароль у команды. Сайт закрыт basic auth; без пароля открыты только `/robots.txt`, `/healthz` и `/.well-known/acme-challenge/` (проверка Let's Encrypt).
 
-- HTTP на 80 порту редиректит на HTTPS, заход по IP или чужому имени редиректит на `https://<SITE_DOMAIN>` (301). Поисковики сайт не индексируют (`robots.txt` и заголовок `X-Robots-Tag`).
+- HTTP на 80 порту редиректит на HTTPS. Заход по IP или чужому имени редиректит на `https://<SITE_DOMAIN>` (301), но только когда сертификат Let's Encrypt уже выпущен. Пока его нет, по IP сайт работает как раньше (самоподписанный сертификат, пароль), чтобы dev не пропал, если домен ещё не делегирован. Поисковики сайт не индексируют (`robots.txt` и заголовок `X-Robots-Tag`).
 - Снаружи открыты только порты 22, 80 и 443 (ufw). Gateway (`127.0.0.1:5001`) и консоль MinIO (`127.0.0.1:9001`) доступны только через SSH-туннель:
 
 ```bash
@@ -112,7 +112,7 @@ sudoedit /opt/travelagency/docker/.env          # SITE_DOMAIN=new.example.ru
 sudo /opt/travelagency/deploy/scripts/issue-cert.sh   # A-запись нового домена уже должна резолвиться
 ```
 
-Скрипт пересоздаёт frontend и gateway, выпускает сертификат через `certbot certonly --webroot` (webroot `/var/lib/travelagency/acme`) и ставит хук, который после продления делает `nginx -s reload`. Продление автоматическое: `certbot.timer` (`systemctl list-timers certbot.timer`). HSTS не включён специально, пока домен dev может меняться.
+Скрипт пересоздаёт frontend и gateway, выпускает сертификат через `certbot certonly --webroot` (webroot `/var/lib/travelagency/acme`) и ставит хук, который после продления делает `nginx -s reload`. Режим выбирает `nginx-entrypoint.sh` при старте контейнера: нет `/etc/letsencrypt/live/<SITE_DOMAIN>/` значит fallback (по IP сайт как раньше), есть значит redirect (по IP 301 на домен). Проверка Let's Encrypt (`/.well-known/acme-challenge/`) работает на 80 порту в обоих режимах. Продление автоматическое: `certbot.timer` (`systemctl list-timers certbot.timer`). HSTS не включён специально, пока домен dev может меняться.
 
 ### SSH
 
@@ -139,7 +139,7 @@ Workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) запу
 1. `dotnet test` всего решения. Если тесты падают, дальше не идёт.
 2. Сборка 7 образов (gateway, identity, catalog, booking, chat, media, frontend) и пуш в GHCR с тегами `latest` и полным sha коммита: `ghcr.io/plutogr/travelagency-<имя>:<sha>`.
 3. По SSH под `deploy`: `git pull` в `/opt/travelagency`, `docker compose pull` и `docker compose up -d` с `IMAGE_TAG=<sha>`, удаление старых образов.
-4. Проверка здоровья: домен читается из `SITE_DOMAIN` на сервере; HTTP по адресу сервера отдаёт 301 на `https://<домен>/`, HTTPS без пароля 401, `/healthz` отвечает `Healthy` (gateway и все сервисы), API отвечает 200. Если за 5 минут не дождались, пайплайн красный.
+4. Проверка здоровья: домен читается из `SITE_DOMAIN` на сервере; без сертификата Let's Encrypt HTTP по адресу сервера отдаёт 301 на HTTPS того же адреса, с сертификатом 301 на `https://<домен>/`; HTTPS без пароля 401, `/healthz` отвечает `Healthy` (gateway и все сервисы), API отвечает 200. Если за 5 минут не дождались, пайплайн красный.
 
 Отдельно на каждый push работает [поиск секретов gitleaks](.github/workflows/gitleaks.yml), а Dependabot раз в неделю присылает PR с обновлениями ([`.github/dependabot.yml`](.github/dependabot.yml)).
 

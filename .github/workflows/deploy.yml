@@ -208,32 +208,38 @@ jobs:
           docker logout ghcr.io
           EOF
 
-      # Проверка здоровья. Домен читаем из SITE_DOMAIN на сервере, запрос к домену идёт через
-      # curl --resolve на адрес сервера, поэтому проверка не зависит от DNS у раннера.
-      #  - заход по адресу сервера по HTTP редиректит на https://<домен>/ (301);
-      #  - HTTPS домена без пароля отвечает 401 (доступ закрыт);
-      #  - /healthz через nginx и gateway отвечает Healthy (путь открыт без пароля);
-      #  - API через gateway на сервере отвечает 200.
-      # -k оставлен, пока на сервере может стоять самоподписанный сертификат (до выпуска Let's Encrypt).
+      # Проверка здоровья. Домен читаем из SITE_DOMAIN на сервере. Режим зависит от того, выпущен ли
+      # сертификат Let's Encrypt (/etc/letsencrypt/live/<домен>/, проверяем наличие ссылки, без чтения):
+      #  - сертификата нет (fallback): по адресу сервера всё как раньше, HTTP 301 на https того же адреса,
+      #    HTTPS без пароля 401;
+      #  - сертификат есть (redirect): по адресу сервера HTTP 301 на https://<домен>/, HTTPS домена без пароля 401
+      #    (через curl --resolve на адрес сервера, проверка не зависит от DNS у раннера).
+      # В обоих режимах /healthz отвечает Healthy, API через gateway на сервере отвечает 200.
       # Ждём до 5 минут, иначе пайплайн красный.
       - name: Проверка здоровья
         run: |
           domain=$(ssh "deploy@$DEV_HOST" "sed -n 's/^SITE_DOMAIN=//p' /opt/travelagency/docker/.env | tail -n1" | tr -d "\"' \r")
           if [ -z "$domain" ]; then echo "SITE_DOMAIN на сервере не задан"; exit 1; fi
-          echo "Домен: $domain"
-          resolve="--resolve $domain:443:$DEV_HOST"
+          if ssh "deploy@$DEV_HOST" "test -L '/etc/letsencrypt/live/$domain/fullchain.pem'"; then
+            mode=redirect
+            site="https://$domain"; resolve="--resolve $domain:443:$DEV_HOST"; want_redirect="301 https://$domain/"
+          else
+            mode=fallback
+            site="https://$DEV_HOST"; resolve=""; want_redirect="301 https://$DEV_HOST/"
+          fi
+          echo "Домен: $domain, режим: $mode"
           for i in $(seq 1 30); do
             redirect=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "http://$DEV_HOST/" || true)
-            auth=$(curl -sk $resolve -o /dev/null -w '%{http_code}' "https://$domain/" || true)
-            health=$(curl -sk $resolve "https://$domain/healthz" || true)
+            auth=$(curl -sk $resolve -o /dev/null -w '%{http_code}' "$site/" || true)
+            health=$(curl -sk $resolve "$site/healthz" || true)
             api=$(ssh "deploy@$DEV_HOST" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/api/v1/catalog/tours" || true)
-            echo "Попытка $i: http по адресу=${redirect%% *} (ждём 301 на домен), https без пароля=$auth (ждём 401), healthz=$health, API=$api"
-            if [ "$redirect" = "301 https://$domain/" ] && [ "$auth" = "401" ] && [ "$health" = "Healthy" ] && [ "$api" = "200" ]; then
-              # Валидность сертификата пока только сообщаем, не валим деплой (до выпуска Let's Encrypt)
-              if curl -s $resolve -o /dev/null "https://$domain/healthz"; then
+            [ "$redirect" = "$want_redirect" ] && r=ok || r="не тот (${redirect%% *})"
+            echo "Попытка $i: http по адресу: $r, https без пароля=$auth (ждём 401), healthz=$health, API=$api"
+            if [ "$r" = ok ] && [ "$auth" = "401" ] && [ "$health" = "Healthy" ] && [ "$api" = "200" ]; then
+              if [ "$mode" = redirect ]; then
+                # В режиме redirect сертификат домена обязан быть валидным (без -k)
+                curl -s $resolve -o /dev/null "$site/healthz" || { echo "Сертификат для $domain не проходит проверку"; exit 1; }
                 echo "Сертификат для $domain валиден"
-              else
-                echo "::warning::Сертификат для $domain не проходит проверку (Let's Encrypt ещё не выпущен?)"
               fi
               echo "HTTPS, пароль, API и все сервисы в порядке"; exit 0
             fi

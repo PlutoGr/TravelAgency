@@ -34,26 +34,41 @@ server {
     }
 }
 
-# Заход по IP или чужому имени: сразу на домен.
+# Заход по IP или чужому имени. Что делать, выбирает nginx-entrypoint.sh:
+#   нет сертификата Let's Encrypt -> default/fallback-*.conf (сайт как раньше, без редиректа на домен);
+#   сертификат есть               -> default/redirect-*.conf (301 на https://${SITE_DOMAIN}).
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name _;
     server_tokens off;
     access_log /var/log/nginx/access.log ta_masked;
-    return 301 https://${SITE_DOMAIN}$request_uri;
+
+    # Проверка Let's Encrypt работает в обоих режимах
+    location ^~ /.well-known/acme-challenge/ {
+        auth_basic off;
+        root /var/www/certbot;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    include /etc/nginx/travelagency/default-http.conf;
 }
 
-# HTTPS по IP или чужому имени: самоподписанный сертификат нужен только чтобы ответить редиректом.
 server {
     listen 443 ssl default_server;
     listen [::]:443 ssl default_server;
+    http2 on;
     server_name _;
-    server_tokens off;
+    # server_tokens off задаёт подключаемый файл (в fallback он приходит из app.conf)
     ssl_certificate     /etc/nginx/certs/tls.crt;
     ssl_certificate_key /etc/nginx/certs/tls.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1h;
     access_log /var/log/nginx/access.log ta_masked;
-    return 301 https://${SITE_DOMAIN}$request_uri;
+
+    include /etc/nginx/travelagency/default-https.conf;
 }
 
 # Основной сайт.

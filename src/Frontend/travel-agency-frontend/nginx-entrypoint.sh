@@ -49,19 +49,24 @@ if [ "$HTTPS" = 1 ]; then
     case "$SITE_DOMAIN" in
         *[!a-zA-Z0-9.-]*) echo "travelagency: недопустимый SITE_DOMAIN" >&2; exit 1 ;;
     esac
-    # Сертификат Let's Encrypt для домена, если уже выпущен; иначе самоподписанный,
-    # чтобы nginx стартовал и смог пройти проверку HTTP-01 при первом выпуске.
+    # Плавная деградация: пока сертификата Let's Encrypt нет (домен ещё не делегирован или не выпущен),
+    # домен обслуживается самоподписанным, а заход по IP работает как раньше, без редиректа на домен.
+    # Когда сертификат появился (issue-cert.sh пересоздаёт контейнер), заход по IP уводится на домен.
     LE_DIR="/etc/letsencrypt/live/$SITE_DOMAIN"
     if [ -s "$LE_DIR/fullchain.pem" ] && [ -s "$LE_DIR/privkey.pem" ]; then
-        TA_CERT="$LE_DIR/fullchain.pem"; TA_KEY="$LE_DIR/privkey.pem"
+        TA_CERT="$LE_DIR/fullchain.pem"; TA_KEY="$LE_DIR/privkey.pem"; MODE=redirect
     else
-        TA_CERT=/etc/nginx/certs/tls.crt; TA_KEY=/etc/nginx/certs/tls.key
-        echo "travelagency: сертификата Let's Encrypt для $SITE_DOMAIN нет, временно самоподписанный"
+        TA_CERT=/etc/nginx/certs/tls.crt; TA_KEY=/etc/nginx/certs/tls.key; MODE=fallback
+        echo "travelagency: сертификата Let's Encrypt для $SITE_DOMAIN нет, по IP сайт работает как раньше"
     fi
     export SITE_DOMAIN TA_CERT TA_KEY
+    T=/etc/nginx/travelagency
     # shellcheck disable=SC2016 # список переменных для envsubst, раскрывать его не нужно
-    envsubst '${SITE_DOMAIN} ${TA_CERT} ${TA_KEY}' \
-        < /etc/nginx/travelagency/domain.conf.template > /etc/nginx/conf.d/default.conf
+    VARS='${SITE_DOMAIN} ${TA_CERT} ${TA_KEY}'
+    envsubst "$VARS" < "$T/domain.conf.template" > /etc/nginx/conf.d/default.conf
+    envsubst "$VARS" < "$T/default/$MODE-http.conf" > "$T/default-http.conf"
+    envsubst "$VARS" < "$T/default/$MODE-https.conf" > "$T/default-https.conf"
+    echo "travelagency: заход по IP в режиме $MODE"
     echo "travelagency: HTTPS включён для $SITE_DOMAIN"
 else
     cp /etc/nginx/travelagency/http.conf /etc/nginx/conf.d/default.conf
