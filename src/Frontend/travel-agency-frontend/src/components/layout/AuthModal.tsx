@@ -17,7 +17,8 @@ export default function AuthModal() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnToRaw = searchParams.get('returnTo');
-  const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal } = useUIStore();
+  const { isAuthModalOpen, authModalTab, closeAuthModal, dismissAuthModal, openAuthModal } =
+    useUIStore();
   const { login, register, isLoading } = useAuthStore();
 
   function followReturnTo() {
@@ -25,8 +26,13 @@ export default function AuthModal() {
     navigate(resolveReturnTo(readReturnToParam(returnToRaw)));
   }
 
+  function finishAuth() {
+    closeAuthModal();
+    followReturnTo();
+  }
+
   return (
-    <Modal isOpen={isAuthModalOpen} onClose={closeAuthModal} size="sm">
+    <Modal isOpen={isAuthModalOpen} onClose={dismissAuthModal} size="sm">
       <Tabs
         tabs={[...AUTH_TABS]}
         activeTab={authModalTab}
@@ -48,8 +54,7 @@ export default function AuthModal() {
                   try {
                     await login(email, password);
                     toast.success('Добро пожаловать!');
-                    closeAuthModal();
-                    followReturnTo();
+                    finishAuth();
                   } catch {
                     toast.error('Неверный email или пароль');
                   }
@@ -70,8 +75,7 @@ export default function AuthModal() {
                   try {
                     await register(data);
                     toast.success('Регистрация прошла успешно!');
-                    closeAuthModal();
-                    followReturnTo();
+                    finishAuth();
                   } catch (err) {
                     const messages = extractValidationErrors(err);
                     if (messages.length > 0) {

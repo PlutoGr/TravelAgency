@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, MapPin, Heart, Plane, Clock } from 'lucide-react';
 import clsx from 'clsx';
@@ -11,7 +12,7 @@ import { PageTransition, FadeInOnScroll } from '@/components/common';
 import { Button, Skeleton, Badge, Modal } from '@/components/ui';
 import { TourGallery, TourCard } from '@/components/tour';
 import { TourAccommodation, TourInclusions, TourOffers, TourProgram } from '@/components/tour/TourSections';
-import { BookingForm } from '@/components/booking';
+import { BookingForm, type PriceQuote } from '@/components/booking';
 import { getTourById, getTours } from '@/api/catalog';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import { useAuthStore } from '@/store/authStore';
@@ -43,6 +44,15 @@ function isNotFound(error: unknown): boolean {
 function offerComment(offer: TourOffer | null): string {
   if (!offer) return '';
   return `Хочу поехать ${formatDateRange(offer.start, offer.end)}, ${formatMoney(offer.price, offer.currency)} за человека.`;
+}
+
+function requestQuote(tour: Tour, offer: TourOffer | null): PriceQuote | undefined {
+  if (offer) {
+    return { amount: offer.price, currency: offer.currency, from: false };
+  }
+  const amount = tour.priceFrom ?? (tour.price > 0 ? tour.price : null);
+  if (amount == null) return undefined;
+  return { amount, currency: tour.currency, from: true };
 }
 
 function RequestButton({ onClick, fullWidth = false }: { onClick: () => void; fullWidth?: boolean }) {
@@ -93,7 +103,7 @@ function BookingRail({
         whileTap={{ scale: 0.95 }}
         onClick={() => {
           if (!isAuthenticated) {
-            openAuthModal('login');
+            openAuthModal('login', { type: 'favorite', tourId: tour.id, tour });
             return;
           }
           toggleFavorite(tour.id, tour);
@@ -154,6 +164,9 @@ export default function TourDetailPage() {
   const [offerId, setOfferId] = useState<string | null>(null);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const openAuthModal = useUIStore((s) => s.openAuthModal);
+  const authIntent = useUIStore((s) => s.authIntent);
+  const isAuthModalOpen = useUIStore((s) => s.isAuthModalOpen);
+  const clearAuthIntent = useUIStore((s) => s.clearAuthIntent);
 
   const { data: tour, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['tour', id],
@@ -161,15 +174,54 @@ export default function TourDetailPage() {
     enabled: Boolean(id),
   });
 
+  const requestIntent =
+    isAuthenticated &&
+    !isAuthModalOpen &&
+    tour &&
+    authIntent?.type === 'request' &&
+    authIntent.tourId === tour.id
+      ? authIntent
+      : null;
+  const requestKey = requestIntent ? `${requestIntent.tourId}:${requestIntent.offerId ?? ''}` : null;
+  const [appliedRequestKey, setAppliedRequestKey] = useState<string | null>(null);
+
+  if (requestKey && requestKey !== appliedRequestKey) {
+    setAppliedRequestKey(requestKey);
+    if (requestIntent?.offerId && requestIntent.offerId !== offerId) {
+      setOfferId(requestIntent.offerId);
+    }
+    setShowBookingModal(true);
+  } else if (!requestKey && appliedRequestKey && !showBookingModal) {
+    setAppliedRequestKey(null);
+  }
+
   const selectedOffer =
     tour?.offers?.find((offer) => offer.id === offerId) ?? tour?.offers?.[0] ?? null;
+
+  useEffect(() => {
+    if (!requestKey || appliedRequestKey !== requestKey) return;
+    clearAuthIntent();
+  }, [requestKey, appliedRequestKey, clearAuthIntent]);
+
+  useEffect(() => {
+    if (!isError || !id) return;
+    if (authIntent?.type === 'request' && authIntent.tourId === id) {
+      clearAuthIntent();
+      toast.error('Не удалось открыть тур, заявка не отправлена. Обновите страницу и попробуйте снова');
+    }
+  }, [isError, id, authIntent, clearAuthIntent]);
   const available = tour ? isTourAvailable(tour) : false;
   const typeLabel = tour ? tourTypeLabel(tour.category) : '';
   const priceFrom = tour?.priceFrom ?? (tour && tour.price > 0 ? tour.price : null);
 
   function openRequest() {
+    if (!tour) return;
     if (!isAuthenticated) {
-      openAuthModal('login');
+      openAuthModal('login', {
+        type: 'request',
+        tourId: tour.id,
+        offerId: selectedOffer?.id ?? null,
+      });
       return;
     }
     setShowBookingModal(true);
@@ -323,7 +375,8 @@ export default function TourDetailPage() {
           tourId={tour.id}
           tours={[tour]}
           initialComment={offerComment(selectedOffer)}
-          onSuccess={() => setShowBookingModal(false)}
+          priceQuote={requestQuote(tour, selectedOffer)}
+          scheduleLabel={selectedOffer ? formatDateRange(selectedOffer.start, selectedOffer.end) : undefined}
           onClose={() => setShowBookingModal(false)}
         />
       </Modal>

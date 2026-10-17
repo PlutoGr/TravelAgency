@@ -46,7 +46,7 @@ export default function TourCard({ tour, priority = false }: TourCardProps) {
       onClick={(e) => {
         e.preventDefault();
         if (!isAuthenticated) {
-          openAuthModal('login');
+          openAuthModal('login', { type: 'favorite', tourId: tour.id, tour });
           return;
         }
         toggleFavorite(tour.id, tour);
