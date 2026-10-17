@@ -18,7 +18,6 @@ import { Button, Avatar } from '@/components/ui';
 
 const NAV_LINKS = [
   { label: 'Туры', href: '/tours' },
-  { label: 'Направления', href: '/tours#destinations' },
   { label: 'Отзывы', href: '/#reviews' },
   { label: 'Контакты', href: '/#contacts' },
 ] as const;
