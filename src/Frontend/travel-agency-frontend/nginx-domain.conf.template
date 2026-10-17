@@ -1,6 +1,10 @@
 # Режим «домен + HTTPS». Шаблон: nginx-entrypoint.sh подставляет ${SITE_DOMAIN}, ${TA_CERT} и ${TA_KEY}
 # (envsubst только по этим трём переменным, переменные nginx вида $host не трогаются).
 # SITE_DOMAIN задаётся одной строкой в /opt/travelagency/docker/.env на сервере.
+#
+# access_log ta_masked задаётся ровно один раз в каждом блоке server ниже.
+# В подключаемых файлах (app.conf и default/*.conf) его нет: две директивы в одном server
+# дают две одинаковые строки на каждый запрос (#157).
 
 map $http_upgrade $connection_upgrade {
     default upgrade;
@@ -84,6 +88,8 @@ server {
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_session_cache   shared:SSL:10m;
     ssl_session_timeout 1h;
+
+    access_log /var/log/nginx/access.log ta_masked;
 
     # HSTS пока не включаем: домен dev может смениться, а HSTS браузер помнит долго.
     # add_header Strict-Transport-Security "max-age=31536000" always;
