@@ -10,7 +10,9 @@ namespace TravelAgency.Media.Application.Features.Presign;
 /// <param name="TtlSeconds">Optional TTL in seconds (60–604800). Uses config default when null.</param>
 public sealed record PresignMediaQuery(
     [property: JsonPropertyName("mediaId")] Guid Id,
-    [property: JsonPropertyName("ttlSeconds")] int? TtlSeconds = null
+    [property: JsonPropertyName("ttlSeconds")] int? TtlSeconds = null,
+    [property: JsonIgnore] Guid UserId = default,
+    [property: JsonIgnore] IReadOnlyList<string>? Roles = null
 ) : IRequest<PresignMediaResponse>;
 
 public sealed record PresignMediaResponse(string Url, DateTimeOffset ExpiresAt);

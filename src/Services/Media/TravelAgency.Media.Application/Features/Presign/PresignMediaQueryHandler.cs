@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.Options;
+using TravelAgency.Media.Application.Features;
 using TravelAgency.Media.Application.Interfaces;
 using TravelAgency.Media.Application.Settings;
 using TravelAgency.Media.Domain.Enums;
@@ -20,6 +21,9 @@ public sealed class PresignMediaQueryHandler(
             ?? throw new MediaNotFoundException(request.Id);
 
         if (file.Status == MediaFileStatus.Deleted)
+            throw new MediaNotFoundException(request.Id);
+
+        if (!MediaFileAccess.CanRead(file, request.UserId, request.Roles))
             throw new MediaNotFoundException(request.Id);
 
         var ttlSeconds = request.TtlSeconds ?? (options.Value.PresignTtlMinutes * 60);

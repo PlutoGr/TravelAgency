@@ -54,11 +54,7 @@ public sealed class MediaController(IMediator mediator, ICurrentUserService curr
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         // User id and role come from the same ICurrentUserService as GetManagedMediaFileQueryHandler.
-        var roles = string.IsNullOrEmpty(currentUser.Role)
-            ? Array.Empty<string>()
-            : new[] { currentUser.Role };
-
-        var result = await mediator.Send(new GetMediaQuery(id, currentUser.UserId, roles), ct);
+        var result = await mediator.Send(new GetMediaQuery(id, currentUser.UserId, CurrentRoles()), ct);
         if (!result.IsPublicTourImage)
             Response.Headers.CacheControl = MediaCacheControl.PrivateNoStore;
 
@@ -68,15 +64,23 @@ public sealed class MediaController(IMediator mediator, ICurrentUserService curr
 
     /// <summary>
     /// Generate a presigned URL with TTL for the given media ID.
+    /// Access matches <see cref="GetById"/>: public tour-image, owner, Manager or Admin.
+    /// Anyone else gets 404, the same response as a missing file.
     /// </summary>
     [HttpPost("presign")]
     [ProducesResponseType(typeof(PresignMediaResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Presign([FromBody] PresignMediaQuery query, CancellationToken ct)
     {
-        var result = await mediator.Send(query, ct);
+        var result = await mediator.Send(
+            query with { UserId = currentUser.UserId, Roles = CurrentRoles() },
+            ct);
         return Ok(result);
     }
+
+    private IReadOnlyList<string> CurrentRoles() =>
+        string.IsNullOrEmpty(currentUser.Role) ? [] : [currentUser.Role];
 
     /// <summary>
     /// Delete a file by its ID. Only the owner can delete.
