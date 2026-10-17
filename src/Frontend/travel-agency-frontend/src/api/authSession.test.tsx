@@ -101,6 +101,30 @@ describe('auth session refresh', () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it('does not refresh or retry when login or register returns 401', async () => {
+    for (const path of ['/auth/login', '/auth/register']) {
+      let calls = 0;
+      let refreshCalls = 0;
+      apiClient.defaults.adapter = async (config) => {
+        const url = config.url ?? '';
+        if (url.includes('/auth/refresh')) {
+          refreshCalls += 1;
+          return httpResponse(config, 200, { success: true });
+        }
+        if (url.includes(path)) {
+          calls += 1;
+          throw httpError(config, 401);
+        }
+        throw httpError(config, 404);
+      };
+
+      await expect(apiClient.post(path, { email: 'a@b.com', password: 'x' })).rejects.toBeTruthy();
+      expect(calls).toBe(1);
+      expect(refreshCalls).toBe(0);
+      expect(toast.error).not.toHaveBeenCalled();
+    }
+  });
+
   it('stays a guest after one failed refresh and does not retry', async () => {
     let meCalls = 0;
     let refreshCalls = 0;

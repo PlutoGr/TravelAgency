@@ -37,7 +37,8 @@ public sealed class MockBackendServer : IAsyncDisposable
     /// </summary>
     public static readonly DateTime AuthAccessExpiresAt = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
 
-    public static readonly DateTime AuthRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
+    public static readonly DateTime AuthRefreshExpiresAt =
+        DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(3).AddHours(15).AddMinutes(30), DateTimeKind.Utc);
 
     /// <summary>
     /// Starts a mock backend on a random port. Returns 200 for any path and echoes

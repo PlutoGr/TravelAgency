@@ -39,6 +39,7 @@ dotnet run
 | `Cookie__Secure` | `true` (prod) / `false` (dev) | Secure flag. Production: true (HTTPS). Development: false для localhost |
 | `Cookie__SameSite` | `Lax` | SameSite policy (Lax, Strict, None) |
 | `Cookie__Path` | `/` | Путь access-cookie. Refresh-cookie ставится на `AuthRoute:BasePath` (`/api/v1/auth`), чтобы браузер отправлял её и на refresh, и на logout |
+| `AuthRoute__RefreshTokenExpirationDays` | `7` | Срок refresh-токена в днях, как у Identity. Если `refreshExpiresAt` позже этого срока плюс один день, ответ 502 |
 | `Cookie__Domain` | — | Опционально. Домен для cookie (напр. `.travelagency.com`) при разделении API и frontend по поддоменам |
 | `RateLimiting__FailOpen` | `true` | При Redis rate limiting: `true` = разрешать запросы при недоступности Redis (fail-open); `false` = отклонять (fail-closed, строже по безопасности) |
 

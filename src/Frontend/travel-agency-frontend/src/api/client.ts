@@ -49,6 +49,10 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    if (url.includes('/auth/login') || url.includes('/auth/register')) {
+      return Promise.reject(error);
+    }
+
     if (originalRequest?._retried) {
       if (!isAuthMe(url)) redirectToLogin();
       return Promise.reject(error);
