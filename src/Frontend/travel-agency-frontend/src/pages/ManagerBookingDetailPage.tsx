@@ -264,12 +264,12 @@ export default function ManagerBookingDetailPage() {
           {/* MIDDLE COLUMN — Chat */}
           <div className="lg:col-span-5 xl:col-span-6">
             <Card className="flex h-[600px] flex-col overflow-hidden">
-              <div className="border-b border-sand px-5 py-3.5">
+              <div className="shrink-0 border-b border-sand px-5 py-3.5">
                 <h3 className="font-heading text-sm font-semibold text-dark">
                   Чат с клиентом
                 </h3>
               </div>
-              <div className="flex-1 overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <ChatWindow
                   bookingId={booking.id}
                   currentUserId={user?.id ?? ''}
@@ -280,7 +280,7 @@ export default function ManagerBookingDetailPage() {
                 />
               </div>
               {/* Quick replies */}
-              <div className="border-t border-sand px-4 py-3">
+              <div className="shrink-0 border-t border-sand px-4 py-3">
                 <p className="mb-2 text-xs font-medium text-warm-gray">
                   Быстрые ответы:
                 </p>

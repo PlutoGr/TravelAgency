@@ -14,6 +14,8 @@ import {
   parseBookingJson,
 } from '@/test/bookingDtoJson';
 import { mediaImageUrl } from '@/utils/media';
+import { getMessages } from '@/api/chat';
+import type { ChatMessage } from '@/types';
 
 const { mockApiClient } = vi.hoisted(() => ({
   mockApiClient: {
@@ -220,5 +222,81 @@ describe('bookings stay visible when catalog cards fail', () => {
     renderAt('/manager/bookings', '/manager/bookings', <ManagerBookingsPage />);
     expect(await screen.findAllByText('Солнечная Греция — Санторини')).not.toHaveLength(0);
     expect(screen.getAllByText('Тур недоступен').length).toBeGreaterThan(0);
+  });
+});
+
+function longChatHistory(): ChatMessage[] {
+  return Array.from({ length: 40 }, (_, index) => {
+    const fromManager = index % 2 === 0;
+    return {
+      id: `msg-${index + 1}`,
+      bookingId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      senderId: fromManager ? 'manager-1' : 'client-1',
+      senderName: fromManager ? 'Марина' : 'Илья',
+      senderRole: fromManager ? 'manager' : 'client',
+      text: `Сообщение ${index + 1}`,
+      createdAt: new Date(Date.UTC(2026, 3, 2, 8, 0, index)).toISOString(),
+    };
+  });
+}
+
+function expectPinnedChatInput(heading: HTMLElement) {
+  const input = screen.getByPlaceholderText('Введите сообщение...');
+  const list = screen.getByTestId('chat-message-list');
+  const column = list.parentElement;
+  const shell = column?.parentElement;
+
+  expect(list).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
+  expect(list).toContainElement(screen.getByText('Сообщение 1'));
+  expect(list).toContainElement(screen.getByText('Сообщение 40'));
+  expect(list).not.toContainElement(input);
+  expect(column).toHaveClass('flex', 'min-h-0', 'flex-col');
+  expect(column).toContainElement(input);
+  expect(shell).toHaveClass('flex', 'min-h-0', 'flex-1', 'flex-col', 'overflow-hidden');
+  expect(shell?.parentElement).toContainElement(heading);
+  expect(shell?.parentElement).toHaveClass('flex', 'flex-col', 'overflow-hidden');
+}
+
+describe('chat input stays pinned under a long history', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getMessages).mockResolvedValue(longChatHistory());
+    mockApiClient.get.mockImplementation((url: string) => {
+      const path = String(url);
+      if (path.startsWith('/catalog/tours/cards')) {
+        return Promise.resolve({ data: [tourCard] });
+      }
+      if (path === '/bookings/my' || path === '/bookings') {
+        return Promise.resolve({ data: [bookingWithProposal, bookingMinimal] });
+      }
+      if (path.startsWith('/bookings/')) {
+        return Promise.resolve({ data: bookingWithProposal });
+      }
+      return Promise.resolve({ data: [] });
+    });
+  });
+
+  it('scrolls the client booking chat inside its list', async () => {
+    renderAt(
+      '/dashboard/bookings/3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      '/dashboard/bookings/:id',
+      <BookingDetailPage />,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Чат с менеджером' });
+    await screen.findByText('Сообщение 40');
+    expectPinnedChatInput(heading);
+  });
+
+  it('scrolls the manager booking chat inside its list', async () => {
+    renderAt(
+      '/manager/bookings/3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      '/manager/bookings/:id',
+      <ManagerBookingDetailPage />,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Чат с клиентом' });
+    await screen.findByText('Сообщение 40');
+    expectPinnedChatInput(heading);
   });
 });
