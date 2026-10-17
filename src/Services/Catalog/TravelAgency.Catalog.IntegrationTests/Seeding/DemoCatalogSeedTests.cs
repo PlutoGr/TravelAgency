@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
+using TravelAgency.Catalog.Application.Features.Tours.Manage;
 using TravelAgency.Catalog.Domain;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
@@ -211,7 +212,8 @@ public class DemoCatalogSeedTests
         rejected.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         var problem = await rejected.Content.ReadAsStringAsync();
         problem.Should().Contain("tour-image");
-        problem.Should().Contain("A media file belongs to another user");
+        problem.Should().Contain(TourImageRules.NotFound);
+        problem.Should().Contain(TourImageRules.RejectedMessage);
 
         factory.UseDbContext(db =>
         {
