@@ -13,7 +13,8 @@ public sealed class CookieSettings
     public bool Secure { get; set; } = true;
 
     /// <summary>
-    /// Cookie path. Use "/" or "/api/v1" for API-scoped cookies.
+    /// Path of the access-token cookie. The refresh-token cookie uses AuthRoute:BasePath
+    /// so the browser sends it to both refresh and logout.
     /// </summary>
     public string Path { get; set; } = "/";
 

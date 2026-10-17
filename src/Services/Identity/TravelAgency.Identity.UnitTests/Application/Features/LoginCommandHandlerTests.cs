@@ -55,11 +55,12 @@ public class LoginCommandHandlerTests
         _userRepoMock.Setup(r => r.GetByEmailAsync("user@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _passwordHasherMock.Setup(h => h.Verify("myPassword", "hashedPw")).Returns(true);
+        RefreshToken? staged = null;
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(user))
-            .Returns(new AuthTokensDto(expectedAccessToken, string.Empty, expiresAt));
+            .Returns(new AuthTokensDto(expectedAccessToken, string.Empty, expiresAt, DateTime.UtcNow.AddDays(1)));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(expectedRefreshToken);
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        _refreshTokenRepoMock.Setup(r => r.Stage(It.IsAny<RefreshToken>()))
+            .Callback<RefreshToken>(token => staged = token);
 
         var command = new LoginCommand(new LoginRequest("user@example.com", "myPassword"));
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -67,6 +68,9 @@ public class LoginCommandHandlerTests
         result.AccessToken.Should().Be(expectedAccessToken);
         result.RefreshToken.Should().Be(expectedRefreshToken);
         result.ExpiresAt.Should().Be(expiresAt);
+        result.RefreshExpiresAt.Should().Be(staged!.ExpiresAt);
+        result.RefreshExpiresAt.Should().NotBe(result.ExpiresAt);
+        result.RefreshExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(7), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -107,7 +111,7 @@ public class LoginCommandHandlerTests
             .ReturnsAsync(user);
         _passwordHasherMock.Setup(h => h.Verify(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
-            .Returns(new AuthTokensDto("token", string.Empty, DateTime.UtcNow.AddHours(1)));
+            .Returns(new AuthTokensDto("token", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("refreshToken");
 
         var command = new LoginCommand(new LoginRequest("user@example.com", "pass"));

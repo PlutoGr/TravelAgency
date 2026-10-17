@@ -43,6 +43,10 @@ public sealed class RefreshTokenCommandHandler(
         refreshTokenRepository.Stage(newRefreshToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthTokensDto(accessTokenDto.AccessToken, newRefreshTokenString, accessTokenDto.ExpiresAt);
+        return new AuthTokensDto(
+            accessTokenDto.AccessToken,
+            newRefreshTokenString,
+            accessTokenDto.ExpiresAt,
+            newRefreshToken.ExpiresAt);
     }
 }

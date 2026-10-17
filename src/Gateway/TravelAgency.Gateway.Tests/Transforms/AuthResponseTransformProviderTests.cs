@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -64,6 +65,48 @@ public class AuthResponseTransformProviderTests
         else if (task is Task t)
             await t;
     }
+
+    private static readonly DateTime SampleRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
+
+    private static string TokenJson(
+        string accessToken = "access-123",
+        string refreshToken = "refresh-456",
+        bool includeRefreshExpiresAt = true,
+        DateTime? expiresAt = null,
+        DateTime? refreshExpiresAt = null)
+    {
+        if (!includeRefreshExpiresAt)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                accessToken,
+                refreshToken,
+                expiresAt = expiresAt ?? DateTime.UtcNow.AddMinutes(15)
+            });
+        }
+
+        return JsonSerializer.Serialize(new
+        {
+            accessToken,
+            refreshToken,
+            expiresAt,
+            refreshExpiresAt = refreshExpiresAt ?? SampleRefreshExpiresAt
+        });
+    }
+
+    private static bool HasCookiePath(string header, string path)
+    {
+        var marker = $"path={path}";
+        var index = header.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return false;
+
+        var end = index + marker.Length;
+        return end >= header.Length || header[end] is ';' or ' ';
+    }
+
+    private static string ExpectedExpiresAttribute() =>
+        SampleRefreshExpiresAt.ToUniversalTime().ToString("r", CultureInfo.InvariantCulture);
 
     [Fact]
     public void Apply_WhenRouteIsAuthRoute_AddsResponseTransform()
@@ -142,12 +185,7 @@ public class AuthResponseTransformProviderTests
     public async Task Transform_When200WithValidTokens_SetsCookiesAndReplacesBody(string path)
     {
         // Arrange
-        var tokenJson = JsonSerializer.Serialize(new
-        {
-            accessToken = "access-123",
-            refreshToken = "refresh-456",
-            expiresAt = DateTime.UtcNow.AddHours(1)
-        });
+        var tokenJson = TokenJson();
         var provider = CreateProvider();
         var context = CreateTransformContext(path, HttpStatusCode.OK, tokenJson);
 
@@ -171,12 +209,7 @@ public class AuthResponseTransformProviderTests
     public async Task Transform_When201WithValidTokens_SetsCookiesAndReplacesBody()
     {
         // Arrange
-        var tokenJson = JsonSerializer.Serialize(new
-        {
-            accessToken = "at",
-            refreshToken = "rt",
-            expiresAt = (DateTime?)null
-        });
+        var tokenJson = TokenJson(accessToken: "at", refreshToken: "rt", expiresAt: null);
         var provider = CreateProvider();
         var context = CreateTransformContext("/api/v1/auth/register", HttpStatusCode.Created, tokenJson);
 
@@ -199,7 +232,7 @@ public class AuthResponseTransformProviderTests
             AccessTokenName = "at",
             RefreshTokenName = "rt"
         };
-        var tokenJson = JsonSerializer.Serialize(new { accessToken = "x", refreshToken = "y" });
+        var tokenJson = TokenJson(accessToken: "x", refreshToken: "y");
         var provider = CreateProvider(settings);
         var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, tokenJson);
 
@@ -217,7 +250,7 @@ public class AuthResponseTransformProviderTests
     {
         // Arrange
         var settings = new CookieSettings { Domain = ".travelagency.com" };
-        var tokenJson = JsonSerializer.Serialize(new { accessToken = "x", refreshToken = "y" });
+        var tokenJson = TokenJson(accessToken: "x", refreshToken: "y");
         var provider = CreateProvider(settings);
         var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, tokenJson);
 
@@ -404,6 +437,127 @@ public class AuthResponseTransformProviderTests
         using var reader = new StreamReader(context.HttpContext.Response.Body);
         var responseBody = await reader.ReadToEndAsync();
         Assert.Equal(bodyWithoutTokens, responseBody);
+    }
+
+    [Fact]
+    public async Task Transform_WhenRefreshExpiresAtMissing_DoesNotSetCookies()
+    {
+        var tokenJson = TokenJson(includeRefreshExpiresAt: false);
+        var provider = CreateProvider();
+        var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, tokenJson);
+
+        await InvokeTransformAsync(provider, context);
+
+        Assert.Equal(0, context.HttpContext.Response.Headers.SetCookie.Count);
+        context.HttpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(context.HttpContext.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+        Assert.Equal(tokenJson, responseBody);
+    }
+
+    [Theory]
+    [InlineData("/api/v1/auth/login")]
+    [InlineData("/api/v1/auth/register")]
+    [InlineData("/api/v1/auth/refresh")]
+    public async Task Transform_WhenTokensValid_BothCookiesExpireAtRefreshExpiresAtAndKeepFlags(string path)
+    {
+        var provider = CreateProvider();
+        var context = CreateTransformContext(path, HttpStatusCode.OK, TokenJson());
+
+        await InvokeTransformAsync(provider, context);
+
+        var setCookieList = context.HttpContext.Response.Headers.SetCookie
+            .Where(h => h != null)
+            .Select(h => h!)
+            .ToList();
+        var access = Assert.Single(setCookieList, h => h.StartsWith("access_token=access-123", StringComparison.Ordinal));
+        var refresh = Assert.Single(setCookieList, h => h.StartsWith("refresh_token=refresh-456", StringComparison.Ordinal));
+        var expectedExpires = $"expires={ExpectedExpiresAttribute()}";
+
+        foreach (var header in new[] { access, refresh })
+        {
+            Assert.Contains(expectedExpires, header, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("httponly", header, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("secure", header, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("samesite=lax", header, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.True(HasCookiePath(access, "/"));
+        Assert.True(HasCookiePath(refresh, "/api/v1/auth"));
+        Assert.False(HasCookiePath(refresh, "/api/v1/auth/refresh"));
+    }
+
+    [Fact]
+    public async Task Transform_WhenAccessPathConfigured_RefreshPathStaysAuthPrefix()
+    {
+        var settings = new CookieSettings { Path = "/api/v1" };
+        var provider = CreateProvider(settings);
+        var context = CreateTransformContext("/api/v1/auth/refresh", HttpStatusCode.OK, TokenJson());
+
+        await InvokeTransformAsync(provider, context);
+
+        var setCookieList = context.HttpContext.Response.Headers.SetCookie
+            .Where(h => h != null)
+            .Select(h => h!)
+            .ToList();
+        var access = Assert.Single(setCookieList, h => h.StartsWith("access_token=", StringComparison.Ordinal));
+        var refresh = Assert.Single(setCookieList, h => h.StartsWith("refresh_token=refresh-456", StringComparison.Ordinal));
+
+        Assert.True(HasCookiePath(access, "/api/v1"));
+        Assert.True(HasCookiePath(refresh, "/api/v1/auth"));
+    }
+
+    [Fact]
+    public async Task Transform_WhenLogin_ClearsLegacyRefreshCookieOnRootPath()
+    {
+        var provider = CreateProvider();
+        var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, TokenJson());
+
+        await InvokeTransformAsync(provider, context);
+
+        var setCookieList = context.HttpContext.Response.Headers.SetCookie
+            .Where(h => h != null)
+            .Select(h => h!)
+            .ToList();
+        var legacy = Assert.Single(setCookieList, h =>
+            h.StartsWith("refresh_token=;", StringComparison.Ordinal)
+            && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase));
+
+        Assert.True(HasCookiePath(legacy, "/"));
+        Assert.Contains("httponly", legacy, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", legacy, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", legacy, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Transform_WhenLogout_ClearsRefreshCookieOnAuthPathAndLegacyRoot()
+    {
+        var settings = new CookieSettings { Path = "/api/v1" };
+        var provider = CreateProvider(settings);
+        var context = CreateTransformContext("/api/v1/auth/logout", HttpStatusCode.NoContent, null);
+
+        await InvokeTransformAsync(provider, context);
+
+        var setCookieList = context.HttpContext.Response.Headers.SetCookie
+            .Where(h => h != null)
+            .Select(h => h!)
+            .ToList();
+        var access = Assert.Single(setCookieList, h => h.StartsWith("access_token=;", StringComparison.Ordinal));
+        var refreshClears = setCookieList
+            .Where(h => h.StartsWith("refresh_token=;", StringComparison.Ordinal)
+                && h.Contains("max-age=0", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.True(HasCookiePath(access, "/api/v1"));
+        Assert.Contains(refreshClears, h => HasCookiePath(h, "/api/v1/auth"));
+        Assert.Contains(refreshClears, h => HasCookiePath(h, "/"));
+        Assert.DoesNotContain(refreshClears, h => HasCookiePath(h, "/api/v1/auth/refresh"));
+        Assert.All(refreshClears, h =>
+        {
+            Assert.Contains("httponly", h, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("secure", h, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("samesite=lax", h, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact]

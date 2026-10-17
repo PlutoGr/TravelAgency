@@ -10,10 +10,15 @@ namespace TravelAgency.Gateway.Transforms;
 /// <summary>
 /// YARP transform provider that adds auth response transform for login/register/refresh and logout.
 /// On 200/201 from Identity, parses tokens from JSON, sets httpOnly cookies, and strips body.
+/// Both cookies expire at refreshExpiresAt from Identity. There is no local fallback lifetime.
+/// The refresh cookie path is the auth prefix, so the browser sends it to refresh and logout.
 /// On 204 from Identity for logout, sets clear-cookie headers (Max-Age=0) for access_token and refresh_token.
+/// Login and logout also drop the legacy refresh cookie that used Path=/.
 /// </summary>
 internal sealed class AuthResponseTransformProvider : ITransformProvider
 {
+    private const string LegacyRefreshCookiePath = "/";
+
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly CookieSettings _cookieSettings;
@@ -93,25 +98,26 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
             return;
         }
 
-        var response = transformContext.HttpContext.Response;
-        var sameSite = ParseSameSite(_cookieSettings.SameSite);
-        var secure = _cookieSettings.Secure;
-        // Browsers require Secure=true when SameSite=None; enforce regardless of config.
-        if (sameSite == SameSiteMode.None)
-            secure = true;
-
-        var cookieOptions = new CookieOptions
+        if (tokens.RefreshExpiresAt is null)
         {
-            HttpOnly = true,
-            Secure = secure,
-            SameSite = sameSite,
-            Path = _cookieSettings.Path,
-            Domain = _cookieSettings.Domain,
-            IsEssential = true
-        };
+            _logger.LogWarning("Auth response has no refreshExpiresAt; cookies were not set");
+            await PassThroughBodyAsync(transformContext, body, content);
+            return;
+        }
 
-        response.Cookies.Append(_cookieSettings.AccessTokenName, tokens.AccessToken, cookieOptions);
-        response.Cookies.Append(_cookieSettings.RefreshTokenName, tokens.RefreshToken, cookieOptions);
+        var response = transformContext.HttpContext.Response;
+        var expires = ToCookieExpires(tokens.RefreshExpiresAt.Value);
+        response.Cookies.Append(
+            _cookieSettings.AccessTokenName,
+            tokens.AccessToken,
+            CreateCookieOptions(_cookieSettings.Path, expires, maxAge: null));
+        response.Cookies.Append(
+            _cookieSettings.RefreshTokenName,
+            tokens.RefreshToken,
+            CreateCookieOptions(RefreshCookiePath, expires, maxAge: null));
+
+        if (IsLoginPath(path))
+            AppendLegacyRefreshCookieClear(response);
 
         transformContext.SuppressResponseBody = true;
 
@@ -141,24 +147,80 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
 
     private void AppendClearCookies(HttpResponse response)
     {
+        response.Cookies.Append(
+            _cookieSettings.AccessTokenName,
+            string.Empty,
+            CreateCookieOptions(_cookieSettings.Path, expires: null, maxAge: TimeSpan.Zero));
+        response.Cookies.Append(
+            _cookieSettings.RefreshTokenName,
+            string.Empty,
+            CreateCookieOptions(RefreshCookiePath, expires: null, maxAge: TimeSpan.Zero));
+        AppendLegacyRefreshCookieClear(response);
+    }
+
+    /// <summary>
+    /// Старые сессии хранили refresh-cookie на Path=/. Login и logout снимают её,
+    /// иначе браузер продолжит слать её вместе с cookie на префиксе auth.
+    /// </summary>
+    private void AppendLegacyRefreshCookieClear(HttpResponse response)
+    {
+        if (string.Equals(RefreshCookiePath, LegacyRefreshCookiePath, StringComparison.Ordinal))
+            return;
+
+        response.Cookies.Append(
+            _cookieSettings.RefreshTokenName,
+            string.Empty,
+            CreateCookieOptions(LegacyRefreshCookiePath, expires: null, maxAge: TimeSpan.Zero));
+    }
+
+    private CookieOptions CreateCookieOptions(string path, DateTimeOffset? expires, TimeSpan? maxAge)
+    {
         var sameSite = ParseSameSite(_cookieSettings.SameSite);
         var secure = _cookieSettings.Secure;
+        // Browsers require Secure=true when SameSite=None; enforce regardless of config.
         if (sameSite == SameSiteMode.None)
             secure = true;
 
-        var clearOptions = new CookieOptions
+        return new CookieOptions
         {
             HttpOnly = true,
             Secure = secure,
             SameSite = sameSite,
-            Path = _cookieSettings.Path,
+            Path = path,
             Domain = _cookieSettings.Domain,
-            MaxAge = TimeSpan.Zero,
+            Expires = expires,
+            MaxAge = maxAge,
             IsEssential = true
         };
+    }
 
-        response.Cookies.Append(_cookieSettings.AccessTokenName, "", clearOptions);
-        response.Cookies.Append(_cookieSettings.RefreshTokenName, "", clearOptions);
+    private string RefreshCookiePath
+    {
+        get
+        {
+            var basePath = (_authRouteSettings.BasePath ?? string.Empty).Trim();
+            if (basePath.Length > 1)
+                basePath = basePath.TrimEnd('/');
+
+            return basePath.Length == 0 ? LegacyRefreshCookiePath : basePath;
+        }
+    }
+
+    private bool IsLoginPath(string path) =>
+        _authRouteSettings.TokenResponsePaths.Any(p =>
+            path.Equals(p, StringComparison.OrdinalIgnoreCase)
+            && p.EndsWith("/login", StringComparison.OrdinalIgnoreCase));
+
+    private static DateTimeOffset ToCookieExpires(DateTime refreshExpiresAt)
+    {
+        var utc = refreshExpiresAt.Kind switch
+        {
+            DateTimeKind.Utc => refreshExpiresAt,
+            DateTimeKind.Local => refreshExpiresAt.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(refreshExpiresAt, DateTimeKind.Utc)
+        };
+
+        return new DateTimeOffset(utc);
     }
 
     private static SameSiteMode ParseSameSite(string value)
@@ -169,5 +231,9 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
             : SameSiteMode.Lax;
     }
 
-    private sealed record AuthTokens(string? AccessToken, string? RefreshToken, DateTime? ExpiresAt);
+    private sealed record AuthTokens(
+        string? AccessToken,
+        string? RefreshToken,
+        DateTime? ExpiresAt,
+        DateTime? RefreshExpiresAt);
 }

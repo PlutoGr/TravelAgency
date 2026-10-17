@@ -38,7 +38,8 @@ public sealed class JwtTokenService(IOptions<JwtSettings> settings) : IJwtTokenS
 
         var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
 
-        return new AuthTokensDto(accessToken, string.Empty, token.ValidTo);
+        // Срок refresh-токена здесь неизвестен: его ставит обработчик login, register и refresh.
+        return new AuthTokensDto(accessToken, string.Empty, token.ValidTo, default);
     }
 
     public string GenerateRefreshToken()

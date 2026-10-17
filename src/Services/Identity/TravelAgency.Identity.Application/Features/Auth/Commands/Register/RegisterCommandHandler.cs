@@ -49,6 +49,10 @@ public sealed class RegisterCommandHandler(
         refreshTokenRepository.Stage(refreshToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthTokensDto(accessTokenDto.AccessToken, refreshTokenString, accessTokenDto.ExpiresAt);
+        return new AuthTokensDto(
+            accessTokenDto.AccessToken,
+            refreshTokenString,
+            accessTokenDto.ExpiresAt,
+            refreshToken.ExpiresAt);
     }
 }

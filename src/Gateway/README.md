@@ -38,7 +38,7 @@ dotnet run
 | `ASPNETCORE_ENVIRONMENT` | `Development` | Окружение (Development/Production) |
 | `Cookie__Secure` | `true` (prod) / `false` (dev) | Secure flag. Production: true (HTTPS). Development: false для localhost |
 | `Cookie__SameSite` | `Lax` | SameSite policy (Lax, Strict, None) |
-| `Cookie__Path` | `/` | Cookie path. `/` или `/api/v1` |
+| `Cookie__Path` | `/` | Путь access-cookie. Refresh-cookie ставится на `AuthRoute:BasePath` (`/api/v1/auth`), чтобы браузер отправлял её и на refresh, и на logout |
 | `Cookie__Domain` | — | Опционально. Домен для cookie (напр. `.travelagency.com`) при разделении API и frontend по поддоменам |
 | `RateLimiting__FailOpen` | `true` | При Redis rate limiting: `true` = разрешать запросы при недоступности Redis (fail-open); `false` = отклонять (fail-closed, строже по безопасности) |
 

@@ -25,6 +25,11 @@ public sealed class MockBackendServer : IAsyncDisposable
     public string BaseUrl { get; private set; } = string.Empty;
 
     /// <summary>
+    /// Срок refresh-токена, который мок отдаёт в JSON как refreshExpiresAt.
+    /// </summary>
+    public static readonly DateTime AuthRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
+
+    /// <summary>
     /// Starts a mock backend on a random port. Returns 200 for any path and echoes
     /// the request path in the response body as JSON: {"path": "/identity/me"}.
     /// </summary>
@@ -70,7 +75,8 @@ public sealed class MockBackendServer : IAsyncDisposable
                 {
                     accessToken,
                     refreshToken = "test-refresh-token",
-                    expiresAt = DateTime.UtcNow.AddHours(1)
+                    expiresAt = DateTime.UtcNow.AddHours(1),
+                    refreshExpiresAt = AuthRefreshExpiresAt
                 }, cancellationToken);
             }
             else
