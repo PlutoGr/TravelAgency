@@ -14,17 +14,32 @@ public sealed class MockBackendServer : IAsyncDisposable
 {
     private readonly WebApplication _app;
     private readonly ConcurrentQueue<string> _requestPaths;
+    private readonly ConcurrentQueue<AuthExchange> _authExchanges;
 
-    private MockBackendServer(WebApplication app, ConcurrentQueue<string> requestPaths)
+    private MockBackendServer(
+        WebApplication app,
+        ConcurrentQueue<string> requestPaths,
+        ConcurrentQueue<AuthExchange> authExchanges)
     {
         _app = app;
         _requestPaths = requestPaths;
+        _authExchanges = authExchanges;
     }
+
+    /// <summary>
+    /// Тело запроса, которое мок Identity получил на login, refresh или logout.
+    /// </summary>
+    public readonly record struct AuthExchange(string Path, string Body);
 
     /// <summary>
     /// Paths the mock actually received, after YARP rewrote them.
     /// </summary>
     public IReadOnlyList<string> RequestPaths => _requestPaths.ToArray();
+
+    /// <summary>
+    /// Тела auth-запросов в порядке получения.
+    /// </summary>
+    public IReadOnlyList<AuthExchange> AuthExchanges => _authExchanges.ToArray();
 
     /// <summary>
     /// Base URL of the mock server (e.g. http://127.0.0.1:12345).
@@ -46,10 +61,15 @@ public sealed class MockBackendServer : IAsyncDisposable
     /// return 200/201 with token JSON for auth response transform tests; /identity/logout returns 204.</param>
     /// <param name="validJwtFactory">When provided with authTokenSupport, used for accessToken so Gateway
     /// accepts it for protected routes. If null, returns "test-access-token" (invalid for JWT validation).</param>
+    /// <param name="refreshToken">Refresh token placed in the token JSON. Response.Cookies.Append encodes it.</param>
+    /// <param name="rejectMismatchedRefreshToken">When true, /identity/refresh returns 401 unless the body
+    /// carries this exact refresh token.</param>
     public static async Task<MockBackendServer> StartAsync(
         bool authTokenSupport = false,
         Func<string>? validJwtFactory = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string refreshToken = "test-refresh-token",
+        bool rejectMismatchedRefreshToken = false)
     {
         var builder = WebApplication.CreateBuilder();
         // Port 0: the OS assigns the port at bind time, so nothing can take it before Kestrel does.
@@ -59,6 +79,7 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         var app = builder.Build();
         var requestPaths = new ConcurrentQueue<string>();
+        var authExchanges = new ConcurrentQueue<AuthExchange>();
 
         app.UseWebSockets();
         app.Run(async context =>
@@ -71,6 +92,25 @@ public sealed class MockBackendServer : IAsyncDisposable
 
             var path = context.Request.Path.Value ?? "/";
             requestPaths.Enqueue(path);
+            if (authTokenSupport && (IsLogoutPath(path) || IsAuthTokenPath(path)))
+            {
+                using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
+                var body = await reader.ReadToEndAsync(context.RequestAborted);
+                authExchanges.Enqueue(new AuthExchange(path, body));
+
+                if (rejectMismatchedRefreshToken
+                    && IsRefreshPath(path)
+                    && !BodyHasRefreshToken(body, refreshToken))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(
+                        new { message = "Invalid or expired refresh token." },
+                        context.RequestAborted);
+                    return;
+                }
+            }
+
             if (authTokenSupport && IsLogoutPath(path))
             {
                 context.Response.StatusCode = 204;
@@ -83,7 +123,7 @@ public sealed class MockBackendServer : IAsyncDisposable
                 await context.Response.WriteAsJsonAsync(new
                 {
                     accessToken,
-                    refreshToken = "test-refresh-token",
+                    refreshToken,
                     expiresAt = AuthAccessExpiresAt,
                     refreshExpiresAt = AuthRefreshExpiresAt
                 }, cancellationToken);
@@ -99,7 +139,7 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         await app.StartAsync(cancellationToken);
 
-        return new MockBackendServer(app, requestPaths) { BaseUrl = app.Urls.First() };
+        return new MockBackendServer(app, requestPaths, authExchanges) { BaseUrl = app.Urls.First() };
     }
 
     public async Task StopAsync()
@@ -151,8 +191,29 @@ public sealed class MockBackendServer : IAsyncDisposable
     private static bool IsLogoutPath(string path) =>
         path.Equals("/identity/logout", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsRefreshPath(string path) =>
+        path.Equals("/identity/refresh", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsAuthTokenPath(string path) =>
         path.Equals("/identity/login", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/identity/register", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/identity/refresh", StringComparison.OrdinalIgnoreCase);
+
+    private static bool BodyHasRefreshToken(string body, string expected)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.TryGetProperty("refreshToken", out var property)
+                && property.ValueKind == JsonValueKind.String
+                && property.GetString() == expected;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 }
