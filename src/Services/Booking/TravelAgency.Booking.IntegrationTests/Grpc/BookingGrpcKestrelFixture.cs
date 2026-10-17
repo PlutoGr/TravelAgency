@@ -1,7 +1,5 @@
-using System.Net;
-using System.Net.Sockets;
 using TravelAgency.Booking.API.Extensions;
-using TravelAgency.Shared.Infrastructure.Hosting;
+using TravelAgency.Testing;
 
 namespace TravelAgency.Booking.IntegrationTests.Grpc;
 
@@ -13,20 +11,18 @@ public sealed class BookingGrpcKestrelFixture : IAsyncLifetime
 {
     public const string ServiceToken = "test-internal-token";
 
+    private readonly KestrelLoopbackListeners _listeners = new();
+
     private WebApplication? _app;
 
     public string Address { get; private set; } = string.Empty;
 
     public int GrpcPort { get; private set; }
 
-    public string GrpcAddress => $"http://127.0.0.1:{GrpcPort}";
+    public string GrpcAddress { get; private set; } = string.Empty;
 
     public async Task InitializeAsync()
     {
-        var restPort = FreeTcpPort();
-        GrpcPort = FreeTcpPort(restPort);
-        Address = $"http://127.0.0.1:{restPort}";
-
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = "Testing",
@@ -35,7 +31,7 @@ public sealed class BookingGrpcKestrelFixture : IAsyncLifetime
 
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
         builder.Host.AddBookingSerilog();
-        builder.WebHost.UseUrls(Address);
+        _listeners.Configure(builder.WebHost);
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:BookingDb"] = "Host=127.0.0.1;Port=1;Database=unused;Username=unused",
@@ -47,15 +43,17 @@ public sealed class BookingGrpcKestrelFixture : IAsyncLifetime
             ["GrpcClients:CatalogServiceUrl"] = "http://127.0.0.1:1",
             ["GrpcClients:IdentityServiceUrl"] = "http://127.0.0.1:1",
             ["GrpcSettings:InternalServiceToken"] = ServiceToken,
-            ["ServiceListen:GrpcPort"] = GrpcPort.ToString(),
             ["ASPNETCORE_RUN_MIGRATIONS"] = "false"
         });
-        builder.UseServiceListenPorts();
         Program.ConfigureServices(builder);
 
         _app = builder.Build();
         Program.ConfigurePipeline(_app);
         await _app.StartAsync();
+
+        Address = _listeners.RestAddress;
+        GrpcPort = _listeners.GrpcPort;
+        GrpcAddress = _listeners.GrpcAddress;
     }
 
     public async Task DisposeAsync()
@@ -65,20 +63,7 @@ public sealed class BookingGrpcKestrelFixture : IAsyncLifetime
             await _app.StopAsync();
             await _app.DisposeAsync();
         }
-    }
 
-    private static int FreeTcpPort(params int[] avoid)
-    {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        if (port is ServiceListenSettings.DefaultHttpPort or ServiceListenSettings.DefaultGrpcPort
-            || avoid.Contains(port))
-        {
-            return FreeTcpPort(avoid);
-        }
-
-        return port;
+        _listeners.Dispose();
     }
 }

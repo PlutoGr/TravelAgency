@@ -30,4 +30,7 @@
     <ProjectReference Include="..\TravelAgency.Booking.Infrastructure\TravelAgency.Booking.Infrastructure.csproj" />
     <ProjectReference Include="..\TravelAgency.Booking.API\TravelAgency.Booking.API.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\Shared\Testing\KestrelLoopbackListeners.cs" Link="Grpc\KestrelLoopbackListeners.cs" />
+  </ItemGroup>
 </Project>

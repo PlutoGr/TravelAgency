@@ -29,4 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TravelAgency.Media.API\TravelAgency.Media.API.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\Shared\Testing\KestrelLoopbackListeners.cs" Link="Grpc\KestrelLoopbackListeners.cs" />
+  </ItemGroup>
 </Project>

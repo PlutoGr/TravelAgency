@@ -108,7 +108,7 @@ public sealed class MediaGrpcKestrelTests : IClassFixture<MediaGrpcKestrelFixtur
     {
         using var handler = new SocketsHttpHandler { EnableMultipleHttp2Connections = true };
         using var http = new HttpClient(handler);
-        var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{ServiceListenSettings.DefaultGrpcPort}/health/live")
+        var request = new HttpRequestMessage(HttpMethod.Get, $"{_fixture.GrpcAddress}/health/live")
         {
             Version = HttpVersion.Version20,
             VersionPolicy = HttpVersionPolicy.RequestVersionExact
