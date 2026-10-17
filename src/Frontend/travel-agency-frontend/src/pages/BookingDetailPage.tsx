@@ -339,21 +339,23 @@ export default function BookingDetailPage() {
               className="lg:col-span-3"
             >
               <Card className="flex h-[600px] flex-col overflow-hidden lg:h-[calc(100vh-220px)] lg:min-h-[500px] lg:max-h-[800px]">
-                <div className="border-b border-sand px-5 py-3">
+                <div className="shrink-0 border-b border-sand px-5 py-3">
                   <h2 className="font-heading text-base font-semibold text-dark">
                     Чат с менеджером
                   </h2>
                 </div>
-                <ChatWindow
-                  bookingId={booking.id}
-                  currentUserId={user?.id ?? ''}
-                  currentUserName={
-                    user ? `${user.firstName} ${user.lastName}` : ''
-                  }
-                  currentUserRole={
-                    (user?.role as 'client' | 'manager') ?? 'client'
-                  }
-                />
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <ChatWindow
+                    bookingId={booking.id}
+                    currentUserId={user?.id ?? ''}
+                    currentUserName={
+                      user ? `${user.firstName} ${user.lastName}` : ''
+                    }
+                    currentUserRole={
+                      (user?.role as 'client' | 'manager') ?? 'client'
+                    }
+                  />
+                </div>
               </Card>
             </motion.div>
           </div>

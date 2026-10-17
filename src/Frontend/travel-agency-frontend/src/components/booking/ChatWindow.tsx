@@ -65,10 +65,13 @@ export default function ChatWindow({
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior,
-      });
+      const node = scrollRef.current;
+      if (!node) return;
+      if (typeof node.scrollTo === 'function') {
+        node.scrollTo({ top: node.scrollHeight, behavior });
+        return;
+      }
+      node.scrollTop = node.scrollHeight;
     });
   }, []);
 
@@ -185,17 +188,18 @@ export default function ChatWindow({
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center py-16">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-3 border-sand border-t-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+        data-testid="chat-message-list"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4"
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-warm-gray">
@@ -278,7 +282,7 @@ export default function ChatWindow({
         )}
       </div>
 
-      <div className="border-t border-sand bg-white px-4 py-3">
+      <div className="shrink-0 border-t border-sand bg-white px-4 py-3">
         <div className="flex items-end gap-2">
           <button
             type="button"
