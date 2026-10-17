@@ -90,7 +90,7 @@ Dev-среда работает на одном сервере Selectel (Ubuntu 
 - Снаружи открыты только порты 22, 80 и 443 (ufw). Gateway (`127.0.0.1:5001`) и консоль MinIO (`127.0.0.1:9001`) доступны только через SSH-туннель:
 
 ```bash
-ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
+ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-admin
 ```
 
 ### Окружение
@@ -108,7 +108,7 @@ ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 Сменить домен:
 
 ```bash
-ssh travelagency-dev-platon
+ssh travelagency-dev-admin
 sudoedit /opt/travelagency/docker/.env          # SITE_DOMAIN=new.example.ru
 sudo /opt/travelagency/deploy/scripts/issue-cert.sh   # A-запись нового домена уже должна резолвиться
 ```
@@ -117,18 +117,18 @@ sudo /opt/travelagency/deploy/scripts/issue-cert.sh   # A-запись ново�
 
 ### SSH
 
-Вход только по ключу, по паролю и под root нельзя, fail2ban банит перебор. Алиасы из `~/.ssh/config` на Mac Платона:
+Вход только по ключу, по паролю и под root нельзя, fail2ban банит перебор. Алиасы в `~/.ssh/config`:
 
 | Алиас | Пользователь | Для чего |
 |---|---|---|
-| `travelagency-dev-platon` | `platon` | Администрирование, есть `sudo` и группа `docker` |
+| `travelagency-dev-admin` | `<администратор>` | Администрирование, есть `sudo` и группа `docker` |
 | `travelagency-dev-deploy` | `deploy` | Пользователь деплоя (ключ в секрете `DEPLOY_SSH_KEY`), группа `docker`, без `sudo` |
 
 Адрес (HostName) у команды.
 
 ```
-Host travelagency-dev-platon
-    User platon
+Host travelagency-dev-admin
+    User <администратор>
     IdentityFile ~/.ssh/travelagency-dev
     IdentitiesOnly yes
 ```
@@ -167,7 +167,7 @@ docker logout ghcr.io
 ### Где смотреть логи
 
 ```bash
-ssh travelagency-dev-platon
+ssh travelagency-dev-admin
 cd /opt/travelagency/docker
 docker compose ps                         # статус контейнеров
 docker compose logs -f --tail=200 gateway # логи сервиса (gateway, identity-service, frontend, ...)
