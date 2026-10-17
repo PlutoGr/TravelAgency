@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import HomePage from './HomePage';
 import { getDestinations, getTours } from '@/api/catalog';
 import { renderPage } from '@/test/render';
+import type { Destination } from '@/types';
 
 vi.mock('@/api/catalog', () => ({
   getTours: vi.fn(),
@@ -39,4 +43,55 @@ describe('HomePage', () => {
     });
     expect(getTours).not.toHaveBeenCalled();
   });
+
+  it('opens the catalog with a direction and departure date, without a travelers field', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getDestinations).mockResolvedValue([bali]);
+
+    renderHome();
+
+    expect(await screen.findByRole('link', { name: /Бали/ })).toHaveAttribute(
+      'href',
+      '/tours?direction=dir-bali',
+    );
+    expect(screen.queryByLabelText('Сколько?')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Куда?'), 'Бали');
+    fireEvent.change(screen.getByLabelText('Когда?'), { target: { value: '2026-11-01' } });
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+
+    expect(await screen.findByRole('heading', { name: 'Каталог' })).toBeInTheDocument();
+    expect(screen.getByTestId('url').textContent).toBe('/tours?direction=dir-bali&dateFrom=2026-11-01');
+  });
 });
+
+const bali: Destination = {
+  id: 'dir-bali',
+  name: 'Бали',
+  country: 'Индонезия',
+  photo: '',
+  tourCount: 2,
+  description: '',
+};
+
+function UrlProbe() {
+  const location = useLocation();
+  return <div data-testid="url">{`${location.pathname}${location.search}`}</div>;
+}
+
+function renderHome() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/']}>
+        <UrlProbe />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/tours" element={<h1>Каталог</h1>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}

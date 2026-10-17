@@ -1,12 +1,15 @@
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Compass } from 'lucide-react';
 import type { Tour } from '@/types';
-import { Skeleton } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
 import TourCard from './TourCard.tsx';
 
 interface TourGridProps {
   tours: Tour[];
   isLoading: boolean;
+  emptyVariant?: 'default' | 'filtered';
+  onResetFilters?: () => void;
 }
 
 const containerVariants = {
@@ -39,7 +42,12 @@ function SkeletonCard() {
   );
 }
 
-export default function TourGrid({ tours, isLoading }: TourGridProps) {
+export default function TourGrid({
+  tours,
+  isLoading,
+  emptyVariant = 'default',
+  onResetFilters,
+}: TourGridProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -51,6 +59,28 @@ export default function TourGrid({ tours, isLoading }: TourGridProps) {
   }
 
   if (tours.length === 0) {
+    if (emptyVariant === 'filtered') {
+      return (
+        <div role="status" className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-sand">
+            <Compass size={36} className="text-warm-gray" />
+          </div>
+          <h3 className="font-heading text-xl font-semibold text-dark">По вашему запросу туров нет</h3>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button type="button" variant="secondary" onClick={onResetFilters}>
+              Сбросить фильтры
+            </Button>
+            <Link
+              to="/#contacts"
+              className="inline-flex items-center justify-center rounded-[12px] border-2 border-primary px-6 py-2.5 font-heading text-base font-semibold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Написать менеджеру
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-sand">

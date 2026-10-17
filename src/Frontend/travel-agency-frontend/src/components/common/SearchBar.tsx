@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { MapPin, Calendar, Users, Search } from "lucide-react";
+import { MapPin, Calendar, Search } from "lucide-react";
 import clsx from "clsx";
 import type { FormEvent } from "react";
 
 interface SearchBarValues {
   destination: string;
   date: string;
-  travelers: number;
 }
 
 interface SearchBarProps {
@@ -17,11 +16,10 @@ interface SearchBarProps {
 export default function SearchBar({ onSearch, className }: SearchBarProps) {
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
-  const [travelers, setTravelers] = useState(1);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSearch?.({ destination, date, travelers });
+    onSearch?.({ destination, date });
   }
 
   return (
@@ -60,24 +58,6 @@ export default function SearchBar({ onSearch, className }: SearchBarProps) {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-transparent text-sm text-dark outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="group relative flex flex-1 items-center gap-3 border-b border-sand px-5 py-4 transition-colors focus-within:bg-cream md:border-b-0 md:border-r">
-        <Users size={20} className="shrink-0 text-primary" />
-        <div className="flex-1">
-          <label htmlFor="search-travelers" className="block text-xs font-medium text-warm-gray">
-            Сколько?
-          </label>
-          <input
-            id="search-travelers"
-            type="number"
-            min={1}
-            max={20}
-            value={travelers}
-            onChange={(e) => setTravelers(Number(e.target.value))}
             className="w-full bg-transparent text-sm text-dark outline-none"
           />
         </div>
