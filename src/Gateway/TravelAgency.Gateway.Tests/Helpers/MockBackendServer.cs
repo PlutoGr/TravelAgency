@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -13,11 +14,18 @@ namespace TravelAgency.Gateway.Tests.Helpers;
 public sealed class MockBackendServer : IAsyncDisposable
 {
     private readonly WebApplication _app;
+    private readonly ConcurrentQueue<string> _requestPaths;
 
-    private MockBackendServer(WebApplication app)
+    private MockBackendServer(WebApplication app, ConcurrentQueue<string> requestPaths)
     {
         _app = app;
+        _requestPaths = requestPaths;
     }
+
+    /// <summary>
+    /// Paths the mock actually received, after YARP rewrote them.
+    /// </summary>
+    public IReadOnlyList<string> RequestPaths => _requestPaths.ToArray();
 
     /// <summary>
     /// Base URL of the mock server (e.g. http://127.0.0.1:12345).
@@ -53,6 +61,7 @@ public sealed class MockBackendServer : IAsyncDisposable
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
         var app = builder.Build();
+        var requestPaths = new ConcurrentQueue<string>();
 
         app.UseWebSockets();
         app.Run(async context =>
@@ -64,6 +73,7 @@ public sealed class MockBackendServer : IAsyncDisposable
             }
 
             var path = context.Request.Path.Value ?? "/";
+            requestPaths.Enqueue(path);
             if (authTokenSupport && IsLogoutPath(path))
             {
                 context.Response.StatusCode = 204;
@@ -92,7 +102,7 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         await app.StartAsync(cancellationToken);
 
-        return new MockBackendServer(app) { BaseUrl = url };
+        return new MockBackendServer(app, requestPaths) { BaseUrl = url };
     }
 
     public async Task StopAsync()
