@@ -47,10 +47,12 @@ public class GlobalExceptionHandlerMiddleware
     }
 
     /// <summary>
-    /// The single place where a failed HTTP request is logged (issue #57):
-    /// 4xx (expected client errors such as 400/403/404/409/422/428) are logged once as Warning without stack trace;
+    /// The single place where a failed HTTP request is logged (issues #57 and #13):
+    /// expected client errors (401, 403, 404, validation and any other 4xx) are logged once as Warning
+    /// with the exception type and message, but without the exception object, so there is no stack trace;
     /// 5xx and unmapped exceptions are logged once as Error with the exception.
     /// MediatR behaviors only rethrow and do not log the exception again.
+    /// The same middleware is used by Identity, Catalog, Booking, Chat, Media and Gateway.
     /// </summary>
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
@@ -83,11 +85,17 @@ public class GlobalExceptionHandlerMiddleware
 
     private void LogException(HttpContext context, Exception exception, int statusCode, string correlationId)
     {
-        if (statusCode is >= StatusCodes.Status400BadRequest and < StatusCodes.Status500InternalServerError)
+        if (IsExpectedClientError(statusCode))
         {
+            // Do not pass the exception: Serilog prints {Exception} with the stack trace.
             _logger.LogWarning(
-                "{Method} {Path} {StatusCode} {ExceptionType} traceId={TraceId}",
-                context.Request.Method, context.Request.Path, statusCode, exception.GetType().Name, correlationId);
+                "{Method} {Path} {StatusCode} {ExceptionType}: {ExceptionMessage} traceId={TraceId}",
+                context.Request.Method,
+                context.Request.Path,
+                statusCode,
+                exception.GetType().Name,
+                exception.Message,
+                correlationId);
             return;
         }
 
@@ -95,6 +103,12 @@ public class GlobalExceptionHandlerMiddleware
             "{Method} {Path} {StatusCode} {ExceptionType} traceId={TraceId}",
             context.Request.Method, context.Request.Path, statusCode, exception.GetType().Name, correlationId);
     }
+
+    /// <summary>
+    /// 401, 403, 404, validation (400) and the other expected client statuses.
+    /// </summary>
+    private static bool IsExpectedClientError(int statusCode) =>
+        statusCode is >= StatusCodes.Status400BadRequest and < StatusCodes.Status500InternalServerError;
 
     private (ProblemDetails? Details, int? StatusCode) TryMapWithCustomMappers(HttpContext context, Exception exception)
     {

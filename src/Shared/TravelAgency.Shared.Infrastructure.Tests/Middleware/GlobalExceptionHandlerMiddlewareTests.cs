@@ -272,6 +272,60 @@ public class GlobalExceptionHandlerMiddlewareTests
         logs.Entries.Where(e => e.Category == MiddlewareCategory).ToList();
 
     [Fact]
+    public async Task InvokeAsync_WhenUnauthorizedException_Returns401AndLogsOneWarningWithoutException()
+    {
+        var logs = new CapturingLoggerProvider();
+        var thrown = new UnauthorizedException("Invalid credentials.");
+        RequestDelegate next = _ => throw thrown;
+        using var host = await CreateHostAsync(
+            isDevelopment: false,
+            next,
+            new[] { new StatusExceptionMapper(StatusCodes.Status401Unauthorized, "Unauthorized") },
+            logs);
+        var client = host.GetTestClient();
+
+        var response = await client.PostAsync("/identity/login", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        var entry = entries[0];
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull("expected 401 is logged without stack trace");
+        entry.Message.Should().Contain("POST").And.Contain("/identity/login")
+            .And.Contain("401").And.Contain(nameof(UnauthorizedException))
+            .And.Contain("Invalid credentials").And.Contain("traceId=");
+        entry.Message.Should().NotContain("Unhandled exception");
+        logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    [Theory]
+    [InlineData(StatusCodes.Status400BadRequest)]
+    [InlineData(StatusCodes.Status403Forbidden)]
+    [InlineData(StatusCodes.Status404NotFound)]
+    public async Task InvokeAsync_WhenMappedClientError_ReturnsStatusAndLogsWarningWithoutException(int statusCode)
+    {
+        var logs = new CapturingLoggerProvider();
+        RequestDelegate next = _ => throw new ClientErrorException("expected");
+        using var host = await CreateHostAsync(
+            isDevelopment: true,
+            next,
+            new[] { new StatusExceptionMapper(statusCode, "Client error") },
+            logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/api/resource");
+
+        ((int)response.StatusCode).Should().Be(statusCode);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Warning);
+        entries[0].Exception.Should().BeNull();
+        entries[0].Message.Should().Contain(statusCode.ToString()).And.Contain(nameof(ClientErrorException));
+        logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
     public async Task InvokeAsync_WhenConflictException_Returns409AndLogsOneWarningWithoutException()
     {
         var logs = new CapturingLoggerProvider();
@@ -346,6 +400,31 @@ public class GlobalExceptionHandlerMiddlewareTests
         entries.Should().ContainSingle();
         entries[0].Level.Should().Be(LogLevel.Error);
         entries[0].Exception.Should().BeOfType<InvalidOperationException>();
+    }
+
+    private sealed class UnauthorizedException(string message) : Exception(message);
+
+    private sealed class ClientErrorException(string message) : Exception(message);
+
+    private sealed class StatusExceptionMapper(int statusCode, string title) : IExceptionMapper
+    {
+        public bool TryMap(Exception exception, HttpContext context, out (int StatusCode, ProblemDetails Details) result)
+        {
+            if (exception is UnauthorizedException or ClientErrorException)
+            {
+                result = (statusCode, new ProblemDetails
+                {
+                    Title = title,
+                    Status = statusCode,
+                    Detail = exception.Message,
+                    Instance = context.Request.Path
+                });
+                return true;
+            }
+
+            result = default;
+            return false;
+        }
     }
 
     private sealed class ConflictException(string message) : Exception(message);

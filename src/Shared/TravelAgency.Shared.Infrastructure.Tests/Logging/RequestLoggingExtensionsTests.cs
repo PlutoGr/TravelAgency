@@ -39,12 +39,25 @@ public class RequestLoggingExtensionsTests
     [Theory]
     [InlineData("/health/live", 200)]
     [InlineData("/bookings", 201)]
-    public void GetLevel_WhenException_ReturnsError(string path, int statusCode)
+    public void GetLevel_WhenExceptionOnNonClientError_ReturnsError(string path, int statusCode)
     {
         var level = RequestLoggingExtensions.GetLevel(
             CreateContext(path, statusCode), 1.0, new InvalidOperationException("boom"));
 
         level.Should().Be(LogEventLevel.Error);
+    }
+
+    [Theory]
+    [InlineData("/identity/login", 401)]
+    [InlineData("/api/v1/catalog/tours/1", 403)]
+    [InlineData("/api/v1/catalog/tours/1", 404)]
+    [InlineData("/bookings", 400)]
+    public void GetLevel_WhenExpectedClientErrorHasException_StaysInformation(string path, int statusCode)
+    {
+        var level = RequestLoggingExtensions.GetLevel(
+            CreateContext(path, statusCode), 1.0, new InvalidOperationException("Invalid credentials"));
+
+        level.Should().Be(LogEventLevel.Information);
     }
 
     [Fact]
