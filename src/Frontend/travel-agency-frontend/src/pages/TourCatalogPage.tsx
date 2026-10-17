@@ -2,15 +2,19 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, X as XIcon, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import type { TourFilters as TourFiltersType } from '@/types';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { Tour, TourFilters as TourFiltersType } from '@/types';
 import { PageTransition } from '@/components/common';
 import { Select, Button } from '@/components/ui';
 import { TourGrid, TourFilters } from '@/components/tour';
-import { getTours } from '@/api/catalog';
+import { getDestinations, getTours } from '@/api/catalog';
 import { tourTypeLabel } from '@/utils/tourLabels';
-
-const INITIAL_FILTERS: TourFiltersType = {};
+import {
+  applyCatalogFilters,
+  filtersFromSearchParams,
+  filtersToSearchParams,
+  hasCatalogQuery,
+} from '@/utils/catalogQuery';
 
 const sortOptions = [
   { value: 'date', label: 'Сначала новые' },
@@ -33,7 +37,7 @@ function filterLabel(key: string, val: unknown): string {
   return labels[key] ?? String(val);
 }
 
-function getActiveFilterPills(filters: TourFiltersType) {
+function getActiveFilterPills(filters: TourFiltersType, directionLabel?: string) {
   const pills: { key: string; label: string; remove: (f: TourFiltersType) => TourFiltersType }[] = [];
 
   filters.country?.forEach((c) => {
@@ -82,7 +86,7 @@ function getActiveFilterPills(filters: TourFiltersType) {
   if (filters.directionId) {
     pills.push({
       key: 'direction',
-      label: 'Направление',
+      label: directionLabel || 'Направление',
       remove: (f) => ({ ...f, directionId: undefined }),
     });
   }
@@ -99,12 +103,33 @@ function getActiveFilterPills(filters: TourFiltersType) {
 }
 
 export default function TourCatalogPage() {
-  const [filters, setFilters] = useState<TourFiltersType>(INITIAL_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.toString();
+  const filters = useMemo(
+    () => filtersFromSearchParams(new URLSearchParams(search)),
+    [search],
+  );
+  const filterKey = filtersToSearchParams(filters).toString();
+
   const [page, setPage] = useState(1);
+  const [loadedPages, setLoadedPages] = useState<Tour[][]>([]);
+  const [appliedFilterKey, setAppliedFilterKey] = useState(filterKey);
+  const filtersChanged = appliedFilterKey !== filterKey;
+  if (filtersChanged) {
+    setAppliedFilterKey(filterKey);
+    setPage(1);
+    setLoadedPages([]);
+  }
+  const currentPage = filtersChanged ? 1 : page;
+
+  const { data: destinations = [] } = useQuery({
+    queryKey: ['catalog', 'destinations'],
+    queryFn: getDestinations,
+  });
 
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
-    queryKey: ['tours', filters, page],
-    queryFn: () => getTours(filters, page),
+    queryKey: ['tours', filters, currentPage],
+    queryFn: () => getTours(filters, currentPage),
     placeholderData: keepPreviousData,
   });
 
@@ -113,23 +138,22 @@ export default function TourCatalogPage() {
     return data.items;
   }, [data]);
 
-  const [loadedPages, setLoadedPages] = useState<typeof allTours[]>([]);
-
   const displayedTours = useMemo(() => {
-    if (page === 1) return allTours;
+    if (currentPage === 1) return allTours;
     return [...loadedPages.flat(), ...allTours];
-  }, [allTours, loadedPages, page]);
+  }, [allTours, loadedPages, currentPage]);
 
   const handleLoadMore = useCallback(() => {
     setLoadedPages((prev) => [...prev, allTours]);
     setPage((p) => p + 1);
   }, [allTours]);
 
-  const handleFilterChange = useCallback((newFilters: TourFiltersType) => {
-    setFilters(newFilters);
-    setPage(1);
-    setLoadedPages([]);
-  }, []);
+  const handleFilterChange = useCallback(
+    (newFilters: TourFiltersType) => {
+      setSearchParams((current) => applyCatalogFilters(current, newFilters), { replace: true });
+    },
+    [setSearchParams],
+  );
 
   const handleSortChange = useCallback(
     (val: string) => {
@@ -142,21 +166,22 @@ export default function TourCatalogPage() {
   );
 
   const handleReset = useCallback(() => {
-    setFilters(INITIAL_FILTERS);
-    setPage(1);
-    setLoadedPages([]);
-  }, []);
+    setSearchParams((current) => applyCatalogFilters(current, {}), { replace: true });
+  }, [setSearchParams]);
 
   const handleRemovePill = useCallback(
     (removeFn: (f: TourFiltersType) => TourFiltersType) => {
-      const updated = removeFn(filters);
-      handleFilterChange(updated);
+      handleFilterChange(removeFn(filters));
     },
     [filters, handleFilterChange],
   );
 
-  const pills = useMemo(() => getActiveFilterPills(filters), [filters]);
-  const hasMore = data ? page < data.totalPages : false;
+  const directionLabel = destinations.find((item) => item.id === filters.directionId)?.name;
+  const pills = useMemo(
+    () => getActiveFilterPills(filters, directionLabel),
+    [filters, directionLabel],
+  );
+  const hasMore = data ? currentPage < data.totalPages : false;
 
   return (
     <PageTransition>
@@ -261,7 +286,12 @@ export default function TourCatalogPage() {
               </div>
             )}
             {(data || isLoading) && (
-              <TourGrid tours={displayedTours} isLoading={isLoading && !data} />
+              <TourGrid
+                tours={displayedTours}
+                isLoading={isLoading && !data}
+                emptyVariant={hasCatalogQuery(filters) ? 'filtered' : 'default'}
+                onResetFilters={handleReset}
+              />
             )}
 
             {/* Load More */}

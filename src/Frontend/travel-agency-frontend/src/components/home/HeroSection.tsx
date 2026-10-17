@@ -1,6 +1,11 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, BadgeCheck, Headphones, XCircle } from 'lucide-react';
 import { SearchBar } from '@/components/common';
+import { getDestinations } from '@/api/catalog';
+import type { Destination } from '@/types';
+import { catalogPath, resolveHomeSearch } from '@/utils/catalogQuery';
 
 const advantages = [
   { icon: Shield, label: 'Лучшие цены' },
@@ -22,6 +27,22 @@ const childVariants = {
 };
 
 export default function HeroSection() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  async function handleSearch(values: { destination: string; date: string }) {
+    let destinations: Destination[];
+    try {
+      destinations = await queryClient.fetchQuery({
+        queryKey: ['destinations'],
+        queryFn: getDestinations,
+      });
+    } catch {
+      destinations = [];
+    }
+    navigate(catalogPath(resolveHomeSearch(values, destinations)));
+  }
+
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
       <div
@@ -54,7 +75,7 @@ export default function HeroSection() {
         </motion.p>
 
         <motion.div variants={childVariants} className="mt-10">
-          <SearchBar className="mx-auto max-w-4xl" />
+          <SearchBar className="mx-auto max-w-4xl" onSearch={handleSearch} />
         </motion.div>
 
         <motion.div

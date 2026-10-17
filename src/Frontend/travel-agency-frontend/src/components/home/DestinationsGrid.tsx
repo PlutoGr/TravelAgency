@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FadeInOnScroll } from '@/components/common';
 import { getDestinations } from '@/api/catalog';
 import { Skeleton } from '@/components/ui';
+import { catalogPath } from '@/utils/catalogQuery';
 
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop';
 
@@ -58,7 +59,7 @@ export default function DestinationsGrid() {
                 className={clsx(isLarge && 'sm:col-span-2 lg:col-span-2')}
               >
                 <Link
-                  to="/tours"
+                  to={catalogPath({ directionId: dest.id })}
                   className={clsx(
                     'group relative block overflow-hidden rounded-2xl',
                     isLarge ? 'aspect-[16/9]' : 'aspect-[4/3]',

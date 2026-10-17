@@ -120,7 +120,7 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
         </div>
       </AccordionSection>
 
-      <AccordionSection title="Направление" defaultOpen={false}>
+      <AccordionSection title="Направление" defaultOpen={Boolean(filters.directionId)}>
         <div className="space-y-2">
           {directions.map((direction) => (
             <label
