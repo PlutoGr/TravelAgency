@@ -12,7 +12,7 @@ namespace TravelAgency.Gateway.Transforms;
 /// YARP transform for login, register, refresh and logout.
 /// A usable token response becomes httpOnly cookies and {"success":true}.
 /// Access cookie Expires is the JWT expiry. Refresh cookie Expires is refreshExpiresAt.
-/// Anything else on a token route is 502 with a generic body: tokens are not forwarded.
+/// A token route without both tokens is 502 with an empty body and no cookies.
 /// Refresh cookie path is the auth prefix. Login, register, refresh and logout also
 /// delete the previous refresh cookie on Cookie:Path.
 /// </summary>
@@ -97,15 +97,9 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
 
         var hasAccess = !string.IsNullOrWhiteSpace(tokens?.AccessToken);
         var hasRefresh = !string.IsNullOrWhiteSpace(tokens?.RefreshToken);
-        if (!hasAccess && !hasRefresh)
-        {
-            await PassThroughBodyAsync(transformContext, body, content);
-            return;
-        }
-
         if (!hasAccess || !hasRefresh || tokens is null)
         {
-            await RejectAuthResponseAsync(transformContext, "incomplete-tokens");
+            await RejectAuthResponseAsync(transformContext, "incomplete-tokens", emptyBody: !hasAccess && !hasRefresh);
             return;
         }
 
@@ -141,35 +135,28 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     }
 
     /// <summary>
-    /// Drops the upstream body. The log and the client see a fixed reason, never tokens.
+    /// Drops the upstream body. The log sees only the reason, never tokens.
+    /// A response with no bound tokens is an empty 502. Other rejects keep the generic JSON.
     /// </summary>
-    private async ValueTask RejectAuthResponseAsync(ResponseTransformContext transformContext, string reason)
+    private async ValueTask RejectAuthResponseAsync(
+        ResponseTransformContext transformContext,
+        string reason,
+        bool emptyBody = false)
     {
         _logger.LogError("Rejected auth token response: {Reason}", reason);
         transformContext.SuppressResponseBody = true;
 
         var response = transformContext.HttpContext.Response;
         response.StatusCode = StatusCodes.Status502BadGateway;
+        if (emptyBody)
+        {
+            response.ContentLength = 0;
+            return;
+        }
+
         response.ContentType = "application/json";
         var payload = JsonSerializer.Serialize(new { code = InvalidAuthCode, message = InvalidAuthMessage });
         var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
-        response.ContentLength = bytes.Length;
-        await response.Body.WriteAsync(bytes, transformContext.CancellationToken);
-    }
-
-    /// <summary>
-    /// Writes a body that has no token fields. Used only when the payload is not an auth token response.
-    /// </summary>
-    private static async ValueTask PassThroughBodyAsync(
-        ResponseTransformContext transformContext,
-        string body,
-        HttpContent content)
-    {
-        transformContext.SuppressResponseBody = true;
-        var response = transformContext.HttpContext.Response;
-        var contentType = content.Headers.ContentType?.ToString() ?? "application/json";
-        response.ContentType = contentType;
-        var bytes = System.Text.Encoding.UTF8.GetBytes(body);
         response.ContentLength = bytes.Length;
         await response.Body.WriteAsync(bytes, transformContext.CancellationToken);
     }

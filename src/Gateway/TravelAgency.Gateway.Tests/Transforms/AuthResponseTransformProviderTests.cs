@@ -434,23 +434,20 @@ public class AuthResponseTransformProviderTests
         Assert.DoesNotContain(tokenJson, log, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task Transform_WhenNoTokensInBody_PassesThroughOriginalBody()
+    [Theory]
+    [InlineData("{\"access_token\":\"at-secret\",\"refresh_token\":\"rt-secret\"}")]
+    [InlineData("{\"path\":\"/identity/login\"}")]
+    public async Task Transform_WhenTokenRouteLacksBothTokens_Returns502WithEmptyBody(string upstreamBody)
     {
-        // Arrange: mock backend returns non-token JSON (e.g. redirect path)
-        var bodyWithoutTokens = JsonSerializer.Serialize(new { path = "/identity/login" });
         var provider = CreateProvider();
-        var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, bodyWithoutTokens);
+        var context = CreateTransformContext("/api/v1/auth/login", HttpStatusCode.OK, upstreamBody);
 
-        // Act
         await InvokeTransformAsync(provider, context);
 
-        // Assert: no cookies, original body passed through (not empty)
+        var responseBody = await ReadBodyAsync(context.HttpContext.Response);
+        Assert.Equal(StatusCodes.Status502BadGateway, context.HttpContext.Response.StatusCode);
+        Assert.Equal(string.Empty, responseBody);
         Assert.Equal(0, context.HttpContext.Response.Headers.SetCookie.Count);
-        context.HttpContext.Response.Body.Seek(0, SeekOrigin.Begin);
-        using var reader = new StreamReader(context.HttpContext.Response.Body);
-        var responseBody = await reader.ReadToEndAsync();
-        Assert.Equal(bodyWithoutTokens, responseBody);
     }
 
     [Theory]
