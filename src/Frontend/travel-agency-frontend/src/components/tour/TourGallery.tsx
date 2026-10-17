@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+import { CloseButton } from '@/components/ui';
 import clsx from 'clsx';
 import type { TourImage } from '@/types';
 import ResponsiveTourImage from './ResponsiveTourImage';
@@ -181,14 +182,12 @@ export default function TourGallery({ images, title }: TourGalleryProps) {
               aria-modal="true"
               aria-label="Галерея тура"
             >
-              <button
-                type="button"
-                onClick={() => setLightboxOpen(false)}
+              <CloseButton
+                floating
+                variant="overlay"
                 aria-label="Закрыть галерею"
-                className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-              >
-                <X size={22} />
-              </button>
+                onClick={() => setLightboxOpen(false)}
+              />
 
               <div
                 className="relative flex h-[85vh] w-[92vw] max-w-5xl items-center justify-center"

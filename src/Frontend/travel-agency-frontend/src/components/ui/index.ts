@@ -3,6 +3,7 @@ export { default as Input } from "./Input.tsx";
 export { default as Badge } from "./Badge.tsx";
 export { default as Card } from "./Card.tsx";
 export { default as Modal } from "./Modal.tsx";
+export { default as CloseButton } from "./CloseButton.tsx";
 export { default as Tabs } from "./Tabs.tsx";
 export { default as Select } from "./Select.tsx";
 export { default as Avatar } from "./Avatar.tsx";
