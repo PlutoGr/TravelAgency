@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.EntityFrameworkCore;
@@ -8,16 +6,16 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
 using Testcontainers.PostgreSql;
 using TravelAgency.Media.API.Extensions;
-using TravelAgency.Shared.Infrastructure.Hosting;
 using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Interfaces;
 using TravelAgency.Media.Infrastructure.Persistence;
+using TravelAgency.Testing;
 
 namespace TravelAgency.Media.IntegrationTests.Grpc;
 
 /// <summary>
-/// Boots Media on real Kestrel: HTTP/1.1 on a public port and HTTP/2 on <see cref="ServiceListenSettings.DefaultGrpcPort"/>.
+/// Boots Media on real Kestrel: HTTP/1.1 for REST and HTTP/2 for gRPC, both on ports the OS assigns at bind time.
 /// WebApplicationFactory's TestServer does not exercise cleartext HTTP/2.
 /// </summary>
 public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
@@ -30,18 +28,17 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
         .WithPassword("postgres")
         .Build();
 
+    private readonly KestrelLoopbackListeners _listeners = new();
+
     private WebApplication? _app;
 
     public string Address { get; private set; } = string.Empty;
 
-    public string GrpcAddress => $"http://127.0.0.1:{ServiceListenSettings.DefaultGrpcPort}";
+    public string GrpcAddress { get; private set; } = string.Empty;
 
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
-
-        var port = GetFreePort();
-        Address = $"http://127.0.0.1:{port}";
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -50,8 +47,8 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
         });
 
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
-        builder.WebHost.UseUrls(Address);
-        Program.ConfigureHost(builder.WebHost);
+        // Program.ConfigureHost binds fixed ports from config (8081 for gRPC); tests use OS-assigned ones.
+        _listeners.Configure(builder.WebHost);
         builder.Host.AddMediaSerilog();
 
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -91,6 +88,9 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
         }
 
         await _app.StartAsync();
+
+        Address = _listeners.RestAddress;
+        GrpcAddress = _listeners.GrpcAddress;
     }
 
     public Task<MediaFile> SeedTourImageAsync(string? ownerId = null) =>
@@ -125,15 +125,8 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
             await _app.DisposeAsync();
         }
 
-        await _postgres.DisposeAsync();
-    }
+        _listeners.Dispose();
 
-    private static int GetFreePort()
-    {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port == ServiceListenSettings.DefaultGrpcPort ? GetFreePort() : port;
+        await _postgres.DisposeAsync();
     }
 }

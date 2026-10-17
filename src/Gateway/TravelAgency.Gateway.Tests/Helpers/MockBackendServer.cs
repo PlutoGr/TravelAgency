@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -37,11 +36,9 @@ public sealed class MockBackendServer : IAsyncDisposable
         Func<string>? validJwtFactory = null,
         CancellationToken cancellationToken = default)
     {
-        var port = GetAvailablePort();
-        var url = $"http://127.0.0.1:{port}";
-
         var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(url);
+        // Port 0: the OS assigns the port at bind time, so nothing can take it before Kestrel does.
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
@@ -84,7 +81,7 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         await app.StartAsync(cancellationToken);
 
-        return new MockBackendServer(app) { BaseUrl = url };
+        return new MockBackendServer(app) { BaseUrl = app.Urls.First() };
     }
 
     public async Task StopAsync()
@@ -140,13 +137,4 @@ public sealed class MockBackendServer : IAsyncDisposable
         path.Equals("/identity/login", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/identity/register", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("/identity/refresh", StringComparison.OrdinalIgnoreCase);
-
-    private static int GetAvailablePort()
-    {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        return port;
-    }
 }
