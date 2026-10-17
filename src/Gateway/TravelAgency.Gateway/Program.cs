@@ -19,6 +19,7 @@ builder.Services.AddGatewayRateLimiting(configuration);
 builder.Services.AddGatewayCors(configuration);
 builder.Services.AddGatewayHealthChecks(configuration);
 builder.Services.AddGatewayTracing(configuration, builder.Environment);
+builder.Services.AddGatewayDataProtection(configuration);
 
 var app = builder.Build();
 

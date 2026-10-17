@@ -71,6 +71,10 @@ services:
       - ConnectionStrings__Redis=redis:6379
       # Allow cookies on HTTP (localhost) for frontend dev with Vite proxy
       - Cookie__Secure=false
+      # Ключи DataProtection в volume: переживают пересоздание контейнера и деплой (#158)
+      - DataProtection__KeysPath=/keys
+    volumes:
+      - gateway-dp-keys:/keys
     depends_on:
       redis:
         condition: service_healthy
@@ -223,3 +227,4 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  gateway-dp-keys:
