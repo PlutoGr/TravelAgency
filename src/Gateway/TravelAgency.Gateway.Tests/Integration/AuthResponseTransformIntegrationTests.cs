@@ -177,13 +177,19 @@ public class AuthResponseTransformIntegrationTests : IClassFixture<AuthResponseT
         var headers = response.Headers.GetValues("Set-Cookie").ToList();
         var access = Assert.Single(headers, h => h.StartsWith("access_token=test-access-token", StringComparison.Ordinal) || h.StartsWith("access_token=ey", StringComparison.Ordinal));
         var refresh = Assert.Single(headers, h => h.StartsWith("refresh_token=test-refresh-token", StringComparison.Ordinal));
-        var expectedExpires = "expires=" + Helpers.MockBackendServer.AuthRefreshExpiresAt
+        var accessExpires = "expires=" + Helpers.MockBackendServer.AuthAccessExpiresAt
+            .ToUniversalTime()
+            .ToString("r", CultureInfo.InvariantCulture);
+        var refreshExpires = "expires=" + Helpers.MockBackendServer.AuthRefreshExpiresAt
             .ToUniversalTime()
             .ToString("r", CultureInfo.InvariantCulture);
 
+        Assert.Contains(accessExpires, access, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(refreshExpires, refresh, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(refreshExpires, access, StringComparison.OrdinalIgnoreCase);
+
         foreach (var header in new[] { access, refresh })
         {
-            Assert.Contains(expectedExpires, header, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("httponly", header, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("samesite=lax", header, StringComparison.OrdinalIgnoreCase);
         }
@@ -193,11 +199,14 @@ public class AuthResponseTransformIntegrationTests : IClassFixture<AuthResponseT
         Assert.False(HasCookiePath(refresh, "/api/v1/auth/refresh"));
     }
 
-    [Fact]
-    public async Task AuthLogin_ClearsLegacyRefreshCookieOnRootPath()
+    [Theory]
+    [InlineData("/api/v1/auth/login")]
+    [InlineData("/api/v1/auth/register")]
+    [InlineData("/api/v1/auth/refresh")]
+    public async Task AuthTokenRoute_ClearsLegacyRefreshCookieOnRootPath(string path)
     {
         var client = _fixture.Factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "test@test.com", password = "x" });
+        var response = await client.PostAsJsonAsync(path, new { email = "test@test.com", password = "x", refreshToken = "test-refresh-token" });
 
         var headers = response.Headers.GetValues("Set-Cookie").ToList();
         var legacy = Assert.Single(headers, h =>

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Transforms;
 using Yarp.ReverseProxy.Transforms.Builder;
 using TravelAgency.Gateway.Configuration;
+using TravelAgency.Gateway.Http;
 
 namespace TravelAgency.Gateway.Transforms;
 
@@ -62,7 +63,9 @@ internal sealed class AuthRequestTransformProvider : ITransformProvider
         if (!isRefresh && !isLogout)
             return;
 
-        var refreshToken = httpContext.Request.Cookies[_cookieSettings.RefreshTokenName];
+        var refreshToken = CookieHeaderReader.ReadFirst(
+            httpContext.Request.Headers.Cookie.ToString(),
+            _cookieSettings.RefreshTokenName);
         if (string.IsNullOrEmpty(refreshToken))
             return;
 

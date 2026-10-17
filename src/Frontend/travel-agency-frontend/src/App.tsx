@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { setAuthSessionHandler } from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import {
@@ -59,6 +60,13 @@ export default function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const loadFavorites = useFavoritesStore((s) => s.loadFavorites);
+
+  useEffect(() => {
+    setAuthSessionHandler(() => {
+      useAuthStore.getState().markSessionExpired();
+    });
+    return () => setAuthSessionHandler(null);
+  }, []);
 
   useEffect(() => {
     checkAuth();

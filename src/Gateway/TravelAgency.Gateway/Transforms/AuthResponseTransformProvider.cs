@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
@@ -8,16 +9,17 @@ using TravelAgency.Gateway.Configuration;
 namespace TravelAgency.Gateway.Transforms;
 
 /// <summary>
-/// YARP transform provider that adds auth response transform for login/register/refresh and logout.
-/// On 200/201 from Identity, parses tokens from JSON, sets httpOnly cookies, and strips body.
-/// Both cookies expire at refreshExpiresAt from Identity. There is no local fallback lifetime.
-/// The refresh cookie path is the auth prefix, so the browser sends it to refresh and logout.
-/// On 204 from Identity for logout, sets clear-cookie headers (Max-Age=0) for access_token and refresh_token.
-/// Login and logout also drop the legacy refresh cookie that used Path=/.
+/// YARP transform for login, register, refresh and logout.
+/// A usable token response becomes httpOnly cookies and {"success":true}.
+/// Access cookie Expires is the JWT expiry. Refresh cookie Expires is refreshExpiresAt.
+/// Anything else on a token route is 502 with a generic body: tokens are not forwarded.
+/// Refresh cookie path is the auth prefix. Login, register, refresh and logout also
+/// delete the previous refresh cookie on Cookie:Path.
 /// </summary>
 internal sealed class AuthResponseTransformProvider : ITransformProvider
 {
-    private const string LegacyRefreshCookiePath = "/";
+    private const string InvalidAuthCode = "auth_upstream_invalid";
+    private const string InvalidAuthMessage = "Authentication is temporarily unavailable.";
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -51,17 +53,19 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     {
         var status = transformContext.ProxyResponse?.StatusCode;
         var path = transformContext.HttpContext.Request.Path.Value ?? "";
+        var isLogout = path.Equals(_authRouteSettings.LogoutPath, StringComparison.OrdinalIgnoreCase);
 
-        // Logout: on 204 from Identity, clear cookies with Max-Age=0
-        if (path.Equals(_authRouteSettings.LogoutPath, StringComparison.OrdinalIgnoreCase) &&
-            status == System.Net.HttpStatusCode.NoContent)
+        if (isLogout && status is HttpStatusCode.NoContent or HttpStatusCode.Unauthorized)
         {
-            AppendClearCookies(transformContext.HttpContext.Response);
-            transformContext.SuppressResponseBody = true;
+            var logoutResponse = transformContext.HttpContext.Response;
+            logoutResponse.StatusCode = (int)status;
+            AppendClearCookies(logoutResponse);
+            if (status == HttpStatusCode.NoContent)
+                transformContext.SuppressResponseBody = true;
             return;
         }
 
-        if (status is not (System.Net.HttpStatusCode.OK or System.Net.HttpStatusCode.Created))
+        if (status is not (HttpStatusCode.OK or HttpStatusCode.Created))
             return;
         if (!_authRouteSettings.TokenResponsePaths.Any(p => path.Equals(p, StringComparison.OrdinalIgnoreCase)))
             return;
@@ -85,39 +89,48 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         {
             tokens = JsonSerializer.Deserialize<AuthTokens>(body, JsonOptions);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
-            _logger.LogWarning(ex, "Failed to deserialize auth response JSON; passing through body");
+            await RejectAuthResponseAsync(transformContext, "json");
+            return;
+        }
+
+        var hasAccess = !string.IsNullOrWhiteSpace(tokens?.AccessToken);
+        var hasRefresh = !string.IsNullOrWhiteSpace(tokens?.RefreshToken);
+        if (!hasAccess && !hasRefresh)
+        {
             await PassThroughBodyAsync(transformContext, body, content);
             return;
         }
 
-        if (tokens?.AccessToken is null || tokens.RefreshToken is null)
+        if (!hasAccess || !hasRefresh || tokens is null)
         {
-            await PassThroughBodyAsync(transformContext, body, content);
+            await RejectAuthResponseAsync(transformContext, "incomplete-tokens");
             return;
         }
 
-        if (tokens.RefreshExpiresAt is null)
+        if (!IsUsableExpiry(tokens.ExpiresAt, out var accessExpires))
         {
-            _logger.LogWarning("Auth response has no refreshExpiresAt; cookies were not set");
-            await PassThroughBodyAsync(transformContext, body, content);
+            await RejectAuthResponseAsync(transformContext, "access-expiry");
+            return;
+        }
+
+        if (!IsUsableExpiry(tokens.RefreshExpiresAt, out var refreshExpires))
+        {
+            await RejectAuthResponseAsync(transformContext, "refresh-expiry");
             return;
         }
 
         var response = transformContext.HttpContext.Response;
-        var expires = ToCookieExpires(tokens.RefreshExpiresAt.Value);
         response.Cookies.Append(
             _cookieSettings.AccessTokenName,
-            tokens.AccessToken,
-            CreateCookieOptions(_cookieSettings.Path, expires, maxAge: null));
+            tokens.AccessToken!,
+            CreateCookieOptions(_cookieSettings.Path, accessExpires, maxAge: null));
         response.Cookies.Append(
             _cookieSettings.RefreshTokenName,
-            tokens.RefreshToken,
-            CreateCookieOptions(RefreshCookiePath, expires, maxAge: null));
-
-        if (IsLoginPath(path))
-            AppendLegacyRefreshCookieClear(response);
+            tokens.RefreshToken!,
+            CreateCookieOptions(RefreshCookiePath, refreshExpires, maxAge: null));
+        AppendLegacyRefreshCookieClear(response);
 
         transformContext.SuppressResponseBody = true;
 
@@ -128,8 +141,24 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     }
 
     /// <summary>
-    /// Writes the buffered body to the response when we consumed the stream but did not transform.
-    /// Prevents the client from receiving an empty body when parse fails or tokens are missing.
+    /// Drops the upstream body. The log and the client see a fixed reason, never tokens.
+    /// </summary>
+    private async ValueTask RejectAuthResponseAsync(ResponseTransformContext transformContext, string reason)
+    {
+        _logger.LogError("Rejected auth token response: {Reason}", reason);
+        transformContext.SuppressResponseBody = true;
+
+        var response = transformContext.HttpContext.Response;
+        response.StatusCode = StatusCodes.Status502BadGateway;
+        response.ContentType = "application/json";
+        var payload = JsonSerializer.Serialize(new { code = InvalidAuthCode, message = InvalidAuthMessage });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+        response.ContentLength = bytes.Length;
+        await response.Body.WriteAsync(bytes, transformContext.CancellationToken);
+    }
+
+    /// <summary>
+    /// Writes a body that has no token fields. Used only when the payload is not an auth token response.
     /// </summary>
     private static async ValueTask PassThroughBodyAsync(
         ResponseTransformContext transformContext,
@@ -159,25 +188,25 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     }
 
     /// <summary>
-    /// Старые сессии хранили refresh-cookie на Path=/. Login и logout снимают её,
-    /// иначе браузер продолжит слать её вместе с cookie на префиксе auth.
+    /// Previous sessions stored refresh-cookie on Cookie:Path. A new cookie on the auth
+    /// prefix does not replace it: same name and different Path are different cookies.
     /// </summary>
     private void AppendLegacyRefreshCookieClear(HttpResponse response)
     {
-        if (string.Equals(RefreshCookiePath, LegacyRefreshCookiePath, StringComparison.Ordinal))
+        var legacyPath = LegacyRefreshCookiePath;
+        if (string.Equals(RefreshCookiePath, legacyPath, StringComparison.Ordinal))
             return;
 
         response.Cookies.Append(
             _cookieSettings.RefreshTokenName,
             string.Empty,
-            CreateCookieOptions(LegacyRefreshCookiePath, expires: null, maxAge: TimeSpan.Zero));
+            CreateCookieOptions(legacyPath, expires: null, maxAge: TimeSpan.Zero));
     }
 
     private CookieOptions CreateCookieOptions(string path, DateTimeOffset? expires, TimeSpan? maxAge)
     {
         var sameSite = ParseSameSite(_cookieSettings.SameSite);
         var secure = _cookieSettings.Secure;
-        // Browsers require Secure=true when SameSite=None; enforce regardless of config.
         if (sameSite == SameSiteMode.None)
             secure = true;
 
@@ -194,6 +223,17 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         };
     }
 
+    private string LegacyRefreshCookiePath
+    {
+        get
+        {
+            var path = (_cookieSettings.Path ?? string.Empty).Trim();
+            if (path.Length > 1)
+                path = path.TrimEnd('/');
+            return path.Length == 0 ? "/" : path;
+        }
+    }
+
     private string RefreshCookiePath
     {
         get
@@ -206,21 +246,24 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         }
     }
 
-    private bool IsLoginPath(string path) =>
-        _authRouteSettings.TokenResponsePaths.Any(p =>
-            path.Equals(p, StringComparison.OrdinalIgnoreCase)
-            && p.EndsWith("/login", StringComparison.OrdinalIgnoreCase));
-
-    private static DateTimeOffset ToCookieExpires(DateTime refreshExpiresAt)
+    private static bool IsUsableExpiry(DateTime? value, out DateTimeOffset expires)
     {
-        var utc = refreshExpiresAt.Kind switch
+        expires = default;
+        if (value is null)
+            return false;
+
+        var utc = value.Value.Kind switch
         {
-            DateTimeKind.Utc => refreshExpiresAt,
-            DateTimeKind.Local => refreshExpiresAt.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(refreshExpiresAt, DateTimeKind.Utc)
+            DateTimeKind.Utc => value.Value,
+            DateTimeKind.Local => value.Value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
         };
 
-        return new DateTimeOffset(utc);
+        if (utc.Year < 2)
+            return false;
+
+        expires = new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc));
+        return expires > DateTimeOffset.UtcNow;
     }
 
     private static SameSiteMode ParseSameSite(string value)

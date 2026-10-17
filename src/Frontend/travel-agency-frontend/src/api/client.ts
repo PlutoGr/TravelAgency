@@ -13,10 +13,20 @@ function redirectToLogin(): void {
   window.location.href = '/?auth=login';
 }
 
-function shouldSkipRedirect(request: InternalAxiosRequestConfig & { _retried?: boolean }): boolean {
-  const url = request?.url ?? '';
-  // getMe is used to check auth state; 401 is expected when not logged in — do not redirect
+function isAuthMe(url: string): boolean {
   return url.includes('/auth/me');
+}
+
+type SessionHandler = () => void;
+let sessionHandler: SessionHandler | null = null;
+
+/** App registers this so a failed refresh marks the visitor as a guest without a toast. */
+export function setAuthSessionHandler(handler: SessionHandler | null): void {
+  sessionHandler = handler;
+}
+
+function notifySessionInvalid(): void {
+  sessionHandler?.();
 }
 
 let refreshPromise: Promise<void> | null = null;
@@ -27,22 +37,20 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retried?: boolean;
     };
+    const url = originalRequest?.url ?? '';
+    const status = error.response?.status;
 
-    if (error.response?.status !== 401) {
+    if (url.includes('/auth/refresh')) {
+      if (status === 401 || status === 502) notifySessionInvalid();
       return Promise.reject(error);
     }
 
-    if (originalRequest?.url?.includes('/auth/refresh')) {
-      redirectToLogin();
+    if (status !== 401) {
       return Promise.reject(error);
     }
 
     if (originalRequest?._retried) {
-      if (!shouldSkipRedirect(originalRequest)) redirectToLogin();
-      return Promise.reject(error);
-    }
-
-    if (shouldSkipRedirect(originalRequest)) {
+      if (!isAuthMe(url)) redirectToLogin();
       return Promise.reject(error);
     }
 
@@ -50,9 +58,6 @@ apiClient.interceptors.response.use(
       refreshPromise = (async () => {
         try {
           await apiClient.post('/auth/refresh', {});
-        } catch {
-          redirectToLogin();
-          throw error;
         } finally {
           refreshPromise = null;
         }

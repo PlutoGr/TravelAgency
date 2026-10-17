@@ -11,6 +11,7 @@ type AuthState = {
   logout: () => Promise<void>;
   setUser: (user: User) => void;
   checkAuth: () => void;
+  markSessionExpired: () => void;
 };
 
 // Latest login, register, or logout. checkAuth remembers the value at
@@ -65,6 +66,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => set({ user }),
 
+  markSessionExpired: () => {
+    bumpAuthGeneration();
+    set({ user: null, isAuthenticated: false, isLoading: false });
+  },
+
   checkAuth: () => {
     const generation = authGeneration;
     set({ isLoading: true });
@@ -76,8 +82,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
       .catch((error) => {
         if (generation !== authGeneration) return;
-        const isAuthFailure = error?.response?.status === 401;
-        if (isAuthFailure) {
+        const status = error?.response?.status;
+        if (status === 401 || status === 502) {
           set({ user: null, isAuthenticated: false, isLoading: false });
         } else {
           set({ isLoading: false });
