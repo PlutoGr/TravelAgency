@@ -10,8 +10,8 @@ service MediaService {
   // Batch lookup. Unknown ids are omitted. Deleted files are omitted.
   rpc GetMediaFiles (GetMediaFilesRequest) returns (GetMediaFilesResponse);
 
-  // Sets IsPublic=true for the given ids. Idempotent.
-  // Never clears the flag. Unknown ids are ignored.
+  // Sets IsPublic=true only for active files whose purpose is tour-image. Idempotent.
+  // Never clears the flag. Unknown ids, other purposes and deleted files are left unchanged.
   rpc MarkMediaFilesPublic (MarkMediaFilesPublicRequest) returns (MarkMediaFilesPublicResponse);
 }
 
@@ -32,6 +32,8 @@ message MediaFileInfo {
   bool is_public = 6;
   // Size codes that can be fetched: "w200", "w800", "w1600".
   repeated string available_sizes = 7;
+  // "tour-image" or "general". Empty on servers that do not send this field yet.
+  string purpose = 8;
 }
 
 message MarkMediaFilesPublicRequest {

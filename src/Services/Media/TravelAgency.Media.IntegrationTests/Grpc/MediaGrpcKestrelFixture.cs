@@ -93,7 +93,10 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
         await _app.StartAsync();
     }
 
-    public async Task<MediaFile> SeedTourImageAsync(string? ownerId = null)
+    public Task<MediaFile> SeedTourImageAsync(string? ownerId = null) =>
+        SeedFileAsync(MediaPurposes.TourImage, ownerId);
+
+    public async Task<MediaFile> SeedFileAsync(string purpose, string? ownerId = null)
     {
         await using var scope = _app!.Services.CreateAsyncScope();
         var repo = scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
@@ -103,7 +106,7 @@ public sealed class MediaGrpcKestrelFixture : IAsyncLifetime
             2048,
             "owner/cover.jpg",
             ownerId ?? Guid.NewGuid().ToString(),
-            MediaPurposes.TourImage,
+            purpose,
             width: 2400,
             height: 1350);
         file.AddThumbnail("owner/cover.jpg-preview-w200", 200, 113, TourImageSizes.W200);

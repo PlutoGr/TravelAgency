@@ -11,7 +11,6 @@ export const TOUR_MANAGE_API_CODES = [
   'images.cover',
   'images.minCount',
   'images.coverMinWidth',
-  'images.owner',
   'images.notFound',
 ] as const;
 
@@ -29,7 +28,6 @@ export const TOUR_MANAGE_ERROR_TEXT: Record<TourManageApiCode, string> = {
   'images.cover': 'Выберите одну обложку.',
   'images.minCount': 'Для публикации нужно не меньше 3 фото.',
   'images.coverMinWidth': 'Обложка должна быть не уже 1280 пикселей. Обычное фото той же ширины можно оставить в галерее.',
-  'images.owner': 'Фото принадлежит другому пользователю. Загрузите свои файлы.',
   'images.notFound': 'Фото не найдено. Загрузите его ещё раз.',
 };
 
@@ -42,6 +40,7 @@ export const TOUR_MANAGE_STATUS_TEXT = {
   unpublishOnly: 'Снять с публикации можно только опубликованный тур.',
   forbidden: 'Нет доступа к этому туру. Чужой тур изменить нельзя.',
   mediaDown: 'Сервис фото недоступен. Тур не изменён, повторите позже.',
+  imagesSaveUnavailable: 'Не удалось обновить фото тура. Изменения не сохранены, попробуйте ещё раз через минуту',
   notFound: 'Тур не найден.',
   rejected: 'Сервер не принял тур. Вот что нужно исправить:',
   network: 'Не удалось сохранить тур. Проверьте соединение и повторите.',

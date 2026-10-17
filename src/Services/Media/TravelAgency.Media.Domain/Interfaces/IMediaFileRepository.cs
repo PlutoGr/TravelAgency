@@ -13,8 +13,8 @@ public interface IMediaFileRepository
     Task<IReadOnlyList<MediaFile>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 
     /// <summary>
-    /// Sets <see cref="MediaFile.IsPublic"/> for active files. Missing ids are ignored.
-    /// Already-public files stay public. Does not publish deleted files.
+    /// Sets <see cref="MediaFile.IsPublic"/> for active tour-image files. Missing ids,
+    /// other purposes and deleted files are ignored. Already-public files stay public.
     /// </summary>
     Task MarkPublicAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 

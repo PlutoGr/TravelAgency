@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Enums;
 using TravelAgency.Media.Domain.Interfaces;
@@ -40,7 +41,9 @@ public sealed class MediaFileRepository : IMediaFileRepository
             return;
 
         var files = await _db.MediaFiles
-            .Where(f => ids.Contains(f.Id) && f.Status == MediaFileStatus.Active)
+            .Where(f => ids.Contains(f.Id)
+                && f.Status == MediaFileStatus.Active
+                && f.Purpose == MediaPurposes.TourImage)
             .ToListAsync(ct);
 
         foreach (var file in files)

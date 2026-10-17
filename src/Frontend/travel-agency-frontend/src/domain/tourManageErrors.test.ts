@@ -20,7 +20,6 @@ describe('tour manage error texts', () => {
       'images.cover',
       'images.minCount',
       'images.coverMinWidth',
-      'images.owner',
       'images.notFound',
     ]);
 
@@ -31,21 +30,21 @@ describe('tour manage error texts', () => {
     expect(Object.keys(TOUR_MANAGE_ERROR_TEXT).sort()).toEqual([...TOUR_MANAGE_API_CODES].sort());
   });
 
-  it('explains 422 missing codes, including a narrow cover, too few photos and OwnerMismatch', () => {
+  it('explains 422 missing codes, including a narrow cover, too few photos and an unusable file', () => {
     const failure = readManageFailure({
       response: {
         status: 422,
         data: {
           type: 'https://travelagency/errors/tour-not-publishable',
-          missing: ['images.coverMinWidth', 'images.minCount', 'images.owner'],
+          missing: ['images.coverMinWidth', 'images.minCount', 'images.notFound'],
         },
       },
     });
 
-    expect(failure.missing).toEqual(['images.coverMinWidth', 'images.minCount', 'images.owner']);
+    expect(failure.missing).toEqual(['images.coverMinWidth', 'images.minCount', 'images.notFound']);
     expect(TOUR_MANAGE_ERROR_TEXT[failure.missing[0] as 'images.coverMinWidth']).toMatch(/1280/);
     expect(TOUR_MANAGE_ERROR_TEXT[failure.missing[1] as 'images.minCount']).toMatch(/3 фото/);
-    expect(TOUR_MANAGE_ERROR_TEXT[failure.missing[2] as 'images.owner']).toMatch(/другому пользователю/);
+    expect(TOUR_MANAGE_ERROR_TEXT[failure.missing[2] as 'images.notFound']).toMatch(/не найдено/);
   });
 
   it('explains 413 as a file larger than 10 MB', () => {

@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
+using TravelAgency.Catalog.Application.Features.Tours.Manage;
 using TravelAgency.Catalog.Domain;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
@@ -171,6 +173,7 @@ public class TourManageControllerTests
             new UpdateTourImagesRequest([new TourImageInput(foreign, 0, false, "чужое")]),
             created.Etag);
         foreignResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(foreignResponse)).Should().Equal(TourImageRules.NotFound);
 
         var unknown = Guid.NewGuid();
         _factory.Media.Files = [];
@@ -180,6 +183,7 @@ public class TourManageControllerTests
             new UpdateTourImagesRequest([new TourImageInput(unknown, 0, false, "нет")]),
             created.Etag);
         unknownResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(unknownResponse)).Should().Equal(TourImageRules.NotFound);
 
         var cover = Guid.NewGuid();
         _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
@@ -209,6 +213,194 @@ public class TourManageControllerTests
             created.Etag);
 
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task Images_OnPublishedTour_WithNewFile_MarksPublicAndSaves()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        var newCover = Guid.NewGuid();
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(newCover, 0, true, "Новая обложка"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var saved = await ReadTourAsync(response);
+        saved.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo([newCover, previous[1], previous[2]]);
+        _factory.Media.Marked.Should().BeEquivalentTo([newCover, previous[1], previous[2]]);
+        StoredImageIds(tour.Id).Should().Equal(newCover, previous[1], previous[2]);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnPublishedTour_WhenMediaMarkFails_Returns503_AndKeepsImages()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        _factory.Media.FailMark = true;
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(Guid.NewGuid(), 0, true, "Новая обложка"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        StoredImageIds(tour.Id).Should().Equal(previous);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnPublishedTour_WhenFileIsForeign_Returns422_AndDoesNotMarkPublic()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        var foreign = Guid.NewGuid();
+        var stranger = Guid.NewGuid().ToString();
+        _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
+        {
+            [foreign] = new(foreign, stranger, 2000, 1000),
+            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900),
+            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900)
+        };
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(foreign, 0, true, "Чужая обложка"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        _factory.Media.Marked.Should().BeEmpty();
+        StoredImageIds(tour.Id).Should().Equal(previous);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnPublishedTour_WhenPurposeIsNotTourImage_Returns422_AndDoesNotMarkPublic()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        var general = Guid.NewGuid();
+        _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
+        {
+            [general] = new(general, _managerId.ToString(), 2000, 1000, "general"),
+            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900),
+            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900)
+        };
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(general, 0, true, "Не фото тура"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(response)).Should().Equal(TourImageRules.NotFound);
+        _factory.Media.Marked.Should().BeEmpty();
+        StoredImageIds(tour.Id).Should().Equal(previous);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnPublishedTour_WhenAnotherManager_Returns403_AndDoesNotChangeImages()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        _factory.Media.Marked.Clear();
+        Authorize(Guid.NewGuid(), "Manager");
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(Guid.NewGuid(), 0, true, "Чужой менеджер"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        _factory.Media.Marked.Should().BeEmpty();
+        StoredImageIds(tour.Id).Should().Equal(previous);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnUnpublishedTour_DoesNotMarkPublic()
+    {
+        var tour = CompletePublished();
+        var unpublished = await SendAsync(
+            HttpMethod.Post,
+            $"/catalog/manage/tours/{tour.Id}/unpublish",
+            null,
+            TourEtagOf(tour));
+        unpublished.StatusCode.Should().Be(HttpStatusCode.OK);
+        var hidden = await ReadTourAsync(unpublished);
+        var fileId = Guid.NewGuid();
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest([new TourImageInput(fileId, 0, true, "После снятия")]),
+            hidden.Etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadTourAsync(response)).Images.Should().ContainSingle(image => image.MediaFileId == fileId);
+        _factory.Media.Marked.Should().BeEmpty();
+        StoredStatus(tour.Id).Should().Be(TourStatus.Unpublished);
+    }
+
+    [Fact]
+    public async Task Images_OnDraft_DoesNotMarkPublic()
+    {
+        var created = await CreateDraftAsync();
+        var fileId = Guid.NewGuid();
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{created.Id}/images",
+            new UpdateTourImagesRequest([new TourImageInput(fileId, 0, false, "Черновик")]),
+            created.Etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadTourAsync(response)).Images.Should().ContainSingle(image => image.MediaFileId == fileId);
+        _factory.Media.Marked.Should().BeEmpty();
     }
 
     [Fact]
@@ -392,6 +584,22 @@ public class TourManageControllerTests
         TourStatus status = TourStatus.Draft;
         _factory.UseDbContext(db => status = db.Tours.Single(t => t.Id == id).Status);
         return status;
+    }
+
+    private Guid[] StoredImageIds(Guid id)
+    {
+        Guid[] ids = [];
+        _factory.UseDbContext(db =>
+        {
+            ids = db.Tours
+                .Include(tour => tour.Images)
+                .Single(tour => tour.Id == id)
+                .Images
+                .OrderBy(image => image.SortOrder)
+                .Select(image => image.MediaFileId)
+                .ToArray();
+        });
+        return ids;
     }
 
     private void Authorize(Guid userId, string role)

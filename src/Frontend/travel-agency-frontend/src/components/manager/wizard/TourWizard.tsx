@@ -239,7 +239,12 @@ export default function TourWizard({ tourId, initialStep = 1 }: TourWizardProps)
       const saved = await persist(step);
       applySaved(saved, next ?? step);
     } catch (error: unknown) {
-      setFailure(readManageFailure(error));
+      const failure = readManageFailure(error);
+      if (step === 6 && failure.status === 503) {
+        setFailure({ ...failure, message: TOUR_MANAGE_STATUS_TEXT.imagesSaveUnavailable });
+      } else {
+        setFailure(failure);
+      }
     } finally {
       setSaving(false);
     }

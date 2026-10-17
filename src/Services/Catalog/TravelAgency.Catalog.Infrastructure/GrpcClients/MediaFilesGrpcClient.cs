@@ -25,7 +25,12 @@ public sealed class MediaFilesGrpcClient(
             () => client.GetMediaFilesAsync(request, callOptionsFactory.Create(cancellationToken)).ResponseAsync);
 
         return response.Files
-            .Select(file => new RemoteMediaFile(Guid.Parse(file.Id), file.OwnerId, file.Width, file.Height))
+            .Select(file => new RemoteMediaFile(
+                Guid.Parse(file.Id),
+                file.OwnerId,
+                file.Width,
+                file.Height,
+                file.Purpose))
             .ToList();
     }
 
