@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +7,16 @@ import Header from './Header';
 import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
 import { useUIStore } from '@/store/uiStore';
+
+// Exit-анимация меню держит пункты в DOM после закрытия. В тесте смотрим
+// состояние меню, а не длительность transition.
+vi.mock('framer-motion', async () => {
+  const actual = await vi.importActual<typeof import('framer-motion')>('framer-motion');
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: { children?: ReactNode }) => children ?? null,
+  };
+});
 
 function LocationProbe() {
   const location = useLocation();
@@ -122,6 +133,8 @@ describe('Header', () => {
 
     expect(locationText()).toBe('/tours');
     expect(useUIStore.getState().isMobileMenuOpen).toBe(false);
-    expect(screen.getAllByRole('button', { name: 'Туры' })).toHaveLength(1);
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Туры' })).toHaveLength(1);
+    });
   });
 });
