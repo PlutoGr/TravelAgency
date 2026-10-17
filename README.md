@@ -97,6 +97,7 @@ ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 
 - Все .NET-сервисы на dev работают с `ASPNETCORE_ENVIRONMENT=Staging` (задаётся в `docker-compose.override.yml` на сервере). Swagger и OpenAPI выключены, в ответах 500 нет стека, подробные логи Development не используются.
 - Миграции применяются при старте (`ASPNETCORE_RUN_MIGRATIONS=true`).
+- Для `dotnet ef` (создать или применить миграцию локально) задайте переменную `ConnectionStrings__<Имя>Db` (`CatalogDb`, `MediaDb`, `IdentityDb`, `BookingDb`), например `ConnectionStrings__BookingDb="Host=localhost;Port=5433;Database=travel_booking;Username=<POSTGRES_USER>;Password=<POSTGRES_PASSWORD>"`. Без неё design-time фабрика остановится с подсказкой.
 - Тестовые аккаунты и демо-каталог на dev оставлены специально: включены флагом `ASPNETCORE_SEED_DATA=true` (таблица аккаунтов выше). Пароль задаётся `Seeding__TestUserPassword` (в compose это `SEEDING_TEST_USER_PASSWORD`) и в репозиторий не входит. Пустое значение не останавливает Identity: новые пользователи пропускаются. Уже существующие аккаунты и туры сохраняют свои id. На production флаг не ставить.
 - Cookie авторизации с флагом `Secure` (сайт только по HTTPS) без `Domain`, то есть привязана к текущему хосту. CORS разрешён для `https://<SITE_DOMAIN>`. JWT issuer/audience (`TravelAgency.Identity`/`TravelAgency`) от домена не зависят. Фронтенд ходит в API только по относительным путям (`/api/v1`, хаб чата `/api/v1/chat/hubs/chat`).
 

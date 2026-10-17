@@ -17,8 +17,11 @@ internal sealed class DesignTimeBookingDbContextFactory : IDesignTimeDbContextFa
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = config.GetConnectionString("BookingDb")
-            ?? "Host=localhost;Port=5432;Database=travel_booking;Username=travel_admin;Password=travel_admin";
+        var connectionString = config.GetConnectionString("BookingDb");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException(
+                "ConnectionStrings:BookingDb is required for migrations. Set ConnectionStrings__BookingDb environment variable or add it to appsettings.json. " +
+                "Example for local docker compose: Host=localhost;Port=5433;Database=travel_booking;Username=<POSTGRES_USER>;Password=<POSTGRES_PASSWORD>");
 
         var options = new DbContextOptionsBuilder<BookingDbContext>()
             .UseNpgsql(connectionString)

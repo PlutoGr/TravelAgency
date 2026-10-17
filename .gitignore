@@ -85,6 +85,17 @@ secrets.json
 **/secrets/
 **/UserSecrets/**
 
+# Ключи, сертификаты, пароли (никогда не коммитить)
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+htpasswd
+id_rsa*
+id_ed25519*
+*.kdbx
+
 # REST client (Rider / VS) — tokens & private vars
 http-client.private.env.json
 *.http.user
@@ -138,4 +149,3 @@ Thumbs.db
 # Wiki
 # =========================
 TravelAgency.wiki/
-docker/.env (1).example
