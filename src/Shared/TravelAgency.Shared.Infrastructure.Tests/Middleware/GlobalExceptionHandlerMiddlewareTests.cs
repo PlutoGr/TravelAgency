@@ -5,6 +5,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -404,13 +405,35 @@ public class GlobalExceptionHandlerMiddlewareTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task InvokeAsync_WhenNpgsqlArgumentException_DoesNotLeakProviderText(bool isDevelopment)
+    [InlineData(true, "db")]
+    [InlineData(false, "db")]
+    [InlineData(true, "npgsql-io")]
+    [InlineData(false, "npgsql-cast")]
+    [InlineData(true, "npgsql-internal")]
+    public async Task InvokeAsync_WhenProviderException_Returns500WithoutProviderText(bool isDevelopment, string kind)
+    {
+        const string leaked = "Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone' secret-db-text";
+        RequestDelegate next = _ => throw CreateProviderException(kind, leaked);
+        using var host = await CreateHostAsync(isDevelopment, next);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+        var json = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetProperty("code").GetString().Should().Be("database_error");
+        document.RootElement.GetProperty("detail").GetString().Should().Be("A database error occurred.");
+        document.RootElement.GetProperty("title").GetString().Should().Be("Internal Server Error");
+        AssertNoProviderText(document.RootElement);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenArgumentExceptionMentionsProvider_KeepsClientMessageAndSkipsDatabaseCode()
     {
         const string leaked = "Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone' secret-db-text";
         RequestDelegate next = _ => throw new ArgumentException(leaked);
-        using var host = await CreateHostAsync(isDevelopment, next);
+        using var host = await CreateHostAsync(isDevelopment: true, next);
         var client = host.GetTestClient();
 
         var response = await client.GetAsync("/catalog/tours");
@@ -418,10 +441,107 @@ public class GlobalExceptionHandlerMiddlewareTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var document = JsonDocument.Parse(json);
-        document.RootElement.GetProperty("code").GetString().Should().Be("database_error");
-        document.RootElement.GetProperty("detail").GetString().Should().Be("A database error occurred.");
-        AssertNoProviderText(document.RootElement);
+        document.RootElement.GetProperty("detail").GetString().Should().Be(leaked);
+        document.RootElement.TryGetProperty("code", out var code).Should().BeFalse();
+        code.ValueKind.Should().Be(JsonValueKind.Undefined);
     }
+
+    [Theory]
+    [InlineData("date_range", "date_range")]
+    [InlineData("GreaterThanOrEqualValidator", "validation")]
+    public async Task InvokeAsync_WhenValidationException_ExposesOnlyOwnedErrorCode(string errorCode, string expected)
+    {
+        var failure = new FluentValidation.Results.ValidationFailure("DateTo", "date is wrong")
+        {
+            ErrorCode = errorCode
+        };
+        RequestDelegate next = _ => throw new ValidationException(new[] { failure });
+        using var host = await CreateHostAsync(isDevelopment: false, next);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+        var json = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetProperty("code").GetString().Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenOwnedAndBuiltinValidationCodesMix_ReturnsValidation()
+    {
+        var failures = new[]
+        {
+            new FluentValidation.Results.ValidationFailure("DateTo", "range") { ErrorCode = "date_range" },
+            new FluentValidation.Results.ValidationFailure("Page", "page") { ErrorCode = "GreaterThanOrEqualValidator" }
+        };
+        RequestDelegate next = _ => throw new ValidationException(failures);
+        using var host = await CreateHostAsync(isDevelopment: false, next);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+        var json = await response.Content.ReadAsStringAsync();
+
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetProperty("code").GetString().Should().Be("validation");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenRequestAbortedWithOperationCanceled_LogsInformationWithoutBodyOrStack()
+    {
+        const string secret = "secret-db-text Npgsql Kind=Unspecified timestamp with time zone";
+        var logs = new CapturingLoggerProvider();
+        RequestDelegate next = context =>
+        {
+            context.Features.Set<IHttpRequestLifetimeFeature>(new CancelledRequestFeature());
+            throw new OperationCanceledException(secret, new FakeDbException(secret));
+        };
+        using var host = await CreateHostAsync(isDevelopment: true, next, logs: logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+        var json = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
+        json.Should().NotContain("database_error");
+        json.Should().NotContain(secret);
+        json.Should().NotContain("Internal Server Error");
+
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Information);
+        entries[0].Exception.Should().BeNull();
+        entries[0].Message.Should().Contain(nameof(OperationCanceledException));
+        entries[0].Message.Should().NotContain(secret);
+        entries[0].Message.Should().NotContain("at ");
+        logs.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenOperationCanceledWithoutAbort_LogsError()
+    {
+        var logs = new CapturingLoggerProvider();
+        RequestDelegate next = _ => throw new OperationCanceledException("slow query");
+        using var host = await CreateHostAsync(isDevelopment: false, next, logs: logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+        entries[0].Exception.Should().BeOfType<OperationCanceledException>();
+    }
+
+    private static Exception CreateProviderException(string kind, string leaked) => kind switch
+    {
+        "db" => new FakeDbException(leaked),
+        "npgsql-io" => new Npgsql.InvalidOperationException(leaked),
+        "npgsql-cast" => new Npgsql.InvalidCastException(leaked),
+        "npgsql-internal" => new Npgsql.Internal.NpgsqlOperationException(leaked),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
 
     [Fact]
     public async Task InvokeAsync_WhenDatabaseExceptionInDevelopment_DoesNotLeakProviderText()
@@ -467,6 +587,21 @@ public class GlobalExceptionHandlerMiddlewareTests
     }
 
     private sealed class FakeDbException(string message) : DbException(message);
+
+    private sealed class CancelledRequestFeature : IHttpRequestLifetimeFeature
+    {
+        private readonly CancellationTokenSource _cancellation = new();
+
+        public CancelledRequestFeature()
+        {
+            _cancellation.Cancel();
+            RequestAborted = _cancellation.Token;
+        }
+
+        public CancellationToken RequestAborted { get; set; }
+
+        public void Abort() => _cancellation.Cancel();
+    }
 
     private sealed class UnauthorizedException(string message) : Exception(message);
 

@@ -12,7 +12,7 @@ namespace TravelAgency.Catalog.Infrastructure.Queries;
 /// <summary>
 /// Публичный список. В выдаче только Published: параметр IsActive не открывает черновики и снятые.
 /// Цена «от», фильтр цены и сортировка по цене смотрят на будущие выезды (ValidFrom позже utcNow).
-/// DateFrom и DateTo — календарные дни: оба включительные, сравнение идёт по UTC-суткам вылета.
+/// DateFrom и DateTo: календарные дни, оба включительные, сравнение идёт по UTC-суткам вылета.
 /// </summary>
 public class TourListQuery(CatalogDbContext db) : ITourListQuery
 {

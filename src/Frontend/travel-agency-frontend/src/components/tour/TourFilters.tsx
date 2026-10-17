@@ -7,7 +7,14 @@ import type { TourFilters as TourFiltersType } from '@/types';
 import { RangeSlider, Button, CloseButton } from '@/components/ui';
 import { getDestinations } from '@/api/catalog';
 import { TOUR_TYPE_OPTIONS } from '@/utils/tourLabels';
-import { DEPARTURE_RANGE_HINT, isDepartureRangeInverted } from '@/utils/catalogQuery';
+import {
+  DEPARTURE_DATE_MAX,
+  DEPARTURE_DATE_MIN,
+  DEPARTURE_RANGE_HINT,
+  DEPARTURE_YEAR_HINT,
+  departureDateIssue,
+  isDepartureDateOutOfRange,
+} from '@/utils/catalogQuery';
 
 interface TourFiltersProps {
   filters: TourFiltersType;
@@ -87,7 +94,12 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
   );
 
   const dateHintId = useId();
-  const rangeInverted = isDepartureRangeInverted(filters.dateFrom, filters.dateTo);
+  const dateIssue = departureDateIssue(filters.dateFrom, filters.dateTo);
+  const dateFromOutOfRange = isDepartureDateOutOfRange(filters.dateFrom);
+  const dateToOutOfRange = isDepartureDateOutOfRange(filters.dateTo);
+  const dateFromInvalid = dateFromOutOfRange;
+  const dateToInvalid = dateToOutOfRange || dateIssue === 'order';
+  const dateHint = dateIssue === 'year' ? DEPARTURE_YEAR_HINT : dateIssue === 'order' ? DEPARTURE_RANGE_HINT : undefined;
   const hasActiveFilters = Boolean(
     filters.country?.length ||
       filters.priceMin ||
@@ -166,7 +178,11 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
             С
             <input
               type="date"
+              min={DEPARTURE_DATE_MIN}
+              max={DEPARTURE_DATE_MAX}
               value={filters.dateFrom ?? ''}
+              aria-invalid={dateFromInvalid || undefined}
+              aria-describedby={dateFromInvalid ? dateHintId : undefined}
               onChange={(event) => updateFilter('dateFrom', event.target.value || undefined)}
               className="mt-1 w-full rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
@@ -175,16 +191,18 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
             По
             <input
               type="date"
+              min={DEPARTURE_DATE_MIN}
+              max={DEPARTURE_DATE_MAX}
               value={filters.dateTo ?? ''}
-              aria-invalid={rangeInverted || undefined}
-              aria-describedby={rangeInverted ? dateHintId : undefined}
+              aria-invalid={dateToInvalid || undefined}
+              aria-describedby={dateToInvalid ? dateHintId : undefined}
               onChange={(event) => updateFilter('dateTo', event.target.value || undefined)}
               className="mt-1 w-full rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
           </label>
-          {rangeInverted && (
+          {dateHint && (
             <p id={dateHintId} className="text-xs text-terracotta">
-              {DEPARTURE_RANGE_HINT}
+              {dateHint}
             </p>
           )}
         </div>

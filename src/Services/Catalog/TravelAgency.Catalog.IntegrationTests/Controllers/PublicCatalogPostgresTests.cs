@@ -352,6 +352,27 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
         json.Should().NotContain("at Npgsql");
     }
 
+    [Theory]
+    [InlineData("dateFrom=1999-12-31", "DateFrom")]
+    [InlineData("dateTo=9999-12-31", "DateTo")]
+    [InlineData("dateFrom=1999-12-31&dateTo=9999-12-31", "DateFrom")]
+    public async Task List_WhenDepartureDateIsOutsideSupportedYears_Returns400DateRange(string query, string propertyName)
+    {
+        var response = await GetAsync($"/catalog/tours?{query}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        root.GetProperty("status").GetInt32().Should().Be(400);
+        root.GetProperty("code").GetString().Should().Be("date_range");
+        root.GetProperty("errors").GetProperty(propertyName)[0].GetString()
+            .Should().Be("Выберите дату в пределах 2000\u20132100 года");
+        json.Should().NotContain("Npgsql");
+        json.Should().NotContain("ArgumentOutOfRange");
+        json.Should().NotContain("timestamp with time zone");
+    }
+
     [Fact]
     public async Task List_SortsByFuturePrice_AndPaginates()
     {

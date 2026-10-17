@@ -8,6 +8,7 @@ import { getDestinations, getTours } from '@/api/catalog';
 import { sampleTour } from '@/test/sampleTour';
 import { renderPage } from '@/test/render';
 import { mediaImageUrl } from '@/utils/media';
+import { DEPARTURE_DATE_MAX, DEPARTURE_DATE_MIN, DEPARTURE_YEAR_HINT } from '@/utils/catalogQuery';
 import type { Destination } from '@/types';
 
 vi.mock('@/api/catalog', () => ({
@@ -167,6 +168,10 @@ describe('TourCatalogPage', () => {
     expect(url).toContain('dateFrom=2026-11-01');
     expect(url).toContain('dateTo=2026-11-15');
     expect(url).not.toContain('01.11.2026');
+    for (const input of [...screen.getAllByLabelText('С'), ...screen.getAllByLabelText('По')]) {
+      expect(input).toHaveAttribute('min', DEPARTURE_DATE_MIN);
+      expect(input).toHaveAttribute('max', DEPARTURE_DATE_MAX);
+    }
     await waitFor(() => {
       expect(getTours).toHaveBeenCalledWith(
         expect.objectContaining({ dateFrom: '2026-11-01', dateTo: '2026-11-15' }),
@@ -189,6 +194,40 @@ describe('TourCatalogPage', () => {
     expect(url).toContain('dateTo=2026-11-01');
     expect(getTours).not.toHaveBeenCalled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['/tours?dateFrom=1999-12-31', 'С', 'с 31.12.1999'],
+    ['/tours?dateTo=9999-12-31', 'По', 'по 31.12.9999'],
+  ])('shows the year hint and does not request tours for %s', async (entry, field, chip) => {
+    vi.mocked(getTours).mockResolvedValue(emptyPage);
+
+    renderCatalog(entry);
+
+    expect(await screen.findAllByText(DEPARTURE_YEAR_HINT)).not.toHaveLength(0);
+    expect(DEPARTURE_YEAR_HINT).toBe('Выберите дату в пределах 2000\u20132100 года');
+    expect(screen.getAllByLabelText(field).some((input) => input.getAttribute('aria-invalid') === 'true')).toBe(true);
+    for (const input of [...screen.getAllByLabelText('С'), ...screen.getAllByLabelText('По')]) {
+      expect(input).toHaveAttribute('min', '2000-01-01');
+      expect(input).toHaveAttribute('max', '2100-12-31');
+    }
+    expect(screen.getByRole('button', { name: chip })).toBeInTheDocument();
+    expect(getTours).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('requests tours when the departure dates are the supported bounds', async () => {
+    vi.mocked(getTours).mockResolvedValue(emptyPage);
+
+    renderCatalog('/tours?dateFrom=2000-01-01&dateTo=2100-12-31');
+
+    await waitFor(() => {
+      expect(getTours).toHaveBeenCalledWith(
+        expect.objectContaining({ dateFrom: '2000-01-01', dateTo: '2100-12-31' }),
+        1,
+      );
+    });
+    expect(screen.queryByText(DEPARTURE_YEAR_HINT)).not.toBeInTheDocument();
   });
 });
 

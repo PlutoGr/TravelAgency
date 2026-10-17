@@ -12,11 +12,12 @@ import { tourTypeLabel } from '@/utils/tourLabels';
 import {
   applyCatalogFilters,
   DEPARTURE_RANGE_HINT,
+  DEPARTURE_YEAR_HINT,
+  departureDateIssue,
   filtersFromSearchParams,
   filtersToSearchParams,
   formatCatalogDateChip,
   hasCatalogQuery,
-  isDepartureRangeInverted,
 } from '@/utils/catalogQuery';
 
 const sortOptions = [
@@ -124,7 +125,7 @@ export default function TourCatalogPage() {
     setLoadedPages([]);
   }
   const currentPage = filtersChanged ? 1 : page;
-  const rangeInverted = isDepartureRangeInverted(filters.dateFrom, filters.dateTo);
+  const dateIssue = departureDateIssue(filters.dateFrom, filters.dateTo);
 
   const { data: destinations = [] } = useQuery({
     queryKey: ['catalog', 'destinations'],
@@ -134,8 +135,8 @@ export default function TourCatalogPage() {
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['tours', filters, currentPage],
     queryFn: () => getTours(filters, currentPage),
-    enabled: !rangeInverted,
-    placeholderData: rangeInverted ? undefined : keepPreviousData,
+    enabled: dateIssue == null,
+    placeholderData: dateIssue ? undefined : keepPreviousData,
   });
 
   const allTours = useMemo(() => {
@@ -278,7 +279,7 @@ export default function TourCatalogPage() {
 
           {/* Tour Grid */}
           <div className="min-w-0 flex-1">
-            {isError && !rangeInverted && (
+            {isError && dateIssue == null && (
               <div role="alert" className="mb-6 rounded-[16px] border border-terracotta/30 bg-terracotta/5 px-4 py-3 text-sm text-dark">
                 <p>Не удалось загрузить каталог</p>
                 <div className="mt-2 flex flex-wrap gap-4">
@@ -299,10 +300,13 @@ export default function TourCatalogPage() {
                 </div>
               </div>
             )}
-            {rangeInverted && (
+            {dateIssue === 'year' && (
+              <p className="mb-6 text-sm text-terracotta">{DEPARTURE_YEAR_HINT}</p>
+            )}
+            {dateIssue === 'order' && (
               <p className="mb-6 text-sm text-terracotta">{DEPARTURE_RANGE_HINT}</p>
             )}
-            {!rangeInverted && (data || isLoading) && (
+            {dateIssue == null && (data || isLoading) && (
               <TourGrid
                 tours={displayedTours}
                 isLoading={isLoading && !data}

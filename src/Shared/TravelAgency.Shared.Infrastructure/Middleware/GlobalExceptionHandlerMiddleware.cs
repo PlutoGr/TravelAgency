@@ -48,16 +48,39 @@ public class GlobalExceptionHandlerMiddleware
     }
 
     /// <summary>
+    /// FluentValidation names its built-in rules after the validator class
+    /// (for example GreaterThanOrEqualValidator). Only codes we assigned ourselves
+    /// are copied into the response; every other code becomes "validation".
+    /// </summary>
+    private static readonly HashSet<string> OwnedValidationCodes = new(StringComparer.Ordinal)
+    {
+        "date_range",
+    };
+
+    /// <summary>
     /// The single place where a failed HTTP request is logged (issues #57 and #13):
     /// expected client errors (401, 403, 404, validation and any other 4xx) are logged once as Warning
     /// with the exception type and message, but without the exception object, so there is no stack trace;
     /// 5xx and unmapped exceptions are logged once as Error with the exception.
     /// MediatR behaviors only rethrow and do not log the exception again.
     /// The same middleware is used by Identity, Catalog, Booking, Chat, Media and Gateway.
+    /// A cancelled request is logged as Information without the exception, before this mapping.
     /// </summary>
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var correlationId = context.Items["CorrelationId"]?.ToString() ?? context.TraceIdentifier;
+
+        if (IsClientCancellation(context, exception))
+        {
+            // No exception object and no message: a nested provider exception must not print a stack or its text.
+            _logger.LogInformation(
+                "Request cancelled {Method} {Path} {ExceptionType} traceId={TraceId}",
+                context.Request.Method,
+                context.Request.Path,
+                exception.GetType().Name,
+                correlationId);
+            return;
+        }
 
         if (context.Response.HasStarted)
         {
@@ -111,6 +134,13 @@ public class GlobalExceptionHandlerMiddleware
     private static bool IsExpectedClientError(int statusCode) =>
         statusCode is >= StatusCodes.Status400BadRequest and < StatusCodes.Status500InternalServerError;
 
+    /// <summary>
+    /// The client already dropped the request. OperationCanceledException here is not a failure,
+    /// even when a provider exception is nested inside it.
+    /// </summary>
+    private static bool IsClientCancellation(HttpContext context, Exception exception) =>
+        context.RequestAborted.IsCancellationRequested && exception is OperationCanceledException;
+
     private (ProblemDetails? Details, int? StatusCode) TryMapWithCustomMappers(HttpContext context, Exception exception)
     {
         foreach (var mapper in _exceptionMappers)
@@ -129,7 +159,7 @@ public class GlobalExceptionHandlerMiddleware
     private ProblemDetails MapToProblemDetails(HttpContext context, Exception exception)
     {
         if (IsDatabaseException(exception))
-            return CreateDatabaseProblemDetails(context, DatabaseStatus(exception));
+            return CreateDatabaseProblemDetails(context);
 
         return exception switch
         {
@@ -141,51 +171,25 @@ public class GlobalExceptionHandlerMiddleware
     }
 
     /// <summary>
-    /// Npgsql rejects an Unspecified DateTime as ArgumentException and throws DbException for provider failures.
-    /// Neither the message nor the stack belongs in the response. Logging is unchanged.
+    /// Provider failures are recognized by type only: DbException, or a type in the Npgsql namespace.
+    /// The message is not inspected. Every such failure is 500 with a fixed detail.
     /// </summary>
     private static bool IsDatabaseException(Exception exception)
     {
         foreach (var current in Flatten(exception))
         {
-            if (current is DbException)
-                return true;
-
-            var typeName = current.GetType().FullName;
-            if (typeName is not null && typeName.StartsWith("Npgsql.", StringComparison.Ordinal))
-                return true;
-
-            if (current is ArgumentException or InvalidCastException or InvalidOperationException
-                && ContainsDatabaseProviderText(current.Message))
+            if (current is DbException || IsNpgsqlType(current.GetType()))
                 return true;
         }
 
         return false;
     }
 
-    private static int DatabaseStatus(Exception exception)
+    private static bool IsNpgsqlType(Type type)
     {
-        foreach (var current in Flatten(exception))
-        {
-            if (current is DbException)
-                return StatusCodes.Status500InternalServerError;
-
-            var typeName = current.GetType().FullName;
-            if (typeName is not null && typeName.StartsWith("Npgsql.", StringComparison.Ordinal))
-                return StatusCodes.Status500InternalServerError;
-        }
-
-        return StatusCodes.Status400BadRequest;
-    }
-
-    private static bool ContainsDatabaseProviderText(string? message)
-    {
-        if (string.IsNullOrEmpty(message))
-            return false;
-
-        return message.Contains("Npgsql", StringComparison.Ordinal)
-            || message.Contains("PostgreSQL", StringComparison.Ordinal)
-            || message.Contains("Kind=Unspecified", StringComparison.Ordinal);
+        var ns = type.Namespace;
+        return ns is not null
+            && (ns == "Npgsql" || ns.StartsWith("Npgsql.", StringComparison.Ordinal));
     }
 
     private static IEnumerable<Exception> Flatten(Exception exception)
@@ -209,16 +213,13 @@ public class GlobalExceptionHandlerMiddleware
         }
     }
 
-    private static ProblemDetails CreateDatabaseProblemDetails(HttpContext context, int statusCode)
+    private static ProblemDetails CreateDatabaseProblemDetails(HttpContext context)
     {
-        var isClientError = statusCode < StatusCodes.Status500InternalServerError;
         var details = new ProblemDetails
         {
-            Type = isClientError
-                ? "https://tools.ietf.org/html/rfc7231#section-6.5.1"
-                : "https://tools.ietf.org/html/rfc7231#section-6.6.1",
-            Title = isClientError ? "Bad Request" : "Internal Server Error",
-            Status = statusCode,
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+            Title = "Internal Server Error",
+            Status = StatusCodes.Status500InternalServerError,
             Detail = "A database error occurred.",
             Instance = context.Request.Path
         };
@@ -243,13 +244,32 @@ public class GlobalExceptionHandlerMiddleware
             Instance = context.Request.Path
         };
 
-        var codes = exception.Errors
-            .Select(failure => failure.ErrorCode)
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        problem.Extensions["code"] = codes.Length == 1 ? codes[0] : "validation";
+        problem.Extensions["code"] = ResolveValidationCode(exception.Errors.Select(failure => failure.ErrorCode));
         return problem;
+    }
+
+    private static string ResolveValidationCode(IEnumerable<string?> codes)
+    {
+        string? owned = null;
+        foreach (var code in codes)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                continue;
+
+            if (!OwnedValidationCodes.Contains(code))
+                return "validation";
+
+            if (owned is null)
+            {
+                owned = code;
+                continue;
+            }
+
+            if (!string.Equals(owned, code, StringComparison.Ordinal))
+                return "validation";
+        }
+
+        return owned ?? "validation";
     }
 
     private static ProblemDetails CreateBadRequestProblemDetails(HttpContext context, ArgumentException exception)
