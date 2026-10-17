@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog.Extensions.Hosting;
 using TravelAgency.Catalog.API.Extensions;
 using TravelAgency.Catalog.API.Middleware;
+using TravelAgency.Catalog.API.ModelBinding;
 using TravelAgency.Catalog.Infrastructure.Extensions;
 using TravelAgency.Catalog.Infrastructure.GrpcServices;
 using TravelAgency.Shared.Infrastructure.GrpcServices;
@@ -33,7 +34,10 @@ public partial class Program
         services.AddCatalogCors(configuration);
         services.AddCatalogHealthChecks(configuration);
         services.AddCatalogSwagger();
-        services.AddControllers()
+        services.AddControllers(options =>
+            {
+                options.ModelBinderProviders.Insert(0, new CalendarDateModelBinderProvider());
+            })
             .AddApplicationPart(typeof(TravelAgency.Catalog.API.Controllers.ToursController).Assembly);
         services.AddEndpointsApiExplorer();
         services.AddSingleton<GrpcAuthInterceptor>();

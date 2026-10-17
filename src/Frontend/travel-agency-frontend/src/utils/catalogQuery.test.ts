@@ -5,6 +5,11 @@ import {
   catalogPath,
   filtersFromSearchParams,
   filtersToSearchParams,
+  formatCatalogDateChip,
+  DEPARTURE_YEAR_HINT,
+  departureDateIssue,
+  isDepartureDateOutOfRange,
+  isDepartureRangeInverted,
   resolveHomeSearch,
 } from './catalogQuery';
 
@@ -72,6 +77,30 @@ describe('catalogQuery', () => {
     expect(next.get('sort')).toBeNull();
     expect(next.get('direction')).toBe('dir-bali');
     expect(next.get('dateFrom')).toBe('2026-07-01');
+  });
+
+  it('formats departure chips as dd.mm.yyyy and compares calendar days', () => {
+    expect(formatCatalogDateChip('с', '2026-11-01')).toBe('с 01.11.2026');
+    expect(formatCatalogDateChip('по', '2026-11-15')).toBe('по 15.11.2026');
+    expect(isDepartureRangeInverted('2026-12-01', '2026-11-01')).toBe(true);
+    expect(isDepartureRangeInverted('2026-11-01', '2026-11-15')).toBe(false);
+    expect(isDepartureRangeInverted('2026-11-15', '2026-11-15')).toBe(false);
+    expect(isDepartureRangeInverted('2026-11-01', undefined)).toBe(false);
+  });
+
+  it('treats a departure date outside 2000-2100 as its own hint', () => {
+    expect(DEPARTURE_YEAR_HINT).toBe('Выберите дату в пределах 2000\u20132100 года');
+    expect(DEPARTURE_YEAR_HINT.includes('\u2014')).toBe(false);
+    expect(isDepartureDateOutOfRange('1999-12-31')).toBe(true);
+    expect(isDepartureDateOutOfRange('2101-01-01')).toBe(true);
+    expect(isDepartureDateOutOfRange('9999-12-31')).toBe(true);
+    expect(isDepartureDateOutOfRange('2000-01-01')).toBe(false);
+    expect(isDepartureDateOutOfRange('2100-12-31')).toBe(false);
+    expect(isDepartureDateOutOfRange(undefined)).toBe(false);
+    expect(departureDateIssue('1999-12-31', '2026-11-01')).toBe('year');
+    expect(departureDateIssue('2026-11-01', '9999-12-31')).toBe('year');
+    expect(departureDateIssue('2026-12-01', '2026-11-01')).toBe('order');
+    expect(departureDateIssue('2000-01-01', '2100-12-31')).toBeUndefined();
   });
 
   it('builds a catalog path from filters', () => {
