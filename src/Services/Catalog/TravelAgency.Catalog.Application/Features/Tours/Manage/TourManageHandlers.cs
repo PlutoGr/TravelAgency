@@ -179,6 +179,14 @@ public sealed class UpdateTourImagesCommandHandler(TourManageStore store, IMedia
                 width > 0 ? width : null);
         }).ToList();
 
+        // Сначала открываем файлы, потом меняем тур: если Media недоступен, фото остаются прежними.
+        if (tour.Status == TourStatus.Published)
+        {
+            await media.MarkPublicAsync(
+                images.Select(image => image.MediaFileId).ToList(),
+                cancellationToken);
+        }
+
         tour.ReplaceImages(images, coverWidth);
         await store.SaveAsync(cancellationToken);
         return TourManageMapper.ToManageDto(tour);

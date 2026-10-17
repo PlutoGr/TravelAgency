@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Domain;
@@ -212,6 +213,76 @@ public class TourManageControllerTests
     }
 
     [Fact]
+    public async Task Images_OnPublishedTour_WithNewFile_MarksPublicAndSaves()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        var newCover = Guid.NewGuid();
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(newCover, 0, true, "Новая обложка"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var saved = await ReadTourAsync(response);
+        saved.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo([newCover, previous[1], previous[2]]);
+        _factory.Media.Marked.Should().BeEquivalentTo([newCover, previous[1], previous[2]]);
+        StoredImageIds(tour.Id).Should().Equal(newCover, previous[1], previous[2]);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnPublishedTour_WhenMediaMarkFails_Returns503_AndKeepsImages()
+    {
+        var tour = CompletePublished();
+        var etag = TourEtagOf(tour);
+        var previous = StoredImageIds(tour.Id);
+        _factory.Media.FailMark = true;
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{tour.Id}/images",
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(Guid.NewGuid(), 0, true, "Новая обложка"),
+                new TourImageInput(previous[1], 1, false, "Два"),
+                new TourImageInput(previous[2], 2, false, "Три")
+            ]),
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        StoredImageIds(tour.Id).Should().Equal(previous);
+        StoredStatus(tour.Id).Should().Be(TourStatus.Published);
+    }
+
+    [Fact]
+    public async Task Images_OnDraft_DoesNotMarkPublic()
+    {
+        var created = await CreateDraftAsync();
+        var fileId = Guid.NewGuid();
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Put,
+            $"/catalog/manage/tours/{created.Id}/images",
+            new UpdateTourImagesRequest([new TourImageInput(fileId, 0, false, "Черновик")]),
+            created.Etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadTourAsync(response)).Images.Should().ContainSingle(image => image.MediaFileId == fileId);
+        _factory.Media.Marked.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Manage_WhenAnotherManager_Returns403_AndAdminCanUnpublish()
     {
         var created = await CreateDraftAsync();
@@ -392,6 +463,22 @@ public class TourManageControllerTests
         TourStatus status = TourStatus.Draft;
         _factory.UseDbContext(db => status = db.Tours.Single(t => t.Id == id).Status);
         return status;
+    }
+
+    private Guid[] StoredImageIds(Guid id)
+    {
+        Guid[] ids = [];
+        _factory.UseDbContext(db =>
+        {
+            ids = db.Tours
+                .Include(tour => tour.Images)
+                .Single(tour => tour.Id == id)
+                .Images
+                .OrderBy(image => image.SortOrder)
+                .Select(image => image.MediaFileId)
+                .ToArray();
+        });
+        return ids;
     }
 
     private void Authorize(Guid userId, string role)

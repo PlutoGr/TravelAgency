@@ -215,6 +215,83 @@ public class TourManageRulesTests
 
         result.Images.Should().HaveCount(2);
         result.Images.Single(i => !i.IsCover).WidthPx.Should().Be(100);
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Images_WhenPublished_MarksNewIdsPublicBeforeReplaceAndSaves()
+    {
+        var owner = Guid.NewGuid();
+        var tour = OwnedPublished(owner);
+        var previous = tour.Images.OrderBy(image => image.SortOrder).Select(image => image.MediaFileId).ToList();
+        var newCover = Guid.NewGuid();
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        ReturnFiles(
+            new RemoteMediaFile(newCover, owner.ToString(), TourContentLimits.CoverMinWidthPx, 900),
+            new RemoteMediaFile(previous[1], owner.ToString(), 800, 600),
+            new RemoteMediaFile(previous[2], owner.ToString(), 800, 600));
+
+        IReadOnlyCollection<Guid>? marked = null;
+        _media.Setup(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .Callback<IReadOnlyCollection<Guid>, CancellationToken>((ids, _) =>
+            {
+                marked = ids.ToList();
+                tour.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo(previous);
+            })
+            .Returns(Task.CompletedTask);
+
+        var result = await ImagesHandler().Handle(
+            ImagesCommand(tour, newCover, previous[1], previous[2]),
+            CancellationToken.None);
+
+        marked.Should().BeEquivalentTo([newCover, previous[1], previous[2]]);
+        result.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo([newCover, previous[1], previous[2]]);
+        tour.Images.Select(image => image.MediaFileId).Should().Contain(newCover);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Images_WhenPublishedAndMarkPublicFails_KeepsImagesAndDoesNotSave()
+    {
+        var owner = Guid.NewGuid();
+        var tour = OwnedPublished(owner);
+        var previous = tour.Images.Select(image => image.MediaFileId).ToList();
+        var newCover = Guid.NewGuid();
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        ReturnFiles(
+            new RemoteMediaFile(newCover, owner.ToString(), TourContentLimits.CoverMinWidthPx, 900),
+            new RemoteMediaFile(previous[1], owner.ToString(), 800, 600),
+            new RemoteMediaFile(previous[2], owner.ToString(), 800, 600));
+        _media.Setup(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new MediaUnavailableException());
+
+        var act = () => ImagesHandler().Handle(
+            ImagesCommand(tour, newCover, previous[1], previous[2]),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<MediaUnavailableException>();
+        tour.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo(previous);
+        tour.Status.Should().Be(TourStatus.Published);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Images_WhenDraft_DoesNotMarkPublic()
+    {
+        var owner = Guid.NewGuid();
+        var tour = Tour.CreateDraft(owner);
+        var fileId = Guid.NewGuid();
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        ReturnFiles(new RemoteMediaFile(fileId, owner.ToString(), 1600, 900));
+
+        var result = await ImagesHandler().Handle(ImagesCommand(tour, fileId, isCover: false), CancellationToken.None);
+
+        result.Images.Should().ContainSingle(image => image.MediaFileId == fileId);
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Theory]
@@ -361,6 +438,17 @@ public class TourManageRulesTests
             tour.Id,
             TourEtag.Format(tour.Version),
             new UpdateTourImagesRequest([new TourImageInput(fileId, 0, isCover, widthIgnored ? null : "alt")]));
+
+    private static UpdateTourImagesCommand ImagesCommand(Tour tour, Guid coverId, Guid secondId, Guid thirdId) =>
+        new(
+            tour.Id,
+            TourEtag.Format(tour.Version),
+            new UpdateTourImagesRequest(
+            [
+                new TourImageInput(coverId, 0, true, "обложка"),
+                new TourImageInput(secondId, 1, false, "два"),
+                new TourImageInput(thirdId, 2, false, "три")
+            ]));
 
     private void ReturnFiles(params RemoteMediaFile[] files)
     {
