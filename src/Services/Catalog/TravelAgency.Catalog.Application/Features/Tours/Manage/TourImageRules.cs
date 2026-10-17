@@ -7,7 +7,7 @@ namespace TravelAgency.Catalog.Application.Features.Tours.Manage;
 public static class TourImageRules
 {
     public const string NotFound = "images.notFound";
-    public const string OwnerMismatch = "images.owner";
+    public const string RejectedMessage = "One or more media files were not found.";
 
     public static async Task<IReadOnlyDictionary<Guid, RemoteMediaFile>> LoadOwnedAsync(
         IMediaFilesClient media,
@@ -23,21 +23,18 @@ public static class TourImageRules
         foreach (var file in files)
             byId[file.Id] = file;
 
+        var owner = tourOwnerId?.ToString();
         foreach (var id in ids.Distinct())
         {
-            if (!byId.ContainsKey(id))
-                throw new TourImageRuleException(NotFound, "One or more media files were not found.");
-        }
-
-        var owner = tourOwnerId?.ToString();
-        foreach (var file in byId.Values)
-        {
-            if (!string.Equals(file.OwnerId, owner, StringComparison.OrdinalIgnoreCase))
-                throw new TourImageRuleException(OwnerMismatch, "A media file belongs to another user.");
+            if (!byId.TryGetValue(id, out var file) || !BelongsToOwner(file, owner))
+                throw new TourImageRuleException(NotFound, RejectedMessage);
         }
 
         return byId;
     }
+
+    private static bool BelongsToOwner(RemoteMediaFile file, string? owner) =>
+        string.Equals(file.OwnerId, owner, StringComparison.OrdinalIgnoreCase);
 
     public static void EnsureCoverWidth(int width)
     {

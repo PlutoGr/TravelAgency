@@ -142,7 +142,7 @@ describe('TourWizard', () => {
     vi.mocked(publishManagedTour).mockRejectedValue({
       response: {
         status: 422,
-        data: { missing: ['images.coverMinWidth', 'images.minCount', 'images.owner'] },
+        data: { missing: ['images.coverMinWidth', 'images.minCount', 'images.notFound'] },
       },
     });
 
@@ -156,7 +156,7 @@ describe('TourWizard', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/1280/);
     expect(alert).toHaveTextContent(/не меньше 3 фото/);
-    expect(alert).toHaveTextContent(/другому пользователю/);
+    expect(alert).toHaveTextContent(/не найдено/);
   });
 
   it('builds the photo preview from the file id and does not read an upload url', async () => {

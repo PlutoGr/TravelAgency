@@ -152,10 +152,11 @@ public class TourManageRulesTests
 
         var error = await act.Should().ThrowAsync<TourImageRuleException>();
         error.Which.Code.Should().Be(TourImageRules.NotFound);
+        error.Which.Message.Should().Be(TourImageRules.RejectedMessage);
     }
 
     [Fact]
-    public async Task Images_WhenFileOwnerIsNotTourManager_Throws422()
+    public async Task Images_WhenFileOwnerIsNotTourManager_ThrowsSameCodeAsMissingFile()
     {
         var owner = Guid.NewGuid();
         var tour = Tour.CreateDraft(owner);
@@ -167,8 +168,31 @@ public class TourManageRulesTests
         var act = () => ImagesHandler().Handle(ImagesCommand(tour, fileId, isCover: false), CancellationToken.None);
 
         var error = await act.Should().ThrowAsync<TourImageRuleException>();
-        error.Which.Code.Should().Be(TourImageRules.OwnerMismatch);
+        error.Which.Code.Should().Be(TourImageRules.NotFound);
+        error.Which.Message.Should().Be(TourImageRules.RejectedMessage);
         tour.Images.Should().BeEmpty();
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Images_WhenPublishedAndFileIsForeign_DoesNotMarkPublic()
+    {
+        var owner = Guid.NewGuid();
+        var tour = OwnedPublished(owner);
+        var previous = tour.Images.Select(image => image.MediaFileId).ToList();
+        var foreign = Guid.NewGuid();
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        ReturnFiles(new RemoteMediaFile(foreign, Guid.NewGuid().ToString(), 2000, 1000));
+
+        var act = () => ImagesHandler().Handle(ImagesCommand(tour, foreign, isCover: false), CancellationToken.None);
+
+        var error = await act.Should().ThrowAsync<TourImageRuleException>();
+        error.Which.Code.Should().Be(TourImageRules.NotFound);
+        error.Which.Message.Should().Be(TourImageRules.RejectedMessage);
+        tour.Images.Select(image => image.MediaFileId).Should().BeEquivalentTo(previous);
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

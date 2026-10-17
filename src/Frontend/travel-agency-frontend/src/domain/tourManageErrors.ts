@@ -11,7 +11,6 @@ export const TOUR_MANAGE_API_CODES = [
   'images.cover',
   'images.minCount',
   'images.coverMinWidth',
-  'images.owner',
   'images.notFound',
 ] as const;
 
@@ -29,7 +28,6 @@ export const TOUR_MANAGE_ERROR_TEXT: Record<TourManageApiCode, string> = {
   'images.cover': 'Выберите одну обложку.',
   'images.minCount': 'Для публикации нужно не меньше 3 фото.',
   'images.coverMinWidth': 'Обложка должна быть не уже 1280 пикселей. Обычное фото той же ширины можно оставить в галерее.',
-  'images.owner': 'Фото принадлежит другому пользователю. Загрузите свои файлы.',
   'images.notFound': 'Фото не найдено. Загрузите его ещё раз.',
 };
 

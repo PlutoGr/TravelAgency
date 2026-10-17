@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
+using TravelAgency.Catalog.Application.Features.Tours.Manage;
 using TravelAgency.Catalog.Domain;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
@@ -172,6 +173,7 @@ public class TourManageControllerTests
             new UpdateTourImagesRequest([new TourImageInput(foreign, 0, false, "чужое")]),
             created.Etag);
         foreignResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(foreignResponse)).Should().Equal(TourImageRules.NotFound);
 
         var unknown = Guid.NewGuid();
         _factory.Media.Files = [];
@@ -181,6 +183,7 @@ public class TourManageControllerTests
             new UpdateTourImagesRequest([new TourImageInput(unknown, 0, false, "нет")]),
             created.Etag);
         unknownResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(unknownResponse)).Should().Equal(TourImageRules.NotFound);
 
         var cover = Guid.NewGuid();
         _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
