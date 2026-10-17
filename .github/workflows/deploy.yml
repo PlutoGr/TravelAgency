@@ -8,11 +8,11 @@ on:
   push:
     branches: [main]
   # Ручной запуск из вкладки Actions. Если указать rollback_sha, тесты и сборка пропускаются,
-  # а на сервер ставятся уже собранные образы этого коммита (откат на прошлую версию).
+  # а на сервер ставятся код и уже собранные образы этого коммита (откат на прошлую версию).
   workflow_dispatch:
     inputs:
       rollback_sha:
-        description: "Откат: полный sha коммита (40 символов), образы которого поставить. Пусто = обычный деплой"
+        description: "Откат: полный sha коммита (40 символов), код и образы которого поставить. Пусто = обычный деплой"
         required: false
         default: ""
 
@@ -164,8 +164,9 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      # Какие образы ставить: при обычном деплое образы этого коммита (тег = sha),
-      # при откате образы указанного коммита. Тег проверяем, чтобы в команду не попало лишнее.
+      # Какую версию ставить: при обычном деплое этот коммит (тег образов = sha),
+      # при откате указанный коммит. Из него же на сервер берётся код (compose, конфиги, скрипты).
+      # Тег проверяем, чтобы в команду не попало лишнее.
       - name: Выбор версии образов
         env:
           ROLLBACK_SHA: ${{ inputs.rollback_sha }}
@@ -176,10 +177,10 @@ jobs:
             echo "rollback_sha должен быть полным sha коммита (40 символов 0-9a-f)"; exit 1
           fi
           echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
-          echo "Ставим образы с тегом $tag"
+          echo "Ставим код и образы коммита $tag"
 
       # На сервере: логин в GHCR встроенным GITHUB_TOKEN (передаётся через stdin, в лог не попадает;
-      # токен живёт только до конца задачи, этого хватает на pull), обновление кода,
+      # токен живёт только до конца задачи, этого хватает на pull), код того же коммита, что и образы,
       # скачивание образов с тегом IMAGE_TAG и перезапуск контейнеров.
       # В docker-compose.override.yml на сервере образы указаны как ...:${IMAGE_TAG:-latest}.
       # Старые образы других коммитов удаляем, чтобы не забивать диск.
@@ -193,19 +194,35 @@ jobs:
           ssh "deploy@$DEV_HOST" "IMAGE_TAG=$IMAGE_TAG bash -s" <<'EOF'
           set -e
           export IMAGE_TAG
+          # Токен GHCR больше не нужен, не оставляем его на сервере, даже если шаг упал
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
           cd /opt/travelagency
-          # После переписывания истории main fast-forward невозможен; reset --keep
-          # переносит на origin/main и останавливается, если на сервере есть локальные правки.
-          git fetch origin main
-          git reset --keep origin/main
+          # Код, compose и образы берём из одного коммита IMAGE_TAG, а не из вершины main:
+          # иначе при очереди ранов или откате на сервере окажется непроверенное сочетание версий.
+          # Коммит отката может не входить ни в одну ветку, тогда догружаем его по sha.
+          git fetch origin
+          if ! git cat-file -e "$IMAGE_TAG^{commit}" 2>/dev/null; then
+            git fetch origin "$IMAGE_TAG" || true
+          fi
+          if ! git cat-file -e "$IMAGE_TAG^{commit}" 2>/dev/null; then
+            echo "Коммит $IMAGE_TAG не найден в origin, код и контейнеры не менялись" >&2
+            exit 1
+          fi
+          # reset --keep переносит текущую ветку (main) на этот коммит и останавливается,
+          # если на сервере есть локальные правки. Следующий деплой так же перенесёт её на свой коммит.
+          prev=$(git rev-parse HEAD)
+          git reset --keep "$IMAGE_TAG"
+          echo "Код на сервере: $(git log -1 --format='%h %s')"
           cd docker
-          docker compose pull
+          if ! docker compose pull; then
+            echo "Образы с тегом $IMAGE_TAG не скачались, код возвращён на $prev, контейнеры не менялись" >&2
+            git -C /opt/travelagency reset --keep "$prev"
+            exit 1
+          fi
           docker compose up -d
           docker images 'ghcr.io/plutogr/travelagency-*' --format '{{.Repository}}:{{.Tag}}' \
             | grep -v -E ":(latest|$IMAGE_TAG)\$" | xargs -r docker rmi >/dev/null 2>&1 || true
           docker image prune -f
-          # Токен GHCR больше не нужен, не оставляем его на сервере
-          docker logout ghcr.io
           EOF
 
       # Проверка здоровья. Домен читаем из SITE_DOMAIN на сервере. Режим зависит от того, выпущен ли

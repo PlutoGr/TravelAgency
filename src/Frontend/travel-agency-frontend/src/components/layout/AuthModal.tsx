@@ -25,7 +25,8 @@ export default function AuthModal() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnToRaw = searchParams.get('returnTo');
-  const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal } = useUIStore();
+  const { isAuthModalOpen, authModalTab, closeAuthModal, dismissAuthModal, openAuthModal } =
+    useUIStore();
   const { login, register, isLoading } = useAuthStore();
 
   function followReturnTo() {
@@ -33,8 +34,13 @@ export default function AuthModal() {
     navigate(resolveReturnTo(readReturnToParam(returnToRaw)));
   }
 
+  function finishAuth() {
+    closeAuthModal();
+    followReturnTo();
+  }
+
   return (
-    <Modal isOpen={isAuthModalOpen} onClose={closeAuthModal} size="sm">
+    <Modal isOpen={isAuthModalOpen} onClose={dismissAuthModal} size="sm">
       <Tabs
         tabs={[...AUTH_TABS]}
         activeTab={authModalTab}
@@ -55,8 +61,7 @@ export default function AuthModal() {
                 onSubmit={async (email, password) => {
                   await login(email, password);
                   toast.success('Добро пожаловать!');
-                  closeAuthModal();
-                  followReturnTo();
+                  finishAuth();
                 }}
               />
             </motion.div>
@@ -73,8 +78,7 @@ export default function AuthModal() {
                 onSubmit={async (data) => {
                   await register(data);
                   toast.success('Регистрация прошла успешно!');
-                  closeAuthModal();
-                  followReturnTo();
+                  finishAuth();
                 }}
               />
             </motion.div>

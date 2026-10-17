@@ -139,7 +139,7 @@ Workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) запу
 
 1. `dotnet test` всего решения. Если тесты падают, дальше не идёт.
 2. Сборка 7 образов (gateway, identity, catalog, booking, chat, media, frontend) и пуш в GHCR с тегами `latest` и полным sha коммита: `ghcr.io/plutogr/travelagency-<имя>:<sha>`.
-3. По SSH под `deploy`: `git pull` в `/opt/travelagency`, `docker compose pull` и `docker compose up -d` с `IMAGE_TAG=<sha>`, удаление старых образов.
+3. По SSH под `deploy`: `git fetch origin` и `git reset --keep <sha>` в `/opt/travelagency` (код, compose и конфиги того же коммита, что и образы), `docker compose pull` и `docker compose up -d` с `IMAGE_TAG=<sha>`, удаление старых образов. Если коммит не найден или образы не скачались, шаг падает, а код и контейнеры остаются прежними.
 4. Проверка здоровья: домен читается из `SITE_DOMAIN` на сервере; без сертификата Let's Encrypt HTTP по адресу сервера отдаёт 301 на HTTPS того же адреса, с сертификатом 301 на `https://<домен>/`; HTTPS без пароля 401, `/healthz` отвечает `Healthy` (gateway и все сервисы), API отвечает 200. Если за 5 минут не дождались, пайплайн красный.
 
 Отдельно на каждый push работает [поиск секретов gitleaks](.github/workflows/gitleaks.yml), а Dependabot раз в неделю присылает PR с обновлениями ([`.github/dependabot.yml`](.github/dependabot.yml)).
@@ -150,14 +150,16 @@ Workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) запу
 
 Образы каждого коммита хранятся в GHCR с тегом sha, поэтому откат не требует пересборки.
 
-- **Через GitHub Actions (основной способ):** Actions → Deploy to dev → Run workflow, в поле `rollback_sha` указать полный sha коммита (40 символов), на который откатываемся. Тесты и сборка пропускаются, на сервер ставятся образы этого коммита и выполняется та же проверка здоровья.
+- **Через GitHub Actions (основной способ):** Actions → Deploy to dev → Run workflow, в поле `rollback_sha` указать полный sha коммита (40 символов), на который откатываемся. Тесты и сборка пропускаются, на сервер ставятся код и образы этого коммита и выполняется та же проверка здоровья.
 - **Вручную на сервере** (образы в GHCR приватные, нужен свой токен GitHub с правом `read:packages`):
 
 ```bash
 ssh travelagency-dev-deploy
 docker login ghcr.io -u <github-логин>    # пароль: токен с read:packages
-cd /opt/travelagency/docker
 export IMAGE_TAG=<полный sha>
+cd /opt/travelagency
+git fetch origin && git reset --keep "$IMAGE_TAG"   # код и compose того же коммита, что и образы
+cd docker
 docker compose pull && docker compose up -d
 docker logout ghcr.io
 ```

@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Check, MapPin, Wallet } from 'lucide-react';
+import { FileText, Check, MapPin, Wallet, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Tour } from '@/types';
 import { Button } from '@/components/ui';
 import { createBooking } from '@/api/bookings';
 import { getTours, getTourById } from '@/api/catalog';
 import { mediaImageUrl } from '@/utils/media';
+import { formatFromMoney, formatMoney } from '@/utils/format';
+
+/** Цена, которую страница тура уже показала гостю. */
+export type PriceQuote = {
+  amount: number;
+  currency?: string | null;
+  /** Нет конкретной даты: на странице это «от …». */
+  from: boolean;
+};
 
 interface BookingFormProps {
   /** Pre-selected tour (e.g. from tour detail page) */
@@ -15,14 +25,25 @@ interface BookingFormProps {
   tours?: Tour[];
   /** Даты выбранного предложения, чтобы менеджер увидел их в комментарии. */
   initialComment?: string;
+  /** Цена выбранной даты или «от …», если даты нет. */
+  priceQuote?: PriceQuote;
+  /** Подпись выбранных дат, как на странице тура. */
+  scheduleLabel?: string;
   onSuccess?: () => void;
   onClose?: () => void;
 }
 
-const STEPS = [
-  { id: 1, title: 'Выбор тура' },
-  { id: 2, title: 'Комментарий' },
-  { id: 3, title: 'Подтверждение' },
+type StepId = 'tour' | 'comment' | 'confirm';
+
+const CATALOG_STEPS: { id: StepId; title: string }[] = [
+  { id: 'tour', title: 'Выбор тура' },
+  { id: 'comment', title: 'Комментарий' },
+  { id: 'confirm', title: 'Подтверждение' },
+];
+
+const TOUR_CARD_STEPS: { id: StepId; title: string }[] = [
+  { id: 'comment', title: 'Комментарий' },
+  { id: 'confirm', title: 'Подтверждение' },
 ];
 
 const slideVariants = {
@@ -37,68 +58,93 @@ const slideVariants = {
   }),
 };
 
+function formatQuote(quote: PriceQuote): string | null {
+  if (quote.from) {
+    if (quote.amount <= 0) return null;
+    return formatFromMoney(quote.amount, quote.currency);
+  }
+  return formatMoney(quote.amount, quote.currency);
+}
+
+function formatCatalogPrice(tour: Tour): string | null {
+  const amount = tour.priceFrom ?? (tour.price > 0 ? tour.price : null);
+  if (amount == null || amount <= 0) return null;
+  return formatFromMoney(amount, tour.currency);
+}
+
 export default function BookingForm({
   tourId: initialTourId,
   tours: initialTours,
   initialComment = '',
+  priceQuote,
+  scheduleLabel,
   onSuccess,
   onClose,
 }: BookingFormProps) {
-  const [step, setStep] = useState(1);
+  const fromTourCard = Boolean(initialTourId);
+  const steps = fromTourCard ? TOUR_CARD_STEPS : CATALOG_STEPS;
+  const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tours, setTours] = useState<Tour[]>(initialTours ?? []);
-  const [selectedTour, setSelectedTour] = useState<Tour | null>(
-    initialTourId && initialTours?.length
-      ? initialTours.find((t) => t.id === initialTourId) ?? null
-      : null,
-  );
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [loadedTours, setLoadedTours] = useState<Tour[]>([]);
+  const [pickedTour, setPickedTour] = useState<Tour | null>(null);
   const [comment, setComment] = useState(initialComment);
-  const [isLoadingTours, setIsLoadingTours] = useState(!initialTours?.length);
+  const hasInitialTours = Boolean(initialTours?.length);
+  const [isLoadingTours, setIsLoadingTours] = useState(!hasInitialTours);
+
+  const tours = hasInitialTours ? (initialTours ?? []) : loadedTours;
+  const selectedTour =
+    pickedTour ?? (initialTourId ? tours.find((item) => item.id === initialTourId) ?? null : null);
+  const step = steps[stepIndex] ?? steps[0];
 
   useEffect(() => {
-    if (initialTours?.length) {
-      setTours(initialTours);
-      if (initialTourId) {
-        const t = initialTours.find((t) => t.id === initialTourId);
-        if (t) setSelectedTour(t);
-      }
-      setIsLoadingTours(false);
-      return;
-    }
+    if (hasInitialTours) return;
+    let cancelled = false;
     if (initialTourId) {
       getTourById(initialTourId)
-        .then((t) => {
-          setTours([t]);
-          setSelectedTour(t);
+        .then((tour) => {
+          if (cancelled) return;
+          setLoadedTours([tour]);
+          setPickedTour(tour);
         })
         .catch(() => {
-          toast.error('Не удалось загрузить тур');
+          if (!cancelled) toast.error('Не удалось загрузить тур');
         })
-        .finally(() => setIsLoadingTours(false));
-      return;
+        .finally(() => {
+          if (!cancelled) setIsLoadingTours(false);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
     getTours()
-      .then((res) => setTours(res.items))
-      .catch(() => {
-        toast.error('Не удалось загрузить список туров');
+      .then((res) => {
+        if (!cancelled) setLoadedTours(res.items);
       })
-      .finally(() => setIsLoadingTours(false));
-  }, [initialTourId, initialTours]);
+      .catch(() => {
+        if (!cancelled) toast.error('Не удалось загрузить список туров');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingTours(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialTourId, hasInitialTours]);
 
   function goNext() {
     setDirection(1);
-    setStep((s) => Math.min(s + 1, 3));
+    setStepIndex((current) => Math.min(current + 1, steps.length - 1));
   }
 
   function goBack() {
     setDirection(-1);
-    setStep((s) => Math.max(s - 1, 1));
+    setStepIndex((current) => Math.max(current - 1, 0));
   }
 
   function canProceed(): boolean {
-    if (step === 1) return !!selectedTour || !!initialTourId;
-    if (step === 2) return true;
+    if (step.id === 'tour') return !!selectedTour || !!initialTourId;
     return true;
   }
 
@@ -110,7 +156,11 @@ export default function BookingForm({
     }
     setIsSubmitting(true);
     try {
-      await createBooking({ tourId: tid, comment: comment || undefined });
+      const booking = await createBooking({ tourId: tid, comment: comment || undefined });
+      if (fromTourCard) {
+        setCreatedId(booking.id);
+        return;
+      }
       toast.success('Заявка успешно создана!');
       onSuccess?.();
       onClose?.();
@@ -124,33 +174,58 @@ export default function BookingForm({
   }
 
   const effectiveTour = selectedTour ?? (initialTourId && tours.find((t) => t.id === initialTourId));
+  const priceLabel = priceQuote
+    ? formatQuote(priceQuote)
+    : effectiveTour
+      ? formatCatalogPrice(effectiveTour)
+      : null;
+
+  if (createdId) {
+    return (
+      <div className="space-y-6">
+        <p className="text-base leading-relaxed text-dark">
+          Заявка отправлена. Менеджер ответит в чате заявки, обычно в течение рабочего дня
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            to={`/dashboard/bookings/${createdId}`}
+            className="inline-flex items-center justify-center rounded-[12px] bg-primary px-6 py-2.5 text-center font-heading text-base font-semibold text-white shadow-button transition-colors hover:bg-primary-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Перейти к заявке
+          </Link>
+          <Button variant="secondary" onClick={onClose}>
+            Продолжить просмотр
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Progress */}
       <div className="flex items-center justify-between">
-        {STEPS.map((s, idx) => (
-          <div key={s.id} className="flex items-center">
+        {steps.map((item, idx) => (
+          <div key={item.id} className="flex items-center">
             <div className="flex items-center gap-2">
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                  step >= s.id ? 'bg-primary text-white' : 'bg-sand text-warm-gray'
+                  stepIndex >= idx ? 'bg-primary text-white' : 'bg-sand text-warm-gray'
                 }`}
               >
-                {step > s.id ? <Check size={16} /> : s.id}
+                {stepIndex > idx ? <Check size={16} /> : idx + 1}
               </div>
               <span
                 className={`hidden text-sm font-medium sm:block ${
-                  step >= s.id ? 'text-dark' : 'text-warm-gray'
+                  stepIndex >= idx ? 'text-dark' : 'text-warm-gray'
                 }`}
               >
-                {s.title}
+                {item.title}
               </span>
             </div>
-            {idx < STEPS.length - 1 && (
+            {idx < steps.length - 1 && (
               <div
                 className={`mx-3 h-0.5 w-8 rounded sm:w-12 ${
-                  step > s.id ? 'bg-primary' : 'bg-sand'
+                  stepIndex > idx ? 'bg-primary' : 'bg-sand'
                 }`}
               />
             )}
@@ -158,12 +233,11 @@ export default function BookingForm({
         ))}
       </div>
 
-      {/* Steps */}
       <div className="relative min-h-[280px] overflow-hidden">
         <AnimatePresence mode="wait" custom={direction}>
-          {step === 1 && (
+          {step.id === 'tour' && (
             <motion.div
-              key="step-1"
+              key="step-tour"
               custom={direction}
               variants={slideVariants}
               initial="enter"
@@ -182,45 +256,50 @@ export default function BookingForm({
                 </p>
               ) : (
                 <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
-                  {tours.map((tour) => (
-                    <button
-                      key={tour.id}
-                      type="button"
-                      onClick={() => setSelectedTour(tour)}
-                      className={`flex w-full items-center gap-3 rounded-[12px] border p-3 text-left transition-colors ${
-                        selectedTour?.id === tour.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-sand hover:bg-cream'
-                      }`}
-                    >
-                      {tour.coverMediaFileId && (
-                        <img
-                          src={mediaImageUrl(tour.coverMediaFileId, 'w200')}
-                          alt={tour.title}
-                          className="h-14 w-14 shrink-0 rounded-lg object-cover"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-dark">
-                          {tour.title}
-                        </p>
-                        <p className="text-xs text-warm-gray">
-                          {tour.country} · {tour.duration} дн.
-                        </p>
-                        <p className="mt-0.5 text-sm font-semibold text-primary">
-                          {tour.price.toLocaleString('ru-RU')} ₽
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                  {tours.map((tour) => {
+                    const label = formatCatalogPrice(tour);
+                    return (
+                      <button
+                        key={tour.id}
+                        type="button"
+                        onClick={() => setPickedTour(tour)}
+                        className={`flex w-full items-center gap-3 rounded-[12px] border p-3 text-left transition-colors ${
+                          selectedTour?.id === tour.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-sand hover:bg-cream'
+                        }`}
+                      >
+                        {tour.coverMediaFileId && (
+                          <img
+                            src={mediaImageUrl(tour.coverMediaFileId, 'w200')}
+                            alt={tour.title}
+                            className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-dark">
+                            {tour.title}
+                          </p>
+                          <p className="text-xs text-warm-gray">
+                            {tour.country} · {tour.duration} дн.
+                          </p>
+                          {label && (
+                            <p className="mt-0.5 text-sm font-semibold text-primary">
+                              {label}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
           )}
 
-          {step === 2 && (
+          {step.id === 'comment' && (
             <motion.div
-              key="step-2"
+              key="step-comment"
               custom={direction}
               variants={slideVariants}
               initial="enter"
@@ -233,8 +312,11 @@ export default function BookingForm({
                 <label className="mb-1.5 block text-xs font-medium text-primary">
                   Пожелания и комментарии
                 </label>
+                {scheduleLabel && (
+                  <p className="mb-2 text-sm text-dark">Выбранные даты: {scheduleLabel}</p>
+                )}
                 <p className="mb-2 text-xs text-warm-gray">
-                  Если важны даты поездки, напишите их здесь. Отдельных полей дат пока нет.
+                  Укажите удобные даты и сколько человек поедет.
                 </p>
                 <textarea
                   value={comment}
@@ -247,9 +329,9 @@ export default function BookingForm({
             </motion.div>
           )}
 
-          {step === 3 && (
+          {step.id === 'confirm' && (
             <motion.div
-              key="step-3"
+              key="step-confirm"
               custom={direction}
               variants={slideVariants}
               initial="enter"
@@ -264,18 +346,25 @@ export default function BookingForm({
 
               <div className="space-y-3 rounded-[12px] bg-sand/50 p-4">
                 {effectiveTour && (
-                  <>
-                    <SummaryRow
-                      icon={<MapPin size={16} />}
-                      label="Тур"
-                      value={`${effectiveTour.title}, ${effectiveTour.country}`}
-                    />
-                    <SummaryRow
-                      icon={<Wallet size={16} />}
-                      label="Цена"
-                      value={`${effectiveTour.price.toLocaleString('ru-RU')} ₽`}
-                    />
-                  </>
+                  <SummaryRow
+                    icon={<MapPin size={16} />}
+                    label="Тур"
+                    value={`${effectiveTour.title}, ${effectiveTour.country}`}
+                  />
+                )}
+                {scheduleLabel && (
+                  <SummaryRow
+                    icon={<Calendar size={16} />}
+                    label="Даты"
+                    value={scheduleLabel}
+                  />
+                )}
+                {priceLabel && (
+                  <SummaryRow
+                    icon={<Wallet size={16} />}
+                    label="Цена"
+                    value={priceLabel}
+                  />
                 )}
                 {comment && (
                   <SummaryRow
@@ -290,9 +379,8 @@ export default function BookingForm({
         </AnimatePresence>
       </div>
 
-      {/* Navigation */}
       <div className="flex justify-between gap-3">
-        {step > 1 ? (
+        {stepIndex > 0 ? (
           <Button variant="ghost" onClick={goBack}>
             Назад
           </Button>
@@ -300,7 +388,7 @@ export default function BookingForm({
           <div />
         )}
 
-        {step < 3 ? (
+        {step.id !== 'confirm' ? (
           <Button onClick={goNext} disabled={!canProceed()}>
             Далее
           </Button>

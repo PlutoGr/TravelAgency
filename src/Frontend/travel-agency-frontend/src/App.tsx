@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { setAuthSessionHandler } from '@/api/client';
+import { afterSessionEstablished } from '@/store/authIntent';
 import { useAuthStore } from '@/store/authStore';
-import { useFavoritesStore } from '@/store/favoritesStore';
 import {
   PublicLayout,
   DashboardLayout,
@@ -59,7 +59,6 @@ function PageFallback() {
 export default function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const loadFavorites = useFavoritesStore((s) => s.loadFavorites);
 
   useEffect(() => {
     setAuthSessionHandler(() => {
@@ -73,10 +72,13 @@ export default function App() {
   }, [checkAuth]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadFavorites();
-    }
-  }, [isAuthenticated, loadFavorites]);
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    void afterSessionEstablished(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   return (
     <QueryClientProvider client={queryClient}>

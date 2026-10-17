@@ -5,7 +5,10 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 import { apiClient, setAuthSessionHandler } from './client';
+import { afterSessionEstablished } from '@/store/authIntent';
 import { useAuthStore } from '@/store/authStore';
+import { useFavoritesStore } from '@/store/favoritesStore';
+import { useUIStore } from '@/store/uiStore';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 
 vi.mock('react-hot-toast', () => ({
@@ -54,6 +57,19 @@ describe('auth session refresh', () => {
   afterEach(() => {
     apiClient.defaults.adapter = originalAdapter;
     setAuthSessionHandler(null);
+    useUIStore.setState({
+      isAuthModalOpen: false,
+      authModalTab: 'login',
+      authIntent: null,
+      isMobileMenuOpen: false,
+    });
+    useFavoritesStore.setState({
+      favoriteIds: [],
+      favoriteTours: [],
+      isLoading: false,
+      error: null,
+      count: 0,
+    });
   });
 
   it('refreshes once after an expired session and then loads the user', async () => {
@@ -180,6 +196,72 @@ describe('auth session refresh', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(toast.error).not.toHaveBeenCalled();
   });
+
+  it('adds a pending favorite after startup refresh and closes the login window', async () => {
+    let meCalls = 0;
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) return httpResponse(config, 200, { success: true });
+      if (url.includes('/auth/me')) {
+        meCalls += 1;
+        if (meCalls === 1) throw httpError(config, 401);
+        return httpResponse(config, 200, profile);
+      }
+      if (url.includes('/favorites')) return httpResponse(config, 200, []);
+      throw httpError(config, 404);
+    };
+
+    useUIStore.setState({
+      isAuthModalOpen: true,
+      authModalTab: 'login',
+      authIntent: { type: 'favorite', tourId: 'tour-1' },
+    });
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+
+    render(<SessionIntentBridge />);
+
+    await waitFor(() => {
+      expect(useFavoritesStore.getState().favoriteIds).toContain('tour-1');
+    });
+
+    expect(meCalls).toBe(2);
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    expect(useUIStore.getState().isAuthModalOpen).toBe(false);
+    expect(useUIStore.getState().authIntent).toBeNull();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps the login window and the intent when startup refresh returns 502', async () => {
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) throw httpError(config, 502);
+      if (url.includes('/auth/me')) throw httpError(config, 401);
+      throw httpError(config, 404);
+    };
+
+    useUIStore.setState({
+      isAuthModalOpen: true,
+      authModalTab: 'login',
+      authIntent: { type: 'request', tourId: 'tour-1', offerId: 'offer-1' },
+    });
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+
+    render(<SessionIntentBridge />);
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useUIStore.getState().isAuthModalOpen).toBe(true);
+    expect(useUIStore.getState().authIntent).toEqual({
+      type: 'request',
+      tourId: 'tour-1',
+      offerId: 'offer-1',
+    });
+    expect(useFavoritesStore.getState().favoriteIds).toEqual([]);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
 });
 
 function LocationProbe() {
@@ -207,6 +289,23 @@ function protectedTree(path: string, background = false) {
       </Routes>
     </MemoryRouter>
   );
+}
+
+function SessionIntentBridge() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const checkAuth = useAuthStore((s) => s.checkAuth);
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    void afterSessionEstablished(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+  return null;
 }
 
 function Startup({ check }: { check: boolean }) {

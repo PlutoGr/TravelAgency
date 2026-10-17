@@ -126,6 +126,7 @@ function resetStores() {
   useUIStore.setState({
     isAuthModalOpen: false,
     authModalTab: 'login',
+    authIntent: null,
     isMobileMenuOpen: false,
   });
   useFavoritesStore.setState({
