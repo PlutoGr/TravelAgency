@@ -128,9 +128,10 @@ public class GetByIdTests : IClassFixture<CustomWebApplicationFactory>
 
         var deniedBody = await denied.Content.ReadAsStringAsync();
         var missingBody = await missing.Content.ReadAsStringAsync();
-        deniedBody.Should().NotContain("403");
-        deniedBody.Should().NotContain("Forbidden");
-        CanonicalProblem(deniedBody, mediaFile.Id).Should().Be(CanonicalProblem(missingBody, missingId));
+        var deniedProblem = CanonicalProblem(deniedBody, mediaFile.Id);
+        deniedProblem.Should().NotContain("403");
+        deniedProblem.Should().NotContain("Forbidden");
+        deniedProblem.Should().Be(CanonicalProblem(missingBody, missingId));
         CanonicalProblem(deniedBody, mediaFile.Id).Should().Contain("status=404");
         CanonicalProblem(deniedBody, mediaFile.Id).Should().Contain("title=Not Found");
         CanonicalProblem(deniedBody, mediaFile.Id).Should().Contain("detail=Media file '{id}' was not found.");
