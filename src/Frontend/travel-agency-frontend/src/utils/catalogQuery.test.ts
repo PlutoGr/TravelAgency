@@ -5,6 +5,8 @@ import {
   catalogPath,
   filtersFromSearchParams,
   filtersToSearchParams,
+  formatCatalogDateChip,
+  isDepartureRangeInverted,
   resolveHomeSearch,
 } from './catalogQuery';
 
@@ -72,6 +74,15 @@ describe('catalogQuery', () => {
     expect(next.get('sort')).toBeNull();
     expect(next.get('direction')).toBe('dir-bali');
     expect(next.get('dateFrom')).toBe('2026-07-01');
+  });
+
+  it('formats departure chips as dd.mm.yyyy and compares calendar days', () => {
+    expect(formatCatalogDateChip('с', '2026-11-01')).toBe('с 01.11.2026');
+    expect(formatCatalogDateChip('по', '2026-11-15')).toBe('по 15.11.2026');
+    expect(isDepartureRangeInverted('2026-12-01', '2026-11-01')).toBe(true);
+    expect(isDepartureRangeInverted('2026-11-01', '2026-11-15')).toBe(false);
+    expect(isDepartureRangeInverted('2026-11-15', '2026-11-15')).toBe(false);
+    expect(isDepartureRangeInverted('2026-11-01', undefined)).toBe(false);
   });
 
   it('builds a catalog path from filters', () => {

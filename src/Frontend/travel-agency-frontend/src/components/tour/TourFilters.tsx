@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, type ReactNode } from 'react';
+import { useState, useMemo, useCallback, useId, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, SlidersHorizontal, RotateCcw } from 'lucide-react';
@@ -7,6 +7,7 @@ import type { TourFilters as TourFiltersType } from '@/types';
 import { RangeSlider, Button, CloseButton } from '@/components/ui';
 import { getDestinations } from '@/api/catalog';
 import { TOUR_TYPE_OPTIONS } from '@/utils/tourLabels';
+import { DEPARTURE_RANGE_HINT, isDepartureRangeInverted } from '@/utils/catalogQuery';
 
 interface TourFiltersProps {
   filters: TourFiltersType;
@@ -85,6 +86,8 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
     [filters, onChange],
   );
 
+  const dateHintId = useId();
+  const rangeInverted = isDepartureRangeInverted(filters.dateFrom, filters.dateTo);
   const hasActiveFilters = Boolean(
     filters.country?.length ||
       filters.priceMin ||
@@ -173,10 +176,17 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
             <input
               type="date"
               value={filters.dateTo ?? ''}
+              aria-invalid={rangeInverted || undefined}
+              aria-describedby={rangeInverted ? dateHintId : undefined}
               onChange={(event) => updateFilter('dateTo', event.target.value || undefined)}
               className="mt-1 w-full rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
           </label>
+          {rangeInverted && (
+            <p id={dateHintId} className="text-xs text-terracotta">
+              {DEPARTURE_RANGE_HINT}
+            </p>
+          )}
         </div>
       </AccordionSection>
 

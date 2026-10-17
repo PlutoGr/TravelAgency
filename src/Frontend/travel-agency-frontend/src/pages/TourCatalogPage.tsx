@@ -11,9 +11,12 @@ import { getDestinations, getTours } from '@/api/catalog';
 import { tourTypeLabel } from '@/utils/tourLabels';
 import {
   applyCatalogFilters,
+  DEPARTURE_RANGE_HINT,
   filtersFromSearchParams,
   filtersToSearchParams,
+  formatCatalogDateChip,
   hasCatalogQuery,
+  isDepartureRangeInverted,
 } from '@/utils/catalogQuery';
 
 const sortOptions = [
@@ -31,8 +34,8 @@ function filterLabel(key: string, val: unknown): string {
     priceMin: `от ${Number(val).toLocaleString('ru-RU')} ₽`,
     priceMax: `до ${Number(val).toLocaleString('ru-RU')} ₽`,
     category: String(val),
-    dateFrom: `с ${val}`,
-    dateTo: `по ${val}`,
+    dateFrom: formatCatalogDateChip('с', String(val)),
+    dateTo: formatCatalogDateChip('по', String(val)),
   };
   return labels[key] ?? String(val);
 }
@@ -121,6 +124,7 @@ export default function TourCatalogPage() {
     setLoadedPages([]);
   }
   const currentPage = filtersChanged ? 1 : page;
+  const rangeInverted = isDepartureRangeInverted(filters.dateFrom, filters.dateTo);
 
   const { data: destinations = [] } = useQuery({
     queryKey: ['catalog', 'destinations'],
@@ -130,7 +134,8 @@ export default function TourCatalogPage() {
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['tours', filters, currentPage],
     queryFn: () => getTours(filters, currentPage),
-    placeholderData: keepPreviousData,
+    enabled: !rangeInverted,
+    placeholderData: rangeInverted ? undefined : keepPreviousData,
   });
 
   const allTours = useMemo(() => {
@@ -273,19 +278,31 @@ export default function TourCatalogPage() {
 
           {/* Tour Grid */}
           <div className="min-w-0 flex-1">
-            {isError && (
+            {isError && !rangeInverted && (
               <div role="alert" className="mb-6 rounded-[16px] border border-terracotta/30 bg-terracotta/5 px-4 py-3 text-sm text-dark">
                 <p>Не удалось загрузить каталог</p>
-                <button
-                  type="button"
-                  onClick={() => refetch()}
-                  className="mt-2 font-medium text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  Повторить
-                </button>
+                <div className="mt-2 flex flex-wrap gap-4">
+                  <button
+                    type="button"
+                    onClick={() => refetch()}
+                    className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    Повторить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    Сбросить фильтры
+                  </button>
+                </div>
               </div>
             )}
-            {(data || isLoading) && (
+            {rangeInverted && (
+              <p className="mb-6 text-sm text-terracotta">{DEPARTURE_RANGE_HINT}</p>
+            )}
+            {!rangeInverted && (data || isLoading) && (
               <TourGrid
                 tours={displayedTours}
                 isLoading={isLoading && !data}

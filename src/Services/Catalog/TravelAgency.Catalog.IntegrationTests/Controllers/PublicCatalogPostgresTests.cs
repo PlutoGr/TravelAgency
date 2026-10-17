@@ -50,6 +50,10 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
     public Guid UnpublishedId { get; private set; }
     public Guid UnpublishedCoverId { get; private set; }
     public Guid UnpublishTargetId { get; private set; }
+    public Guid DateOct31Id { get; private set; }
+    public Guid DateNov1Id { get; private set; }
+    public Guid DateNov15Id { get; private set; }
+    public Guid DateNov16Id { get; private set; }
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
         .WithDatabase("catalog_public")
@@ -167,6 +171,18 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
         var draft = Tour.CreateDraft(ManagerId);
         draft.SetBasics("Черновик каталога", "Кратко", "Москва", "PublicCatalogSpain", TourType.Beach, 1, null);
         var target = Published("Цель снятия", "UnpublishLand", TourType.City, null, 300m, 12, null, 3);
+        var oct31 = Published(
+            "DateOct31", "PublicCatalogDates", TourType.Beach, null, 110m, 0, null, 3,
+            new DateTime(2026, 10, 31, 23, 30, 0, DateTimeKind.Utc));
+        var nov1 = Published(
+            "DateNov1", "PublicCatalogDates", TourType.Beach, null, 120m, 0, null, 3,
+            new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc));
+        var nov15 = Published(
+            "DateNov15", "PublicCatalogDates", TourType.Beach, null, 130m, 0, null, 3,
+            new DateTime(2026, 11, 15, 21, 15, 0, DateTimeKind.Utc));
+        var nov16 = Published(
+            "DateNov16", "PublicCatalogDates", TourType.Beach, null, 140m, 0, null, 3,
+            new DateTime(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc));
 
         LowId = low.Tour.Id;
         MidId = mid.Tour.Id;
@@ -177,8 +193,14 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
         UnpublishedCoverId = hidden.CoverId;
         DraftId = draft.Id;
         UnpublishTargetId = target.Tour.Id;
+        DateOct31Id = oct31.Tour.Id;
+        DateNov1Id = nov1.Tour.Id;
+        DateNov15Id = nov15.Tour.Id;
+        DateNov16Id = nov16.Tour.Id;
 
-        db.Tours.AddRange(low.Tour, mid.Tour, high.Tour, italy.Tour, hidden.Tour, draft, target.Tour);
+        db.Tours.AddRange(
+            low.Tour, mid.Tour, high.Tour, italy.Tour, hidden.Tour, draft, target.Tour,
+            oct31.Tour, nov1.Tour, nov15.Tour, nov16.Tour);
     }
 
     private (Tour Tour, Guid CoverId) Published(
@@ -189,7 +211,8 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
         decimal futurePrice,
         int daysAhead,
         decimal? currentPrice,
-        int imageCount)
+        int imageCount,
+        DateTime? departureAt = null)
     {
         var tour = Tour.CreateDraft(ManagerId);
         tour.SetBasics(title, "Кратко о туре", "Москва", country, type, 1, directionId);
@@ -200,7 +223,7 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
             MealPlan.BB,
             "Отель");
 
-        var departure = Now.AddDays(daysAhead);
+        var departure = departureAt ?? Now.AddDays(daysAhead);
         var offers = new List<TourOffer>
         {
             TourOffer.Create(tour.Id, departure, departure.AddDays(3), futurePrice, "EUR", 4)
@@ -269,6 +292,64 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
 
         var countries = await ReadListAsync("/catalog/tours?country=publiccatalogitaly");
         countries.Items.Select(item => item.Id).Should().Equal(fixture.ItalyId);
+    }
+
+    [Fact]
+    public async Task List_DateWithoutZone_IncludesDepartureCalendarDay()
+    {
+        var page = await ReadListAsync("/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01");
+
+        page.Items.Select(item => item.Id).Should().BeEquivalentTo(
+            [fixture.DateNov1Id, fixture.DateNov15Id, fixture.DateNov16Id]);
+        page.Items.Select(item => item.Id).Should().NotContain(fixture.DateOct31Id);
+    }
+
+    [Fact]
+    public async Task List_DateWithZ_UsesTheSameCalendarDay()
+    {
+        var plain = await ReadListAsync("/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01&dateTo=2026-11-15");
+        var midnight = await ReadListAsync(
+            "/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01T00:00:00Z&dateTo=2026-11-15T00:00:00Z");
+        // Время внутри дня не отрезает вылет: 12:00 и 18:00 остаются календарными днями 1 и 15 ноября.
+        var insideDay = await ReadListAsync(
+            "/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01T12:00:00Z&dateTo=2026-11-15T18:00:00Z");
+
+        var expected = new[] { fixture.DateNov1Id, fixture.DateNov15Id };
+        plain.Items.Select(item => item.Id).Should().BeEquivalentTo(expected);
+        midnight.Items.Select(item => item.Id).Should().BeEquivalentTo(expected);
+        insideDay.Items.Select(item => item.Id).Should().BeEquivalentTo(expected);
+        plain.Items.Select(item => item.Id).Should().NotContain(fixture.DateNov16Id);
+        midnight.Items.Select(item => item.Id).Should().NotContain(fixture.DateOct31Id);
+    }
+
+    [Fact]
+    public async Task List_DateTo_IncludesDepartureLaterThatDay_AndExcludesNextMidnight()
+    {
+        var page = await ReadListAsync(
+            "/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-15&dateTo=2026-11-15");
+
+        page.Items.Select(item => item.Id).Should().Equal(fixture.DateNov15Id);
+    }
+
+    [Fact]
+    public async Task List_WhenDateFromIsAfterDateTo_Returns400Validation_WithoutDatabaseText()
+    {
+        var response = await GetAsync(
+            "/catalog/tours?dateFrom=2026-12-01&dateTo=2026-11-01");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        root.GetProperty("status").GetInt32().Should().Be(400);
+        root.GetProperty("title").GetString().Should().Be("Validation Error");
+        root.GetProperty("code").GetString().Should().Be("date_range");
+        root.GetProperty("errors").GetProperty("DateTo")[0].GetString()
+            .Should().Be("Дата «по» должна быть не раньше даты «с».");
+        json.Should().NotContain("Npgsql");
+        json.Should().NotContain("Kind=Unspecified");
+        json.Should().NotContain("timestamp with time zone");
+        json.Should().NotContain("at Npgsql");
     }
 
     [Fact]

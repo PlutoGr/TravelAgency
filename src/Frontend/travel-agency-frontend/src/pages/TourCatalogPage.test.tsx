@@ -74,7 +74,10 @@ describe('TourCatalogPage', () => {
 
     renderPage(<TourCatalogPage />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить каталог');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Не удалось загрузить каталог');
+    expect(alert).not.toHaveTextContent('network');
+    expect(within(alert).getByRole('button', { name: 'Сбросить фильтры' })).toBeInTheDocument();
     expect(screen.queryByText('Туры не найдены')).not.toBeInTheDocument();
   });
 
@@ -92,7 +95,7 @@ describe('TourCatalogPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Мальдивы — рай на земле' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Бали' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'с 2026-11-01' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'с 01.11.2026' })).toBeInTheDocument();
     await waitFor(() => {
       expect(getTours).toHaveBeenCalledWith(
         expect.objectContaining({ directionId: 'dir-bali', dateFrom: '2026-11-01' }),
@@ -151,6 +154,41 @@ describe('TourCatalogPage', () => {
     });
     expect(await screen.findByRole('heading', { name: 'Туры не найдены' })).toBeInTheDocument();
     expect(getTours).toHaveBeenLastCalledWith({}, 1);
+  });
+
+  it('shows date chips as dd.mm.yyyy and keeps the iso day in the address', async () => {
+    vi.mocked(getTours).mockResolvedValue(emptyPage);
+
+    renderCatalog('/tours?dateFrom=2026-11-01&dateTo=2026-11-15');
+
+    expect(await screen.findByRole('button', { name: 'с 01.11.2026' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'по 15.11.2026' })).toBeInTheDocument();
+    const url = screen.getByTestId('url').textContent ?? '';
+    expect(url).toContain('dateFrom=2026-11-01');
+    expect(url).toContain('dateTo=2026-11-15');
+    expect(url).not.toContain('01.11.2026');
+    await waitFor(() => {
+      expect(getTours).toHaveBeenCalledWith(
+        expect.objectContaining({ dateFrom: '2026-11-01', dateTo: '2026-11-15' }),
+        1,
+      );
+    });
+  });
+
+  it('shows a hint and does not request tours when date from is after date to', async () => {
+    vi.mocked(getTours).mockResolvedValue(emptyPage);
+
+    renderCatalog('/tours?dateFrom=2026-12-01&dateTo=2026-11-01');
+
+    expect(await screen.findAllByText('Дата «по» должна быть не раньше даты «с»')).not.toHaveLength(0);
+    expect(screen.getAllByLabelText('По').some((input) => input.getAttribute('aria-invalid') === 'true')).toBe(true);
+    expect(screen.getByRole('button', { name: 'с 01.12.2026' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'по 01.11.2026' })).toBeInTheDocument();
+    const url = screen.getByTestId('url').textContent ?? '';
+    expect(url).toContain('dateFrom=2026-12-01');
+    expect(url).toContain('dateTo=2026-11-01');
+    expect(getTours).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
 

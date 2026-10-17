@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
@@ -79,7 +80,7 @@ public class GlobalExceptionHandlerMiddleware
         context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = statusCode;
 
-        var json = JsonSerializer.Serialize(details, JsonOptions);
+        var json = JsonSerializer.Serialize(details, details.GetType(), JsonOptions);
         await context.Response.WriteAsync(json);
     }
 
@@ -127,6 +128,9 @@ public class GlobalExceptionHandlerMiddleware
 
     private ProblemDetails MapToProblemDetails(HttpContext context, Exception exception)
     {
+        if (IsDatabaseException(exception))
+            return CreateDatabaseProblemDetails(context, DatabaseStatus(exception));
+
         return exception switch
         {
             ValidationException validationEx => CreateValidationProblemDetails(context, validationEx),
@@ -134,6 +138,92 @@ public class GlobalExceptionHandlerMiddleware
             UnauthorizedAccessException => CreateUnauthorizedProblemDetails(context),
             _ => CreateInternalProblemDetails(context, exception)
         };
+    }
+
+    /// <summary>
+    /// Npgsql rejects an Unspecified DateTime as ArgumentException and throws DbException for provider failures.
+    /// Neither the message nor the stack belongs in the response. Logging is unchanged.
+    /// </summary>
+    private static bool IsDatabaseException(Exception exception)
+    {
+        foreach (var current in Flatten(exception))
+        {
+            if (current is DbException)
+                return true;
+
+            var typeName = current.GetType().FullName;
+            if (typeName is not null && typeName.StartsWith("Npgsql.", StringComparison.Ordinal))
+                return true;
+
+            if (current is ArgumentException or InvalidCastException or InvalidOperationException
+                && ContainsDatabaseProviderText(current.Message))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static int DatabaseStatus(Exception exception)
+    {
+        foreach (var current in Flatten(exception))
+        {
+            if (current is DbException)
+                return StatusCodes.Status500InternalServerError;
+
+            var typeName = current.GetType().FullName;
+            if (typeName is not null && typeName.StartsWith("Npgsql.", StringComparison.Ordinal))
+                return StatusCodes.Status500InternalServerError;
+        }
+
+        return StatusCodes.Status400BadRequest;
+    }
+
+    private static bool ContainsDatabaseProviderText(string? message)
+    {
+        if (string.IsNullOrEmpty(message))
+            return false;
+
+        return message.Contains("Npgsql", StringComparison.Ordinal)
+            || message.Contains("PostgreSQL", StringComparison.Ordinal)
+            || message.Contains("Kind=Unspecified", StringComparison.Ordinal);
+    }
+
+    private static IEnumerable<Exception> Flatten(Exception exception)
+    {
+        var stack = new Stack<Exception>();
+        stack.Push(exception);
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            yield return current;
+
+            if (current is AggregateException aggregate)
+            {
+                for (var index = aggregate.InnerExceptions.Count - 1; index >= 0; index--)
+                    stack.Push(aggregate.InnerExceptions[index]);
+            }
+            else if (current.InnerException is not null)
+            {
+                stack.Push(current.InnerException);
+            }
+        }
+    }
+
+    private static ProblemDetails CreateDatabaseProblemDetails(HttpContext context, int statusCode)
+    {
+        var isClientError = statusCode < StatusCodes.Status500InternalServerError;
+        var details = new ProblemDetails
+        {
+            Type = isClientError
+                ? "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                : "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+            Title = isClientError ? "Bad Request" : "Internal Server Error",
+            Status = statusCode,
+            Detail = "A database error occurred.",
+            Instance = context.Request.Path
+        };
+        details.Extensions["code"] = "database_error";
+        return details;
     }
 
     private static ProblemDetails CreateValidationProblemDetails(HttpContext context, ValidationException exception)
@@ -144,7 +234,7 @@ public class GlobalExceptionHandlerMiddleware
                 g => g.Key,
                 g => g.Select(e => e.ErrorMessage).ToArray());
 
-        return new ValidationProblemDetails(errors)
+        var problem = new ValidationProblemDetails(errors)
         {
             Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
             Title = "Validation Error",
@@ -152,6 +242,14 @@ public class GlobalExceptionHandlerMiddleware
             Detail = exception.Message,
             Instance = context.Request.Path
         };
+
+        var codes = exception.Errors
+            .Select(failure => failure.ErrorCode)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        problem.Extensions["code"] = codes.Length == 1 ? codes[0] : "validation";
+        return problem;
     }
 
     private static ProblemDetails CreateBadRequestProblemDetails(HttpContext context, ArgumentException exception)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TravelAgency.Catalog.Application.DTOs;
+using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTours;
 using TravelAgency.Catalog.Application.Interfaces;
 using TravelAgency.Catalog.Application.Mappings;
 using TravelAgency.Catalog.Domain.Entities;
@@ -11,6 +12,7 @@ namespace TravelAgency.Catalog.Infrastructure.Queries;
 /// <summary>
 /// Публичный список. В выдаче только Published: параметр IsActive не открывает черновики и снятые.
 /// Цена «от», фильтр цены и сортировка по цене смотрят на будущие выезды (ValidFrom позже utcNow).
+/// DateFrom и DateTo — календарные дни: оба включительные, сравнение идёт по UTC-суткам вылета.
 /// </summary>
 public class TourListQuery(CatalogDbContext db) : ITourListQuery
 {
@@ -82,20 +84,24 @@ public class TourListQuery(CatalogDbContext db) : ITourListQuery
                     .Min() <= maxPrice);
         }
 
-        if (filter.DateFrom is DateTime dateFrom && filter.DateTo is DateTime dateTo)
+        if (filter.DateFrom is DateOnly dateFrom && filter.DateTo is DateOnly dateTo)
         {
+            var fromUtc = DepartureCalendarDate.UtcStart(dateFrom);
+            var toUtc = DepartureCalendarDate.UtcEndExclusive(dateTo);
             query = query.Where(tour => tour.Offers.Any(offer =>
-                offer.ValidFrom > now && offer.ValidFrom >= dateFrom && offer.ValidFrom <= dateTo));
+                offer.ValidFrom > now && offer.ValidFrom >= fromUtc && offer.ValidFrom < toUtc));
         }
-        else if (filter.DateFrom is DateTime fromOnly)
+        else if (filter.DateFrom is DateOnly fromOnly)
         {
+            var fromUtc = DepartureCalendarDate.UtcStart(fromOnly);
             query = query.Where(tour => tour.Offers.Any(offer =>
-                offer.ValidFrom > now && offer.ValidFrom >= fromOnly));
+                offer.ValidFrom > now && offer.ValidFrom >= fromUtc));
         }
-        else if (filter.DateTo is DateTime toOnly)
+        else if (filter.DateTo is DateOnly toOnly)
         {
+            var toUtc = DepartureCalendarDate.UtcEndExclusive(toOnly);
             query = query.Where(tour => tour.Offers.Any(offer =>
-                offer.ValidFrom > now && offer.ValidFrom <= toOnly));
+                offer.ValidFrom > now && offer.ValidFrom < toUtc));
         }
 
         return query;

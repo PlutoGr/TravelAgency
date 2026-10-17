@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
@@ -401,6 +402,71 @@ public class GlobalExceptionHandlerMiddlewareTests
         entries[0].Level.Should().Be(LogLevel.Error);
         entries[0].Exception.Should().BeOfType<InvalidOperationException>();
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_WhenNpgsqlArgumentException_DoesNotLeakProviderText(bool isDevelopment)
+    {
+        const string leaked = "Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone' secret-db-text";
+        RequestDelegate next = _ => throw new ArgumentException(leaked);
+        using var host = await CreateHostAsync(isDevelopment, next);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+        var json = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetProperty("code").GetString().Should().Be("database_error");
+        document.RootElement.GetProperty("detail").GetString().Should().Be("A database error occurred.");
+        AssertNoProviderText(document.RootElement);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenDatabaseExceptionInDevelopment_DoesNotLeakProviderText()
+    {
+        const string leaked = "Npgsql.PostgresException secret-db-text: timestamp with time zone";
+        RequestDelegate next = _ => throw new InvalidOperationException(
+            "See the inner exception",
+            new FakeDbException(leaked));
+        using var host = await CreateHostAsync(isDevelopment: true, next);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/catalog/tours");
+        var json = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        using var document = JsonDocument.Parse(json);
+        document.RootElement.GetProperty("code").GetString().Should().Be("database_error");
+        document.RootElement.GetProperty("detail").GetString().Should().Be("A database error occurred.");
+        AssertNoProviderText(document.RootElement);
+    }
+
+    private static void AssertNoProviderText(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                    AssertNoProviderText(property.Value);
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                    AssertNoProviderText(item);
+                break;
+            case JsonValueKind.String:
+                var text = element.GetString() ?? string.Empty;
+                text.Should().NotContain("Kind=Unspecified");
+                text.Should().NotContain("PostgreSQL");
+                text.Should().NotContain("Npgsql");
+                text.Should().NotContain("secret-db-text");
+                text.Should().NotContain("timestamp with time zone");
+                break;
+        }
+    }
+
+    private sealed class FakeDbException(string message) : DbException(message);
 
     private sealed class UnauthorizedException(string message) : Exception(message);
 
