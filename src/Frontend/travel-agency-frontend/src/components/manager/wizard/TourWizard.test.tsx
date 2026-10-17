@@ -180,6 +180,32 @@ describe('TourWizard', () => {
     expect(document.body.innerHTML).not.toContain('unsplash');
   });
 
+  it('keeps selected photos and explains a 503 when saving them', async () => {
+    const user = userEvent.setup();
+    vi.mocked(uploadTourImage).mockResolvedValue({ id: FILE, width: 1600, height: 900 });
+    vi.mocked(saveImages).mockRejectedValue({
+      response: { status: 503, data: { detail: 'Media service is unavailable.' } },
+    });
+
+    renderPage(<TourWizard tourId="tour-1" initialStep={6} />);
+    const input = await screen.findByLabelText('Загрузить фото');
+    await user.upload(input, new File([new Uint8Array([1, 2, 3])], 'photo.jpg', { type: 'image/jpeg' }));
+    expect(await screen.findByRole('img', { name: 'Фото тура' })).toHaveAttribute(
+      'src',
+      manageMediaFileUrl(FILE, 'w200'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить черновик' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось обновить фото тура. Изменения не сохранены, попробуйте ещё раз через минуту',
+    );
+    expect(screen.getByRole('img', { name: 'Фото тура' })).toHaveAttribute('src', manageMediaFileUrl(FILE, 'w200'));
+    expect(saveImages).toHaveBeenCalledWith('tour-1', '"1"', [
+      expect.objectContaining({ mediaFileId: FILE }),
+    ]);
+  });
+
   it('shows a clear message when upload returns 413', async () => {
     const user = userEvent.setup();
     vi.mocked(uploadTourImage).mockRejectedValue({
