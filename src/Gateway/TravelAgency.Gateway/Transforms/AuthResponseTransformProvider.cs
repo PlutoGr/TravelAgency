@@ -12,7 +12,8 @@ namespace TravelAgency.Gateway.Transforms;
 /// YARP transform for login, register, refresh and logout.
 /// A usable token response becomes httpOnly cookies and {"success":true}.
 /// Access cookie Expires is the JWT expiry. Refresh cookie Expires is refreshExpiresAt.
-/// Token paths are compared after decoding, dropping "." segments and a trailing slash, without regard to case.
+/// Token paths are compared from HttpContext.Request.Path. ASP.NET has already decoded percent-encoding.
+/// "." segments and a trailing slash are removed. Letter case is ignored. The raw request string is not read.
 /// Any 2xx on this auth route whose body contains a token field is intercepted and does not reach JavaScript.
 /// Refresh cookie path is the auth prefix. Login, register, refresh and logout also
 /// delete the previous refresh cookie on Cookie:Path.
@@ -266,33 +267,16 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         _authRouteSettings.TokenResponsePaths.Any(p =>
             string.Equals(NormalizePath(p), normalizedPath, StringComparison.OrdinalIgnoreCase));
 
-    private static string NormalizeRequestPath(HttpRequest request)
-    {
-        var path = request.Path.Value ?? string.Empty;
-        return NormalizePath(path);
-    }
+    private static string NormalizeRequestPath(HttpRequest request) =>
+        NormalizePath(request.Path.Value);
 
     /// <summary>
-    /// Percent-decoding, "." segments, a trailing slash and letter case are not a different route.
-    /// /api/v1/auth/%6Cogin, /api/v1/auth/./login and /api/v1/auth/Login/ are the login path.
-    /// The query string is not part of the path.
+    /// Request.Path is already percent-decoded. "." segments, a trailing slash and letter case
+    /// are not a different route. /api/v1/auth/./login and /api/v1/auth/Login/ are the login path.
     /// </summary>
     private static string NormalizePath(string? path)
     {
         var value = (path ?? string.Empty).Trim();
-        var query = value.IndexOfAny(['?', '#']);
-        if (query >= 0)
-            value = value[..query];
-
-        try
-        {
-            value = Uri.UnescapeDataString(value);
-        }
-        catch (UriFormatException)
-        {
-            // Keep the raw path when the escape sequence is not valid.
-        }
-
         var segments = value.Split('/');
         var kept = new List<string>(segments.Length);
         foreach (var segment in segments)

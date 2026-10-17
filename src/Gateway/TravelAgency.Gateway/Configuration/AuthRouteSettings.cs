@@ -30,7 +30,8 @@ public sealed class AuthRouteSettings
 
     /// <summary>
     /// Paths that return tokens on success (login, register, refresh).
-    /// Compared after percent-decoding, dropping "." segments and a trailing slash, without regard to case.
+    /// Compared with HttpContext.Request.Path after ASP.NET decoded percent-encoding,
+    /// dropping "." segments and a trailing slash, without regard to case.
     /// </summary>
     public string[] TokenResponsePaths { get; set; } =
         ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh"];

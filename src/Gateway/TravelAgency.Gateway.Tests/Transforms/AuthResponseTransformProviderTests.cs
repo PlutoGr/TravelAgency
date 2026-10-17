@@ -45,7 +45,8 @@ public class AuthResponseTransformProviderTests
             path = path[..queryIndex];
         }
 
-        context.Request.Path = path;
+        // The host stores the decoded path. FromUriComponent is what turns /%6Cogin into /login.
+        context.Request.Path = PathString.FromUriComponent(path);
         context.Response.Body = new MemoryStream();
 
         HttpContent? content = null;
@@ -434,6 +435,25 @@ public class AuthResponseTransformProviderTests
         "/api/v1/auth/./refresh",
         "/api/v1/auth/refresh?x=1",
     };
+
+    [Fact]
+    public async Task Transform_WhenLoginPathIsPercentEncoded_UsesDecodedRequestPath()
+    {
+        var context = CreateTransformContext("/api/v1/auth/%6Cogin", HttpStatusCode.OK, TokenJson());
+        Assert.Equal("/api/v1/auth/login", context.HttpContext.Request.Path.Value);
+
+        var provider = CreateProvider();
+        await InvokeTransformAsync(provider, context);
+
+        Assert.True(context.SuppressResponseBody);
+        var body = await ReadBodyAsync(context.HttpContext.Response);
+        Assert.Contains("\"success\":true", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("access-123", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("%6C", body, StringComparison.Ordinal);
+        Assert.Contains(
+            context.HttpContext.Response.Headers.SetCookie,
+            h => h != null && h.StartsWith("access_token=access-123", StringComparison.Ordinal));
+    }
 
     [Theory]
     [MemberData(nameof(NormalizedTokenPaths))]
