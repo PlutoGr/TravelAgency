@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
 import clsx from "clsx";
 import type { ReactNode } from "react";
+import CloseButton from "./CloseButton";
 
 type ModalSize = "sm" | "md" | "lg";
 
@@ -71,29 +71,19 @@ export default function Modal({
             )}
           >
             {title && (
-              <div className="flex items-center justify-between border-b border-sand px-6 py-4">
+              <div className="relative z-10 flex items-center justify-between border-b border-sand px-6 py-4">
                 <h2 className="font-heading text-lg font-semibold text-dark">
                   {title}
                 </h2>
-                <button
-                  onClick={onClose}
-                  className="rounded-full p-1.5 text-warm-gray transition-colors hover:bg-sand hover:text-dark"
-                >
-                  <X size={20} />
-                </button>
+                <CloseButton onClick={onClose} />
               </div>
             )}
 
-            {!title && (
-              <button
-                onClick={onClose}
-                className="absolute right-4 top-4 rounded-full p-1.5 text-warm-gray transition-colors hover:bg-sand hover:text-dark"
-              >
-                <X size={20} />
-              </button>
-            )}
+            {/* Кнопка раньше контента в дереве. У контента бывают positioned-потомки
+                (вкладки с relative): при z-index: auto они рисуются поверх крестика. */}
+            {!title && <CloseButton floating onClick={onClose} />}
 
-            <div className="p-6">{children}</div>
+            <div className={title ? "p-6" : "px-6 pb-6 pt-14"}>{children}</div>
           </motion.div>
         </div>
       )}

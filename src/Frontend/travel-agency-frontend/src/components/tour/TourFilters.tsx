@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, X, SlidersHorizontal, RotateCcw } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import type { TourFilters as TourFiltersType } from '@/types';
-import { RangeSlider, Button } from '@/components/ui';
+import { RangeSlider, Button, CloseButton } from '@/components/ui';
 import { getDestinations } from '@/api/catalog';
 import { TOUR_TYPE_OPTIONS } from '@/utils/tourLabels';
 
@@ -266,14 +266,10 @@ export default function TourFilters({ filters, onChange, onReset }: TourFiltersP
             >
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-heading text-base font-semibold text-dark">Фильтры</h2>
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
+                <CloseButton
                   aria-label="Закрыть фильтры"
-                  className="rounded-full p-1.5 text-warm-gray transition-colors hover:bg-sand hover:text-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  <X size={20} />
-                </button>
+                  onClick={() => setMobileOpen(false)}
+                />
               </div>
               <FilterContent
                 filters={filters}
