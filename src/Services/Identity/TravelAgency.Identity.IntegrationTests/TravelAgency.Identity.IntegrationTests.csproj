@@ -26,4 +26,7 @@
     <ProjectReference Include="..\TravelAgency.Identity.Infrastructure\TravelAgency.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\TravelAgency.Identity.API\TravelAgency.Identity.API.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\Shared\Testing\KestrelLoopbackListeners.cs" Link="Grpc\KestrelLoopbackListeners.cs" />
+  </ItemGroup>
 </Project>

@@ -32,6 +32,36 @@ function readDate(value: string | null | undefined): string | undefined {
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
 }
 
+export const DEPARTURE_DATE_MIN = '2000-01-01';
+export const DEPARTURE_DATE_MAX = '2100-12-31';
+export const DEPARTURE_RANGE_HINT = 'Дата «по» должна быть не раньше даты «с»';
+export const DEPARTURE_YEAR_HINT = 'Выберите дату в пределах 2000\u20132100 года';
+
+export type DepartureDateIssue = 'year' | 'order';
+
+export function formatCatalogDateChip(prefix: 'с' | 'по', isoDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) return `${prefix} ${isoDate}`;
+  return `${prefix} ${match[3]}.${match[2]}.${match[1]}`;
+}
+
+export function isDepartureRangeInverted(dateFrom?: string, dateTo?: string): boolean {
+  if (!dateFrom || !dateTo) return false;
+  return dateFrom > dateTo;
+}
+
+export function isDepartureDateOutOfRange(date?: string): boolean {
+  if (!date) return false;
+  return date < DEPARTURE_DATE_MIN || date > DEPARTURE_DATE_MAX;
+}
+
+/** Год вне 2000–2100 важнее перепутанного порядка: подсказка одна, запрос в обоих случаях не уходит. */
+export function departureDateIssue(dateFrom?: string, dateTo?: string): DepartureDateIssue | undefined {
+  if (isDepartureDateOutOfRange(dateFrom) || isDepartureDateOutOfRange(dateTo)) return 'year';
+  if (isDepartureRangeInverted(dateFrom, dateTo)) return 'order';
+  return undefined;
+}
+
 function readPrice(value: string | null): number | undefined {
   if (value == null || value.trim() === '') return undefined;
   const price = Number(value);

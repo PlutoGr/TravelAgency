@@ -8,8 +8,8 @@ public enum SortDirection { Asc, Desc }
 public record ToursFilterDto(
     string? Country = null,
     Guid? DirectionId = null,
-    DateTime? DateFrom = null,
-    DateTime? DateTo = null,
+    DateOnly? DateFrom = null,
+    DateOnly? DateTo = null,
     decimal? MinPrice = null,
     decimal? MaxPrice = null,
     TourType? TourType = null,
