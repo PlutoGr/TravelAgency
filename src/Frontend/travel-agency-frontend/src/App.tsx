@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { resumeFavoriteIntent } from '@/store/authIntent';
 import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { useUIStore } from '@/store/uiStore';
 import {
   PublicLayout,
   DashboardLayout,
@@ -70,7 +71,14 @@ export default function App() {
     let cancelled = false;
     (async () => {
       await loadFavorites();
-      if (!cancelled) resumeFavoriteIntent();
+      if (cancelled) return;
+      const favorites = useFavoritesStore.getState();
+      const intent = useUIStore.getState().authIntent;
+      if (intent?.type === 'favorite' && (favorites.error || favorites.isFavorite(intent.tourId))) {
+        useUIStore.getState().clearAuthIntent();
+        return;
+      }
+      resumeFavoriteIntent();
     })();
     return () => {
       cancelled = true;

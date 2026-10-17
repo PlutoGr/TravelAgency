@@ -201,6 +201,13 @@ export default function TourDetailPage() {
     if (!requestKey || appliedRequestKey !== requestKey) return;
     clearAuthIntent();
   }, [requestKey, appliedRequestKey, clearAuthIntent]);
+
+  useEffect(() => {
+    if (!isError || !id) return;
+    if (authIntent?.type === 'request' && authIntent.tourId === id) {
+      clearAuthIntent();
+    }
+  }, [isError, id, authIntent, clearAuthIntent]);
   const available = tour ? isTourAvailable(tour) : false;
   const typeLabel = tour ? tourTypeLabel(tour.category) : '';
   const priceFrom = tour?.priceFrom ?? (tour && tour.price > 0 ? tour.price : null);

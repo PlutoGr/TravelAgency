@@ -36,6 +36,7 @@ describe('BookingForm', () => {
     vi.mocked(createBooking).mockClear();
     vi.mocked(createBooking).mockResolvedValue({ id: 'b1' } as Awaited<ReturnType<typeof createBooking>>);
     vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
   });
 
   it('sends only tourId and comment, with dates written into the comment', async () => {
@@ -159,5 +160,24 @@ describe('BookingForm', () => {
     expect(onClose).toHaveBeenCalledOnce();
     expect(toast.success).toHaveBeenCalledWith('Заявка успешно создана!');
     expect(screen.queryByRole('link', { name: 'Перейти к заявке' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the tour card form open and shows an error when submit fails', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const tour = sampleTour({ id: 'tour-77', title: 'Санторини' });
+    vi.mocked(createBooking).mockRejectedValueOnce({ response: { status: 500 } });
+
+    renderForm(<BookingForm tourId={tour.id} tours={[tour]} onClose={onClose} />);
+
+    await user.click(screen.getByRole('button', { name: 'Далее' }));
+    expect(await screen.findByRole('heading', { name: 'Проверьте данные заявки' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Отправить заявку' }));
+
+    expect(toast.error).toHaveBeenCalledWith('Не удалось создать заявку. Попробуйте ещё раз.');
+    expect(screen.getByRole('heading', { name: 'Проверьте данные заявки' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отправить заявку' })).toBeInTheDocument();
+    expect(screen.queryByText(/Заявка отправлена/)).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -124,6 +124,25 @@ describe('TourDetailPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить тур');
   });
 
+  it('clears a deferred request when the tour fails to load', async () => {
+    vi.mocked(getTourById).mockRejectedValue(new Error('Network'));
+    useAuthStore.setState({ isAuthenticated: true, user: null, isLoading: false });
+    useUIStore.setState({
+      isAuthModalOpen: false,
+      authModalTab: 'login',
+      authIntent: { type: 'request', tourId: 'tour-1', offerId: 'offer-1' },
+      isMobileMenuOpen: false,
+    });
+
+    renderDetail();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить тур');
+    await waitFor(() => {
+      expect(useUIStore.getState().authIntent).toBeNull();
+    });
+    expect(screen.queryByRole('heading', { name: 'Оформить заявку' })).not.toBeInTheDocument();
+  });
+
   it('opens the request on the selected date after login and links to the booking', async () => {
     const user = userEvent.setup();
     const first = sampleTour().offers![0];

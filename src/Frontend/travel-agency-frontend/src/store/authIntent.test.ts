@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { addFavorite } from '@/api/favorites';
+import { addFavorite, getFavorites, removeFavorite } from '@/api/favorites';
 import { resumeFavoriteIntent } from './authIntent';
 import { useFavoritesStore } from './favoritesStore';
 import { useUIStore } from './uiStore';
@@ -18,6 +18,9 @@ vi.mock('react-hot-toast', () => ({
 describe('auth intent', () => {
   beforeEach(() => {
     vi.mocked(addFavorite).mockClear();
+    vi.mocked(removeFavorite).mockClear();
+    vi.mocked(getFavorites).mockReset();
+    vi.mocked(getFavorites).mockResolvedValue([]);
     useUIStore.setState({
       isAuthModalOpen: false,
       authModalTab: 'login',
@@ -91,6 +94,25 @@ describe('auth intent', () => {
     resumeFavoriteIntent();
 
     expect(addFavorite).not.toHaveBeenCalled();
+    expect(removeFavorite).not.toHaveBeenCalled();
     expect(useFavoritesStore.getState().isFavorite(tour.id)).toBe(true);
+    expect(useUIStore.getState().authIntent).toBeNull();
+  });
+
+  it('clears a favorite intent and does not toggle when favorites failed to load', async () => {
+    const tour = sampleTour();
+    vi.mocked(getFavorites).mockRejectedValueOnce(new Error('network'));
+    useUIStore.setState({
+      authIntent: { type: 'favorite', tourId: tour.id, tour },
+    });
+
+    await useFavoritesStore.getState().loadFavorites();
+    resumeFavoriteIntent();
+
+    expect(useFavoritesStore.getState().error).toBe('Не удалось загрузить избранное');
+    expect(addFavorite).not.toHaveBeenCalled();
+    expect(removeFavorite).not.toHaveBeenCalled();
+    expect(useFavoritesStore.getState().isFavorite(tour.id)).toBe(false);
+    expect(useUIStore.getState().authIntent).toBeNull();
   });
 });
