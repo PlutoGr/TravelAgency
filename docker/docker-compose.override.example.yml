@@ -1,5 +1,5 @@
 # =====================================================================
-# Пример docker-compose.override.yml для dev-сервера (travelagency-dev, 185.75.189.253).
+# Пример docker-compose.override.yml для dev-сервера (travelagency-dev).
 # Настоящий файл лежит только на сервере: /opt/travelagency/docker/docker-compose.override.yml
 # (в .gitignore). Секретов здесь нет, они в /opt/travelagency/docker/.env.
 #
@@ -13,7 +13,8 @@
 #  - gateway и консоль MinIO доступны только с самого сервера (127.0.0.1), снаружи через SSH-туннель;
 #  - образы сервисов берутся из GHCR, тег задаёт переменная IMAGE_TAG (sha коммита),
 #    без неё используется latest. Так работает деплой и откат (см. README, «Как устроен dev»);
-#  - сертификат и htpasswd монтируются с хоста, nginx в образе сам включает HTTPS и пароль.
+#  - сертификат и htpasswd монтируются с хоста, nginx в образе сам включает HTTPS и пароль;
+#  - домен сайта задаёт одна переменная SITE_DOMAIN в .env: из неё nginx, CORS и Let's Encrypt.
 #  - .NET-сервисы работают с ASPNETCORE_ENVIRONMENT=Staging; тестовые аккаунты и демо-каталог
 #    на dev включены флагом ASPNETCORE_SEED_DATA=true (только для dev).
 # =====================================================================
@@ -45,7 +46,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Staging
       Cookie__Secure: "true"
-      Cors__AllowedOrigins__0: https://185.75.189.253
+      Cors__AllowedOrigins__0: https://${SITE_DOMAIN:?SITE_DOMAIN не задан в .env}
     # API напрямую только через туннель: ssh -L 5001:127.0.0.1:5001 travelagency-dev-platon
     ports: !override
       - "127.0.0.1:5001:8080"
@@ -91,9 +92,14 @@ services:
     ports: !override
       - "80:80"
       - "443:443"
-    # Самоподписанный сертификат для IP (tls.crt, tls.key) и htpasswd для basic auth, вне репозитория.
-    # Если файлы смонтированы, nginx сам включает HTTPS, редирект с HTTP и пароль.
+    # Домен для nginx (server_name, редиректы, путь к сертификату Let's Encrypt)
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN не задан в .env}
+    # Самоподписанный сертификат (tls.crt, tls.key: для редиректа по IP и до выпуска Let's Encrypt),
+    # htpasswd для basic auth, сертификаты Let's Encrypt и webroot для проверки HTTP-01, всё вне репозитория.
     volumes:
       - /etc/travelagency/certs:/etc/nginx/certs:ro
       - /etc/travelagency/auth:/etc/nginx/auth:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/lib/travelagency/acme:/var/www/certbot:ro
     restart: unless-stopped

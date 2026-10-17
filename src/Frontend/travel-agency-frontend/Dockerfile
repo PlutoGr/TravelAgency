@@ -14,10 +14,11 @@ RUN npm run build
 FROM nginx:alpine AS final
 COPY --from=build /app/dist /usr/share/nginx/html
 # Конфигурация nginx: HTTP по умолчанию, HTTPS и basic auth включаются entrypoint-скриптом,
-# если смонтированы /etc/nginx/certs/tls.{crt,key} и /etc/nginx/auth/htpasswd
+# если смонтированы /etc/nginx/certs/tls.{crt,key} и /etc/nginx/auth/htpasswd.
+# Домен для HTTPS задаёт переменная SITE_DOMAIN, сертификат Let's Encrypt берётся из /etc/letsencrypt.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/travelagency/http.conf
-COPY nginx-https.conf /etc/nginx/travelagency/https.conf
+COPY nginx-domain.conf.template /etc/nginx/travelagency/domain.conf.template
 COPY nginx-app.conf /etc/nginx/travelagency/app.conf
 COPY nginx-headers.conf /etc/nginx/travelagency/headers.conf
 COPY nginx-logging.conf /etc/nginx/conf.d/01-travelagency-logging.conf

@@ -80,13 +80,13 @@ Catalog demo data alone (without test users) can be enabled with `Seeding__DemoC
 
 ## Как устроен dev
 
-Dev-среда работает на одном сервере Selectel (Ubuntu 24.04) в Docker Compose. Код и образы обновляются автоматически после каждого push в `main`.
+Dev-среда работает на одном сервере Selectel (Ubuntu 24.04) в Docker Compose. Код и образы обновляются автоматически после каждого push в `main`. Адрес сервера для SSH лежит в секрете `DEV_SSH_HOST` окружения `dev`.
 
 ### Адрес и доступ
 
-Адрес и доступ у команды. Сертификат самоподписанный (домена пока нет, см. #17), поэтому браузер покажет предупреждение, его нужно принять один раз. Сайт закрыт basic auth; без пароля открыты только `/robots.txt` и `/healthz`.
+Адрес сайта: `https://<SITE_DOMAIN>` (сейчас `dev.travelagencyonline.ru`), сертификат Let's Encrypt. Пароль у команды. Сайт закрыт basic auth; без пароля открыты только `/robots.txt`, `/healthz` и `/.well-known/acme-challenge/` (проверка Let's Encrypt).
 
-- HTTP на 80 порту редиректит на HTTPS. Поисковики сайт не индексируют (`robots.txt` и заголовок `X-Robots-Tag`).
+- HTTP на 80 порту редиректит на HTTPS, заход по IP или чужому имени редиректит на `https://<SITE_DOMAIN>` (301). Поисковики сайт не индексируют (`robots.txt` и заголовок `X-Robots-Tag`).
 - Снаружи открыты только порты 22, 80 и 443 (ufw). Gateway (`127.0.0.1:5001`) и консоль MinIO (`127.0.0.1:9001`) доступны только через SSH-туннель:
 
 ```bash
@@ -98,7 +98,21 @@ ssh -L 5001:127.0.0.1:5001 -L 9001:127.0.0.1:9001 travelagency-dev-platon
 - Все .NET-сервисы на dev работают с `ASPNETCORE_ENVIRONMENT=Staging` (задаётся в `docker-compose.override.yml` на сервере). Swagger и OpenAPI выключены, в ответах 500 нет стека, подробные логи Development не используются.
 - Миграции применяются при старте (`ASPNETCORE_RUN_MIGRATIONS=true`).
 - Тестовые аккаунты и демо-каталог на dev оставлены специально: включены флагом `ASPNETCORE_SEED_DATA=true` (таблица аккаунтов выше). Пароль задаётся `Seeding__TestUserPassword` (в compose это `SEEDING_TEST_USER_PASSWORD`) и в репозиторий не входит. Пустое значение не останавливает Identity: новые пользователи пропускаются. Уже существующие аккаунты и туры сохраняют свои id. На production флаг не ставить.
-- Cookie авторизации с флагом `Secure` (сайт только по HTTPS), CORS разрешён для адреса dev-сайта (адрес у команды).
+- Cookie авторизации с флагом `Secure` (сайт только по HTTPS) без `Domain`, то есть привязана к текущему хосту. CORS разрешён для `https://<SITE_DOMAIN>`. JWT issuer/audience (`TravelAgency.Identity`/`TravelAgency`) от домена не зависят. Фронтенд ходит в API только по относительным путям (`/api/v1`, хаб чата `/api/v1/chat/hubs/chat`).
+
+### Домен и HTTPS
+
+Домен задаётся в одном месте: строка `SITE_DOMAIN=` в `/opt/travelagency/docker/.env`. Из неё берутся `server_name` и редиректы nginx (шаблон `src/Frontend/travel-agency-frontend/nginx-domain.conf.template`, рендерит `nginx-entrypoint.sh` при старте контейнера), CORS gateway и сертификат Let's Encrypt. Код и репозиторий при смене домена не меняются.
+
+Сменить домен:
+
+```bash
+ssh travelagency-dev-platon
+sudoedit /opt/travelagency/docker/.env          # SITE_DOMAIN=new.example.ru
+sudo /opt/travelagency/deploy/scripts/issue-cert.sh   # A-запись нового домена уже должна резолвиться
+```
+
+Скрипт пересоздаёт frontend и gateway, выпускает сертификат через `certbot certonly --webroot` (webroot `/var/lib/travelagency/acme`) и ставит хук, который после продления делает `nginx -s reload`. Продление автоматическое: `certbot.timer` (`systemctl list-timers certbot.timer`). HSTS не включён специально, пока домен dev может меняться.
 
 ### SSH
 
@@ -125,7 +139,7 @@ Workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) запу
 1. `dotnet test` всего решения. Если тесты падают, дальше не идёт.
 2. Сборка 7 образов (gateway, identity, catalog, booking, chat, media, frontend) и пуш в GHCR с тегами `latest` и полным sha коммита: `ghcr.io/plutogr/travelagency-<имя>:<sha>`.
 3. По SSH под `deploy`: `git pull` в `/opt/travelagency`, `docker compose pull` и `docker compose up -d` с `IMAGE_TAG=<sha>`, удаление старых образов.
-4. Проверка здоровья: HTTP отдаёт 301, HTTPS без пароля 401, `/healthz` отвечает `Healthy` (gateway и все сервисы), API отвечает 200. Если за 5 минут не дождались, пайплайн красный.
+4. Проверка здоровья: домен читается из `SITE_DOMAIN` на сервере; HTTP по адресу сервера отдаёт 301 на `https://<домен>/`, HTTPS без пароля 401, `/healthz` отвечает `Healthy` (gateway и все сервисы), API отвечает 200. Если за 5 минут не дождались, пайплайн красный.
 
 Отдельно на каждый push работает [поиск секретов gitleaks](.github/workflows/gitleaks.yml), а Dependabot раз в неделю присылает PR с обновлениями ([`.github/dependabot.yml`](.github/dependabot.yml)).
 
@@ -168,7 +182,8 @@ docker compose logs -f --tail=200 gateway # логи сервиса (gateway, id
 |---|---|---|
 | `/opt/travelagency/docker/.env` | Секреты: пароли Postgres и MinIO, `JWT_SIGNING_KEY`, `GRPC_INTERNAL_SERVICE_TOKEN` | Шаблон `docker/.env.example`, значения сгенерировать заново (`openssl rand -base64 32`) |
 | `/opt/travelagency/docker/docker-compose.override.yml` | Порты, образы GHCR, монтирование сертификата и пароля | [`docker/docker-compose.override.example.yml`](docker/docker-compose.override.example.yml) |
-| `/etc/travelagency/certs/tls.crt`, `tls.key` | Самоподписанный сертификат для адреса dev (адрес у команды), до 2028-10-02 | `openssl req -x509 -newkey rsa:2048 -nodes -days 730 -subj "/CN=<адрес>" -addext "subjectAltName=IP:<адрес>" -keyout tls.key -out tls.crt` |
+| `/etc/letsencrypt/` | Сертификаты Let's Encrypt и настройки продления | `sudo deploy/scripts/issue-cert.sh` |
+| `/etc/travelagency/certs/tls.crt`, `tls.key` | Самоподписанный сертификат: нужен для редиректа по IP и до первого выпуска Let's Encrypt, до 2028-10-02 | `openssl req -x509 -newkey rsa:2048 -nodes -days 730 -subj "/CN=<адрес>" -addext "subjectAltName=IP:<адрес>" -keyout tls.key -out tls.crt` |
 | `/etc/travelagency/auth/htpasswd` | Пароль basic auth для `dev` | `printf 'dev:%s\n' "$(openssl passwd -apr1)" > /etc/travelagency/auth/htpasswd` |
 | `/opt/travelagency-local/minio/Dockerfile` | Сборка локального образа MinIO | [`docker/minio/Dockerfile`](docker/minio/Dockerfile) |
 | `/etc/docker/daemon.json` | Ротация логов Docker | `{"log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}}` |
