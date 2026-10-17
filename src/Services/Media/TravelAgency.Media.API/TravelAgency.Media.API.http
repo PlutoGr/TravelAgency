@@ -1,4 +1,4 @@
-@TravelAgency.Media.API_HostAddress = http://localhost:5277
+@TravelAgency.Media.API_HostAddress = http://localhost:5050
 
 GET {{TravelAgency.Media.API_HostAddress}}/weatherforecast/
 Accept: application/json

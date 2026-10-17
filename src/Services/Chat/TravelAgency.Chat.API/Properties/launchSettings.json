@@ -5,18 +5,20 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "http://localhost:5003",
+      "applicationUrl": "http://localhost:5040",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GrpcClients__BookingServiceUrl": "http://localhost:5031"
       }
     },
     "https": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "https://localhost:7166;http://localhost:5003",
+      "applicationUrl": "https://localhost:7166;http://localhost:5040",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "GrpcClients__BookingServiceUrl": "http://localhost:5031"
       }
     }
   }
