@@ -33,7 +33,7 @@ dotnet run
 
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
-| `ConnectionStrings__BookingDb` | appsettings | Строка подключения PostgreSQL |
+| `ConnectionStrings__BookingDb` | **required** | Строка подключения PostgreSQL. Нужна и сервису, и `dotnet ef` (design-time фабрика без неё останавливается). Пример: `Host=localhost;Port=5433;Database=travel_booking;Username=<POSTGRES_USER>;Password=<POSTGRES_PASSWORD>` |
 | `JwtSettings__SigningKey` | — | **Обязательно в production.** Ключ подписи JWT (должен совпадать с Identity) |
 | `JwtSettings__Issuer` | `TravelAgency.Identity` | Issuer токена |
 | `JwtSettings__Audience` | `TravelAgency` | Audience токена |
