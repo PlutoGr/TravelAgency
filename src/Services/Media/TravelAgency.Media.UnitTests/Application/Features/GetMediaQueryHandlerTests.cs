@@ -1,5 +1,6 @@
 using TravelAgency.Media.Application.Features.Get;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Exceptions;
 using TravelAgency.Media.Domain.Interfaces;
@@ -38,23 +39,48 @@ public class GetMediaQueryHandlerTests
         result.ContentType.Should().Be("image/jpeg");
         result.FileName.Should().Be("photo.jpg");
         result.IsPublic.Should().BeFalse();
+        result.IsPublicTourImage.Should().BeFalse();
     }
 
     [Fact]
-    public async Task Handle_PublicFile_OtherClient_ReturnsStream()
+    public async Task Handle_PublicGeneral_OtherClient_Returns404_PublicTourImage_IsServed()
+    {
+        var generalId = Guid.NewGuid();
+        var general = Published("doc.pdf", "application/pdf", MediaPurposes.General);
+        _repository.GetByIdAsync(generalId, Arg.Any<CancellationToken>()).Returns(general);
+
+        var denied = async () => await _handler.Handle(Query(generalId, OtherId, AppRoles.Client), CancellationToken.None);
+        await denied.Should().ThrowAsync<MediaNotFoundException>();
+        await _storage.DidNotReceive().DownloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        var tourId = Guid.NewGuid();
+        var tourImage = Published("cover.jpg", "image/jpeg", MediaPurposes.TourImage);
+        var expectedStream = new MemoryStream([4, 5]);
+        _repository.GetByIdAsync(tourId, Arg.Any<CancellationToken>()).Returns(tourImage);
+        _storage.DownloadAsync(tourImage.StorageKey, Arg.Any<CancellationToken>()).Returns(expectedStream);
+
+        var result = await _handler.Handle(Query(tourId, OtherId, AppRoles.Client), CancellationToken.None);
+
+        result.Content.Should().BeSameAs(expectedStream);
+        result.IsPublic.Should().BeTrue();
+        result.IsPublicTourImage.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_PublicGeneral_Owner_ReturnsStream()
     {
         var fileId = Guid.NewGuid();
-        var mediaFile = MediaFile.Create("photo.jpg", "image/jpeg", 1024, "key", OwnerId.ToString());
-        mediaFile.MarkPublic();
-        var expectedStream = new MemoryStream([4, 5]);
+        var mediaFile = Published("doc.pdf", "application/pdf", MediaPurposes.General);
+        var expectedStream = new MemoryStream([6]);
 
         _repository.GetByIdAsync(fileId, Arg.Any<CancellationToken>()).Returns(mediaFile);
         _storage.DownloadAsync(mediaFile.StorageKey, Arg.Any<CancellationToken>()).Returns(expectedStream);
 
-        var result = await _handler.Handle(Query(fileId, OtherId, AppRoles.Client), CancellationToken.None);
+        var result = await _handler.Handle(Query(fileId, OwnerId, AppRoles.Client), CancellationToken.None);
 
         result.Content.Should().BeSameAs(expectedStream);
         result.IsPublic.Should().BeTrue();
+        result.IsPublicTourImage.Should().BeFalse();
     }
 
     [Fact]
@@ -199,6 +225,13 @@ public class GetMediaQueryHandlerTests
 
     private static MediaFile PrivateFile() =>
         MediaFile.Create("draft.pdf", "application/pdf", 32, "owners/draft.pdf", OwnerId.ToString());
+
+    private static MediaFile Published(string name, string contentType, string purpose)
+    {
+        var file = MediaFile.Create(name, contentType, 32, "owners/" + name, OwnerId.ToString(), purpose);
+        file.MarkPublic();
+        return file;
+    }
 
     private static GetMediaQuery Query(Guid fileId, Guid userId, params string[] roles) =>
         new(fileId, userId, roles);

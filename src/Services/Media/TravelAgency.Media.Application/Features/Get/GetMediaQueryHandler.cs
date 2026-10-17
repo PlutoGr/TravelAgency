@@ -1,5 +1,6 @@
 using MediatR;
 using TravelAgency.Media.Application.Interfaces;
+using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Enums;
 using TravelAgency.Media.Domain.Exceptions;
@@ -25,17 +26,24 @@ public sealed class GetMediaQueryHandler(
             throw new MediaNotFoundException(request.Id);
 
         var stream = await storage.DownloadAsync(file.StorageKey, ct);
-        return new GetMediaResponse(stream, file.ContentType, file.OriginalFileName, file.IsPublic);
+        var publicTourImage = file.IsPublic && MediaPurposes.IsTourImage(file.Purpose);
+        return new GetMediaResponse(
+            stream,
+            file.ContentType,
+            file.OriginalFileName,
+            file.IsPublic,
+            publicTourImage);
     }
 
     /// <summary>
-    /// Access, in order: public file, owner, Manager or Admin.
+    /// Access, in order: public tour-image, owner, Manager or Admin.
+    /// A public file with another purpose does not take the first branch.
     /// Anything else is the same not-found error as a missing id, so the response
     /// does not reveal that the file exists.
     /// </summary>
     private static bool CanRead(MediaFile file, GetMediaQuery request)
     {
-        if (file.IsPublic)
+        if (file.IsPublic && MediaPurposes.IsTourImage(file.Purpose))
             return true;
 
         var isOwner = string.Equals(

@@ -11,5 +11,6 @@ public sealed record GetMediaResponse(
     Stream Content,
     string ContentType,
     string FileName,
-    bool IsPublic
+    bool IsPublic,
+    bool IsPublicTourImage
 );

@@ -41,10 +41,11 @@ public sealed class MediaController(IMediator mediator, ICurrentUserService curr
 
     /// <summary>
     /// Download the original file.
-    /// A public file is readable by any authenticated user.
-    /// A private file is readable by its owner and by Manager or Admin.
+    /// A public tour-image is readable by any authenticated user.
+    /// Any other file, including a public file with another purpose, is readable
+    /// by its owner and by Manager or Admin.
     /// Anyone else gets 404, the same response as a missing or deleted file.
-    /// A non-public response is sent with Cache-Control: private, no-store.
+    /// A response that is not a public tour-image is sent with Cache-Control: private, no-store.
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -58,7 +59,7 @@ public sealed class MediaController(IMediator mediator, ICurrentUserService curr
             : new[] { currentUser.Role };
 
         var result = await mediator.Send(new GetMediaQuery(id, currentUser.UserId, roles), ct);
-        if (!result.IsPublic)
+        if (!result.IsPublicTourImage)
             Response.Headers.CacheControl = MediaCacheControl.PrivateNoStore;
 
         Response.OnCompleted(async () => await result.Content.DisposeAsync());

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using TravelAgency.Media.Domain;
 using TravelAgency.Media.Domain.Entities;
 using TravelAgency.Media.Domain.Interfaces;
 using TravelAgency.Shared.Contracts.Authorization;
@@ -21,10 +22,14 @@ public class GetByIdTests : IClassFixture<CustomWebApplicationFactory>
         _client = factory.CreateClient();
     }
 
-    private async Task<MediaFile> SeedMediaFileAsync(string ownerId = OwnerId, bool isPublic = false)
+    private async Task<MediaFile> SeedMediaFileAsync(
+        string ownerId = OwnerId,
+        bool isPublic = false,
+        string purpose = MediaPurposes.General)
     {
         _factory.EnsureDatabaseCreated();
-        var file = MediaFile.Create("photo.jpg", "image/jpeg", 1024, "storage/key/photo.jpg", ownerId);
+        var file = MediaFile.Create(
+            "photo.jpg", "image/jpeg", 1024, "storage/key/photo.jpg", ownerId, purpose);
         if (isPublic)
             file.MarkPublic();
 
@@ -55,16 +60,19 @@ public class GetByIdTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task GetById_PublicFile_OtherClient_Returns200()
+    public async Task GetById_PublicGeneral_OtherClient_Returns404_PublicTourImage_Returns200()
     {
-        var mediaFile = await SeedMediaFileAsync(isPublic: true);
+        var general = await SeedMediaFileAsync(isPublic: true, purpose: MediaPurposes.General);
+        var tourImage = await SeedMediaFileAsync(isPublic: true, purpose: MediaPurposes.TourImage);
 
-        var response = await SendAsync(mediaFile.Id, AppRoles.Client, OtherClientId);
+        var denied = await SendAsync(general.Id, AppRoles.Client, OtherClientId);
+        var served = await SendAsync(tourImage.Id, AppRoles.Client, OtherClientId);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
-        (await response.Content.ReadAsByteArrayAsync()).Should().NotBeEmpty();
-        CacheControl(response).Should().NotContain("private");
+        denied.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        served.StatusCode.Should().Be(HttpStatusCode.OK);
+        served.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
+        (await served.Content.ReadAsByteArrayAsync()).Should().NotBeEmpty();
+        CacheControl(served).Should().NotContain("private");
     }
 
     [Fact]
