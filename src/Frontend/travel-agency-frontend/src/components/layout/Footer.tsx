@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, Phone, Mail, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
-import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
 const TOURIST_LINKS = [
@@ -119,20 +118,6 @@ export default function Footer() {
           <p className="text-sm text-white/40">
             © {new Date().getFullYear()} TravelAgency. Все права защищены.
           </p>
-          <div className="flex gap-4">
-            {['VK', 'TG', 'YT'].map((social) => (
-              <a
-                key={social}
-                href="#"
-                className={clsx(
-                  'flex h-9 w-9 items-center justify-center rounded-full',
-                  'bg-white/5 text-xs font-bold text-white/50 transition-colors hover:bg-terracotta hover:text-white',
-                )}
-              >
-                {social}
-              </a>
-            ))}
-          </div>
         </div>
       </div>
     </footer>
