@@ -65,7 +65,7 @@ describe('ScrollToTop', () => {
 
     const view = renderAt('/#foo');
     for (let i = 0; i < 70 && queued; i += 1) {
-      const callback = queued;
+      const callback: FrameRequestCallback = queued;
       queued = null;
       callback(0);
     }
