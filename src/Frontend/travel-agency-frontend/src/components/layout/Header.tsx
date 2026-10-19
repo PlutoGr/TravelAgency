@@ -53,19 +53,7 @@ export default function Header() {
 
   function handleNavClick(href: string) {
     closeMobileMenu();
-    if (href.includes('#')) {
-      const [path, hash] = href.split('#');
-      if (window.location.pathname === (path || '/')) {
-        document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' });
-      } else {
-        navigate(path || '/');
-        setTimeout(() => {
-          document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-      }
-    } else {
-      navigate(href);
-    }
+    navigate(href);
   }
 
   function handleLogout() {
@@ -97,15 +85,25 @@ export default function Header() {
 
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <button
-              key={link.href}
-              onClick={() => handleNavClick(link.href)}
-              className="font-medium text-dark/70 transition-colors hover:text-primary"
-            >
-              {link.label}
-            </button>
-          ))}
+          {NAV_LINKS.map((link) =>
+            link.href.includes('#') ? (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="font-medium text-dark/70 transition-colors hover:text-primary"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <button
+                key={link.href}
+                onClick={() => handleNavClick(link.href)}
+                className="font-medium text-dark/70 transition-colors hover:text-primary"
+              >
+                {link.label}
+              </button>
+            ),
+          )}
         </nav>
 
         {/* Right Side */}
@@ -255,15 +253,26 @@ export default function Header() {
             className="fixed inset-0 top-16 z-30 overflow-y-auto bg-white md:hidden"
           >
             <nav className="flex flex-col gap-2 p-6">
-              {NAV_LINKS.map((link) => (
-                <button
-                  key={link.href}
-                  onClick={() => handleNavClick(link.href)}
-                  className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
-                >
-                  {link.label}
-                </button>
-              ))}
+              {NAV_LINKS.map((link) =>
+                link.href.includes('#') ? (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={link.href}
+                    onClick={() => handleNavClick(link.href)}
+                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
+                  >
+                    {link.label}
+                  </button>
+                ),
+              )}
 
               <div className="my-4 h-px bg-sand" />
 
