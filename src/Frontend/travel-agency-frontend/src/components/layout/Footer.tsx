@@ -5,17 +5,9 @@ import { motion } from 'framer-motion';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
-const COMPANY_LINKS = [
-  { label: 'О нас', href: '/about' },
-  { label: 'Блог', href: '/blog' },
-  { label: 'Карьера', href: '/careers' },
-] as const;
-
 const TOURIST_LINKS = [
   { label: 'Популярные туры', href: '/tours' },
-  { label: 'Направления', href: '/tours#destinations' },
   { label: 'Отзывы', href: '/#reviews' },
-  { label: 'FAQ', href: '/faq' },
 ] as const;
 
 const CONTACTS = [
@@ -37,7 +29,7 @@ export default function Footer() {
   return (
     <footer id="contacts" className="bg-dark text-white/80">
       <div className="mx-auto max-w-7xl px-4 py-16 lg:px-8">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3">
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link
@@ -50,25 +42,6 @@ export default function Footer() {
               Откройте мир незабываемых путешествий. Мы создаём уникальные туры,
               которые превращают мечты в реальность.
             </p>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="mb-4 font-heading text-sm font-semibold uppercase tracking-wider text-white">
-              Компания
-            </h3>
-            <ul className="space-y-3">
-              {COMPANY_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-white/60 transition-colors hover:text-terracotta"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* For Tourists */}
