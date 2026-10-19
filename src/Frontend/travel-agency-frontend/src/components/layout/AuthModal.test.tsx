@@ -120,7 +120,7 @@ describe('AuthModal unavailable auth service', () => {
     await user.click(screen.getByRole('button', { name: 'Войти' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Слишком много попыток входа. Подождите минуту и попробуйте снова',
+      'Слишком много попыток входа. Подождите немного и попробуйте снова.',
     );
     expect(toast.error).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Email')).toHaveValue('a@b.com');

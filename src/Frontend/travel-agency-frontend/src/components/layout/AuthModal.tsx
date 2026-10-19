@@ -14,7 +14,7 @@ const AUTH_TABS = [
 ] as const;
 
 const AUTH_UNAVAILABLE = 'Не удалось войти. Попробуйте ещё раз через минуту';
-const LOGIN_RATE_LIMITED = 'Слишком много попыток входа. Подождите минуту и попробуйте снова';
+const LOGIN_RATE_LIMITED = 'Слишком много попыток входа. Подождите немного и попробуйте снова.';
 
 function httpStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
