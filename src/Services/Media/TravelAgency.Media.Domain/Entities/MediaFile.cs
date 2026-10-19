@@ -75,6 +75,17 @@ public sealed class MediaFile
         IsPublic = true;
     }
 
+    /// <summary>
+    /// Меняет назначение у той же строки. Id и ключ хранилища не меняются.
+    /// </summary>
+    public void ChangePurpose(string purpose)
+    {
+        if (string.IsNullOrWhiteSpace(purpose))
+            throw new ArgumentException("Purpose is required.", nameof(purpose));
+
+        Purpose = purpose;
+    }
+
     public void MarkAsDeleted()
     {
         Status = MediaFileStatus.Deleted;

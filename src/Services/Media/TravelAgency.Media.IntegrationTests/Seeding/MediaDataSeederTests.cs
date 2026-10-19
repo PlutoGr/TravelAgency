@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SixLabors.ImageSharp;
 using TravelAgency.Media.Application.Interfaces;
@@ -67,27 +68,39 @@ public class MediaDataSeederTests
     }
 
     [Fact]
-    public async Task Seed_ReplacesExistingFileWhenPurposeIsNotTourImage()
+    public async Task Seed_UpdatesPurposeInPlaceWhenItIsNotTourImage()
     {
         await using var db = await CreateDbAsync();
         var storage = new RecordingStorage();
-        await MediaDataSeeder.SeedAsync(db, storage, new ImageProcessingService(), NullLogger.Instance, CancellationToken.None);
+        var logger = new ListLogger();
+        await MediaDataSeeder.SeedAsync(db, storage, new ImageProcessingService(), logger, CancellationToken.None);
 
         var id = DemoSeedIds.PhotoId(1, 1);
         db.ChangeTracker.Clear();
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE \"MediaFiles\" SET \"Purpose\" = {"general"} WHERE \"Id\" = {id}");
         db.ChangeTracker.Clear();
+        var before = await db.MediaFiles.AsNoTracking().SingleAsync(f => f.Id == id);
+        var uploadsBefore = storage.Objects.Count;
+        logger.Messages.Clear();
 
-        await MediaDataSeeder.SeedAsync(db, storage, new ImageProcessingService(), NullLogger.Instance, CancellationToken.None);
+        await MediaDataSeeder.SeedAsync(db, storage, new ImageProcessingService(), logger, CancellationToken.None);
 
         var files = await db.MediaFiles.AsNoTracking().Include(f => f.Thumbnails).ToListAsync();
         files.Should().HaveCount(DemoSeedIds.PublishedTourCount * DemoSeedIds.PhotosPerTour);
-        var replaced = files.Single(f => f.Id == id);
-        replaced.Purpose.Should().Be(MediaPurposes.TourImage);
-        replaced.IsPublic.Should().BeTrue();
-        replaced.Thumbnails.Select(t => t.SizeCode).Should().BeEquivalentTo(TourImageSizes.All.Select(s => s.Code));
-        storage.Objects.Should().ContainKey(replaced.StorageKey);
+        var kept = files.Single(f => f.Id == id);
+        kept.Id.Should().Be(before.Id);
+        kept.Purpose.Should().Be(MediaPurposes.TourImage);
+        kept.IsPublic.Should().BeTrue();
+        kept.StorageKey.Should().Be(before.StorageKey);
+        kept.UploadedAt.Should().Be(before.UploadedAt);
+        kept.OriginalFileName.Should().Be(before.OriginalFileName);
+        kept.Thumbnails.Select(t => t.SizeCode).Should().BeEquivalentTo(TourImageSizes.All.Select(s => s.Code));
+        storage.Objects.Count.Should().Be(uploadsBefore);
+        storage.Objects.Should().ContainKey(before.StorageKey);
+        logger.Messages.Should().Contain(message =>
+            message.Contains(id.ToString(), StringComparison.Ordinal)
+            && message.Contains("updated in place", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -158,6 +171,34 @@ public class MediaDataSeederTests
 
         public Task<string> GeneratePresignedUrlAsync(string key, TimeSpan ttl, CancellationToken ct = default) =>
             Task.FromResult("http://storage.local/" + key);
+    }
+
+    private sealed class ListLogger : ILogger
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 
     private sealed class TestEnvironment(string name) : IHostEnvironment
