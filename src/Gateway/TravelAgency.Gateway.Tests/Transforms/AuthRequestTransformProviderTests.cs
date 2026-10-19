@@ -142,6 +142,18 @@ public class AuthRequestTransformProviderTests
     }
 
     [Fact]
+    public async Task Transform_WhenAccessTokenCookieIsPercentEncoded_UsesDecodedBearer()
+    {
+        var provider = CreateProvider();
+        var context = CreateRequestContext("/api/v1/auth/me", accessTokenCookie: "ab%2Bcd%2Fef%3D%3D");
+
+        await InvokeTransformAsync(provider, context);
+
+        Assert.Equal("Bearer", context.ProxyRequest.Headers.Authorization!.Scheme);
+        Assert.Equal("ab+cd/ef==", context.ProxyRequest.Headers.Authorization.Parameter);
+    }
+
+    [Fact]
     public async Task Transform_WhenNoAccessTokenCookie_DoesNotAddAuthorizationHeader()
     {
         var provider = CreateProvider();
