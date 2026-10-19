@@ -1,18 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, BadgeCheck, Headphones, XCircle } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { SearchBar } from '@/components/common';
 import { getDestinations } from '@/api/catalog';
 import type { Destination } from '@/types';
 import { catalogPath, resolveHomeSearch } from '@/utils/catalogQuery';
 
-const advantages = [
-  { icon: Shield, label: 'Лучшие цены' },
+// Здесь только то, что сайт уже выполняет. Цены, поддержка и отмена вернутся отдельными задачами.
+const advantages: { icon: LucideIcon; label: string }[] = [
   { icon: BadgeCheck, label: 'Проверенные отели' },
-  { icon: Headphones, label: '24/7 поддержка' },
-  { icon: XCircle, label: 'Бесплатная отмена' },
-] as const;
+];
 
 const containerVariants = {
   hidden: {},
@@ -78,20 +77,22 @@ export default function HeroSection() {
           <SearchBar className="mx-auto max-w-4xl" onSearch={handleSearch} />
         </motion.div>
 
-        <motion.div
-          variants={childVariants}
-          className="mt-10 grid grid-cols-2 gap-3 sm:flex sm:justify-center sm:gap-6"
-        >
-          {advantages.map(({ icon: Icon, label }) => (
-            <div
-              key={label}
-              className="flex items-center justify-center gap-2 rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm"
-            >
-              <Icon size={18} className="shrink-0" />
-              <span>{label}</span>
-            </div>
-          ))}
-        </motion.div>
+        {advantages.length > 0 && (
+          <motion.div
+            variants={childVariants}
+            className="mt-10 flex flex-wrap justify-center gap-3 sm:gap-6"
+          >
+            {advantages.map(({ icon: Icon, label }) => (
+              <div
+                key={label}
+                className="flex items-center justify-center gap-2 rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm"
+              >
+                <Icon size={18} className="shrink-0" />
+                <span>{label}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
       </motion.div>
     </section>
   );
