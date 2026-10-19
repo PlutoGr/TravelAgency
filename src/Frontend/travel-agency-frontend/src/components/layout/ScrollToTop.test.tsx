@@ -79,4 +79,69 @@ describe('ScrollToTop', () => {
     view.unmount();
     expect(window.cancelAnimationFrame).toHaveBeenCalled();
   });
+
+  it('does not crash on a malformed hash and scrolls to the top', () => {
+    expect(() => renderAt('/#%E0%A4%A')).not.toThrow();
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('re-aligns the hash target after a late layout shift and stops on wheel', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    let docTop = 500;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () => ({
+        x: 0,
+        y: docTop,
+        top: docTop,
+        left: 0,
+        right: 10,
+        bottom: docTop + 10,
+        width: 10,
+        height: 10,
+        toJSON() {
+          return {};
+        },
+      }),
+    );
+
+    const observed: Element[] = [];
+    let disconnected = false;
+    class FakeResizeObserver {
+      observe(element: Element) {
+        observed.push(element);
+      }
+      unobserve() {}
+      disconnect() {
+        disconnected = true;
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+    const view = renderAt('/#reviews', ['reviews']);
+    const target = document.getElementById('reviews')!;
+    expect(target.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(observed).toContain(document.body);
+    expect(observed).toContain(target);
+
+    docTop = 900;
+    frames[0](0);
+    expect(target.scrollIntoView).toHaveBeenCalledTimes(2);
+
+    window.dispatchEvent(new Event('wheel'));
+    docTop = 1400;
+    frames[frames.length - 1](0);
+    expect(target.scrollIntoView).toHaveBeenCalledTimes(2);
+
+    view.unmount();
+    expect(disconnected).toBe(true);
+    expect(window.cancelAnimationFrame).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
