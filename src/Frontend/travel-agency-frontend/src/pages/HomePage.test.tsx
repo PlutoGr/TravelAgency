@@ -49,10 +49,18 @@ describe('HomePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Почему выбирают нас' })).toBeInTheDocument();
     expect(screen.getByText('Проверенные отели')).toBeInTheDocument();
-    expect(screen.getByText('Надёжность')).toBeInTheDocument();
+    expect(screen.getByText('Проверенные турагентства')).toBeInTheDocument();
+    expect(screen.getByText('Сравнение без лишних вкладок')).toBeInTheDocument();
+    expect(screen.getByText('Связь с менеджером на сайте')).toBeInTheDocument();
 
     const text = document.body.textContent ?? '';
-    expect(text).not.toMatch(/Лучшие цены|Гарантия лучшей цены/);
+    const whyUs = document.getElementById('why-us')?.textContent ?? '';
+    expect(whyUs).not.toMatch(/\d/);
+    expect(text).not.toMatch(/Лучшие цены|Гарантия лучшей цены|лучшей цене/);
+    expect(text).not.toMatch(/рейтинг/i);
+    expect(text).not.toMatch(/лет на рынке/);
+    expect(text).not.toMatch(/застрахованы/);
+    expect(text).not.toMatch(/довольных клиентов/);
     expect(text).not.toMatch(/24\/7|круглосуточно/);
     expect(text).not.toMatch(/Бесплатная отмена/);
   });

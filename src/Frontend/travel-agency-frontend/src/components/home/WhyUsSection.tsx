@@ -1,5 +1,5 @@
-import { Shield, Star } from 'lucide-react';
-import { FadeInOnScroll, AnimatedCounter } from '@/components/common';
+import { BadgeCheck, Columns2, MessageSquare } from 'lucide-react';
+import { FadeInOnScroll } from '@/components/common';
 import type { LucideIcon } from 'lucide-react';
 
 interface Advantage {
@@ -7,23 +7,26 @@ interface Advantage {
   color: string;
   title: string;
   description: string;
-  counter?: { end: number; suffix: string };
 }
 
 const advantages: Advantage[] = [
   {
-    icon: Shield,
+    icon: BadgeCheck,
     color: 'bg-primary/10 text-primary',
-    title: 'Надёжность',
-    description: 'Более 10 лет на рынке туризма. Все наши туры застрахованы.',
-    counter: { end: 10, suffix: '+ лет' },
+    title: 'Проверенные турагентства',
+    description: 'Туры разных турагентств собраны в одном каталоге.',
   },
   {
-    icon: Star,
+    icon: Columns2,
     color: 'bg-amber-100 text-amber-600',
-    title: '2000+ довольных клиентов',
-    description: 'Высший рейтинг среди туроператоров.',
-    counter: { end: 2000, suffix: '+' },
+    title: 'Сравнение без лишних вкладок',
+    description: 'Цены, даты и условия туров видны на одной странице.',
+  },
+  {
+    icon: MessageSquare,
+    color: 'bg-emerald-100 text-emerald-600',
+    title: 'Связь с менеджером на сайте',
+    description: 'Заявка и вопросы менеджеру без звонков и мессенджеров.',
   },
 ];
 
@@ -57,17 +60,7 @@ export default function WhyUsSection() {
                   <item.icon size={28} />
                 </div>
 
-                <h3 className="font-heading text-lg font-bold text-dark">
-                  {item.counter ? (
-                    <AnimatedCounter end={item.counter.end} suffix={item.counter.suffix} />
-                  ) : (
-                    item.title
-                  )}
-                </h3>
-
-                {item.counter && (
-                  <p className="mt-1 text-sm font-semibold text-warm-gray">{item.title}</p>
-                )}
+                <h3 className="font-heading text-lg font-bold text-dark">{item.title}</h3>
 
                 <p className="mt-3 text-sm leading-relaxed text-warm-gray">{item.description}</p>
               </div>
