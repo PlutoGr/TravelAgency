@@ -5,7 +5,7 @@ const MAX_HASH_FRAMES = 60;
 const ALIGN_MS = 1800;
 
 export default function ScrollToTop() {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
 
   useEffect(() => {
     if (!hash) {
@@ -31,15 +31,26 @@ export default function ScrollToTop() {
     let userStopped = false;
     let alignFrame = 0;
     let observer: ResizeObserver | null = null;
-    let scrollingFromAlign = false;
     const userEvents = ['wheel', 'touchstart', 'touchmove'] as const;
+    const scrollKeys = new Set([
+      'PageUp',
+      'PageDown',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      ' ',
+      'Spacebar',
+      'Home',
+      'End',
+    ]);
 
     const stopForUser = () => {
       userStopped = true;
     };
 
-    const stopOnUserScroll = () => {
-      if (!scrollingFromAlign) userStopped = true;
+    const stopOnKey = (event: KeyboardEvent) => {
+      if (scrollKeys.has(event.key)) userStopped = true;
     };
 
     const cleanupAlign = () => {
@@ -49,7 +60,7 @@ export default function ScrollToTop() {
       for (const eventName of userEvents) {
         window.removeEventListener(eventName, stopForUser);
       }
-      window.removeEventListener('scroll', stopOnUserScroll);
+      window.removeEventListener('keydown', stopOnKey);
     };
 
     const followLayout = (target: HTMLElement) => {
@@ -60,9 +71,7 @@ export default function ScrollToTop() {
         if (cancelled || userStopped || performance.now() > deadline) return;
         const nextTop = target.getBoundingClientRect().top + window.scrollY;
         if (Math.abs(nextTop - lastTop) > 1) {
-          scrollingFromAlign = true;
           target.scrollIntoView();
-          scrollingFromAlign = false;
           lastTop = target.getBoundingClientRect().top + window.scrollY;
         }
       };
@@ -81,7 +90,7 @@ export default function ScrollToTop() {
       for (const eventName of userEvents) {
         window.addEventListener(eventName, stopForUser, { passive: true });
       }
-      window.addEventListener('scroll', stopOnUserScroll, { passive: true });
+      window.addEventListener('keydown', stopOnKey);
       alignFrame = window.requestAnimationFrame(watch);
     };
 
@@ -89,9 +98,7 @@ export default function ScrollToTop() {
       if (cancelled) return;
       const target = document.getElementById(id);
       if (target) {
-        scrollingFromAlign = true;
         target.scrollIntoView();
-        scrollingFromAlign = false;
         followLayout(target);
         return;
       }
@@ -111,7 +118,7 @@ export default function ScrollToTop() {
       window.cancelAnimationFrame(frame);
       cleanupAlign();
     };
-  }, [pathname, hash]);
+  }, [pathname, hash, key]);
 
   return null;
 }
