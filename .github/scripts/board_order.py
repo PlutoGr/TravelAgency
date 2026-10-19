@@ -321,13 +321,23 @@ def main():
         run_batched([f'updateProjectV2ItemPosition(input:{{projectId:"{PROJECT_ID}",itemId:"{it["id"]}"'
                      + (f',afterId:"{prev["id"]}"' if prev else "") + '}){clientMutationId}'
                      for it, prev, _ in moves])
-        items2 = read_items()
-        ok = len(items2) == len(items) - len(archives)
-        for col in OPTIONS:
-            got = [i["id"] for i in items2 if managed(i) and i["status"] == col]
-            if got != [i["id"] for i in desired[col]]:
-                ok = False
-                print(f"СВЕРКА: в колонке «{col}» порядок или состав отличается от плана")
+        def check():
+            items2 = read_items()
+            good = len(items2) == len(items) - len(archives)
+            bad_cols = [col for col in OPTIONS
+                        if [i["id"] for i in items2 if managed(i) and i["status"] == col]
+                        != [i["id"] for i in desired[col]]]
+            return good and not bad_cols, bad_cols
+
+        # GitHub Projects применяет изменения с задержкой: при расхождении перечитываем доску ещё раз.
+        ok, bad_cols = check()
+        for pause in (5, 15):
+            if ok:
+                break
+            time.sleep(pause)
+            ok, bad_cols = check()
+        for col in bad_cols:
+            print(f"СВЕРКА: в колонке «{col}» порядок или состав отличается от плана")
         print("сверка: доска совпадает с планом" if ok else "сверка: РАСХОЖДЕНИЕ")
         if not ok:
             sys.exit(2)
