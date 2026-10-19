@@ -210,7 +210,7 @@ describe('TourDetailPage', () => {
       'href',
       '/dashboard/bookings/booking-42',
     );
-    expect(screen.getByText('Заявка отправлена. Менеджер ответит в чате заявки, обычно в течение рабочего дня')).toBeInTheDocument();
+    expect(screen.getByText('Заявка отправлена. Менеджер свяжется с вами в рабочее время')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Продолжить просмотр' }));
     await waitFor(() => {

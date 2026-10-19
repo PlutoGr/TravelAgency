@@ -86,7 +86,7 @@ describe('BookingForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Отправить заявку' }));
 
-    expect(await screen.findByText('Заявка отправлена. Менеджер ответит в чате заявки, обычно в течение рабочего дня')).toBeInTheDocument();
+    expect(await screen.findByText('Заявка отправлена. Менеджер свяжется с вами в рабочее время')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Перейти к заявке' })).toHaveAttribute(
       'href',
       '/dashboard/bookings/b1',
@@ -95,6 +95,20 @@ describe('BookingForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Продолжить просмотр' }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('after a request says the manager will answer in working hours, without exact time', async () => {
+    const user = userEvent.setup();
+    const tour = sampleTour({ id: 'tour-77', title: 'Санторини' });
+
+    renderForm(<BookingForm tourId={tour.id} tours={[tour]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Далее' }));
+    await user.click(await screen.findByRole('button', { name: 'Отправить заявку' }));
+
+    const message = await screen.findByText('Заявка отправлена. Менеджер свяжется с вами в рабочее время');
+    expect(message).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/в течение|24\/7|круглосуточно|\d+\s*(час|мин)/i);
   });
 
   it('uses «от» and the tour currency when no date is selected, and hides a zero price', async () => {
@@ -158,7 +172,7 @@ describe('BookingForm', () => {
 
     expect(onSuccess).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
-    expect(toast.success).toHaveBeenCalledWith('Заявка успешно создана!');
+    expect(toast.success).toHaveBeenCalledWith('Заявка отправлена. Менеджер свяжется с вами в рабочее время');
     expect(screen.queryByRole('link', { name: 'Перейти к заявке' })).not.toBeInTheDocument();
   });
 

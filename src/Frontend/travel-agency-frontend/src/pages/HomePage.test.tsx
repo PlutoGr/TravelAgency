@@ -44,6 +44,19 @@ describe('HomePage', () => {
     expect(getTours).not.toHaveBeenCalled();
   });
 
+  it('does not promise best prices, 24/7 support or free cancellation', async () => {
+    renderPage(<HomePage />);
+
+    expect(await screen.findByRole('heading', { name: 'Почему выбирают нас' })).toBeInTheDocument();
+    expect(screen.getByText('Проверенные отели')).toBeInTheDocument();
+    expect(screen.getByText('Надёжность')).toBeInTheDocument();
+
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/Лучшие цены|Гарантия лучшей цены/);
+    expect(text).not.toMatch(/24\/7|круглосуточно/);
+    expect(text).not.toMatch(/Бесплатная отмена/);
+  });
+
   it('opens the catalog with a direction and departure date, without a travelers field', async () => {
     const user = userEvent.setup();
     vi.mocked(getDestinations).mockResolvedValue([bali]);
