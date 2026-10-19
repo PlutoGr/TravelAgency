@@ -149,3 +149,4 @@ Thumbs.db
 # Wiki
 # =========================
 TravelAgency.wiki/
+__pycache__/
