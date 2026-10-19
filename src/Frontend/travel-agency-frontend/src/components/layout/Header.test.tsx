@@ -81,45 +81,36 @@ describe('Header', () => {
 
     expect(screen.queryByRole('button', { name: 'Направления' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Туры' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Отзывы' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Контакты' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Отзывы' })).toHaveAttribute('href', '/#reviews');
+    expect(screen.getByRole('link', { name: 'Контакты' })).toHaveAttribute('href', '/#contacts');
 
     await user.click(menuToggle());
 
     expect(screen.queryByRole('button', { name: 'Направления' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Туры' })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: 'Отзывы' })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: 'Контакты' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Отзывы' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Контакты' })).toHaveLength(2);
+    for (const link of screen.getAllByRole('link', { name: 'Отзывы' })) {
+      expect(link).toHaveAttribute('href', '/#reviews');
+    }
+    for (const link of screen.getAllByRole('link', { name: 'Контакты' })) {
+      expect(link).toHaveAttribute('href', '/#contacts');
+    }
   });
 
   it('navigates tours, reviews and contacts from the desktop menu', async () => {
     const user = userEvent.setup();
-    window.history.pushState({}, '', '/start');
     renderHeader('/start');
-    const scrollReviews = vi
-      .spyOn(document.getElementById('reviews')!, 'scrollIntoView')
-      .mockImplementation(() => {});
-    const scrollContacts = vi
-      .spyOn(document.getElementById('contacts')!, 'scrollIntoView')
-      .mockImplementation(() => {});
 
     await user.click(screen.getByRole('button', { name: 'Туры' }));
     expect(locationText()).toBe('/tours');
 
-    window.history.pushState({}, '', '/tours');
-    await user.click(screen.getByRole('button', { name: 'Отзывы' }));
-    expect(locationText()).toBe('/');
-    await waitFor(() => {
-      expect(scrollReviews).toHaveBeenCalled();
-    });
-    expect(scrollContacts).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('link', { name: 'Отзывы' }));
+    expect(locationText()).toBe('/#reviews');
 
-    window.history.pushState({}, '', '/tours');
-    await user.click(screen.getByRole('button', { name: 'Контакты' }));
-    expect(locationText()).toBe('/');
-    await waitFor(() => {
-      expect(scrollContacts).toHaveBeenCalled();
-    });
+    await user.click(screen.getByRole('link', { name: 'Контакты' }));
+    expect(locationText()).toBe('/#contacts');
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('navigates from the mobile menu and closes it', async () => {
