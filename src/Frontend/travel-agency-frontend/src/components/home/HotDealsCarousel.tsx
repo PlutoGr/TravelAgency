@@ -44,7 +44,7 @@ export default function HotDealsCarousel() {
               <h2 className="font-heading text-3xl font-bold text-dark md:text-4xl">
                 Горящие предложения 🔥
               </h2>
-              <p className="mt-2 text-warm-gray">Успейте забронировать по лучшей цене</p>
+              <p className="mt-2 text-warm-gray">Успейте забронировать, пока есть места</p>
             </div>
             <Link
               to="/tours"
