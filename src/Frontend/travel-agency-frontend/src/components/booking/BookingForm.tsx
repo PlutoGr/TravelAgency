@@ -33,6 +33,9 @@ interface BookingFormProps {
   onClose?: () => void;
 }
 
+/** Без точных часов: срок ответа менеджера сайт не гарантирует. */
+const BOOKING_SENT_MESSAGE = 'Заявка отправлена. Менеджер свяжется с вами в рабочее время';
+
 type StepId = 'tour' | 'comment' | 'confirm';
 
 const CATALOG_STEPS: { id: StepId; title: string }[] = [
@@ -161,7 +164,7 @@ export default function BookingForm({
         setCreatedId(booking.id);
         return;
       }
-      toast.success('Заявка успешно создана!');
+      toast.success(BOOKING_SENT_MESSAGE);
       onSuccess?.();
       onClose?.();
     } catch (err: unknown) {
@@ -183,9 +186,7 @@ export default function BookingForm({
   if (createdId) {
     return (
       <div className="space-y-6">
-        <p className="text-base leading-relaxed text-dark">
-          Заявка отправлена. Менеджер ответит в чате заявки, обычно в течение рабочего дня
-        </p>
+        <p className="text-base leading-relaxed text-dark">{BOOKING_SENT_MESSAGE}</p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             to={`/dashboard/bookings/${createdId}`}
