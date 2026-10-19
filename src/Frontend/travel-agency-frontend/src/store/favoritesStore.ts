@@ -2,6 +2,7 @@ import type { Tour } from '@/types';
 import { create } from 'zustand';
 import toast from 'react-hot-toast';
 import * as favoritesApi from '@/api/favorites';
+import { useUIStore } from '@/store/uiStore';
 
 type FavoritesState = {
   favoriteIds: string[];
@@ -59,7 +60,11 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
       set({ favoriteIds: ids, favoriteTours: tours, count: ids.length, error: null });
     } catch {
       set({ error: 'Не удалось загрузить избранное' });
-      toast.error('Не удалось загрузить избранное');
+      // Отложенное сердечко само покажет тост в resumeFavoriteIntent.
+      // Второй тост про загрузку списка здесь лишний.
+      if (useUIStore.getState().authIntent?.type !== 'favorite') {
+        toast.error('Не удалось загрузить избранное');
+      }
     } finally {
       set({ isLoading: false });
     }

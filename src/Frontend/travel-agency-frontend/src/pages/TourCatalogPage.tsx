@@ -20,6 +20,17 @@ import {
   hasCatalogQuery,
 } from '@/utils/catalogQuery';
 
+export const EMPTY_CATALOG_RESULTS =
+  'По вашему запросу туров не нашлось. Попробуйте изменить даты или сбросить фильтры';
+
+/** one: «Найден N тур», few: «Найдено N тура», many: «Найдено N туров». */
+function catalogResultsLabel(total: number): string {
+  const category = new Intl.PluralRules('ru').select(total);
+  if (category === 'one') return `Найден ${total} тур`;
+  if (category === 'few') return `Найдено ${total} тура`;
+  return `Найдено ${total} туров`;
+}
+
 const sortOptions = [
   { value: 'date', label: 'Сначала новые' },
   { value: 'price_asc', label: 'Сначала дешевле' },
@@ -175,6 +186,14 @@ export default function TourCatalogPage() {
     setSearchParams((current) => applyCatalogFilters(current, {}), { replace: true });
   }, [setSearchParams]);
 
+  const handleEmptyReset = useCallback(() => {
+    const filtersWereSet = filtersToSearchParams(filters).toString() !== '';
+    handleReset();
+    if (!filtersWereSet) {
+      void refetch();
+    }
+  }, [filters, handleReset, refetch]);
+
   const handleRemovePill = useCallback(
     (removeFn: (f: TourFiltersType) => TourFiltersType) => {
       handleFilterChange(removeFn(filters));
@@ -207,11 +226,22 @@ export default function TourCatalogPage() {
             <h1 className="font-heading text-2xl font-bold text-dark sm:text-3xl">
               Каталог туров
             </h1>
-            {data && (
-              <p className="mt-1 text-sm text-warm-gray">
-                Найдено {data.total}{' '}
-                {data.total === 1 ? 'тур' : data.total < 5 ? 'тура' : 'туров'}
-              </p>
+            {data && data.total === 0 && (
+              <div className="mt-2">
+                <p className="text-sm text-warm-gray">{EMPTY_CATALOG_RESULTS}</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-3"
+                  onClick={handleEmptyReset}
+                >
+                  Сбросить фильтры
+                </Button>
+              </div>
+            )}
+            {data && data.total > 0 && (
+              <p className="mt-1 text-sm text-warm-gray">{catalogResultsLabel(data.total)}</p>
             )}
           </div>
 
