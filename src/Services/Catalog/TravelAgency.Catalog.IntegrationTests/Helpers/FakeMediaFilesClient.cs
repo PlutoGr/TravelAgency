@@ -30,7 +30,7 @@ public sealed class FakeMediaFilesClient : IMediaFilesClient
             throw new MediaUnavailableException();
 
         IReadOnlyList<RemoteMediaFile> files = Files is null
-            ? ids.Select(id => new RemoteMediaFile(id, OwnerId, DefaultWidth, 900)).ToList()
+            ? ids.Select(id => new RemoteMediaFile(id, OwnerId, DefaultWidth, 900, RemoteMediaPurposes.TourImage)).ToList()
             : ids.Where(Files.ContainsKey).Select(id => Files[id]).ToList();
 
         return Task.FromResult(files);

@@ -186,9 +186,9 @@ public sealed class TourChildRowsPostgresTests : IAsyncLifetime
         var third = Guid.NewGuid();
         _media.Files = new Dictionary<Guid, RemoteMediaFile>
         {
-            [cover] = new(cover, _managerId.ToString(), 1279, 800),
-            [second] = new(second, _managerId.ToString(), 900, 600),
-            [third] = new(third, _managerId.ToString(), 900, 600)
+            [cover] = new(cover, _managerId.ToString(), 1279, 800, RemoteMediaPurposes.TourImage),
+            [second] = new(second, _managerId.ToString(), 900, 600, RemoteMediaPurposes.TourImage),
+            [third] = new(third, _managerId.ToString(), 900, 600, RemoteMediaPurposes.TourImage)
         };
 
         var response = await SendAsync(
@@ -218,7 +218,8 @@ public sealed class TourChildRowsPostgresTests : IAsyncLifetime
             id,
             _managerId.ToString(),
             index == 0 ? width : 900,
-            600)).ToDictionary(file => file.Id);
+            600,
+            RemoteMediaPurposes.TourImage)).ToDictionary(file => file.Id);
 
         var response = await SendAsync(
             Client(),

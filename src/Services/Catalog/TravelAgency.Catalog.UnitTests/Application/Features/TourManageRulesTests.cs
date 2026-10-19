@@ -163,7 +163,7 @@ public class TourManageRulesTests
         var fileId = Guid.NewGuid();
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
-        ReturnFiles(new RemoteMediaFile(fileId, Guid.NewGuid().ToString(), 2000, 1000));
+        ReturnFiles(new RemoteMediaFile(fileId, Guid.NewGuid().ToString(), 2000, 1000, RemoteMediaPurposes.TourImage));
 
         var act = () => ImagesHandler().Handle(ImagesCommand(tour, fileId, isCover: false), CancellationToken.None);
 
@@ -183,7 +183,7 @@ public class TourManageRulesTests
         var foreign = Guid.NewGuid();
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
-        ReturnFiles(new RemoteMediaFile(foreign, Guid.NewGuid().ToString(), 2000, 1000));
+        ReturnFiles(new RemoteMediaFile(foreign, Guid.NewGuid().ToString(), 2000, 1000, RemoteMediaPurposes.TourImage));
 
         var act = () => ImagesHandler().Handle(ImagesCommand(tour, foreign, isCover: false), CancellationToken.None);
 
@@ -216,6 +216,33 @@ public class TourManageRulesTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task Publish_WhenPurposeIsEmpty_ThrowsNotFoundAndDoesNotPublish()
+    {
+        var owner = Guid.NewGuid();
+        var tour = OwnedReady(owner, imageCount: 3);
+        var ids = tour.Images.Select(image => image.MediaFileId).ToList();
+        As(owner, AppRoles.Manager);
+        _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
+        ReturnFiles(ids.Select((id, index) => new RemoteMediaFile(
+            id,
+            owner.ToString(),
+            index == 0 ? TourContentLimits.CoverMinWidthPx : 800,
+            600,
+            index == 0 ? "" : RemoteMediaPurposes.TourImage)).ToArray());
+
+        var act = () => new PublishTourCommandHandler(_store, _media.Object).Handle(
+            new PublishTourCommand(tour.Id, TourEtag.Format(tour.Version)),
+            CancellationToken.None);
+
+        var error = await act.Should().ThrowAsync<TourImageRuleException>();
+        error.Which.Code.Should().Be(TourImageRules.NotFound);
+        error.Which.Message.Should().Be(TourImageRules.RejectedMessage);
+        tour.Status.Should().Be(TourStatus.Draft);
+        _media.Verify(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1279)]
@@ -226,7 +253,7 @@ public class TourManageRulesTests
         var fileId = Guid.NewGuid();
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
-        ReturnFiles(new RemoteMediaFile(fileId, owner.ToString(), width, 800));
+        ReturnFiles(new RemoteMediaFile(fileId, owner.ToString(), width, 800, RemoteMediaPurposes.TourImage));
 
         var act = () => ImagesHandler().Handle(ImagesCommand(tour, fileId, isCover: true), CancellationToken.None);
 
@@ -244,8 +271,8 @@ public class TourManageRulesTests
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
         ReturnFiles(
-            new RemoteMediaFile(coverId, owner.ToString(), 1280, 800),
-            new RemoteMediaFile(narrowId, owner.ToString(), 100, 80));
+            new RemoteMediaFile(coverId, owner.ToString(), 1280, 800, RemoteMediaPurposes.TourImage),
+            new RemoteMediaFile(narrowId, owner.ToString(), 100, 80, RemoteMediaPurposes.TourImage));
 
         var command = new UpdateTourImagesCommand(
             tour.Id,
@@ -273,9 +300,9 @@ public class TourManageRulesTests
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
         ReturnFiles(
-            new RemoteMediaFile(newCover, owner.ToString(), TourContentLimits.CoverMinWidthPx, 900),
-            new RemoteMediaFile(previous[1], owner.ToString(), 800, 600),
-            new RemoteMediaFile(previous[2], owner.ToString(), 800, 600));
+            new RemoteMediaFile(newCover, owner.ToString(), TourContentLimits.CoverMinWidthPx, 900, RemoteMediaPurposes.TourImage),
+            new RemoteMediaFile(previous[1], owner.ToString(), 800, 600, RemoteMediaPurposes.TourImage),
+            new RemoteMediaFile(previous[2], owner.ToString(), 800, 600, RemoteMediaPurposes.TourImage));
 
         IReadOnlyCollection<Guid>? marked = null;
         _media.Setup(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
@@ -306,9 +333,9 @@ public class TourManageRulesTests
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
         ReturnFiles(
-            new RemoteMediaFile(newCover, owner.ToString(), TourContentLimits.CoverMinWidthPx, 900),
-            new RemoteMediaFile(previous[1], owner.ToString(), 800, 600),
-            new RemoteMediaFile(previous[2], owner.ToString(), 800, 600));
+            new RemoteMediaFile(newCover, owner.ToString(), TourContentLimits.CoverMinWidthPx, 900, RemoteMediaPurposes.TourImage),
+            new RemoteMediaFile(previous[1], owner.ToString(), 800, 600, RemoteMediaPurposes.TourImage),
+            new RemoteMediaFile(previous[2], owner.ToString(), 800, 600, RemoteMediaPurposes.TourImage));
         _media.Setup(m => m.MarkPublicAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new MediaUnavailableException());
 
@@ -330,7 +357,7 @@ public class TourManageRulesTests
         var fileId = Guid.NewGuid();
         As(owner, AppRoles.Manager);
         _tours.Setup(t => t.GetByIdAsync(tour.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tour);
-        ReturnFiles(new RemoteMediaFile(fileId, owner.ToString(), 1600, 900));
+        ReturnFiles(new RemoteMediaFile(fileId, owner.ToString(), 1600, 900, RemoteMediaPurposes.TourImage));
 
         var result = await ImagesHandler().Handle(ImagesCommand(tour, fileId, isCover: false), CancellationToken.None);
 
@@ -353,7 +380,8 @@ public class TourManageRulesTests
                 image.MediaFileId,
                 owner.ToString(),
                 image.IsCover ? width : 800,
-                600))
+                600,
+                RemoteMediaPurposes.TourImage))
             .ToArray();
         ReturnFiles(files);
 
@@ -508,7 +536,8 @@ public class TourManageRulesTests
                 image.MediaFileId,
                 owner.ToString(),
                 image.IsCover ? TourContentLimits.CoverMinWidthPx : 800,
-                600))
+                600,
+                RemoteMediaPurposes.TourImage))
             .ToArray();
         ReturnFiles(files);
     }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using TravelAgency.Media.Application;
 using TravelAgency.Media.Application.Interfaces;
 using TravelAgency.Media.Application.Settings;
@@ -38,8 +39,11 @@ public static class DependencyInjection
                 "ConnectionStrings:MediaDb is required. Set ConnectionStrings__MediaDb environment variable or add it to configuration.");
         }
 
-        services.AddDbContext<MediaDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddSingleton(sp => new PostgresNoticeLoggingInterceptor(
+            sp.GetRequiredService<ILoggerFactory>().CreateLogger("Npgsql.Notices")));
+        services.AddDbContext<MediaDbContext>((sp, options) =>
+            options.UseNpgsql(connectionString)
+                .AddInterceptors(sp.GetRequiredService<PostgresNoticeLoggingInterceptor>()));
 
         services.AddScoped<IMediaFileRepository, MediaFileRepository>();
 

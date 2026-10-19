@@ -62,7 +62,7 @@ public sealed class MediaDataSeeder(
             for (var photoNumber = 1; photoNumber <= DemoSeedIds.PhotosPerTour; photoNumber++)
             {
                 var id = DemoSeedIds.PhotoId(tourNumber, photoNumber);
-                if (await KeepExistingAsync(db, storage, id, cancellationToken))
+                if (await KeepExistingAsync(db, storage, logger, id, cancellationToken))
                     continue;
 
                 var caption = $"{Captions[tourNumber - 1]} {photoNumber}";
@@ -108,6 +108,7 @@ public sealed class MediaDataSeeder(
     private static async Task<bool> KeepExistingAsync(
         MediaDbContext db,
         IStorageService storage,
+        ILogger logger,
         Guid id,
         CancellationToken cancellationToken)
     {
@@ -117,13 +118,29 @@ public sealed class MediaDataSeeder(
         if (existing is null)
             return false;
 
+        // Чужой purpose меняется на месте: строка и объект в хранилище остаются.
+        var changed = false;
+        if (!MediaPurposes.IsTourImage(existing.Purpose))
+        {
+            logger.LogWarning(
+                "Demo photo {MediaFileId} purpose {Purpose} updated in place to {ExpectedPurpose}",
+                existing.Id,
+                existing.Purpose,
+                MediaPurposes.TourImage);
+            existing.ChangePurpose(MediaPurposes.TourImage);
+            changed = true;
+        }
+
         if (await ObjectExistsAsync(storage, existing.StorageKey, cancellationToken))
         {
             if (!existing.IsPublic)
             {
                 existing.MarkPublic();
-                await db.SaveChangesAsync(cancellationToken);
+                changed = true;
             }
+
+            if (changed)
+                await db.SaveChangesAsync(cancellationToken);
 
             return true;
         }

@@ -164,7 +164,7 @@ public class TourManageControllerTests
         var foreign = Guid.NewGuid();
         _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
         {
-            [foreign] = new(foreign, Guid.NewGuid().ToString(), 2000, 1000)
+            [foreign] = new(foreign, Guid.NewGuid().ToString(), 2000, 1000, RemoteMediaPurposes.TourImage)
         };
 
         var foreignResponse = await SendAsync(
@@ -188,7 +188,7 @@ public class TourManageControllerTests
         var cover = Guid.NewGuid();
         _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
         {
-            [cover] = new(cover, _managerId.ToString(), 0, 0)
+            [cover] = new(cover, _managerId.ToString(), 0, 0, RemoteMediaPurposes.TourImage)
         };
         var narrow = await SendAsync(
             HttpMethod.Put,
@@ -277,9 +277,9 @@ public class TourManageControllerTests
         var stranger = Guid.NewGuid().ToString();
         _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
         {
-            [foreign] = new(foreign, stranger, 2000, 1000),
-            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900),
-            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900)
+            [foreign] = new(foreign, stranger, 2000, 1000, RemoteMediaPurposes.TourImage),
+            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900, RemoteMediaPurposes.TourImage),
+            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900, RemoteMediaPurposes.TourImage)
         };
         _factory.Media.Marked.Clear();
 
@@ -310,8 +310,8 @@ public class TourManageControllerTests
         _factory.Media.Files = new Dictionary<Guid, RemoteMediaFile>
         {
             [general] = new(general, _managerId.ToString(), 2000, 1000, "general"),
-            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900),
-            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900)
+            [previous[1]] = new(previous[1], _managerId.ToString(), 1600, 900, RemoteMediaPurposes.TourImage),
+            [previous[2]] = new(previous[2], _managerId.ToString(), 1600, 900, RemoteMediaPurposes.TourImage)
         };
         _factory.Media.Marked.Clear();
 
@@ -332,6 +332,14 @@ public class TourManageControllerTests
         StoredImageIds(tour.Id).Should().Equal(previous);
         StoredStatus(tour.Id).Should().Be(TourStatus.Published);
     }
+
+    [Fact]
+    public Task Publish_WhenFilePurposeIsGeneral_Returns422_ImagesNotFound_AndStaysDraft() =>
+        PublishRejectsPurposeAsync("general");
+
+    [Fact]
+    public Task Publish_WhenFilePurposeIsEmpty_IsRejected_AndStaysDraft() =>
+        PublishRejectsPurposeAsync("");
 
     [Fact]
     public async Task Images_OnPublishedTour_WhenAnotherManager_Returns403_AndDoesNotChangeImages()
@@ -538,6 +546,59 @@ public class TourManageControllerTests
             null, null, null, null, null, null, null, null));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         return await ReadTourAsync(response);
+    }
+
+    private async Task PublishRejectsPurposeAsync(string purpose)
+    {
+        var tour = CompleteDraft();
+        var etag = TourEtagOf(tour);
+        var ids = StoredImageIds(tour.Id);
+        _factory.Media.Files = ids.Select((id, index) => new RemoteMediaFile(
+            id,
+            _managerId.ToString(),
+            index == 0 ? 2000 : 1600,
+            1000,
+            index == 0 ? purpose : RemoteMediaPurposes.TourImage)).ToDictionary(file => file.Id);
+        _factory.Media.Marked.Clear();
+
+        var response = await SendAsync(
+            HttpMethod.Post,
+            $"/catalog/manage/tours/{tour.Id}/publish",
+            null,
+            etag);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await ReadMissingAsync(response)).Should().Equal(TourImageRules.NotFound);
+        _factory.Media.Marked.Should().BeEmpty();
+        StoredStatus(tour.Id).Should().Be(TourStatus.Draft);
+        StoredImageIds(tour.Id).Should().Equal(ids);
+    }
+
+    private Tour CompleteDraft()
+    {
+        var tour = Tour.CreateDraft(_managerId);
+        tour.SetBasics("Черновик к публикации", "Кратко", "Москва", "Италия", TourType.City, 1, null);
+        tour.SetDescription("Описание черновика для проверки публикации");
+        tour.ReplaceDays([TourDay.Create(tour.Id, 1, "День", "Программа")]);
+        tour.ReplaceConditions(
+            [TourInclusion.Create(tour.Id, "Завтрак", TourInclusionKind.Included)],
+            MealPlan.BB,
+            "Гостиница");
+        var from = DateTime.UtcNow.AddDays(5);
+        tour.ReplaceOffers([TourOffer.Create(tour.Id, from, from.AddDays(1), 100m, "EUR", 2)]);
+        var ids = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToArray();
+        tour.ReplaceImages(
+        [
+            TourImage.Create(tour.Id, ids[0], 0, true, "Обложка", 1600),
+            TourImage.Create(tour.Id, ids[1], 1, false, "Два", 800),
+            TourImage.Create(tour.Id, ids[2], 2, false, "Три", 800)
+        ], 1600);
+        _factory.UseDbContext(db =>
+        {
+            db.Tours.Add(tour);
+            db.SaveChanges();
+        });
+        return tour;
     }
 
     private Tour CompletePublished()

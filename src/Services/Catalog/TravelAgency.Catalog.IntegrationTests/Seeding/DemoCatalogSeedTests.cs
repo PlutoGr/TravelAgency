@@ -185,7 +185,7 @@ public class DemoCatalogSeedTests
                 .Distinct()
                 .ToDictionary(
                     id => id,
-                    id => new RemoteMediaFile(id, DemoSeedIds.ManagerId.ToString(), DemoSeedIds.PhotoWidthPx, 900));
+                    id => new RemoteMediaFile(id, DemoSeedIds.ManagerId.ToString(), DemoSeedIds.PhotoWidthPx, 900, RemoteMediaPurposes.TourImage));
         }
 
         var client = factory.CreateClient();
