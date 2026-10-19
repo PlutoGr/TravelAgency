@@ -1,38 +1,36 @@
 using MediatR;
 using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
+using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Mapping;
 using TravelAgency.Booking.Domain.Interfaces;
 
 namespace TravelAgency.Booking.Application.Features.Bookings.Queries.GetManagerBookings;
 
 public sealed class GetManagerBookingsQueryHandler(
+    ICurrentUserService currentUser,
     IBookingRepository bookingRepository,
     IIdentityGrpcClient identityGrpcClient)
     : IRequestHandler<GetManagerBookingsQuery, IReadOnlyList<BookingDto>>
 {
     public async Task<IReadOnlyList<BookingDto>> Handle(GetManagerBookingsQuery query, CancellationToken cancellationToken)
     {
+        var assigned = string.IsNullOrWhiteSpace(query.Assigned)
+            ? "all"
+            : query.Assigned.Trim().ToLowerInvariant();
+
+        if (assigned is not ("me" or "queue" or "all"))
+            throw new BadRequestException("assigned must be me, queue, or all.");
+
         var bookings = await bookingRepository.GetAllForManagersAsync(cancellationToken);
-
-        var result = new List<BookingDto>(bookings.Count);
-        var clientCache = new Dictionary<Guid, UserSummary?>();
-
-        foreach (var booking in bookings)
+        IReadOnlyList<Domain.Entities.Booking> filtered = assigned switch
         {
-            if (!clientCache.TryGetValue(booking.ClientId, out var summary))
-            {
-                summary = await identityGrpcClient.GetUserSummaryAsync(booking.ClientId, cancellationToken);
-                clientCache[booking.ClientId] = summary;
-            }
+            "me" => bookings.Where(b => b.AssignedManagerId == currentUser.UserId).ToList(),
+            "queue" => bookings.Where(b => b.AssignedManagerId is null).ToList(),
+            _ => bookings
+        };
 
-            var clientName = summary != null ? $"{summary.FirstName} {summary.LastName}".Trim() : null;
-            var clientEmail = summary?.Email;
-            var clientPhone = (string?)null;
-
-            result.Add(booking.ToDto(clientName, clientEmail, clientPhone));
-        }
-
-        return result.AsReadOnly();
+        return await BookingView.ForStaffListAsync(filtered, identityGrpcClient, cancellationToken);
     }
 }

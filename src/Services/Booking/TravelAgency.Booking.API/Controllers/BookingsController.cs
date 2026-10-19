@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
+using TravelAgency.Booking.Application.Features.Bookings.Commands.AssignManager;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.ChangeBookingStatus;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.ConfirmProposal;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateBooking;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateProposal;
+using TravelAgency.Booking.Application.Features.Bookings.Commands.TakeBooking;
 using TravelAgency.Booking.Application.Features.Bookings.Queries.GetBookingById;
 using TravelAgency.Booking.Application.Features.Bookings.Queries.GetManagerBookings;
 using TravelAgency.Booking.Application.Features.Bookings.Queries.GetMyBookings;
@@ -39,9 +41,10 @@ public class BookingsController : ControllerBase
     [HttpGet]
     [Authorize(Policy = AuthPolicies.RequireManager)]
     [ProducesResponseType(typeof(IReadOnlyList<BookingDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetManagerBookings(CancellationToken ct)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetManagerBookings([FromQuery] string? assigned, CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetManagerBookingsQuery(), ct);
+        var result = await _mediator.Send(new GetManagerBookingsQuery(assigned), ct);
         return Ok(result);
     }
 
@@ -81,6 +84,34 @@ public class BookingsController : ControllerBase
     public async Task<IActionResult> ConfirmProposal(Guid id, [FromBody] ConfirmProposalRequest request, CancellationToken ct)
     {
         var result = await _mediator.Send(new ConfirmProposalCommand(id, request), ct);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/take")]
+    [Authorize(Policy = AuthPolicies.RequireManager)]
+    [ProducesResponseType(typeof(BookingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Take(Guid id, [FromBody] TakeBookingRequest? request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new TakeBookingCommand(id, request ?? new TakeBookingRequest(null)), ct);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}/assigned-manager")]
+    [Authorize(Policy = AuthPolicies.RequireManager)]
+    [ProducesResponseType(typeof(BookingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> AssignManager(Guid id, [FromBody] AssignManagerRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new AssignManagerCommand(id, request), ct);
         return Ok(result);
     }
 

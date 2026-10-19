@@ -326,4 +326,97 @@ public class BookingEntityTests
         act.Should().Throw<BookingDomainException>()
             .WithMessage("*not found*");
     }
+
+    // ── AssignManager ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void AssignManager_FromQueue_ShouldAssignAndWriteHistory()
+    {
+        var booking = CreateNewBooking();
+
+        var changed = booking.AssignManager(ManagerId, ManagerId, null, "беру диалог");
+
+        changed.Should().BeTrue();
+        booking.AssignedManagerId.Should().Be(ManagerId);
+        booking.AssignedAt.Should().NotBeNull();
+        booking.AssignmentHistory.Should().ContainSingle();
+        var entry = booking.AssignmentHistory.Single();
+        entry.PreviousManagerId.Should().BeNull();
+        entry.NewManagerId.Should().Be(ManagerId);
+        entry.ChangedByUserId.Should().Be(ManagerId);
+        entry.Comment.Should().Be("беру диалог");
+    }
+
+    [Fact]
+    public void AssignManager_SameManagerAgain_ShouldNotWriteHistory()
+    {
+        var booking = CreateNewBooking();
+        booking.AssignManager(ManagerId, ManagerId, null, null);
+
+        var changed = booking.AssignManager(ManagerId, ManagerId, ManagerId, "ещё раз");
+
+        changed.Should().BeFalse();
+        booking.AssignmentHistory.Should().ContainSingle();
+        booking.AssignmentHistory.Single().Comment.Should().BeNull();
+    }
+
+    [Fact]
+    public void AssignManager_WhenExpectedManagerDoesNotMatch_ShouldThrowConflict()
+    {
+        var booking = CreateNewBooking();
+        booking.AssignManager(ManagerId, ManagerId, null, null);
+
+        var act = () => booking.AssignManager(Guid.NewGuid(), ManagerId, null, null);
+
+        act.Should().Throw<BookingAssignmentConflictException>();
+        booking.AssignmentHistory.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AssignManager_OnClosedBooking_ShouldThrow()
+    {
+        var booking = CreateConfirmedBooking();
+        booking.TransitionTo(BookingStatus.Closed, ManagerId);
+
+        var act = () => booking.AssignManager(ManagerId, ManagerId, null, null);
+
+        act.Should().Throw<BookingDomainException>()
+            .WithMessage("*Closed*");
+    }
+
+    [Fact]
+    public void AssignManager_OnCancelledBooking_ShouldThrow()
+    {
+        var booking = CreateNewBooking();
+        booking.TransitionTo(BookingStatus.Cancelled, ClientId);
+
+        var act = () => booking.AssignManager(ManagerId, ManagerId, null, null);
+
+        act.Should().Throw<BookingDomainException>()
+            .WithMessage("*Cancelled*");
+    }
+
+    [Fact]
+    public void AssignManager_WithEmptyManagerId_ShouldThrow()
+    {
+        var booking = CreateNewBooking();
+
+        var act = () => booking.AssignManager(Guid.Empty, ManagerId, null, null);
+
+        act.Should().Throw<BookingDomainException>()
+            .WithMessage("*ManagerId*");
+    }
+
+    [Fact]
+    public void Create_WithAssignedManager_ShouldWriteInitialHistory()
+    {
+        var booking = BookingEntity.Create(ClientId, TourId, null, ManagerId);
+
+        booking.AssignedManagerId.Should().Be(ManagerId);
+        booking.AssignedAt.Should().Be(booking.CreatedAt);
+        booking.AssignmentHistory.Should().ContainSingle();
+        booking.AssignmentHistory.Single().PreviousManagerId.Should().BeNull();
+        booking.AssignmentHistory.Single().NewManagerId.Should().Be(ManagerId);
+        booking.AssignmentHistory.Single().ChangedByUserId.Should().Be(ClientId);
+    }
 }

@@ -89,6 +89,9 @@ public sealed class ChatApiApplicationFactory : WebApplicationFactory<Program>, 
             BookingGrpcClientMock
                 .Setup(x => x.ValidateBookingAccessAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
+            BookingGrpcClientMock
+                .Setup(x => x.CanWriteBookingAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
 
             services.RemoveAll<IBookingGrpcClient>();
             services.AddSingleton<IBookingGrpcClient>(_ => BookingGrpcClientMock.Object);

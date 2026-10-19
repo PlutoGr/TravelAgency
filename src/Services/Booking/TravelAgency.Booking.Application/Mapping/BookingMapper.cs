@@ -6,7 +6,13 @@ namespace TravelAgency.Booking.Application.Mapping;
 
 public static class BookingMapper
 {
-    public static BookingDto ToDto(this Domain.Entities.Booking booking, string? clientName = null, string? clientEmail = null, string? clientPhone = null) =>
+    public static BookingDto ToDto(
+        this Domain.Entities.Booking booking,
+        string? clientName = null,
+        string? clientEmail = null,
+        string? clientPhone = null,
+        string? assignedManagerName = null,
+        bool includeAssignmentHistory = false) =>
         new(
             booking.Id,
             booking.ClientId,
@@ -18,7 +24,23 @@ public static class BookingMapper
             booking.Proposals.Select(p => p.ToDto()).ToList().AsReadOnly(),
             clientName,
             clientEmail,
-            clientPhone);
+            clientPhone,
+            booking.AssignedManagerId,
+            booking.AssignedAt,
+            assignedManagerName,
+            includeAssignmentHistory
+                ? booking.AssignmentHistory
+                    .OrderBy(h => h.ChangedAt)
+                    .ThenBy(h => h.Id)
+                    .Select(h => new BookingAssignmentHistoryDto(
+                        h.Id,
+                        h.PreviousManagerId,
+                        h.NewManagerId,
+                        h.ChangedByUserId,
+                        h.ChangedAt,
+                        h.Comment))
+                    .ToList()
+                : null);
 
     public static ProposalDto ToDto(this Proposal proposal) =>
         new(

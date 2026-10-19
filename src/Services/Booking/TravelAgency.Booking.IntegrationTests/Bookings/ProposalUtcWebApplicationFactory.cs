@@ -42,6 +42,10 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
     private HttpClient? _catalogHttpClient;
     private GrpcChannel? _catalogChannel;
 
+    public Mock<IIdentityGrpcClient> IdentityGrpcClientMock { get; } = new();
+
+    public string PostgresConnectionString => _postgres.GetConnectionString();
+
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
@@ -157,6 +161,12 @@ public sealed class ProposalUtcWebApplicationFactory : WebApplicationFactory<Pro
 
             services.RemoveAll<IUnitOfWork>();
             services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<BookingDbContext>());
+
+            IdentityGrpcClientMock
+                .Setup(c => c.GetUserSummaryAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((UserSummary?)null);
+            services.RemoveAll<IIdentityGrpcClient>();
+            services.AddSingleton<IIdentityGrpcClient>(_ => IdentityGrpcClientMock.Object);
 
             // Keep CatalogGrpcClient. Replace only the generated transport so the string parse still runs.
             services.RemoveAll<CatalogService.CatalogServiceClient>();

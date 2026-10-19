@@ -23,20 +23,7 @@ public sealed class GetBookingByIdQueryHandler(
         if (currentUser.Role == AppRoles.Client && booking.ClientId != currentUser.UserId)
             throw new ForbiddenException("Clients can only view their own bookings.");
 
-        string? clientName = null;
-        string? clientEmail = null;
-        string? clientPhone = null;
-
-        if (currentUser.Role is AppRoles.Manager or AppRoles.Admin)
-        {
-            var summary = await identityGrpcClient.GetUserSummaryAsync(booking.ClientId, cancellationToken);
-            if (summary != null)
-            {
-                clientName = $"{summary.FirstName} {summary.LastName}".Trim();
-                clientEmail = summary.Email;
-            }
-        }
-
-        return booking.ToDto(clientName, clientEmail, clientPhone);
+        return await BookingView.ForViewerAsync(
+            booking, currentUser.Role, identityGrpcClient, cancellationToken);
     }
 }

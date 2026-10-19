@@ -6,6 +6,7 @@ package booking;
 
 service BookingService {
   rpc ValidateBookingAccess (ValidateBookingAccessRequest) returns (ValidateBookingAccessResponse);
+  rpc GetBookingAssignment (GetBookingAssignmentRequest) returns (GetBookingAssignmentResponse);
 }
 
 message ValidateBookingAccessRequest {
@@ -15,4 +16,15 @@ message ValidateBookingAccessRequest {
 
 message ValidateBookingAccessResponse {
   bool has_access = 1;
+  optional bool can_write = 2;
+}
+
+message GetBookingAssignmentRequest {
+  string booking_id = 1;
+}
+
+message GetBookingAssignmentResponse {
+  string client_id = 1;
+  string assigned_manager_id = 2;
+  repeated string previous_manager_ids = 3;
 }

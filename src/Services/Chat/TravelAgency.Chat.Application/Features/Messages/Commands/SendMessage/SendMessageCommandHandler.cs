@@ -27,6 +27,10 @@ public sealed class SendMessageCommandHandler(
         if (!canAccess)
             throw new ForbiddenException("You do not have access to this booking.");
 
+        var canWrite = await bookingGrpcClient.CanWriteBookingAsync(command.BookingId, userId, cancellationToken);
+        if (!canWrite)
+            throw new ForbiddenException("You do not have permission to write in this booking.");
+
         if (userId == Guid.Empty)
             throw new ForbiddenException("Invalid user identity.");
 

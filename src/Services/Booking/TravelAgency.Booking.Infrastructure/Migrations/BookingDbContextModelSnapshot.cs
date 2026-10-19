@@ -27,6 +27,12 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AssignedManagerId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
 
@@ -46,9 +52,48 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("AssignedManagerId");
+
                     b.ToTable("Bookings", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.BookingAssignmentHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("NewManagerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PreviousManagerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId", "ChangedAt");
+
+                    b.ToTable("BookingAssignmentHistories", (string)null);
                 });
 
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.BookingStatusHistory", b =>
@@ -155,6 +200,15 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
                     b.ToTable("Proposals", (string)null);
                 });
 
+            modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.BookingAssignmentHistory", b =>
+                {
+                    b.HasOne("TravelAgency.Booking.Domain.Entities.Booking", null)
+                        .WithMany("AssignmentHistory")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.BookingStatusHistory", b =>
                 {
                     b.HasOne("TravelAgency.Booking.Domain.Entities.Booking", null)
@@ -226,6 +280,8 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
 
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.Booking", b =>
                 {
+                    b.Navigation("AssignmentHistory");
+
                     b.Navigation("Proposals");
 
                     b.Navigation("StatusHistory");
