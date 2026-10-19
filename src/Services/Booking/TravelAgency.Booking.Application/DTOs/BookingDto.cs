@@ -13,4 +13,8 @@ public record BookingDto(
     IReadOnlyList<ProposalDto> Proposals,
     string? ClientName = null,
     string? ClientEmail = null,
-    string? ClientPhone = null);
+    string? ClientPhone = null,
+    Guid? AssignedManagerId = null,
+    DateTime? AssignedAt = null,
+    string? AssignedManagerName = null,
+    IReadOnlyList<BookingAssignmentHistoryDto>? AssignmentHistory = null);

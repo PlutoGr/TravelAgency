@@ -13,4 +13,10 @@ public interface IBookingGrpcClient
     /// <param name="ct">Cancellation token.</param>
     /// <returns>True if the user has access, false otherwise.</returns>
     Task<bool> ValidateBookingAccessAsync(Guid bookingId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Whether the user may send messages in the booking.
+    /// Owning client, responsible manager and admin may write. Other managers may only read.
+    /// </summary>
+    Task<bool> CanWriteBookingAsync(Guid bookingId, Guid userId, CancellationToken ct = default);
 }

@@ -1,0 +1,47 @@
+using MediatR;
+using TravelAgency.Booking.Application.Abstractions;
+using TravelAgency.Shared.Contracts.Abstractions;
+using TravelAgency.Booking.Application.DTOs;
+using TravelAgency.Booking.Application.Exceptions;
+using TravelAgency.Booking.Application.Features.Bookings;
+using TravelAgency.Booking.Application.Mapping;
+using TravelAgency.Booking.Domain.Interfaces;
+using TravelAgency.Shared.Contracts.Authorization;
+
+namespace TravelAgency.Booking.Application.Features.Bookings.Commands.TakeBooking;
+
+public sealed class TakeBookingCommandHandler(
+    ICurrentUserService currentUser,
+    IBookingRepository bookingRepository,
+    IOutboxMessageRepository outboxRepository,
+    IUnitOfWork unitOfWork,
+    IIdentityGrpcClient identityGrpcClient)
+    : IRequestHandler<TakeBookingCommand, BookingDto>
+{
+    public async Task<BookingDto> Handle(TakeBookingCommand command, CancellationToken cancellationToken)
+    {
+        if (currentUser.Role is not (AppRoles.Manager or AppRoles.Admin))
+            throw new ForbiddenException("Only managers or admins can take a booking.");
+
+        var booking = await bookingRepository.GetByIdAsync(command.BookingId, cancellationToken)
+            ?? throw new NotFoundException($"Booking '{command.BookingId}' was not found.");
+
+        var previousManagerId = booking.AssignedManagerId;
+        var changed = booking.AssignManager(
+            currentUser.UserId,
+            currentUser.UserId,
+            command.Request.ExpectedManagerId,
+            comment: null);
+
+        if (changed)
+        {
+            outboxRepository.Stage(BookingManagerAssigned.CreateMessage(
+                booking.Id, previousManagerId, currentUser.UserId, currentUser.UserId));
+        }
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return await BookingView.ForViewerAsync(
+            booking, currentUser.Role, identityGrpcClient, cancellationToken);
+    }
+}

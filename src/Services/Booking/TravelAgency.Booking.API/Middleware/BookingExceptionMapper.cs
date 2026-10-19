@@ -1,6 +1,6 @@
-using System.Net;
 using Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Domain.Exceptions;
 using TravelAgency.Shared.Infrastructure.Middleware;
@@ -15,6 +15,14 @@ internal sealed class BookingExceptionMapper : IExceptionMapper
         {
             TourUnavailableException unavailable => CreateTourUnavailable(context, unavailable),
             AppException appEx => CreateAppProblemDetails(context, appEx),
+            BookingAssignmentConflictException or DbUpdateConcurrencyException => new ProblemDetails
+            {
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
+                Title = "Conflict",
+                Status = StatusCodes.Status409Conflict,
+                Detail = BookingAssignmentConflictException.DefaultMessage,
+                Instance = context.Request.Path
+            },
             BookingDomainException domainEx => new ProblemDetails
             {
                 Type = "https://tools.ietf.org/html/rfc4918#section-11.2",

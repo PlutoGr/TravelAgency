@@ -3,6 +3,7 @@ using MediatR;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
+using TravelAgency.Booking.Application.Features.Bookings;
 using TravelAgency.Booking.Application.Mapping;
 using TravelAgency.Booking.Domain.Entities;
 using TravelAgency.Booking.Domain.Interfaces;
@@ -14,17 +15,22 @@ public sealed class CreateBookingCommandHandler(
     IBookingRepository bookingRepository,
     ICatalogGrpcClient catalogGrpcClient,
     IOutboxMessageRepository outboxRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IIdentityGrpcClient identityGrpcClient)
     : IRequestHandler<CreateBookingCommand, BookingDto>
 {
     public async Task<BookingDto> Handle(CreateBookingCommand command, CancellationToken cancellationToken)
     {
         _ = await catalogGrpcClient.GetTourSnapshotAsync(command.Request.TourId, cancellationToken);
 
-        var booking = TravelAgency.Booking.Domain.Entities.Booking.Create(
+        var preferredManagerId = await bookingRepository.GetPreferredManagerIdAsync(
+            currentUser.UserId, cancellationToken);
+
+        var booking = Domain.Entities.Booking.Create(
             currentUser.UserId,
             command.Request.TourId,
-            command.Request.Comment);
+            command.Request.Comment,
+            preferredManagerId);
 
         bookingRepository.Stage(booking);
 
@@ -37,8 +43,17 @@ public sealed class CreateBookingCommandHandler(
         });
         outboxRepository.Stage(OutboxMessage.Create("BookingCreated", payload));
 
+        if (booking.AssignedManagerId is Guid managerId)
+        {
+            outboxRepository.Stage(BookingManagerAssigned.CreateMessage(
+                booking.Id, null, managerId, currentUser.UserId));
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return booking.ToDto();
+        var managerName = await BookingView.ResolveManagerNameAsync(
+            booking.AssignedManagerId, identityGrpcClient, cancellationToken);
+
+        return booking.ToDto(assignedManagerName: managerName);
     }
 }

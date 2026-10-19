@@ -4,6 +4,7 @@ using TravelAgency.Booking.Application.DTOs;
 using TravelAgency.Booking.Application.DTOs.Requests;
 using TravelAgency.Booking.Application.Exceptions;
 using TravelAgency.Booking.Application.Features.Bookings.Commands.CreateBooking;
+using TravelAgency.Booking.Domain.Entities;
 using TravelAgency.Booking.Domain.Enums;
 using TravelAgency.Booking.Domain.Interfaces;
 using BookingEntity = TravelAgency.Booking.Domain.Entities.Booking;
@@ -17,6 +18,7 @@ public class CreateBookingCommandHandlerTests
     private readonly Mock<ICatalogGrpcClient> _catalogGrpcMock = new();
     private readonly Mock<IOutboxMessageRepository> _outboxRepoMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
+    private readonly Mock<IIdentityGrpcClient> _identityGrpcMock = new();
     private readonly CreateBookingCommandHandler _handler;
 
     private static readonly Guid ClientId = Guid.NewGuid();
@@ -36,7 +38,8 @@ public class CreateBookingCommandHandlerTests
             _bookingRepoMock.Object,
             _catalogGrpcMock.Object,
             _outboxRepoMock.Object,
-            _unitOfWorkMock.Object);
+            _unitOfWorkMock.Object,
+            _identityGrpcMock.Object);
     }
 
     [Fact]
@@ -88,5 +91,66 @@ public class CreateBookingCommandHandlerTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("DB failure");
+    }
+
+    [Fact]
+    public async Task Handle_WhenClientHasPinnedManager_AssignsThatManagerAndWritesHistory()
+    {
+        var managerId = Guid.NewGuid();
+        _bookingRepoMock
+            .Setup(r => r.GetPreferredManagerIdAsync(ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(managerId);
+        _identityGrpcMock
+            .Setup(c => c.GetUserSummaryAsync(managerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserSummary(managerId.ToString(), "manager@example.com", "Test", "Manager", "Manager"));
+
+        BookingEntity? staged = null;
+        _bookingRepoMock
+            .Setup(r => r.Stage(It.IsAny<BookingEntity>()))
+            .Callback<BookingEntity>(booking => staged = booking);
+
+        var result = await _handler.Handle(
+            new CreateBookingCommand(new CreateBookingRequest(TourId, null)),
+            CancellationToken.None);
+
+        staged.Should().NotBeNull();
+        staged!.AssignedManagerId.Should().Be(managerId);
+        staged.AssignmentHistory.Should().ContainSingle();
+        staged.AssignmentHistory.Single().NewManagerId.Should().Be(managerId);
+        staged.AssignmentHistory.Single().PreviousManagerId.Should().BeNull();
+        result.AssignedManagerId.Should().Be(managerId);
+        result.AssignedManagerName.Should().Be("Test Manager");
+        result.AssignmentHistory.Should().BeNull();
+
+        _outboxRepoMock.Verify(
+            r => r.Stage(It.Is<OutboxMessage>(m => m.EventType == "BookingManagerAssigned")),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenClientHasNoPinnedManager_LeavesBookingInQueue()
+    {
+        _bookingRepoMock
+            .Setup(r => r.GetPreferredManagerIdAsync(ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid?)null);
+
+        BookingEntity? staged = null;
+        _bookingRepoMock
+            .Setup(r => r.Stage(It.IsAny<BookingEntity>()))
+            .Callback<BookingEntity>(booking => staged = booking);
+
+        var result = await _handler.Handle(
+            new CreateBookingCommand(new CreateBookingRequest(TourId, null)),
+            CancellationToken.None);
+
+        staged.Should().NotBeNull();
+        staged!.AssignedManagerId.Should().BeNull();
+        staged.AssignedAt.Should().BeNull();
+        staged.AssignmentHistory.Should().BeEmpty();
+        result.AssignedManagerId.Should().BeNull();
+
+        _outboxRepoMock.Verify(
+            r => r.Stage(It.Is<OutboxMessage>(m => m.EventType == "BookingManagerAssigned")),
+            Times.Never);
     }
 }

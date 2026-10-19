@@ -31,6 +31,9 @@ public class SendMessageCommandHandlerTests
         _bookingGrpcClient
             .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        _bookingGrpcClient
+            .CanWriteBookingAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         _currentUserService.UserId.Returns(UserId);
         _currentUserService.Role.Returns(AppRoles.Client);
@@ -73,10 +76,34 @@ public class SendMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenCanWriteIsFalse_ThrowsForbiddenException()
+    {
+        _bookingGrpcClient
+            .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _bookingGrpcClient
+            .CanWriteBookingAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _currentUserService.UserId.Returns(UserId);
+        _currentUserService.Role.Returns(AppRoles.Manager);
+        _currentUserService.DisplayName.Returns(DisplayName);
+
+        var command = new SendMessageCommand(BookingId, "Hello");
+        var act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ForbiddenException>();
+        exception.Which.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
     public async Task Handle_WhenUserIdIsEmpty_ThrowsForbiddenException()
     {
         _bookingGrpcClient
             .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _bookingGrpcClient
+            .CanWriteBookingAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         _currentUserService.UserId.Returns(Guid.Empty);
@@ -95,6 +122,9 @@ public class SendMessageCommandHandlerTests
     {
         _bookingGrpcClient
             .ValidateBookingAccessAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _bookingGrpcClient
+            .CanWriteBookingAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
         _currentUserService.UserId.Returns(UserId);

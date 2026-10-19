@@ -30,7 +30,7 @@ public class ChatHub : Hub
 
     public async Task SendMessage(Guid bookingId, string text, IReadOnlyList<string>? attachments = null)
     {
-        await EnsureBookingAccessAsync(bookingId);
+        await EnsureCanWriteAsync(bookingId);
         var message = await _mediator.Send(new SendMessageCommand(bookingId, text, attachments));
         await Clients.Group(GroupName(bookingId)).SendAsync("MessageReceived", message);
     }
@@ -42,6 +42,16 @@ public class ChatHub : Hub
         if (!canAccess)
         {
             throw new HubException("You do not have access to this booking.");
+        }
+    }
+
+    private async Task EnsureCanWriteAsync(Guid bookingId)
+    {
+        var userId = _currentUserService.UserId;
+        var canWrite = await _bookingGrpcClient.CanWriteBookingAsync(bookingId, userId);
+        if (!canWrite)
+        {
+            throw new HubException("You do not have permission to write in this booking.");
         }
     }
 

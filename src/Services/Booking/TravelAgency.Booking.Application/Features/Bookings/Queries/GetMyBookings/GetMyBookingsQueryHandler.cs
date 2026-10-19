@@ -9,12 +9,22 @@ namespace TravelAgency.Booking.Application.Features.Bookings.Queries.GetMyBookin
 
 public sealed class GetMyBookingsQueryHandler(
     ICurrentUserService currentUser,
-    IBookingRepository bookingRepository)
+    IBookingRepository bookingRepository,
+    IIdentityGrpcClient identityGrpcClient)
     : IRequestHandler<GetMyBookingsQuery, IReadOnlyList<BookingDto>>
 {
     public async Task<IReadOnlyList<BookingDto>> Handle(GetMyBookingsQuery query, CancellationToken cancellationToken)
     {
         var bookings = await bookingRepository.GetByClientIdAsync(currentUser.UserId, cancellationToken);
-        return bookings.Select(b => b.ToDto()).ToList().AsReadOnly();
+        var result = new List<BookingDto>(bookings.Count);
+
+        foreach (var booking in bookings)
+        {
+            var managerName = await BookingView.ResolveManagerNameAsync(
+                booking.AssignedManagerId, identityGrpcClient, cancellationToken);
+            result.Add(booking.ToDto(assignedManagerName: managerName));
+        }
+
+        return result.AsReadOnly();
     }
 }

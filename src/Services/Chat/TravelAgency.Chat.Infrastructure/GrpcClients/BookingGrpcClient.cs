@@ -24,6 +24,18 @@ public sealed class BookingGrpcClient : IBookingGrpcClient
 
     public async Task<bool> ValidateBookingAccessAsync(Guid bookingId, Guid userId, CancellationToken ct = default)
     {
+        var response = await ValidateAsync(bookingId, userId, ct);
+        return response?.HasAccess ?? false;
+    }
+
+    public async Task<bool> CanWriteBookingAsync(Guid bookingId, Guid userId, CancellationToken ct = default)
+    {
+        var response = await ValidateAsync(bookingId, userId, ct);
+        return response?.CanWrite ?? false;
+    }
+
+    private async Task<ValidateBookingAccessResponse?> ValidateAsync(Guid bookingId, Guid userId, CancellationToken ct)
+    {
         try
         {
             var request = new ValidateBookingAccessRequest
@@ -32,13 +44,12 @@ public sealed class BookingGrpcClient : IBookingGrpcClient
                 UserId = userId.ToString()
             };
             var callOptions = _callOptionsFactory.Create(ct);
-            var response = await _client.ValidateBookingAccessAsync(request, callOptions);
-            return response.HasAccess;
+            return await _client.ValidateBookingAccessAsync(request, callOptions);
         }
         catch (Grpc.Core.RpcException ex)
         {
             _logger.LogWarning(ex, "gRPC call to Booking service failed for booking {BookingId}, user {UserId}", bookingId, userId);
-            return false;
+            return null;
         }
     }
 }

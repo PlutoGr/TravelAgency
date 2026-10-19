@@ -20,6 +20,9 @@ public class BookingConfiguration : IEntityTypeConfiguration<Domain.Entities.Boo
         builder.Property(b => b.Status).IsRequired().HasConversion<int>();
         builder.Property(b => b.CreatedAt).IsRequired();
         builder.Property(b => b.UpdatedAt);
+        builder.Property(b => b.AssignedManagerId);
+        builder.Property(b => b.AssignedAt);
+        builder.HasIndex(b => b.AssignedManagerId);
 
         builder.HasMany(b => b.Proposals)
             .WithOne()
