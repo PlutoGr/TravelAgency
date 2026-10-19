@@ -136,7 +136,7 @@ export function formFromTour(tour: ManagedTour): WizardForm {
     mealPlan: tour.mealPlan ?? '',
     accommodationText: tour.accommodationText ?? '',
     offers: [...(tour.offers ?? [])].map((offer) => ({
-      validFrom: dateInput(offer.validFrom),
+      validFrom: dateInput(offer.departureDate ?? offer.validFrom),
       validTo: dateInput(offer.validTo),
       pricePerPerson: String(offer.pricePerPerson ?? ''),
       currency: offer.currency || 'RUB',

@@ -18,24 +18,41 @@ public class PublicCatalogPricingTests
             Offer(tourId, Now.AddDays(20), 50m)
         };
 
-        PublicCatalogPricing.PriceFrom(offers, Now).Should().Be(50m);
-        PublicCatalogPricing.CurrencyOfPriceFrom(offers, Now).Should().Be("EUR");
-        PublicCatalogPricing.NearestDeparture(offers, Now).Should().Be(Now.AddDays(4));
+        var today = DateOnly.FromDateTime(Now);
+        PublicCatalogPricing.PriceFrom(offers, today).Should().Be(50m);
+        PublicCatalogPricing.CurrencyOfPriceFrom(offers, today).Should().Be("EUR");
+        PublicCatalogPricing.NearestDeparture(offers, today).Should().Be(DateOnly.FromDateTime(Now.AddDays(4)));
     }
 
     [Fact]
-    public void PriceFrom_WhenDepartureIsNotStrictlyInTheFuture_ReturnsNull()
+    public void PriceFrom_IncludesDepartureOnToday_AndIgnoresThePreviousDay()
     {
         var tourId = Guid.NewGuid();
+        var today = DateOnly.FromDateTime(Now);
         var offers = new[]
         {
             Offer(tourId, Now, 40m),
             Offer(tourId, Now.AddDays(-1), 15m)
         };
 
-        PublicCatalogPricing.PriceFrom(offers, Now).Should().BeNull();
-        PublicCatalogPricing.NearestDeparture(offers, Now).Should().BeNull();
-        PublicCatalogPricing.FutureOffers(offers, Now).Should().BeEmpty();
+        PublicCatalogPricing.PriceFrom(offers, today).Should().Be(40m);
+        PublicCatalogPricing.NearestDeparture(offers, today).Should().Be(today);
+        PublicCatalogPricing.FutureOffers(offers, today).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void PriceFrom_WhenDepartureIsBeforeToday_ReturnsNull()
+    {
+        var tourId = Guid.NewGuid();
+        var today = DateOnly.FromDateTime(Now);
+        var offers = new[]
+        {
+            Offer(tourId, Now.AddDays(-1), 15m)
+        };
+
+        PublicCatalogPricing.PriceFrom(offers, today).Should().BeNull();
+        PublicCatalogPricing.NearestDeparture(offers, today).Should().BeNull();
+        PublicCatalogPricing.FutureOffers(offers, today).Should().BeEmpty();
     }
 
     private static TourOffer Offer(Guid tourId, DateTime validFrom, decimal price) =>

@@ -79,6 +79,7 @@ public record TourOfferItemDto(
     DateTime ValidTo,
     decimal PricePerPerson,
     string Currency,
-    int AvailableSeats);
+    int AvailableSeats,
+    DateOnly DepartureDate);
 
 public record TourImageItemDto(Guid Id, Guid MediaFileId, int SortOrder, bool IsCover, string? Alt, int? WidthPx);

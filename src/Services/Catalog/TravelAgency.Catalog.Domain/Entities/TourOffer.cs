@@ -9,6 +9,12 @@ public class TourOffer
 {
     public Guid Id { get; private set; }
     public Guid TourId { get; private set; }
+
+    /// <summary>
+    /// Местный день вылета в городе вылета. Столбец date, без пояса.
+    /// </summary>
+    public DateOnly DepartureDate { get; private set; }
+
     public DateTime ValidFrom { get; private set; }
     public DateTime ValidTo { get; private set; }
     public decimal PricePerPerson { get; private set; }
@@ -23,7 +29,8 @@ public class TourOffer
         DateTime validTo,
         decimal pricePerPerson,
         string currency,
-        int availableSeats)
+        int availableSeats,
+        DateOnly? departureDate = null)
     {
         if (pricePerPerson <= 0)
             throw new CatalogDomainException("Price per person must be greater than zero.");
@@ -42,6 +49,7 @@ public class TourOffer
         {
             Id = Guid.NewGuid(),
             TourId = tourId,
+            DepartureDate = departureDate ?? DateOnly.FromDateTime(validFrom),
             ValidFrom = validFrom,
             ValidTo = validTo,
             PricePerPerson = pricePerPerson,

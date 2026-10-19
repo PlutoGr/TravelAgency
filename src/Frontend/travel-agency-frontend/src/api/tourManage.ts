@@ -21,6 +21,7 @@ export interface ManagedTourOffer {
   pricePerPerson: number;
   currency: string;
   availableSeats: number;
+  departureDate?: string | null;
 }
 
 export interface ManagedTourImage {

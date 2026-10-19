@@ -403,7 +403,7 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
         high.Previews![0].IsCover.Should().BeTrue();
         high.Previews[0].MediaFileId.Should().Be(fixture.HighCoverId);
         high.CoverMediaFileId.Should().Be(fixture.HighCoverId);
-        high.NearestDate.Should().BeCloseTo(fixture.Now.AddDays(20), TimeSpan.FromSeconds(1));
+        high.NearestDate.Should().Be(DateOnly.FromDateTime(fixture.Now.AddDays(20)));
     }
 
     [Fact]
@@ -424,7 +424,9 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
         tour.Inclusions.Should().Contain(item => item.Text == "Перелёт");
         tour.PriceFrom.Should().Be(500m);
         tour.Prices.Select(price => price.PricePerPerson).Should().NotContain(10m);
-        tour.NearestDate.Should().BeCloseTo(fixture.Now.AddDays(20), TimeSpan.FromSeconds(1));
+        var departureDay = DateOnly.FromDateTime(fixture.Now.AddDays(20));
+        tour.NearestDate.Should().Be(departureDay);
+        json.Should().Contain($"\"nearestDate\":\"{departureDay:yyyy-MM-dd}\"");
         tour.Images.Should().HaveCount(6);
 
         foreach (var role in new string?[] { null, "Client" })

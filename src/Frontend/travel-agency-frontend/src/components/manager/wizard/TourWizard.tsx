@@ -106,8 +106,8 @@ function conditionsInput(form: WizardForm): {
 
 function offersInput(form: WizardForm): TourOfferInput[] {
   return form.offers.map((offer) => ({
-    validFrom: `${offer.validFrom}T00:00:00Z`,
-    validTo: `${offer.validTo}T00:00:00Z`,
+    validFrom: offer.validFrom,
+    validTo: offer.validTo,
     pricePerPerson: Number(offer.pricePerPerson),
     currency: offer.currency.trim().toUpperCase(),
     availableSeats: Number(offer.availableSeats),

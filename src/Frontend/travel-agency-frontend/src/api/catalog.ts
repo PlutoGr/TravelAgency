@@ -178,6 +178,7 @@ interface TourPriceDto {
   pricePerPerson: number;
   currency: string;
   availableSeats: number;
+  departureDate?: string | null;
 }
 
 interface PublicDayDto {
@@ -235,7 +236,7 @@ function mapImages(previews?: PublicPreviewDto[] | null): TourImage[] {
 function mapOffers(prices?: TourPriceDto[] | null): TourOffer[] {
   return (prices ?? []).map((price) => ({
     id: price.id,
-    start: price.validFrom,
+    start: price.departureDate || price.validFrom,
     end: price.validTo,
     price: price.pricePerPerson,
     currency: price.currency,

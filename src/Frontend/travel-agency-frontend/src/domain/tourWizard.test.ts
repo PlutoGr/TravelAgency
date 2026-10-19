@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { emptyWizardForm, missingPublishCodes, resolveWizardStep, validateWizardStep, type WizardForm } from './tourWizard';
+import type { ManagedTour } from '@/api/tourManage';
+import { emptyWizardForm, formFromTour, missingPublishCodes, resolveWizardStep, validateWizardStep, type WizardForm } from './tourWizard';
 
 const NOW = new Date('2026-10-08T12:00:00Z');
 
@@ -50,6 +51,47 @@ describe('publish checklist', () => {
     form.images[0].widthPx = null;
     form.offers[0].validFrom = '2026-10-08';
     expect(missingPublishCodes(form, NOW)).toEqual(['offers.future', 'images.coverMinWidth']);
+  });
+});
+
+describe('departure day in the form', () => {
+  it('prefers departureDate over the stored instant', () => {
+    const tour = {
+      id: 'tour-1',
+      title: 'Сочи',
+      shortDescription: null,
+      description: '',
+      departureCity: 'Новосибирск',
+      country: 'Россия',
+      tourType: 'Beach',
+      durationDays: 0,
+      directionId: null,
+      mealPlan: null,
+      accommodationText: null,
+      status: 'Draft',
+      source: 'Manager',
+      ownerId: null,
+      version: 1,
+      etag: '"1"',
+      days: [],
+      inclusions: [],
+      images: [],
+      offers: [
+        {
+          id: 'offer-1',
+          validFrom: '2026-11-01T17:30:00Z',
+          validTo: '2026-11-08T00:00:00Z',
+          departureDate: '2026-11-02',
+          pricePerPerson: 1000,
+          currency: 'RUB',
+          availableSeats: 4,
+        },
+      ],
+    } satisfies ManagedTour;
+
+    const form = formFromTour(tour);
+    expect(form.offers[0].validFrom).toBe('2026-11-02');
+    expect(form.offers[0].validTo).toBe('2026-11-08');
   });
 });
 

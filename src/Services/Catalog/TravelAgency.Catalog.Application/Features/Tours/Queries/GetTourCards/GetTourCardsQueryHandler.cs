@@ -4,11 +4,12 @@ using MediatR;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Application.Interfaces;
 using TravelAgency.Catalog.Application.Mappings;
+using TravelAgency.Catalog.Application.Time;
 using TravelAgency.Catalog.Domain.Enums;
 
 namespace TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourCards;
 
-public sealed class GetTourCardsQueryHandler(IPublicTourCardQuery cards)
+public sealed class GetTourCardsQueryHandler(IPublicTourCardQuery cards, ICatalogClock clock)
     : IRequestHandler<GetTourCardsQuery, IReadOnlyList<PublicTourCardDto>>
 {
     public async Task<IReadOnlyList<PublicTourCardDto>> Handle(GetTourCardsQuery request, CancellationToken cancellationToken)
@@ -21,7 +22,7 @@ public sealed class GetTourCardsQueryHandler(IPublicTourCardQuery cards)
 
         var found = await cards.GetPublishedOrUnpublishedAsync(ids, cancellationToken);
         var byId = found.ToDictionary(tour => tour.Id);
-        var now = DateTime.UtcNow;
+        var today = clock.Today();
         var result = new List<PublicTourCardDto>(ids.Count);
         foreach (var id in ids)
         {
@@ -31,7 +32,7 @@ public sealed class GetTourCardsQueryHandler(IPublicTourCardQuery cards)
             if (tour.Status is not (TourStatus.Published or TourStatus.Unpublished))
                 continue;
 
-            result.Add(PublicCatalogMapper.ToCard(tour, now));
+            result.Add(PublicCatalogMapper.ToCard(tour, today));
         }
 
         return result;

@@ -45,6 +45,11 @@ describe('tour images come from file ids', () => {
     expect(document.body.innerHTML).not.toContain('unsplash');
   });
 
+  it('shows the departure day from a calendar date', () => {
+    renderPage(<TourCard tour={sampleTour({ nearestDate: '2026-11-02' })} />);
+    expect(screen.getByText(/ближайший выезд 2 ноя/)).toBeInTheDocument();
+  });
+
   it('shows a placeholder when the tour has no media file', () => {
     renderPage(
       <TourCard

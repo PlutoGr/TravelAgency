@@ -1,4 +1,5 @@
 using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourCards;
+using TravelAgency.Catalog.UnitTests.Time;
 using TravelAgency.Catalog.UnitTests.Domain;
 using TravelAgency.Catalog.Application.Interfaces;
 using TravelAgency.Catalog.Domain.Entities;
@@ -26,7 +27,7 @@ public class GetTourCardsQueryHandlerTests
             .ReturnsAsync([draft, published, hidden]);
 
         var missing = Guid.NewGuid();
-        var handler = new GetTourCardsQueryHandler(query.Object);
+        var handler = new GetTourCardsQueryHandler(query.Object, new TestCatalogClock());
         var result = await handler.Handle(
             new GetTourCardsQuery([hidden.Id.ToString(), published.Id.ToString(), draft.Id.ToString(), missing.ToString()]),
             CancellationToken.None);
