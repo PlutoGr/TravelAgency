@@ -32,7 +32,6 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("JwtSettings:SigningKey", TestSigningKey);
         builder.UseSetting("JwtSettings:Issuer", TestIssuer);
         builder.UseSetting("JwtSettings:Audience", TestAudience);
-        builder.UseSetting("RateLimiting:Auth:Disabled", "true");
         builder.UseSetting("RateLimiting:Auth:Limit", "1000");
         builder.UseSetting("RateLimiting:Global:Limit", "2000");
 
@@ -42,7 +41,6 @@ public class GatewayWebApplicationFactory : WebApplicationFactory<Program>
             var testSettings = new Dictionary<string, string?>
             {
                 ["Cookie:Secure"] = "false",
-                ["RateLimiting:Auth:Disabled"] = "true",
                 ["RateLimiting:Auth:Limit"] = "1000",
                 ["RateLimiting:Auth:PeriodSeconds"] = "1",
                 ["RateLimiting:Global:Limit"] = "2000",

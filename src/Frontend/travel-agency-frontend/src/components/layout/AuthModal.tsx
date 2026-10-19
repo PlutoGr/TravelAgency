@@ -14,6 +14,7 @@ const AUTH_TABS = [
 ] as const;
 
 const AUTH_UNAVAILABLE = 'Не удалось войти. Попробуйте ещё раз через минуту';
+const LOGIN_RATE_LIMITED = 'Слишком много попыток входа. Подождите минуту и попробуйте снова';
 
 function httpStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
@@ -118,6 +119,11 @@ function LoginForm({
       if (httpStatus(err) === 401) {
         setPassword('');
         setFormError('Неверный email или пароль');
+        return;
+      }
+      if (httpStatus(err) === 429) {
+        setPassword('');
+        setFormError(LOGIN_RATE_LIMITED);
         return;
       }
       toast.error('Неверный email или пароль');

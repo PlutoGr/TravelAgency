@@ -124,4 +124,42 @@ public class RateLimitingExtensionsTests
         // Assert
         Assert.Equal(429, options.RejectionStatusCode);
     }
+
+    [Fact]
+    public async Task DefaultAuthLimit_AllowsFiveLoginRequests_AndRejectsTheSixth()
+    {
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(web =>
+            {
+                web.UseTestServer()
+                   .ConfigureServices(services =>
+                   {
+                       services.AddRouting();
+                       services.AddGatewayRateLimiting(BuildConfig(new Dictionary<string, string?>
+                       {
+                           ["RateLimiting:Auth:PeriodSeconds"] = "60",
+                       }));
+                   })
+                   .Configure(app =>
+                   {
+                       app.UseRouting();
+                       app.UseGatewayRateLimiting();
+                       app.UseEndpoints(endpoints =>
+                       {
+                           endpoints.MapPost("/api/v1/auth/login", () => Results.Ok());
+                       });
+                   });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await client.PostAsync("/api/v1/auth/login", new StringContent(string.Empty));
+            Assert.NotEqual(StatusCodes.Status429TooManyRequests, (int)response.StatusCode);
+        }
+
+        var limited = await client.PostAsync("/api/v1/auth/login", new StringContent(string.Empty));
+        Assert.Equal(StatusCodes.Status429TooManyRequests, (int)limited.StatusCode);
+    }
 }

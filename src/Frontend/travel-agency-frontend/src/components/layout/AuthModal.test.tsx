@@ -110,6 +110,33 @@ describe('AuthModal unavailable auth service', () => {
     expect(screen.getByLabelText('Пароль')).toHaveValue('');
   });
 
+  it('shows too many login attempts under the form on 429, keeps the email and clears the password', async () => {
+    const login = vi.spyOn(authApi, 'login').mockRejectedValue({ response: { status: 429 } });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderLogin();
+
+    await user.type(screen.getByLabelText('Email'), 'a@b.com');
+    await user.type(screen.getByLabelText('Пароль'), 'secret');
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Слишком много попыток входа. Подождите минуту и попробуйте снова',
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Email')).toHaveValue('a@b.com');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+
+    const submit = screen.getByRole('button', { name: 'Войти' });
+    expect(submit).toBeEnabled();
+    await user.type(screen.getByLabelText('Пароль'), 'secret2');
+    await user.click(submit);
+
+    expect(login).toHaveBeenCalledTimes(2);
+    expect(submit).toBeEnabled();
+    expect(screen.getByLabelText('Email')).toHaveValue('a@b.com');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
   it('keeps email and name and clears the password when register returns 502', async () => {
     vi.spyOn(authApi, 'register').mockRejectedValue({ response: { status: 502 } });
     useUIStore.setState({ isAuthModalOpen: true, authModalTab: 'register' });

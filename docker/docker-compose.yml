@@ -66,8 +66,6 @@ services:
       - HealthCheckEndpoints__Booking=http://booking-service:8080/health/live
       - HealthCheckEndpoints__Chat=http://chat-service:8080/health/live
       - HealthCheckEndpoints__Media=http://media-service:8080/health/live
-      # Disable strict auth rate limiting in Docker dev (allows registration flow)
-      - RateLimiting__Auth__Disabled=true
       - ConnectionStrings__Redis=redis:6379
       # Allow cookies on HTTP (localhost) for frontend dev with Vite proxy
       - Cookie__Secure=false
