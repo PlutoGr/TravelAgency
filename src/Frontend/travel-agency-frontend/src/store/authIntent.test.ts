@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import toast from 'react-hot-toast';
 import { addFavorite, getFavorites, removeFavorite } from '@/api/favorites';
-import { closeLoginKeepingIntent, resumeFavoriteIntent } from './authIntent';
+import { afterSessionEstablished, closeLoginKeepingIntent, resumeFavoriteIntent } from './authIntent';
 import { useFavoritesStore } from './favoritesStore';
 import { useUIStore } from './uiStore';
 import { sampleTour } from '@/test/sampleTour';
@@ -133,8 +133,34 @@ describe('auth intent', () => {
     expect(useFavoritesStore.getState().error).toBe('Не удалось загрузить избранное');
     expect(addFavorite).not.toHaveBeenCalled();
     expect(removeFavorite).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith('Не удалось добавить тур в избранное. Попробуйте ещё раз');
     expect(useFavoritesStore.getState().isFavorite(tour.id)).toBe(false);
     expect(useUIStore.getState().authIntent).toBeNull();
+  });
+
+  it('shows one toast when favorites fail to load after login with a pending heart', async () => {
+    const tour = sampleTour();
+    vi.mocked(getFavorites).mockRejectedValueOnce(new Error('network'));
+    useUIStore.setState({
+      authIntent: { type: 'favorite', tourId: tour.id, tour },
+    });
+
+    await afterSessionEstablished(() => false);
+
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith('Не удалось добавить тур в избранное. Попробуйте ещё раз');
+    expect(addFavorite).not.toHaveBeenCalled();
+    expect(useUIStore.getState().authIntent).toBeNull();
+  });
+
+  it('shows one load toast when favorites fail to load and there is no pending heart', async () => {
+    vi.mocked(getFavorites).mockRejectedValueOnce(new Error('network'));
+
+    await afterSessionEstablished(() => false);
+
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith('Не удалось загрузить избранное');
+    expect(addFavorite).not.toHaveBeenCalled();
   });
 });

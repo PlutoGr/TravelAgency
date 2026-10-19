@@ -24,18 +24,6 @@ export async function afterSessionEstablished(isCancelled: () => boolean): Promi
   closeLoginKeepingIntent();
   await useFavoritesStore.getState().loadFavorites();
   if (isCancelled()) return;
-
-  const favorites = useFavoritesStore.getState();
-  const intent = useUIStore.getState().authIntent;
-  if (intent?.type === 'favorite' && favorites.error) {
-    useUIStore.getState().clearAuthIntent();
-    toast.error(favoriteIntentErrorToast);
-    return;
-  }
-  if (intent?.type === 'favorite' && favorites.isFavorite(intent.tourId)) {
-    useUIStore.getState().clearAuthIntent();
-    return;
-  }
   resumeFavoriteIntent();
 }
 

@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import TourCatalogPage from './TourCatalogPage';
+import TourCatalogPage, { EMPTY_CATALOG_RESULTS } from './TourCatalogPage';
 import { getDestinations, getTours } from '@/api/catalog';
 import { sampleTour } from '@/test/sampleTour';
 import { renderPage } from '@/test/render';
@@ -214,6 +214,57 @@ describe('TourCatalogPage', () => {
     expect(screen.getByRole('button', { name: chip })).toBeInTheDocument();
     expect(getTours).not.toHaveBeenCalled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [0, EMPTY_CATALOG_RESULTS],
+    [1, 'Найден 1 тур'],
+    [2, 'Найдено 2 тура'],
+    [5, 'Найдено 5 туров'],
+    [11, 'Найдено 11 туров'],
+    [12, 'Найдено 12 туров'],
+    [14, 'Найдено 14 туров'],
+    [21, 'Найден 21 тур'],
+    [22, 'Найдено 22 тура'],
+    [111, 'Найдено 111 туров'],
+  ] as const)('states the catalog result for %s tours', async (total, phrase) => {
+    vi.mocked(getTours).mockResolvedValue({
+      ...emptyPage,
+      items: total === 0 ? [] : [sampleTour()],
+      total,
+      totalPages: total === 0 ? 0 : 1,
+    });
+
+    renderCatalog('/tours?country=Атлантида');
+
+    expect(await screen.findByText(phrase)).toBeInTheDocument();
+    if (total === 0) {
+      expect(screen.queryByText(/^Найден[о]? \d/)).not.toBeInTheDocument();
+      expect(
+        within(screen.getByText(phrase).parentElement as HTMLElement).getByRole('button', {
+          name: 'Сбросить фильтры',
+        }),
+      ).toBeInTheDocument();
+      return;
+    }
+    expect(screen.queryByText(EMPTY_CATALOG_RESULTS)).not.toBeInTheDocument();
+  });
+
+  it('clears filters and reloads the catalog from the empty result button', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getTours).mockResolvedValue(emptyPage);
+
+    renderCatalog('/tours?country=Атлантида&dateFrom=2026-11-01');
+
+    const phrase = await screen.findByText(EMPTY_CATALOG_RESULTS);
+    const callsBefore = vi.mocked(getTours).mock.calls.length;
+    await user.click(within(phrase.parentElement as HTMLElement).getByRole('button', { name: 'Сбросить фильтры' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('url').textContent).toBe('/tours');
+      expect(getTours).toHaveBeenCalledTimes(callsBefore + 1);
+      expect(getTours).toHaveBeenLastCalledWith({}, 1);
+    });
   });
 
   it('requests tours when the departure dates are the supported bounds', async () => {
