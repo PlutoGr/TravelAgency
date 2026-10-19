@@ -6,21 +6,13 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { Modal, Tabs, Input, Button } from '@/components/ui';
+import { AUTH_FORM_TEXT, authFormError } from '@/domain/authFormErrors';
 import { readReturnToParam, resolveReturnTo } from '@/utils/safeReturnTo';
 
 const AUTH_TABS = [
   { id: 'login', label: 'Вход' },
   { id: 'register', label: 'Регистрация' },
 ] as const;
-
-const AUTH_UNAVAILABLE = 'Не удалось войти. Попробуйте ещё раз через минуту';
-const LOGIN_RATE_LIMITED = 'Слишком много попыток входа. Подождите немного и попробуйте снова.';
-
-function httpStatus(error: unknown): number | undefined {
-  if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
-  const response = (error as { response?: { status?: number } }).response;
-  return response?.status;
-}
 
 export default function AuthModal() {
   const navigate = useNavigate();
@@ -99,11 +91,13 @@ function LoginForm({
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | undefined>();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(undefined);
+    setPasswordError(undefined);
     if (!email.trim() || !password.trim()) {
       toast.error('Заполните все поля');
       return;
@@ -111,22 +105,17 @@ function LoginForm({
     try {
       await onSubmit(email, password);
     } catch (err) {
-      if (httpStatus(err) === 502) {
-        setPassword('');
-        toast.error(AUTH_UNAVAILABLE);
+      const failure = authFormError(err, 'login');
+      if (failure.place === 'password') {
+        setPasswordError(failure.text);
         return;
       }
-      if (httpStatus(err) === 401) {
-        setPassword('');
-        setFormError('Неверный email или пароль');
+      setPassword('');
+      if (failure.place === 'toast') {
+        toast.error(failure.text);
         return;
       }
-      if (httpStatus(err) === 429) {
-        setPassword('');
-        setFormError(LOGIN_RATE_LIMITED);
-        return;
-      }
-      toast.error('Неверный email или пароль');
+      setFormError(failure.text);
     }
   }
 
@@ -145,8 +134,12 @@ function LoginForm({
         type="password"
         icon={Lock}
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e) => {
+          setPassword(e.target.value);
+          setPasswordError(undefined);
+        }}
         autoComplete="current-password"
+        error={passwordError}
       />
       <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
         Войти
@@ -184,15 +177,6 @@ function validatePassword(password: string): string[] {
   return errors;
 }
 
-function extractValidationErrors(error: unknown): string[] {
-  const data = (error as { response?: { data?: { errors?: Record<string, string[]> } } })?.response?.data;
-  const errors = data?.errors;
-  if (!errors || typeof errors !== 'object') return [];
-  return Object.values(errors).flat().filter((m): m is string => typeof m === 'string');
-}
-
-const REGISTER_UNAVAILABLE = 'Не удалось зарегистрироваться. Попробуйте ещё раз через минуту';
-
 function RegisterForm({
   isLoading,
   onSubmit,
@@ -229,29 +213,21 @@ function RegisterForm({
       return;
     }
 
-    const pwdErrors = validatePassword(password);
-    if (pwdErrors.length > 0) {
-      setPasswordError(pwdErrors.join('. '));
-      setFormError(`Пароль: ${pwdErrors.join(', ')}`);
+    if (validatePassword(password).length > 0) {
+      setPasswordError(AUTH_FORM_TEXT.passwordRule);
       return;
     }
 
     try {
       await onSubmit({ email, password, firstName, lastName, phone });
     } catch (err) {
-      if (httpStatus(err) === 502) {
-        setPassword('');
-        setFormError(REGISTER_UNAVAILABLE);
+      const failure = authFormError(err, 'register');
+      if (failure.place === 'password') {
+        setPasswordError(failure.text);
         return;
       }
       setPassword('');
-      const messages = extractValidationErrors(err);
-      if (messages.length > 0) {
-        setFormError(messages.join('. '));
-        return;
-      }
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setFormError(detail || 'Ошибка регистрации. Попробуйте ещё раз.');
+      setFormError(failure.text);
     }
   }
 
