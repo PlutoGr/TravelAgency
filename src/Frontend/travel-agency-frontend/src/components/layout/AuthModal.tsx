@@ -191,6 +191,8 @@ function extractValidationErrors(error: unknown): string[] {
   return Object.values(errors).flat().filter((m): m is string => typeof m === 'string');
 }
 
+const REGISTER_UNAVAILABLE = 'Не удалось зарегистрироваться. Попробуйте ещё раз через минуту';
+
 function RegisterForm({
   isLoading,
   onSubmit,
@@ -210,25 +212,27 @@ function RegisterForm({
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPasswordError(undefined);
+    setFormError(undefined);
 
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password.trim()) {
-      toast.error('Заполните все поля');
+      setFormError('Заполните все поля');
       return;
     }
 
     if (phone.trim() && !PHONE_REGEX.test(phone.trim())) {
-      toast.error('Неверный формат телефона. Допустимы цифры, пробелы, дефисы, скобки и + в начале.');
+      setFormError('Неверный формат телефона. Допустимы цифры, пробелы, дефисы, скобки и + в начале.');
       return;
     }
 
     const pwdErrors = validatePassword(password);
     if (pwdErrors.length > 0) {
       setPasswordError(pwdErrors.join('. '));
-      toast.error(`Пароль: ${pwdErrors.join(', ')}`);
+      setFormError(`Пароль: ${pwdErrors.join(', ')}`);
       return;
     }
 
@@ -237,16 +241,17 @@ function RegisterForm({
     } catch (err) {
       if (httpStatus(err) === 502) {
         setPassword('');
-        toast.error(AUTH_UNAVAILABLE);
+        setFormError(REGISTER_UNAVAILABLE);
         return;
       }
+      setPassword('');
       const messages = extractValidationErrors(err);
       if (messages.length > 0) {
-        toast.error(messages.join('. '));
+        setFormError(messages.join('. '));
         return;
       }
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(detail || 'Ошибка регистрации. Попробуйте ещё раз.');
+      setFormError(detail || 'Ошибка регистрации. Попробуйте ещё раз.');
     }
   }
 
@@ -304,6 +309,11 @@ function RegisterForm({
       <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
         Зарегистрироваться
       </Button>
+      {formError && (
+        <p role="alert" className="-mt-2 text-sm text-red-500">
+          {formError}
+        </p>
+      )}
     </form>
   );
 }

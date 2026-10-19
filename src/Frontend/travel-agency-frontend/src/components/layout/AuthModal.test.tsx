@@ -139,27 +139,90 @@ describe('AuthModal unavailable auth service', () => {
 
   it('keeps email and name and clears the password when register returns 502', async () => {
     vi.spyOn(authApi, 'register').mockRejectedValue({ response: { status: 502 } });
-    useUIStore.setState({ isAuthModalOpen: true, authModalTab: 'register' });
     const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
-    render(
-      <MemoryRouter>
-        <AuthModal />
-      </MemoryRouter>,
+    renderRegister();
+
+    await fillRegister(user);
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Не удалось зарегистрироваться. Попробуйте ещё раз через минуту',
     );
+    expect(toast.error).not.toHaveBeenCalled();
+    expectKeptRegisterFields();
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
+  it('shows a registration error under the form on 401, keeps the fields and clears the password', async () => {
+    vi.spyOn(authApi, 'register').mockRejectedValue({ response: { status: 401 } });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderRegister();
+
+    await fillRegister(user);
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Ошибка регистрации. Попробуйте ещё раз.');
+    expect(toast.error).not.toHaveBeenCalled();
+    expectKeptRegisterFields();
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
+  it('shows the server detail under the form on 409, keeps the fields and clears the password', async () => {
+    vi.spyOn(authApi, 'register').mockRejectedValue({
+      response: { status: 409, data: { detail: 'A user with this email already exists.' } },
+    });
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderRegister();
+
+    await fillRegister(user);
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('A user with this email already exists.');
+    expect(toast.error).not.toHaveBeenCalled();
+    expectKeptRegisterFields();
+    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+  });
+
+  it('shows an empty-fields error under the form and does not toast', async () => {
+    const register = vi.spyOn(authApi, 'register');
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    renderRegister();
 
     await user.type(screen.getByLabelText('Имя'), 'Анна');
-    await user.type(screen.getByLabelText('Фамилия'), 'Смирнова');
-    await user.type(screen.getByLabelText('Email'), 'anna@example.com');
-    await user.type(screen.getByLabelText('Телефон'), '+79990001122');
     await user.type(screen.getByLabelText('Пароль'), 'Password1');
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }));
 
-    expect(toast.error).toHaveBeenCalledWith('Не удалось войти. Попробуйте ещё раз через минуту');
+    expect(screen.getByRole('alert')).toHaveTextContent('Заполните все поля');
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
-    expect(screen.getByLabelText('Email')).toHaveValue('anna@example.com');
-    expect(screen.getByLabelText('Пароль')).toHaveValue('');
+    expect(screen.getByLabelText('Пароль')).toHaveValue('Password1');
   });
 });
+
+function renderRegister() {
+  useUIStore.setState({ isAuthModalOpen: true, authModalTab: 'register' });
+  return render(
+    <MemoryRouter>
+      <AuthModal />
+    </MemoryRouter>,
+  );
+}
+
+async function fillRegister(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Имя'), 'Анна');
+  await user.type(screen.getByLabelText('Фамилия'), 'Смирнова');
+  await user.type(screen.getByLabelText('Email'), 'anna@example.com');
+  await user.type(screen.getByLabelText('Телефон'), '+79990001122');
+  await user.type(screen.getByLabelText('Пароль'), 'Password1');
+}
+
+function expectKeptRegisterFields() {
+  expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
+  expect(screen.getByLabelText('Фамилия')).toHaveValue('Смирнова');
+  expect(screen.getByLabelText('Email')).toHaveValue('anna@example.com');
+  expect(screen.getByLabelText('Телефон')).toHaveValue('+79990001122');
+}
 
 function following(node: Node, later: Node) {
   return (node.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
