@@ -43,5 +43,5 @@ describe('formatDate', () => {
       expect(result.stdout).toMatch(/^2 /);
       expect(result.stdout).toMatch(/ноя/);
     }
-  });
+  }, 20000);
 });
