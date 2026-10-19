@@ -22,5 +22,9 @@ describe('Footer', () => {
 
     expect(screen.getByRole('link', { name: 'Популярные туры' })).toHaveAttribute('href', '/tours');
     expect(screen.getByRole('link', { name: 'Отзывы' })).toHaveAttribute('href', '/#reviews');
+
+    for (const social of ['VK', 'TG', 'YT']) {
+      expect(screen.queryByRole('link', { name: social })).not.toBeInTheDocument();
+    }
   });
 });
