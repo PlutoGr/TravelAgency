@@ -117,6 +117,14 @@ public sealed class MediaDataSeeder(
         if (existing is null)
             return false;
 
+        // Чужое назначение не оставляем: иначе демо-id с purpose general останется публичным.
+        if (!MediaPurposes.IsTourImage(existing.Purpose))
+        {
+            db.MediaFiles.Remove(existing);
+            await db.SaveChangesAsync(cancellationToken);
+            return false;
+        }
+
         if (await ObjectExistsAsync(storage, existing.StorageKey, cancellationToken))
         {
             if (!existing.IsPublic)

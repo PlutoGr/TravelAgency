@@ -67,6 +67,30 @@ public class MediaDataSeederTests
     }
 
     [Fact]
+    public async Task Seed_ReplacesExistingFileWhenPurposeIsNotTourImage()
+    {
+        await using var db = await CreateDbAsync();
+        var storage = new RecordingStorage();
+        await MediaDataSeeder.SeedAsync(db, storage, new ImageProcessingService(), NullLogger.Instance, CancellationToken.None);
+
+        var id = DemoSeedIds.PhotoId(1, 1);
+        db.ChangeTracker.Clear();
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE \"MediaFiles\" SET \"Purpose\" = {"general"} WHERE \"Id\" = {id}");
+        db.ChangeTracker.Clear();
+
+        await MediaDataSeeder.SeedAsync(db, storage, new ImageProcessingService(), NullLogger.Instance, CancellationToken.None);
+
+        var files = await db.MediaFiles.AsNoTracking().Include(f => f.Thumbnails).ToListAsync();
+        files.Should().HaveCount(DemoSeedIds.PublishedTourCount * DemoSeedIds.PhotosPerTour);
+        var replaced = files.Single(f => f.Id == id);
+        replaced.Purpose.Should().Be(MediaPurposes.TourImage);
+        replaced.IsPublic.Should().BeTrue();
+        replaced.Thumbnails.Select(t => t.SizeCode).Should().BeEquivalentTo(TourImageSizes.All.Select(s => s.Code));
+        storage.Objects.Should().ContainKey(replaced.StorageKey);
+    }
+
+    [Fact]
     public async Task Production_DoesNotSeed_EvenWhenTheFlagIsSet()
     {
         await using var db = await CreateDbAsync();
