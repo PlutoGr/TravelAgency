@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using TravelAgency.Catalog.Application;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.Interfaces;
@@ -57,8 +58,11 @@ public static class InfrastructureExtensions
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("ConnectionStrings:CatalogDb is required. Set ConnectionStrings__CatalogDb environment variable or add it to configuration.");
 
-        services.AddDbContext<CatalogDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddSingleton(sp => new PostgresNoticeLoggingInterceptor(
+            sp.GetRequiredService<ILoggerFactory>().CreateLogger("Npgsql.Notices")));
+        services.AddDbContext<CatalogDbContext>((sp, options) =>
+            options.UseNpgsql(connectionString)
+                .AddInterceptors(sp.GetRequiredService<PostgresNoticeLoggingInterceptor>()));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
         services.AddScoped<ITourRepository, TourRepository>();

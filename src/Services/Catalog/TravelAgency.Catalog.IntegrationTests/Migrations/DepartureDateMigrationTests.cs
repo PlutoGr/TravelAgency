@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
+using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
 using TravelAgency.Catalog.Application.Time;
 using TravelAgency.Catalog.Infrastructure.Migrations;
@@ -22,8 +22,10 @@ public class DepartureDateMigrationTests : IAsyncLifetime
     [Fact]
     public async Task Migration_ConvertsValidFromInTheDepartureCityZone_AndDownDropsTheColumn()
     {
+        var logs = new CollectingLogger();
         var options = new DbContextOptionsBuilder<CatalogDbContext>()
             .UseNpgsql(_postgres.GetConnectionString())
+            .AddInterceptors(new PostgresNoticeLoggingInterceptor(logs))
             .Options;
 
         var moscowTour = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa11");
@@ -52,11 +54,6 @@ public class DepartureDateMigrationTests : IAsyncLifetime
             await InsertOfferAsync(db, yoOffer, yoTour, yekaterinburgNight, validTo);
             await InsertOfferAsync(db, unknownOffer, unknownTour, moscowNight, validTo);
 
-            await db.Database.OpenConnectionAsync();
-            var connection = (NpgsqlConnection)db.Database.GetDbConnection();
-            var notices = new List<string>();
-            connection.Notice += (_, args) => notices.Add(args.Notice.MessageText);
-
             await db.Database.MigrateAsync();
 
             var offers = await db.TourOffers.AsNoTracking().ToDictionaryAsync(offer => offer.Id);
@@ -66,18 +63,19 @@ public class DepartureDateMigrationTests : IAsyncLifetime
             offers[unknownOffer].DepartureDate.Should().Be(new DateOnly(2026, 11, 2));
             offers[moscowOffer].ValidFrom.Should().Be(moscowNight);
 
-            var unknownLines = notices.Where(line => line.Contains(DepartureDateConversion.UnknownCityMarker, StringComparison.Ordinal)).ToList();
+            var unknownLines = logs.Messages.Where(line => line.Contains(DepartureDateConversion.UnknownCityMarker, StringComparison.Ordinal)).ToList();
             unknownLines.Should().ContainSingle();
             unknownLines[0].Should().Contain("Париж");
             unknownLines[0].Should().NotContain("Новосибирск");
-            notices.Should().Contain(line => line.Contains("обновлено 4", StringComparison.Ordinal));
+            unknownLines[0].Should().NotContain("москва");
+            logs.Messages.Should().Contain(line => line.Contains("обновлено 4", StringComparison.Ordinal));
 
-            notices.Clear();
+            var logged = logs.Messages.Count;
             await db.Database.ExecuteSqlRawAsync(DepartureDateMigrationSql.PostgresBackfill());
             offers = await db.TourOffers.AsNoTracking().ToDictionaryAsync(offer => offer.Id);
             offers[moscowOffer].DepartureDate.Should().Be(new DateOnly(2026, 11, 2));
-            notices.Should().NotContain(line => line.Contains(DepartureDateConversion.UnknownCityMarker, StringComparison.Ordinal));
-            notices.Should().Contain(line => line.Contains("обновлено 0", StringComparison.Ordinal));
+            logs.Messages.Skip(logged).Should().NotContain(line => line.Contains(DepartureDateConversion.UnknownCityMarker, StringComparison.Ordinal));
+            logs.Messages.Skip(logged).Should().Contain(line => line.Contains("обновлено 0", StringComparison.Ordinal));
 
             await db.Database.MigrateAsync("20261004112548_AddTourVersion");
         }
@@ -115,4 +113,32 @@ public class DepartureDateMigrationTests : IAsyncLifetime
             VALUES
                 ({id}, {tourId}, {validFrom}, {validTo}, {1000m}, {"RUB"}, {4});
             """);
+
+    private sealed class CollectingLogger : ILogger
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
+    }
 }
