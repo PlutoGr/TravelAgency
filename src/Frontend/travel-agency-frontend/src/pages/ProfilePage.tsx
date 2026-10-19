@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/layout';
 import { Card, Avatar, Button, Input } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { updateProfile } from '@/api/auth';
+import { authFormError } from '@/domain/authFormErrors';
 
 const BREADCRUMBS = [
   { label: 'Личный кабинет', path: '/dashboard' },
@@ -24,6 +25,7 @@ export default function ProfilePage() {
     passport: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | undefined>();
 
   useEffect(() => {
     if (storeUser) {
@@ -42,6 +44,7 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
+    setFormError(undefined);
     setIsSaving(true);
     try {
       const updated = await updateProfile({
@@ -51,8 +54,8 @@ export default function ProfilePage() {
       });
       setUser(updated);
       toast.success('Профиль успешно обновлён');
-    } catch {
-      toast.error('Не удалось сохранить изменения');
+    } catch (err) {
+      setFormError(authFormError(err, 'profile').text);
     } finally {
       setIsSaving(false);
     }
@@ -139,6 +142,11 @@ export default function ProfilePage() {
               Сохранить
             </Button>
           </div>
+          {formError && (
+            <p role="alert" className="mt-4 text-sm text-red-500">
+              {formError}
+            </p>
+          )}
         </Card>
       </div>
     </PageTransition>
