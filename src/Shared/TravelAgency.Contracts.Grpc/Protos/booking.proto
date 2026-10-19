@@ -16,7 +16,7 @@ message ValidateBookingAccessRequest {
 
 message ValidateBookingAccessResponse {
   bool has_access = 1;
-  bool can_write = 2;
+  optional bool can_write = 2;
 }
 
 message GetBookingAssignmentRequest {

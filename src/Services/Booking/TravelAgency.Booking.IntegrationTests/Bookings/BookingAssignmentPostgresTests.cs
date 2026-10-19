@@ -204,6 +204,9 @@ public class BookingAssignmentPostgresTests
         _factory.IdentityGrpcClientMock
             .Setup(c => c.GetUserSummaryAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UserSummary(userId.ToString(), "user@example.com", "Test", role, role));
+        _factory.IdentityGrpcClientMock
+            .Setup(c => c.GetUserRoleAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(true, role));
     }
 
     private static BookingGrpcService CreateGrpc(IServiceProvider services) =>

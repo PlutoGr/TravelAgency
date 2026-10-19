@@ -1,3 +1,4 @@
+using Grpc.Core;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs.Requests;
@@ -52,8 +53,8 @@ public class AssignManagerCommandHandlerTests
         _currentUserMock.Setup(u => u.UserId).Returns(ActorId);
         _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Admin);
         _identityGrpcMock
-            .Setup(c => c.GetUserSummaryAsync(TargetManagerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new UserSummary(TargetManagerId.ToString(), "client@example.com", "Test", "Client", AppRoles.Client));
+            .Setup(c => c.GetUserRoleAsync(TargetManagerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(true, AppRoles.Client));
 
         var act = async () => await _handler.Handle(
             new AssignManagerCommand(Guid.NewGuid(), new AssignManagerRequest(TargetManagerId, null, null)),
@@ -61,7 +62,49 @@ public class AssignManagerCommandHandlerTests
 
         var exception = await act.Should().ThrowAsync<BadRequestException>();
         exception.Which.StatusCode.Should().Be(400);
+        exception.Which.Message.Should().Contain("не менеджер");
         _bookingRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTargetIsMissing_ShouldThrowBadRequest()
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ActorId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Admin);
+        _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(TargetManagerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(false, string.Empty));
+
+        var act = async () => await _handler.Handle(
+            new AssignManagerCommand(Guid.NewGuid(), new AssignManagerRequest(TargetManagerId, null, null)),
+            CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.StatusCode.Should().Be(400);
+        exception.Which.Message.Should().Contain("не менеджер");
+        _bookingRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(StatusCode.Unavailable)]
+    [InlineData(StatusCode.DeadlineExceeded)]
+    [InlineData(StatusCode.Internal)]
+    public async Task Handle_WhenIdentityTransportFails_ShouldPropagateRpcException(StatusCode statusCode)
+    {
+        _currentUserMock.Setup(u => u.UserId).Returns(ActorId);
+        _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Admin);
+        _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(TargetManagerId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new RpcException(new Status(statusCode, "identity down")));
+
+        var act = async () => await _handler.Handle(
+            new AssignManagerCommand(Guid.NewGuid(), new AssignManagerRequest(TargetManagerId, null, null)),
+            CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<RpcException>();
+        exception.Which.StatusCode.Should().Be(statusCode);
+        _bookingRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -69,6 +112,9 @@ public class AssignManagerCommandHandlerTests
     {
         _currentUserMock.Setup(u => u.UserId).Returns(ActorId);
         _currentUserMock.Setup(u => u.Role).Returns(AppRoles.Manager);
+        _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(TargetManagerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(true, AppRoles.Manager));
         _identityGrpcMock
             .Setup(c => c.GetUserSummaryAsync(TargetManagerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UserSummary(TargetManagerId.ToString(), "manager@example.com", "Test", "Manager", AppRoles.Manager));

@@ -1,3 +1,4 @@
+using Grpc.Core;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Shared.Contracts.Abstractions;
 using TravelAgency.Booking.Application.DTOs;
@@ -101,6 +102,9 @@ public class CreateBookingCommandHandlerTests
             .Setup(r => r.GetPreferredManagerIdAsync(ClientId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(managerId);
         _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(managerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(true, "Manager"));
+        _identityGrpcMock
             .Setup(c => c.GetUserSummaryAsync(managerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UserSummary(managerId.ToString(), "manager@example.com", "Test", "Manager", "Manager"));
 
@@ -152,5 +156,88 @@ public class CreateBookingCommandHandlerTests
         _outboxRepoMock.Verify(
             r => r.Stage(It.Is<OutboxMessage>(m => m.EventType == "BookingManagerAssigned")),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPinnedUserIsNotManager_LeavesBookingInQueue()
+    {
+        var managerId = Guid.NewGuid();
+        _bookingRepoMock
+            .Setup(r => r.GetPreferredManagerIdAsync(ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(managerId);
+        _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(managerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(true, "Client"));
+
+        BookingEntity? staged = null;
+        _bookingRepoMock
+            .Setup(r => r.Stage(It.IsAny<BookingEntity>()))
+            .Callback<BookingEntity>(booking => staged = booking);
+
+        var result = await _handler.Handle(
+            new CreateBookingCommand(new CreateBookingRequest(TourId, null)),
+            CancellationToken.None);
+
+        staged.Should().NotBeNull();
+        staged!.AssignedManagerId.Should().BeNull();
+        staged.AssignmentHistory.Should().BeEmpty();
+        result.AssignedManagerId.Should().BeNull();
+
+        _outboxRepoMock.Verify(
+            r => r.Stage(It.Is<OutboxMessage>(m => m.EventType == "BookingManagerAssigned")),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPinnedUserIsMissing_LeavesBookingInQueue()
+    {
+        var managerId = Guid.NewGuid();
+        _bookingRepoMock
+            .Setup(r => r.GetPreferredManagerIdAsync(ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(managerId);
+        _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(managerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserRoleLookup(false, string.Empty));
+
+        BookingEntity? staged = null;
+        _bookingRepoMock
+            .Setup(r => r.Stage(It.IsAny<BookingEntity>()))
+            .Callback<BookingEntity>(booking => staged = booking);
+
+        var result = await _handler.Handle(
+            new CreateBookingCommand(new CreateBookingRequest(TourId, null)),
+            CancellationToken.None);
+
+        staged!.AssignedManagerId.Should().BeNull();
+        staged.AssignmentHistory.Should().BeEmpty();
+        result.AssignedManagerId.Should().BeNull();
+        _outboxRepoMock.Verify(
+            r => r.Stage(It.Is<OutboxMessage>(m => m.EventType == "BookingManagerAssigned")),
+            Times.Never);
+    }
+
+    [Theory]
+    [InlineData(StatusCode.Unavailable)]
+    [InlineData(StatusCode.DeadlineExceeded)]
+    [InlineData(StatusCode.Internal)]
+    public async Task Handle_WhenIdentityTransportFails_DoesNotStageBooking(StatusCode statusCode)
+    {
+        var managerId = Guid.NewGuid();
+        _bookingRepoMock
+            .Setup(r => r.GetPreferredManagerIdAsync(ClientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(managerId);
+        _identityGrpcMock
+            .Setup(c => c.GetUserRoleAsync(managerId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new RpcException(new Status(statusCode, "identity down")));
+
+        var act = async () => await _handler.Handle(
+            new CreateBookingCommand(new CreateBookingRequest(TourId, null)),
+            CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<RpcException>();
+        exception.Which.StatusCode.Should().Be(statusCode);
+        _bookingRepoMock.Verify(r => r.Stage(It.IsAny<BookingEntity>()), Times.Never);
+        _outboxRepoMock.Verify(r => r.Stage(It.IsAny<OutboxMessage>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

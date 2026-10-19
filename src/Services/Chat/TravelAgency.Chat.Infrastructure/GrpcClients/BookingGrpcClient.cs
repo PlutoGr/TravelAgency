@@ -31,7 +31,11 @@ public sealed class BookingGrpcClient : IBookingGrpcClient
     public async Task<bool> CanWriteBookingAsync(Guid bookingId, Guid userId, CancellationToken ct = default)
     {
         var response = await ValidateAsync(bookingId, userId, ct);
-        return response?.CanWrite ?? false;
+        if (response is null)
+            return false;
+
+        // Старый Booking не присылает поле. Тогда право писать совпадает с has_access.
+        return response.HasCanWrite ? response.CanWrite : response.HasAccess;
     }
 
     private async Task<ValidateBookingAccessResponse?> ValidateAsync(Guid bookingId, Guid userId, CancellationToken ct)

@@ -1,3 +1,4 @@
+using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Contracts.Grpc.Identity;
@@ -33,10 +34,25 @@ public class IdentityGrpcClient : IIdentityGrpcClient
                 response.LastName ?? string.Empty,
                 response.Role ?? string.Empty);
         }
-        catch (Grpc.Core.RpcException ex)
+        catch (RpcException ex)
         {
             _logger.LogWarning(ex, "gRPC call to Identity service failed for user {UserId}", userId);
             return null;
+        }
+    }
+
+    public async Task<UserRoleLookup> GetUserRoleAsync(Guid userId, CancellationToken ct = default)
+    {
+        try
+        {
+            var request = new GetUserSummaryRequest { UserId = userId.ToString() };
+            var callOptions = _callOptionsFactory.Create(ct);
+            var response = await _client.GetUserSummaryAsync(request, callOptions);
+            return new UserRoleLookup(true, response.Role ?? string.Empty);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+        {
+            return new UserRoleLookup(false, string.Empty);
         }
     }
 }

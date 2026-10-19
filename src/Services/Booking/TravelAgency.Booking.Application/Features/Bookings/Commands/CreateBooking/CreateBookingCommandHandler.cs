@@ -7,6 +7,7 @@ using TravelAgency.Booking.Application.Features.Bookings;
 using TravelAgency.Booking.Application.Mapping;
 using TravelAgency.Booking.Domain.Entities;
 using TravelAgency.Booking.Domain.Interfaces;
+using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Booking.Application.Features.Bookings.Commands.CreateBooking;
 
@@ -25,12 +26,13 @@ public sealed class CreateBookingCommandHandler(
 
         var preferredManagerId = await bookingRepository.GetPreferredManagerIdAsync(
             currentUser.UserId, cancellationToken);
+        var assignedManagerId = await ConfirmManagerRoleAsync(preferredManagerId, cancellationToken);
 
         var booking = Domain.Entities.Booking.Create(
             currentUser.UserId,
             command.Request.TourId,
             command.Request.Comment,
-            preferredManagerId);
+            assignedManagerId);
 
         bookingRepository.Stage(booking);
 
@@ -55,5 +57,14 @@ public sealed class CreateBookingCommandHandler(
             booking.AssignedManagerId, identityGrpcClient, cancellationToken);
 
         return booking.ToDto(assignedManagerName: managerName);
+    }
+
+    private async Task<Guid?> ConfirmManagerRoleAsync(Guid? preferredManagerId, CancellationToken cancellationToken)
+    {
+        if (preferredManagerId is not Guid managerId)
+            return null;
+
+        var role = await identityGrpcClient.GetUserRoleAsync(managerId, cancellationToken);
+        return role.UserFound && role.Role == AppRoles.Manager ? managerId : null;
     }
 }

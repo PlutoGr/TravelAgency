@@ -23,9 +23,9 @@ public sealed class AssignManagerCommandHandler(
         if (currentUser.Role is not (AppRoles.Manager or AppRoles.Admin))
             throw new ForbiddenException("Only managers or admins can assign a manager.");
 
-        var target = await identityGrpcClient.GetUserSummaryAsync(command.Request.ManagerId, cancellationToken);
-        if (target is null || target.Role != AppRoles.Manager)
-            throw new BadRequestException("Target user is not a manager.");
+        var target = await identityGrpcClient.GetUserRoleAsync(command.Request.ManagerId, cancellationToken);
+        if (!target.UserFound || target.Role != AppRoles.Manager)
+            throw new BadRequestException("Указанный пользователь не менеджер.");
 
         var booking = await bookingRepository.GetByIdAsync(command.BookingId, cancellationToken)
             ?? throw new NotFoundException($"Booking '{command.BookingId}' was not found.");

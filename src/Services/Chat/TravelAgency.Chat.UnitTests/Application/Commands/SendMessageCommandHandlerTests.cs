@@ -73,6 +73,7 @@ public class SendMessageCommandHandlerTests
 
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("*access*");
+        await _messageRepository.DidNotReceive().AddAsync(Arg.Any<ChatMessage>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -94,6 +95,7 @@ public class SendMessageCommandHandlerTests
 
         var exception = await act.Should().ThrowAsync<ForbiddenException>();
         exception.Which.StatusCode.Should().Be(403);
+        await _messageRepository.DidNotReceive().AddAsync(Arg.Any<ChatMessage>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -115,6 +117,7 @@ public class SendMessageCommandHandlerTests
 
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("*Invalid user identity*");
+        await _messageRepository.DidNotReceive().AddAsync(Arg.Any<ChatMessage>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
