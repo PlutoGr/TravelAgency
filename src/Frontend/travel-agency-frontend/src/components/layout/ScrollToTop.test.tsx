@@ -52,4 +52,31 @@ describe('ScrollToTop', () => {
     expect(window.scrollTo).not.toHaveBeenCalled();
     target.remove();
   });
+
+  it('stops retrying an unknown hash and scrolls to the top', () => {
+    let queued: FrameRequestCallback | null = null;
+    let scheduled = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      queued = callback;
+      scheduled += 1;
+      return scheduled;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    const view = renderAt('/#foo');
+    for (let i = 0; i < 70 && queued; i += 1) {
+      const callback = queued;
+      queued = null;
+      callback(0);
+    }
+
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+    expect(scheduled).toBeGreaterThan(0);
+    expect(scheduled).toBeLessThanOrEqual(60);
+    expect(queued).toBeNull();
+
+    view.unmount();
+    expect(window.cancelAnimationFrame).toHaveBeenCalled();
+  });
 });
