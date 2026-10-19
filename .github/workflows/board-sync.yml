@@ -1,0 +1,47 @@
+# =====================================================================
+# Порядок карточек на доске задач (GitHub Projects v2, проект 2 владельца PlutoGr).
+# Скрипт .github/scripts/board_order.py: добавляет новые issues на доску, сверяет
+# колонку с меткой «статус: …», расставляет порядок внутри колонок и архивирует
+# задачи, закрытые 30+ дней назад. Двигаются только карточки не на своём месте.
+# Запуск: события issues (быстрая реакция), раз в сутки (страховка, архивация)
+# и вручную. Запуски идут по одному, без отмены начатого.
+# Токен доски (classic, право project) лежит в секрете BOARD_TOKEN: встроенный
+# GITHUB_TOKEN не имеет доступа к пользовательским проектам.
+# =====================================================================
+name: Board sync
+
+on:
+  issues:
+    types: [opened, reopened, closed, labeled, unlabeled]
+  schedule:
+    - cron: "0 0 * * *" # 03:00 по Москве
+  workflow_dispatch:
+
+concurrency:
+  group: board-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  board:
+    name: Порядок карточек
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.BOARD_TOKEN }}
+    steps:
+      - name: Проверка секрета
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Секрет BOARD_TOKEN не задан: Settings, Secrets and variables, Actions, New repository secret, имя BOARD_TOKEN (classic token с правом project)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # gh и python3 уже есть на ubuntu-latest, скрипт использует только стандартную библиотеку
+      - name: Синхронизация доски
+        run: python3 .github/scripts/board_order.py
