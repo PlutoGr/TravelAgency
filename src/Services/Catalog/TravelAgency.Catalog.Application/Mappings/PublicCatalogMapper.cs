@@ -7,10 +7,10 @@ namespace TravelAgency.Catalog.Application.Mappings;
 
 public static class PublicCatalogMapper
 {
-    public static TourSummaryDto ToSummary(Tour tour, DateTime utcNow)
+    public static TourSummaryDto ToSummary(Tour tour, DateOnly today)
     {
         var previews = ToPreviews(tour.Images, PublicCatalogLimits.MaxListPreviews);
-        var priceFrom = PublicCatalogPricing.PriceFrom(tour.Offers, utcNow);
+        var priceFrom = PublicCatalogPricing.PriceFrom(tour.Offers, today);
 
         return new TourSummaryDto(
             tour.Id,
@@ -20,16 +20,16 @@ public static class PublicCatalogMapper
             tour.DurationDays,
             CoverMediaFileId(previews),
             priceFrom,
-            PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, utcNow),
+            PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, today),
             tour.Status == TourStatus.Published,
             priceFrom,
-            PublicCatalogPricing.NearestDeparture(tour.Offers, utcNow),
+            PublicCatalogPricing.NearestDeparture(tour.Offers, today),
             tour.ShortDescription,
             tour.DepartureCity,
             previews);
     }
 
-    public static PublicTourDto ToPublicTour(Tour tour, DateTime utcNow)
+    public static PublicTourDto ToPublicTour(Tour tour, DateOnly today)
     {
         var images = ToPreviews(tour.Images, limit: null);
 
@@ -50,10 +50,10 @@ public static class PublicCatalogMapper
             tour.PublishedAt,
             tour.MealPlan?.ToString(),
             tour.AccommodationText,
-            PublicCatalogPricing.PriceFrom(tour.Offers, utcNow),
-            PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, utcNow),
-            PublicCatalogPricing.NearestDeparture(tour.Offers, utcNow),
-            PublicCatalogPricing.FutureOffers(tour.Offers, utcNow)
+            PublicCatalogPricing.PriceFrom(tour.Offers, today),
+            PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, today),
+            PublicCatalogPricing.NearestDeparture(tour.Offers, today),
+            PublicCatalogPricing.FutureOffers(tour.Offers, today)
                 .Select(TourMapper.ToPriceDto)
                 .ToList(),
             tour.Days
@@ -72,7 +72,7 @@ public static class PublicCatalogMapper
     /// Снятый тур отдаёт только id, название, обложку и available=false.
     /// Цена и описание в эту карточку не попадают.
     /// </summary>
-    public static PublicTourCardDto ToCard(Tour tour, DateTime utcNow)
+    public static PublicTourCardDto ToCard(Tour tour, DateOnly today)
     {
         var coverImage = tour.Images.FirstOrDefault(image => image.IsCover)
             ?? tour.Images.OrderBy(image => image.SortOrder).ThenBy(image => image.Id).FirstOrDefault();
@@ -100,9 +100,9 @@ public static class PublicCatalogMapper
             cover?.MediaFileId,
             cover,
             true,
-            PublicCatalogPricing.PriceFrom(tour.Offers, utcNow),
-            PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, utcNow),
-            PublicCatalogPricing.NearestDeparture(tour.Offers, utcNow),
+            PublicCatalogPricing.PriceFrom(tour.Offers, today),
+            PublicCatalogPricing.CurrencyOfPriceFrom(tour.Offers, today),
+            PublicCatalogPricing.NearestDeparture(tour.Offers, today),
             tour.ShortDescription,
             tour.Country,
             tour.DurationDays);

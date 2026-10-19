@@ -288,6 +288,39 @@ describe('TourWizard', () => {
     }
   });
 
+  it('sends the departure day without a time or zone', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getManagedTour).mockResolvedValue(
+      managed({
+        offers: [
+          {
+            id: 'offer-1',
+            validFrom: '2026-11-01T00:00:00Z',
+            validTo: '2026-11-08T00:00:00Z',
+            pricePerPerson: 1500,
+            currency: 'RUB',
+            availableSeats: 4,
+          },
+        ],
+      }),
+    );
+    renderAt(<TourWizard tourId="tour-1" />, '/manager/tours/tour-1?step=5');
+
+    expect(await screen.findByRole('heading', { name: 'Даты и цены' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Заезд 1'), { target: { value: '2026-11-02' } });
+    await user.click(screen.getByRole('button', { name: 'Далее' }));
+
+    expect(saveOffers).toHaveBeenCalledWith('tour-1', '"1"', [
+      {
+        validFrom: '2026-11-02',
+        validTo: '2026-11-08',
+        pricePerPerson: 1500,
+        currency: 'RUB',
+        availableSeats: 4,
+      },
+    ]);
+  });
+
   it('opens step 5 from ?step=5 with the saved draft', async () => {
     vi.mocked(getManagedTour).mockResolvedValue(
       managed({

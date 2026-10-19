@@ -2,16 +2,20 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using TravelAgency.Catalog.Application;
 using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.Interfaces;
+using TravelAgency.Catalog.Application.Time;
 using TravelAgency.Catalog.Domain.Interfaces;
 using TravelAgency.Catalog.Infrastructure.GrpcClients;
 using TravelAgency.Catalog.Infrastructure.Persistence;
 using TravelAgency.Catalog.Infrastructure.Queries;
 using TravelAgency.Catalog.Infrastructure.Repositories;
 using TravelAgency.Catalog.Infrastructure.Seeding;
+using TravelAgency.Catalog.Infrastructure.Time;
 using TravelAgency.Contracts.Grpc.Media;
 using TravelAgency.Shared.Infrastructure.Extensions;
 
@@ -46,13 +50,19 @@ public static class InfrastructureExtensions
     {
         services.AddApplication();
         services.AddSharedMediatRBehaviors();
+        services.TryAddSingleton(TimeProvider.System);
+        services.Configure<CatalogOptions>(configuration.GetSection(CatalogOptions.SectionName));
+        services.AddSingleton<ICatalogClock, CatalogClock>();
 
         var connectionString = configuration.GetConnectionString("CatalogDb");
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("ConnectionStrings:CatalogDb is required. Set ConnectionStrings__CatalogDb environment variable or add it to configuration.");
 
-        services.AddDbContext<CatalogDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddSingleton(sp => new PostgresNoticeLoggingInterceptor(
+            sp.GetRequiredService<ILoggerFactory>().CreateLogger("Npgsql.Notices")));
+        services.AddDbContext<CatalogDbContext>((sp, options) =>
+            options.UseNpgsql(connectionString)
+                .AddInterceptors(sp.GetRequiredService<PostgresNoticeLoggingInterceptor>()));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
         services.AddScoped<ITourRepository, TourRepository>();

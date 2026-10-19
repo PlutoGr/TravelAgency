@@ -5,8 +5,8 @@ namespace TravelAgency.Catalog.Application.Mappings;
 
 public static class TourMapper
 {
-    public static TourSummaryDto ToSummaryDto(Tour tour) =>
-        PublicCatalogMapper.ToSummary(tour, DateTime.UtcNow);
+    public static TourSummaryDto ToSummaryDto(Tour tour, DateOnly today) =>
+        PublicCatalogMapper.ToSummary(tour, today);
 
     public static TourPriceDto ToPriceDto(TourOffer price) =>
         new(
@@ -15,5 +15,6 @@ public static class TourMapper
             price.ValidTo,
             price.PricePerPerson,
             price.Currency,
-            price.AvailableSeats);
+            price.AvailableSeats,
+            price.DepartureDate);
 }

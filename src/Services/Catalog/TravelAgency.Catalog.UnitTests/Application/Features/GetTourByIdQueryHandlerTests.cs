@@ -1,5 +1,6 @@
 using TravelAgency.Catalog.Application.Exceptions;
 using TravelAgency.Catalog.UnitTests.Domain;
+using TravelAgency.Catalog.UnitTests.Time;
 using TravelAgency.Catalog.Application.Features.Tours.Queries.GetTourById;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
@@ -14,7 +15,7 @@ public class GetTourByIdQueryHandlerTests
 
     public GetTourByIdQueryHandlerTests()
     {
-        _handler = new GetTourByIdQueryHandler(_tourRepositoryMock.Object);
+        _handler = new GetTourByIdQueryHandler(_tourRepositoryMock.Object, new TestCatalogClock());
     }
 
     [Fact]

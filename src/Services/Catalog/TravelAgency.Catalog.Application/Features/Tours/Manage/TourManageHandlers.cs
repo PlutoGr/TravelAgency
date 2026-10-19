@@ -3,6 +3,7 @@ using TravelAgency.Catalog.Application.Abstractions;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Application.Exceptions;
 using TravelAgency.Catalog.Application.Mappings;
+using TravelAgency.Catalog.Application.Time;
 using TravelAgency.Catalog.Domain;
 using TravelAgency.Catalog.Domain.Entities;
 using TravelAgency.Catalog.Domain.Enums;
@@ -125,20 +126,22 @@ public sealed class UpdateTourConditionsCommandHandler(TourManageStore store)
     }
 }
 
-public sealed class UpdateTourManagePricesCommandHandler(TourManageStore store)
+public sealed class UpdateTourManagePricesCommandHandler(TourManageStore store, ICatalogClock clock)
     : IRequestHandler<UpdateTourManagePricesCommand, TourManageDto>
 {
     public async Task<TourManageDto> Handle(UpdateTourManagePricesCommand command, CancellationToken cancellationToken)
     {
         var tour = await store.LoadAsync(command.Id, command.IfMatch, cancellationToken);
+        var zone = clock.DefaultTimeZone;
         var offers = (command.Request.Offers ?? [])
             .Select(offer => TourOffer.Create(
                 tour.Id,
-                offer.ValidFrom,
-                offer.ValidTo,
+                DepartureDateConversion.AsUtcTimestamp(offer.ValidFrom),
+                DepartureDateConversion.AsUtcTimestamp(offer.ValidTo),
                 offer.PricePerPerson,
                 offer.Currency ?? string.Empty,
-                offer.AvailableSeats))
+                offer.AvailableSeats,
+                DepartureDateConversion.ForInput(offer.ValidFrom, tour.DepartureCity, zone)))
             .ToList();
         tour.ReplaceOffers(offers);
         await store.SaveAsync(cancellationToken);

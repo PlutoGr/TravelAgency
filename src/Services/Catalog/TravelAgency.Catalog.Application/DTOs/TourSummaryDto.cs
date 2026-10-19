@@ -13,7 +13,7 @@ public record TourSummaryDto(
     string? Currency,
     bool IsActive,
     decimal? PriceFrom = null,
-    DateTime? NearestDate = null,
+    DateOnly? NearestDate = null,
     string? ShortDescription = null,
     string? DepartureCity = null,
     IReadOnlyList<PublicTourPreviewDto>? Previews = null);

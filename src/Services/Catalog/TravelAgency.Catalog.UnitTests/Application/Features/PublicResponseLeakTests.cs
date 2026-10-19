@@ -28,16 +28,16 @@ public class PublicResponseLeakTests
             TourImage.Create(withPhotos.Id, secondId, 1, false, "Second", 800)
         ]);
 
-        var now = new DateTime(2026, 10, 8, 12, 0, 0, DateTimeKind.Utc);
-        AssertClean(PublicCatalogMapper.ToPublicTour(withPhotos, now), coverId);
-        AssertClean(PublicCatalogMapper.ToSummary(withPhotos, now), coverId);
-        AssertClean(PublicCatalogMapper.ToCard(withPhotos, now), coverId);
+        var today = new DateOnly(2026, 10, 8);
+        AssertClean(PublicCatalogMapper.ToPublicTour(withPhotos, today), coverId);
+        AssertClean(PublicCatalogMapper.ToSummary(withPhotos, today), coverId);
+        AssertClean(PublicCatalogMapper.ToCard(withPhotos, today), coverId);
         AssertClean(TourManageMapper.ToManageDto(withPhotos), expectedCover: null);
 
         var legacyOnly = TourWithStoredAddress(UnsplashAddress);
-        var page = PublicCatalogMapper.ToPublicTour(legacyOnly, now);
-        var summary = PublicCatalogMapper.ToSummary(legacyOnly, now);
-        var card = PublicCatalogMapper.ToCard(legacyOnly, now);
+        var page = PublicCatalogMapper.ToPublicTour(legacyOnly, today);
+        var summary = PublicCatalogMapper.ToSummary(legacyOnly, today);
+        var card = PublicCatalogMapper.ToCard(legacyOnly, today);
 
         page.CoverMediaFileId.Should().BeNull();
         summary.CoverMediaFileId.Should().BeNull();

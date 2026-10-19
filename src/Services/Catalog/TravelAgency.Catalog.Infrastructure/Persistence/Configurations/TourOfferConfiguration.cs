@@ -22,6 +22,10 @@ public class TourOfferConfiguration : IEntityTypeConfiguration<TourOffer>
             .HasMaxLength(3)
             .HasDefaultValue("USD");
 
+        builder.Property(p => p.DepartureDate)
+            .HasColumnType("date");
+
         builder.HasIndex(p => p.TourId);
+        builder.HasIndex(p => p.DepartureDate);
     }
 }

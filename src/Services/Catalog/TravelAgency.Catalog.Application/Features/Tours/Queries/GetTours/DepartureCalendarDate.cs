@@ -25,11 +25,4 @@ public static class DepartureCalendarDate
 
         return false;
     }
-
-    /// <summary>Начало календарного дня в UTC, Kind = Utc, чтобы параметр прошёл в timestamptz.</summary>
-    public static DateTime UtcStart(DateOnly day) =>
-        DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-
-    /// <summary>Исключительная граница следующего дня: сам день вылета входит целиком.</summary>
-    public static DateTime UtcEndExclusive(DateOnly day) => UtcStart(day.AddDays(1));
 }

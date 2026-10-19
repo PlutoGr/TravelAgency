@@ -6,4 +6,5 @@ public record TourPriceDto(
     DateTime ValidTo,
     decimal PricePerPerson,
     string Currency,
-    int AvailableSeats);
+    int AvailableSeats,
+    DateOnly DepartureDate);

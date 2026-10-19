@@ -34,7 +34,7 @@ public record PublicTourCardDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? Currency,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    DateTime? NearestDate,
+    DateOnly? NearestDate,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? ShortDescription,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -62,7 +62,7 @@ public record PublicTourDto(
     string? AccommodationText,
     decimal? PriceFrom,
     string? Currency,
-    DateTime? NearestDate,
+    DateOnly? NearestDate,
     IReadOnlyList<TourPriceDto> Prices,
     IReadOnlyList<PublicTourDayDto> Days,
     IReadOnlyList<PublicTourInclusionDto> Inclusions,

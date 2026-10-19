@@ -108,6 +108,9 @@ describe('catalogQuery', () => {
     expect(catalogPath({ directionId: 'dir-bali', dateFrom: '2026-11-01' })).toBe(
       '/tours?direction=dir-bali&dateFrom=2026-11-01',
     );
+    expect(catalogPath({ dateFrom: '2026-11-02', dateTo: '2026-11-02' })).toBe(
+      '/tours?dateFrom=2026-11-02&dateTo=2026-11-02',
+    );
   });
 
   it('maps a home search to a direction, a country, or the typed text', () => {

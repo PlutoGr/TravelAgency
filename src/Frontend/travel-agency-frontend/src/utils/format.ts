@@ -1,6 +1,23 @@
 import { format, isValid, parseISO } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+const CALENDAR_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * yyyy-MM-dd is a calendar day, not an instant. Local components keep the day
+ * in any time zone. A timestamp still goes through parseISO.
+ */
+function parseCalendarDay(value: string): Date | null {
+  const match = CALENDAR_DAY.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
 /**
  * Formats an ISO date string. Empty and unparseable values become an em dash
  * so a missing field cannot throw RangeError and blank the page.
@@ -10,7 +27,7 @@ export function formatDate(
   formatStr: string = 'd MMM yyyy',
 ): string {
   if (!dateStr) return '—';
-  const date = parseISO(dateStr);
+  const date = parseCalendarDay(dateStr) ?? parseISO(dateStr);
   if (!isValid(date)) return '—';
   try {
     return format(date, formatStr, { locale: ru });

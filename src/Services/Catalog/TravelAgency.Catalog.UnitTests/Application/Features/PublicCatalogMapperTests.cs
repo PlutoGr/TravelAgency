@@ -23,7 +23,7 @@ public class PublicCatalogMapperTests
         ]);
         tour.Publish(Now, 1280);
 
-        var page = PublicCatalogMapper.ToPublicTour(tour, Now);
+        var page = PublicCatalogMapper.ToPublicTour(tour, DateOnly.FromDateTime(Now));
 
         page.Components.Should().BeEmpty();
         page.Days.Should().HaveCount(2);
@@ -32,7 +32,7 @@ public class PublicCatalogMapperTests
         page.AccommodationText.Should().Be("Hotel 4*");
         page.DepartureCity.Should().Be("Moscow");
         page.PriceFrom.Should().Be(40m);
-        page.NearestDate.Should().Be(Now.AddDays(3));
+        page.NearestDate.Should().Be(DateOnly.FromDateTime(Now.AddDays(3)));
         page.Prices.Should().OnlyContain(price => price.PricePerPerson >= 40m);
         page.Prices.Select(price => price.PricePerPerson).Should().NotContain(10m);
         page.Images.Should().NotBeEmpty();
@@ -52,7 +52,7 @@ public class PublicCatalogMapperTests
         tour.ReplaceImages(images, 1600);
         tour.Publish(Now, 1600);
 
-        var summary = PublicCatalogMapper.ToSummary(tour, Now);
+        var summary = PublicCatalogMapper.ToSummary(tour, DateOnly.FromDateTime(Now));
 
         summary.Previews.Should().NotBeNull();
         summary.Previews.Should().HaveCount(PublicCatalogLimits.MaxListPreviews);
@@ -67,7 +67,7 @@ public class PublicCatalogMapperTests
         tour.Publish(Now, 1280);
         tour.Unpublish();
 
-        var card = PublicCatalogMapper.ToCard(tour, Now);
+        var card = PublicCatalogMapper.ToCard(tour, DateOnly.FromDateTime(Now));
 
         card.Available.Should().BeFalse();
         card.Title.Should().Be(tour.Title);

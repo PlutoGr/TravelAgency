@@ -35,7 +35,7 @@ public static class TourManageMapper
             tour.Offers
                 .OrderBy(o => o.ValidFrom)
                 .Select(o => new TourOfferItemDto(
-                    o.Id, o.ValidFrom, o.ValidTo, o.PricePerPerson, o.Currency, o.AvailableSeats))
+                    o.Id, o.ValidFrom, o.ValidTo, o.PricePerPerson, o.Currency, o.AvailableSeats, o.DepartureDate))
                 .ToList(),
             tour.Images
                 .OrderBy(i => i.SortOrder)

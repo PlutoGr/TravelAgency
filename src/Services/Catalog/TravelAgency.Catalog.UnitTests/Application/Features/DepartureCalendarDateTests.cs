@@ -25,21 +25,4 @@ public class DepartureCalendarDateTests
         DepartureCalendarDate.TryParse(text, out _).Should().BeFalse();
     }
 
-    [Fact]
-    public void UtcBounds_AreInclusiveForTheWholeDepartureDay()
-    {
-        var day = new DateOnly(2026, 11, 15);
-        var start = DepartureCalendarDate.UtcStart(day);
-        var end = DepartureCalendarDate.UtcEndExclusive(day);
-
-        start.Kind.Should().Be(DateTimeKind.Utc);
-        end.Kind.Should().Be(DateTimeKind.Utc);
-        start.Should().Be(new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc));
-        end.Should().Be(new DateTime(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc));
-
-        var evening = new DateTime(2026, 11, 15, 21, 15, 0, DateTimeKind.Utc);
-        var nextMidnight = new DateTime(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc);
-        (evening >= start && evening < end).Should().BeTrue();
-        (nextMidnight >= start && nextMidnight < end).Should().BeFalse();
-    }
 }

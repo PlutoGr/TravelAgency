@@ -295,6 +295,9 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasDefaultValue("USD");
 
+                    b.Property<DateOnly>("DepartureDate")
+                        .HasColumnType("date");
+
                     b.Property<decimal>("PricePerPerson")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -309,6 +312,8 @@ namespace TravelAgency.Catalog.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DepartureDate");
 
                     b.HasIndex("TourId");
 
