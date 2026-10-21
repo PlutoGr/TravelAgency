@@ -3,13 +3,13 @@ description: Core rules for any AI agent in this repo; index of the other rules
 alwaysApply: true
 ---
 # Core (read first)
-Layout: `playbook-*.mdc` = generic dev playbook (copyable to other projects). `project-*.mdc` = TravelAgency specifics (override the playbook where stated). Role subagents: `.cursor/agents/`.
+Layout: `playbook-*.mdc` = generic dev playbook (copyable to other projects). `project-*.mdc` = TravelAgency specifics (override the playbook where stated). Role subagents: `.cursor/agents/` (incl. `lead.md`, `architect.md`).
 
 - Language: talk to the owner in Russian; agent-to-agent in English. Repo artifacts (commits, PRs, issues, comments, wiki, code comments): Russian, impersonal.
 - Impersonal everywhere outside `.cursor/` and `AGENTS.md`: no AI/agent/bot/Cursor mentions, no role labels, no names, no `Co-authored-by` for bots. Write «принято решение», «добавлено», «проверено».
 - No em dash (U+2014) in anything you write.
 - Secrets: `playbook-security.mdc`. Never print, commit or paste one.
-- Owner approval required for: server changes, deleting data, secrets, repo settings/access, history rewrite or force-push, spending money, important architecture decisions incl. major dependency updates. Everything else in your zone: no approval.
+- Owner approval required for: server changes, deleting data, secrets, repo settings/access, history rewrite or force-push, spending money, important architecture decisions incl. major dependency updates. Everything else in your zone: no approval. Team approval requests go through the lead.
 - Results over process: read only what the task needs, minimal diff, stop at acceptance criteria, no gold-plating. Report: outcome first with links, then only decisions/risks.
 
 Load on demand:

@@ -8,15 +8,15 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Repo `PlutoGr/TravelAgency`; wiki = separate repo `TravelAgency.wiki.git`, branch `master`, push = publish.
 - Board: GitHub Project (private) «PlutoGr/projects/2». Columns Очередь, В работе, На ревью, Готово.
 - Stack: .NET 10 microservices (`src/Services`), gateway, React/TS frontend (`src/Frontend/travel-agency-frontend`, vitest). Tests: `*.UnitTests`, `*.IntegrationTests` (Testcontainers). Follow neighbouring code.
-- Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo (ask the lead). Smoke on dev = login, catalog, booking.
+- Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo; dev access and server facts come from the lead. Smoke on dev = login, catalog, booking.
 - Merge to `main` = automatic deploy to dev («Deploy to dev»). Green CI = `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `gitleaks`.
 - Secret values live only on the server `.env`, GitHub Secrets (env `dev`), local `dotnet user-secrets`. Never in the repo.
 - Repo wins over any doc; repo `docs/COMMIT_CONVENTION.md` and `.github/pull_request_template.md` win on format conflicts.
 ## Roles (overrides playbook role names)
 | Role | Who | Zone |
 |---|---|---|
-| Lead / merger | Grok Bot | owner channel, triage, merges, approvals routing, server access |
-| Architect / reviewer | Вирт | mandatory PR review, architecture, ADR, board, task split; code only skeletons/contracts |
+| Lead / merger | Grok Bot | `.cursor/agents/lead.md`: owner channel, triage, merges, board, approvals routing, server access, audit |
+| Architect / reviewer | Вирт (or a cloud agent) | `.cursor/agents/architect.md`: mandatory PR review, architecture, ADR, labels, task split; code only skeletons/contracts |
 | Developer | TA Разработчик | app code + tests |
 | Tester | TA Тестировщик | tests, bug issues, acceptance on dev |
 | DevOps | TA DevOps | CI, Docker, nginx, deploy, server, security check |
@@ -34,3 +34,12 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Dependabot minor/patch: review + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
 - Docs-with-code = the matching wiki `Doc-` page.
 - Temporary dumps on dev allowed if deleted after the check.
+## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
+- Developer: all code via a cloud agent, including small fixes. In chat only work needing dev/server access, or small and mid code when the usage mode says so.
+- Analyst: any analysis beyond a short answer via a cloud agent on Grok (xhigh for heavy ones): specs, criteria drafts, ADRs, code reading, `Doc-` fact checks, full text of issues and wiki edits (returned as ready Russian text). In chat: briefs, coordination, posting, small fixes.
+- Tester: acceptance on dev stays in chat (needs dev access); API/curl first, browser only for what must be seen, batch several issues per deploy. Automated tests via a cloud agent when an issue needs them.
+- DevOps: server stays in chat; a cloud agent may edit workflows or Dockerfiles, DevOps checks the diff.
+- Architect: review per `.cursor/agents/architect.md`.
+- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `<role>/<NN>-<slug>`; announce one line to the team: `#NN: cloud agent <id>, <model> <params>`.
+- Gates after a cloud agent: architect review, green CI, DevOps on risky PRs, merge by the lead, acceptance on dev. Cloud agents never touch the wiki, the board or merges.
+- Usage mode and budgets: ask the lead (it keeps them current).
