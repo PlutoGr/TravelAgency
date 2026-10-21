@@ -25,4 +25,9 @@ alwaysApply: false
 - Label `статус: очередь|в работе|на ревью|готово` drives the column (`board-sync.yml`); never move cards or edit view filters by hand. Also `тип: бэклог`, `тип: родительская` (epic + field «Тип» = «Эпик»).
 - Очередь: nobody on it. В работе: someone works on it (incl. review, test, deploy); set at once when taken. На ревью: ONLY when the owner must decide. Готово: accepted on dev or closed as not planned.
 - Owner question: issue comment «**Итог:** требуется решение владельца» / «**Подробно:** вопрос, варианты, рекомендация» / «**Дальше:** после ответа задача вернётся в работу», set На ревью, tell the lead.
-- Очередь order: field «Приоритет» (1 = next), set by the lead.
+- Code review is not «На ревью»: the task stays В работе.
+- Epic: В работе while some sub-issues are В работе/Готово and others remain; Готово when all are Готово; На ревью when the owner must decide on it.
+- Owner answer: the lead records it on the issue impersonally («**Итог:** решено: ...») and sets В работе (or Готово).
+- Views: «Задачи» (all except epics, by field «Тип») and «Эпики» («Тип» = «Эпик»). Ordinary tasks: no «Тип».
+- Card order: Очередь top = next (field «Приоритет», 1 = next, set by the lead; then bugs, then the rest, on-hold last); Готово newest first. `board-sync.yml` (`.github/scripts/board_order.py`, on issue events, daily, manual) syncs columns, orders cards, adds missing issues, archives items closed 30+ days, clears «Приоритет» when a card leaves Очередь.
+- Labels: the lead owns priorities, the architect keeps labels current; everyone sets the label on the task they take or finish.

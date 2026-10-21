@@ -27,9 +27,10 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 ## Parallel work
 - Merge one PR at a time; work may continue: per agent 1 active item + at most 1 waiting.
 - Next issue only if it touches no files/endpoints/migrations of an open PR, does not depend on an unmerged PR, and its criteria are final. Branch from fresh `main`.
-- Returns first (acceptance bug, review changes) over new work. Analyst keeps at most 2 issues ahead with final criteria.
+- Any doubt about overlap: wait or ask the architect. After the previous merge, update the branch before review.
+- Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work: bring the current item to a checkpoint (push/comment), then take the return. Analyst keeps at most 2 issues ahead with final criteria.
 ## Merge order
 - Reviewer: Вирт on every PR (incl. impersonal wording, format). Security: DevOps on risky PRs. Merger: Grok Bot, after green CI and review; next merge only after «Deploy to dev» is green.
-- Dependabot minor/patch: review + CI. Major: also owner approval.
+- Dependabot minor/patch: review + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
 - Docs-with-code = the matching wiki `Doc-` page.
 - Temporary dumps on dev allowed if deleted after the check.
