@@ -1,0 +1,8 @@
+---
+description: Step 6 review against the page
+alwaysApply: false
+---
+# Step 6: Review
+- Diff vs page «Архитектура» and «Тест-кейсы» (automated ones present), plus `playbook-git-pr.mdc`, impersonal wording, commit/PR format, secrets, docs-with-code.
+- Risky PRs: separate security verdict by devops.
+- Page mismatch: changes requested, or a «Решения» row if the page is wrong. Verdict: GitHub review, Russian, comment template.

@@ -1,0 +1,28 @@
+---
+description: TravelAgency commit, PR, issue, comment formats and board statuses (Russian, impersonal)
+globs: .github/**,docs/**
+alwaysApply: false
+---
+# GitHub formats (Russian, impersonal)
+- Commit title `<тип>(<сервис>): <что сделано>`; squash adds ` (#NN)`.
+- Types: `разработка`, `исправление`, `тесты`, `аналитика`, `инфраструктура`, `зависимости`, `документация`.
+- Services: `чат`, `каталог`, `бронирование`, `identity`, `медиа`, `шлюз`, `фронт`, `ci`, `деплой`, `бд`, `общее`; wiki `вики`.
+- Body (non-trivial):
+  ```
+  Зачем: <какую проблему решает>
+  Как работает: <коротко, что поменялось>
+  Задача: #NN
+  ```
+- PR title = commit title without number. Sections: «Что сделано», «Зачем», «Как это работает» (simple example first), «Учебный кейс», «Как проверить», «Задача» (closes #NN). Name the `Doc-` page updated or «вики не затронута». No first person («убрано», not «убрал»). Tick template checkboxes that hold.
+- Comments (never rewrite published ones):
+  ```markdown
+  **Итог:** одна фраза
+  **Подробно:** факты, sha, шаги, без секретов
+  **Дальше:** следующий шаг или «нет»
+  ```
+- Issue: title as commit; body «Зачем», «Что сделать», «Критерии приёмки» (testable), «Связи» (epic, issues, PR, wiki page). Epic adds sub-issues.
+## Board statuses
+- Label `статус: очередь|в работе|на ревью|готово` drives the column (`board-sync.yml`); never move cards or edit view filters by hand. Also `тип: бэклог`, `тип: родительская` (epic + field «Тип» = «Эпик»).
+- Очередь: nobody on it. В работе: someone works on it (incl. review, test, deploy); set at once when taken. На ревью: ONLY when the owner must decide. Готово: accepted on dev or closed as not planned.
+- Owner question: issue comment «**Итог:** требуется решение владельца» / «**Подробно:** вопрос, варианты, рекомендация» / «**Дальше:** после ответа задача вернётся в работу», set На ревью, tell the lead.
+- Очередь order: field «Приоритет» (1 = next), set by the lead.

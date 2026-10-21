@@ -1,0 +1,8 @@
+---
+description: Step 4 test cases before development
+alwaysApply: false
+---
+# Step 4: Test cases («Тест-кейсы»), BEFORE development
+- Epic: end-to-end only. Feature: id (`ТК-1`), precondition, steps, expected, level (unit / integration / e2e / ручная на dev).
+- Cover every criterion and API error path; mark which become automated.
+- Gaps in scenarios/architecture: step 3, not silent fixes. Development starts only after this section is filled.

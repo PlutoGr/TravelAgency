@@ -1,0 +1,12 @@
+---
+description: Secrets policy and pre-push checks (no secret values here)
+alwaysApply: true
+---
+# Security and secrets
+- Never print, echo, log, commit or paste secrets: passwords, tokens (`ghp_`, `github_pat_`, `sk-`, `AKIA…`), JWT signing keys, service tokens, S3/MinIO keys, connection strings with passwords, `*.pem`, `*.key`, `*.pfx`, `id_rsa`, `id_ed25519`, htpasswd, `.env` contents, personal emails/phones, server credentials.
+- Use secrets only by path or variable inside a command, never in output or a URL. Never ask for them in chat.
+- Allowed in repo: variable names, placeholders (`CHANGE_ME`, `<your-password>`, `Password=<POSTGRES_PASSWORD>`), `@example.com`.
+- Test-key allowlist: `.gitleaks.toml`, exact values only, never whole folders.
+- Before every push: `gitleaks git --redact .` (and `gitleaks dir --redact .` for the wiki); `rg -n $'\u2014'` on changed files; grep changed files for stop-words (agent/role names, role labels, passwords, tokens).
+- Public repo: pushed = public forever. Suspected leak: rotate first, then remove; report at once. Deleting without rotating is not a fix.
+- Auth errors, host-key mismatch, safety blocks: do not work around; report.

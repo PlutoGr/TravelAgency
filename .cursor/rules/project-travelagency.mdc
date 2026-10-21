@@ -1,0 +1,35 @@
+---
+description: TravelAgency facts, stack, roles, priorities, merge order (project-specific)
+alwaysApply: false
+---
+# Project: TravelAgency
+Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forever.
+## Facts
+- Repo `PlutoGr/TravelAgency`; wiki = separate repo `TravelAgency.wiki.git`, branch `master`, push = publish.
+- Board: GitHub Project (private) «PlutoGr/projects/2». Columns Очередь, В работе, На ревью, Готово.
+- Stack: .NET 10 microservices (`src/Services`), gateway, React/TS frontend (`src/Frontend/travel-agency-frontend`, vitest). Tests: `*.UnitTests`, `*.IntegrationTests` (Testcontainers). Follow neighbouring code.
+- Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo (ask the lead). Smoke on dev = login, catalog, booking.
+- Merge to `main` = automatic deploy to dev («Deploy to dev»). Green CI = `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `gitleaks`.
+- Secret values live only on the server `.env`, GitHub Secrets (env `dev`), local `dotnet user-secrets`. Never in the repo.
+- Repo wins over any doc; repo `docs/COMMIT_CONVENTION.md` and `.github/pull_request_template.md` win on format conflicts.
+## Roles (overrides playbook role names)
+| Role | Who | Zone |
+|---|---|---|
+| Lead / merger | Grok Bot | owner channel, triage, merges, approvals routing, server access |
+| Architect / reviewer | Вирт | mandatory PR review, architecture, ADR, board, task split; code only skeletons/contracts |
+| Developer | TA Разработчик | app code + tests |
+| Tester | TA Тестировщик | tests, bug issues, acceptance on dev |
+| DevOps | TA DevOps | CI, Docker, nginx, deploy, server, security check |
+| Analyst | TA Продакт-аналитик | wiki, requirements, acceptance criteria |
+- Touch only your zone; out of zone, hand over via the issue. Only the lead talks to the owner; team agents never @mention him.
+## Priorities
+1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Analyst orders within this; order changes need the owner.
+## Parallel work
+- Merge one PR at a time; work may continue: per agent 1 active item + at most 1 waiting.
+- Next issue only if it touches no files/endpoints/migrations of an open PR, does not depend on an unmerged PR, and its criteria are final. Branch from fresh `main`.
+- Returns first (acceptance bug, review changes) over new work. Analyst keeps at most 2 issues ahead with final criteria.
+## Merge order
+- Reviewer: Вирт on every PR (incl. impersonal wording, format). Security: DevOps on risky PRs. Merger: Grok Bot, after green CI and review; next merge only after «Deploy to dev» is green.
+- Dependabot minor/patch: review + CI. Major: also owner approval.
+- Docs-with-code = the matching wiki `Doc-` page.
+- Temporary dumps on dev allowed if deleted after the check.

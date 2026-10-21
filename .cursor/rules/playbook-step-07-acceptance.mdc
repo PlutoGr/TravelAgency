@@ -1,0 +1,7 @@
+---
+description: Step 7 acceptance on dev by test cases
+alwaysApply: false
+---
+# Step 7: Acceptance on dev
+- After merge + green deploy: run the page's manual/e2e cases + short smoke. One issue comment listing cases passed/failed by id.
+- Failure: bug issue linking the case id, status stays В работе. Passed: Готово (feature: when all subtasks pass).

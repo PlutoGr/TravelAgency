@@ -127,8 +127,12 @@ riderModule.iml
 !.vscode/extensions.json
 *.code-workspace
 
-# Cursor
-.cursor/
+# Cursor: only shared rules are committed
+.cursor/*
+!.cursor/rules/
+!.cursor/agents/
+!.cursor/skills/
+!.cursor/README.md
 ai_docs/
 
 # Sublime

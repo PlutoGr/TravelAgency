@@ -1,0 +1,12 @@
+---
+description: TravelAgency wiki content, naming, sidebar and push checks
+alwaysApply: false
+---
+# Wiki
+- Pages: `Home`, `Doc-` (only what works in `main`), `Epic-`/`Feature-` (in progress), `Plan-` (old format, read-only except «сделано»), `_Sidebar`, `_Footer`. No team rules in the wiki.
+- Unprovable `Doc-` claim: move to `Plan-` or drop; unverified: «требует проверки» + issue link.
+- Writers: analyst and architect; tester only «Тест-кейсы»; others send text via issue/PR.
+- Impersonal, no customer company names, simple example first. Dates `2026-10-17`, no «Обновлено» line.
+- Names Latin `Doc-Название-Через-Дефис.md`, first line `# <русский заголовок>`; links `[текст](Имя-Файла)`; ADR `Doc-ADR-NNN-Название`, numbers never reused.
+- Sidebar updated in the same commit as any new/renamed/deleted page; rename updates all links (external: stub «Страница перенесена: ...»).
+- Before push: `git pull --rebase`; sidebar/links checked; `playbook-security.mdc` checks. Commit `документация(вики): ...` with «Зачем»/«Как работает».

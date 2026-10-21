@@ -1,0 +1,9 @@
+---
+description: Step 5 development from the feature page
+alwaysApply: false
+---
+# Step 5: Development
+Input: feature page (architecture + test cases) + subtask issue. Output: PR.
+- Implement exactly the page «Архитектура» for this subtask; automate marked test cases.
+- Deviation needed: stop, propose a «Решения» row via the issue; do not code around the page.
+- PR links the issue and names the page section implemented. Formats: `project-github-formats.mdc`.

@@ -1,0 +1,8 @@
+---
+description: Step 8 docs after merge
+alwaysApply: false
+---
+# Step 8: Docs after merge
+- What works in `main` -> `Doc-` pages; decisions -> `Doc-ADR-NNN-<Name>` (next free number).
+- Feature page: «сделано» + links (Doc-, ADR, PRs), content kept. Epic: «сделано» when all features are done.
+- Wiki push checks: `project-wiki.mdc`.
