@@ -24,7 +24,7 @@ export default function ReviewsSlider() {
                 Отзывы наших клиентов
               </h2>
               <div className="mx-auto mt-4 h-1 w-16 rounded-full bg-terracotta" />
-              <p className="mt-6 text-warm-gray">Скоро здесь появятся отзывы</p>
+              <p className="mt-6 text-warm-gray">Появится позже</p>
             </div>
           </FadeInOnScroll>
         </div>

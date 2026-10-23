@@ -40,6 +40,19 @@ const bookingWithProposal = parseBookingJson(BOOKING_WITH_PROPOSAL_JSON);
 const bookingMinimal = parseBookingJson(BOOKING_MINIMAL_JSON);
 const tourCard = parseBookingJson(TOUR_CARD_JSON);
 
+function catalogTourTitle(): string {
+  return (tourCard as { title: string }).title;
+}
+
+async function tourPreview(selector: string) {
+  const titles = await screen.findAllByText(catalogTourTitle());
+  const card = titles
+    .map((node) => node.closest(selector))
+    .find((node): node is HTMLElement => node instanceof HTMLElement);
+  expect(card).toBeTruthy();
+  return card as HTMLElement;
+}
+
 function renderAt(path: string, routePath: string, element: ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -131,6 +144,37 @@ describe('booking pages with BookingDto JSON', () => {
       'src',
       mediaImageUrl('55555555-5555-5555-5555-555555555555', 'w800'),
     );
+  });
+
+  it('does not show a zero rating on the client booking', async () => {
+    renderAt(
+      '/dashboard/bookings/3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      '/dashboard/bookings/:id',
+      <BookingDetailPage />,
+    );
+
+    const card = await tourPreview('div.p-4');
+    expect(card).toHaveTextContent('Появится позже');
+    expect(card).toHaveTextContent(catalogTourTitle());
+    expect(card).toHaveTextContent('Кальдера и белые дома');
+    expect(card).not.toHaveTextContent('(0 отзывов)');
+    expect(card.querySelector('.text-amber-400, .fill-amber-400')).toBeNull();
+  });
+
+  it('does not show a filled star for an empty rating on the manager booking', async () => {
+    renderAt(
+      '/manager/bookings/3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      '/manager/bookings/:id',
+      <ManagerBookingDetailPage />,
+    );
+
+    const card = await tourPreview('div.p-3');
+    expect(card).toHaveTextContent('Появится позже');
+    expect(card).toHaveTextContent(catalogTourTitle());
+    expect(card).toHaveTextContent('Греция');
+    expect(card).toHaveTextContent(/148/);
+    expect(card).not.toHaveTextContent('(0 отзывов)');
+    expect(card.querySelector('.text-amber-400, .fill-amber-400')).toBeNull();
   });
 });
 

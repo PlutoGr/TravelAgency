@@ -113,15 +113,21 @@ function TourPreview({ booking }: { booking: Booking }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <StarRating rating={tour.rating} size="sm" />
-            <span className="text-sm font-medium text-dark">
-              {tour.rating}
-            </span>
-            <span className="text-xs text-warm-gray">
-              ({tour.reviewCount} отзывов)
-            </span>
-          </div>
+          {tour.rating > 0 ? (
+            <div className="flex items-center gap-2">
+              <StarRating rating={tour.rating} size="sm" />
+              <span className="text-sm font-medium text-dark">
+                {tour.rating}
+              </span>
+              {tour.reviewCount > 0 && (
+                <span className="text-xs text-warm-gray">
+                  ({tour.reviewCount} отзывов)
+                </span>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-warm-gray">Появится позже</p>
+          )}
 
           <p className="text-sm text-dark/70 line-clamp-2">
             {tour.shortDescription}
