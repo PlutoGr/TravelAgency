@@ -24,6 +24,8 @@ import {
   parseCalendarIso,
   shiftCalendarMonth,
 } from '@/utils/homeCalendar';
+import { useCalendarFit } from './calendarFit';
+import { calendarChrome } from './searchPopupLayout';
 import { useWideScreen } from './useWideScreen';
 
 export type DateRange = {
@@ -42,12 +44,6 @@ interface DateRangeCalendarProps {
   /** Включительно. Для диапазона по умолчанию 2100-12-31. */
   maxDate?: string;
 }
-
-const navButtonClass =
-  'inline-flex size-11 items-center justify-center rounded-full text-dark hover:bg-sand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-40';
-
-const dayButtonClass =
-  'inline-flex size-11 items-center justify-center text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
 
 function isoToDate(iso: string): Date | undefined {
   const parts = parseCalendarIso(iso);
@@ -91,7 +87,7 @@ function CalendarChevron({
   disabled?: boolean;
 }) {
   const Icon = orientation === 'right' || orientation === 'down' ? ChevronRight : ChevronLeft;
-  return <Icon size={20} aria-hidden="true" className={clsx('pointer-events-none', className)} />;
+  return <Icon size={18} aria-hidden="true" className={clsx('pointer-events-none', className)} />;
 }
 
 function omitKeys<T extends object>(source: T, keys: readonly string[]): T {
@@ -101,9 +97,10 @@ function omitKeys<T extends object>(source: T, keys: readonly string[]): T {
 }
 
 function CalendarCaption(props: HTMLAttributes<HTMLSpanElement>) {
+  const fit = useCalendarFit();
   const { className, children, ...rest } = omitKeys(props, ['role']);
   return (
-    <h2 className={clsx('mb-2 text-center text-base font-semibold text-dark', className)} {...rest}>
+    <h2 className={clsx(calendarChrome(fit?.compact ?? false, 1).caption, className)} {...rest}>
       {children}
     </h2>
   );
@@ -135,7 +132,6 @@ function CalendarDayButton(props: DayButtonProps) {
       {...buttonProps}
       role="gridcell"
       className={clsx(
-        dayButtonClass,
         edge && 'rounded-full bg-primary text-white',
         middle && !edge && 'bg-transparent text-dark',
         !edge && !middle && !modifiers.disabled && 'rounded-full text-dark hover:bg-sand',
@@ -177,9 +173,12 @@ export default function DateRangeCalendar({
   maxDate,
 }: DateRangeCalendarProps) {
   const wide = useWideScreen();
+  const fit = useCalendarFit();
   const min = minDate ?? (mode === 'range' ? moscowToday() : undefined);
   const max = maxDate ?? (mode === 'range' ? DEPARTURE_DATE_MAX : undefined);
-  const months = mode === 'range' && wide ? 2 : 1;
+  const months = fit?.months ?? (mode === 'range' && wide ? 2 : 1);
+  const compact = fit?.compact ?? false;
+  const chrome = useMemo(() => calendarChrome(compact, months), [compact, months]);
 
   const startMonth = min ? monthStart(min) : undefined;
   // Два месяца: следующий за максимумом остаётся на экране, но дни в нём недоступны.
@@ -203,24 +202,24 @@ export default function DateRangeCalendar({
 
   const classNames = useMemo(
     () => ({
-      root: 'w-max max-w-full text-dark',
-      months: months > 1 ? 'flex gap-6' : 'block',
-      month: 'w-max max-w-full',
+      root: 'w-full text-dark',
+      months: chrome.months,
+      month: 'w-full',
       month_caption: 'flex justify-center',
-      nav: 'mb-2 flex items-center justify-between gap-2',
-      button_previous: navButtonClass,
-      button_next: navButtonClass,
+      nav: chrome.nav,
+      button_previous: chrome.navButton,
+      button_next: chrome.navButton,
       month_grid: 'w-full border-collapse',
       weekdays: '',
-      weekday: 'h-8 w-11 p-0 text-center text-xs font-medium text-[#4B5563]',
+      weekday: chrome.weekday,
       week: '',
-      day: 'p-0 text-center',
-      day_button: dayButtonClass,
+      day: clsx(chrome.box, 'p-0 text-center align-middle'),
+      day_button: chrome.dayButton,
       range_start: 'bg-sand',
       range_middle: 'bg-sand',
       range_end: 'bg-sand',
     }),
-    [months],
+    [chrome],
   );
 
   function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
@@ -288,7 +287,7 @@ export default function DateRangeCalendar({
       <button
         type="button"
         onClick={() => onChange({})}
-        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[12px] text-base font-medium text-primary hover:bg-sand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className={chrome.reset}
       >
         Сбросить
       </button>

@@ -6,6 +6,7 @@ import type { Destination } from '@/types';
 import { catalogPath, resolveHomeSearch } from '@/utils/catalogQuery';
 import DateRangeCalendar from './DateRangeCalendar';
 import SearchBar, { type SearchBarValues } from './SearchBar';
+import { calendarPanelWidth } from './searchPopupLayout';
 
 function place(partial: Pick<Destination, 'id' | 'name' | 'country'> & { description?: string }): Destination {
   return {
@@ -24,8 +25,9 @@ const places: Destination[] = [
   place({ id: 'dir-italy', name: 'Италия', country: 'Италия' }),
 ];
 
-function setViewport(width: number) {
+function setViewport(width: number, height = 768) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     writable: true,
@@ -261,7 +263,9 @@ describe('SearchBar', () => {
     expect(yesterday).toBeDisabled();
     expect(today).toBeEnabled();
     expect(today).toHaveFocus();
-    expect(today.className).toContain('size-11');
+    expect(today.className).toContain('size-10');
+    expect(dialog.innerHTML).not.toContain('overflow-y-auto');
+    expect(document.body.style.overflow).toBe('hidden');
 
     await user.keyboard('{ArrowLeft}');
     expect(today).toHaveFocus();
@@ -298,6 +302,8 @@ describe('SearchBar', () => {
     expect(dialog.className).toContain('bottom-0');
     expect(dialog.className).toContain('w-full');
     expect(dialog.innerHTML).toContain('env(safe-area-inset-bottom)');
+    expect(dialog.innerHTML).not.toContain('overflow-y-auto');
+    expect(document.body.style.overflow).toBe('hidden');
     expect(screen.getByRole('heading', { name: 'октябрь 2026' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'ноябрь 2026' })).not.toBeInTheDocument();
 
@@ -394,8 +400,9 @@ describe('SearchBar', () => {
     expect(dialog.style.visibility).toBe('visible');
     expect(dialog.style.left).toBe('420px');
     expect(dialog.style.top).toBe('260px');
-    expect(dialog.style.width).toBe('max-content');
+    expect(dialog.style.width).toBe(`${calendarPanelWidth(2, false)}px`);
     expect(dialog.style.minWidth).not.toBe('700px');
+    expect(dialog.innerHTML).not.toContain('overflow-y-auto');
     spy.mockRestore();
   });
 
@@ -408,6 +415,82 @@ describe('SearchBar', () => {
     expect(screen.getByRole('gridcell', { name: '31 декабря 2100' })).toBeEnabled();
     expect(screen.getByRole('gridcell', { name: '1 января 2101' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Следующий месяц' })).toBeDisabled();
+  });
+
+  it('locks document scroll for city suggestions and does not follow window scroll', async () => {
+    const user = userEvent.setup();
+    const listen = vi.spyOn(window, 'addEventListener');
+    render(<SearchBar destinations={places} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Куда?' }));
+
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.documentElement.style.overflow).toBe('hidden');
+    expect(listen.mock.calls.some((call) => call[0] === 'scroll')).toBe(false);
+    expect(document.querySelector('[data-popup-scroll]')?.className).toContain('overflow-y-auto');
+
+    const wheel = new WheelEvent('wheel', { deltaY: 80, cancelable: true, bubbles: true });
+    window.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+
+    await user.keyboard('{Escape}');
+    expect(document.body.style.overflow).toBe('');
+    expect(document.documentElement.style.overflow).toBe('');
+    listen.mockRestore();
+  });
+
+  it('opens the calendar above the field when there is no room below', async () => {
+    setViewport(1280, 800);
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      x: 40,
+      y: 620,
+      top: 620,
+      left: 40,
+      right: 320,
+      bottom: 680,
+      width: 280,
+      height: 60,
+      toJSON() {
+        return {};
+      },
+    }));
+    const user = userEvent.setup();
+    render(<SearchBar />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Выбор дат' });
+    expect(dialog).toHaveAttribute('data-place', 'above');
+    expect(dialog.style.bottom).not.toBe('');
+    expect(dialog.style.top).toBe('');
+    expect(dialog.innerHTML).not.toContain('overflow-y-auto');
+    expect(screen.getAllByRole('gridcell')[0].className).toContain('size-10');
+    rect.mockRestore();
+  });
+
+  it('uses compact day cells when neither side fits a regular month', async () => {
+    setViewport(1280, 760);
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      x: 40,
+      y: 360,
+      top: 360,
+      left: 40,
+      right: 320,
+      bottom: 420,
+      width: 280,
+      height: 60,
+      toJSON() {
+        return {};
+      },
+    }));
+    const user = userEvent.setup();
+    render(<SearchBar />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Выбор дат' });
+    expect(dialog).toHaveAttribute('data-place', 'above');
+    expect(dialog.innerHTML).not.toContain('overflow-y-auto');
+    expect(screen.getAllByRole('gridcell')[0].className).toContain('size-9');
+    rect.mockRestore();
   });
 });
 

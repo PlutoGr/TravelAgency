@@ -94,7 +94,7 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
 
   function onDestinationFocus() {
     setCalendarOpen(false);
-    destinationRef.current?.scrollIntoView?.({ block: 'center', inline: 'nearest' });
+    destinationRef.current?.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: 'instant' });
     if (skipSuggestionOpen.current) {
       skipSuggestionOpen.current = false;
       return;
@@ -255,7 +255,7 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
         >
           <ul id={listId} role="listbox" aria-label="Подсказки" className="m-0 list-none p-0">
             {showNothing ? (
-              <li className="flex min-h-11 items-center px-4 text-base text-[#4B5563]">Ничего не найдено</li>
+              <li className="flex min-h-10 items-center px-3 text-sm text-[#4B5563]">Ничего не найдено</li>
             ) : (
               suggestions.map((item, index) => (
                 <li
@@ -269,7 +269,7 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => chooseSuggestion(item)}
                   className={clsx(
-                    'flex min-h-11 cursor-pointer items-center gap-2 px-4 text-left text-base text-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                    'flex min-h-10 cursor-pointer items-center gap-2 px-3 text-left text-sm text-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                     index === safeActive && 'bg-sand ring-2 ring-inset ring-primary',
                   )}
                 >
@@ -294,6 +294,7 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
           dialog
           label="Выбор дат"
           contentSized
+          allowTwoMonths
           onClose={closeCalendar}
         >
           <DateRangeCalendar
