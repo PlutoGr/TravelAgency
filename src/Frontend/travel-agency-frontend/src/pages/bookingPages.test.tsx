@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type ReactElement } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MyBookingsPage from './MyBookingsPage';
@@ -342,5 +343,106 @@ describe('chat input stays pinned under a long history', () => {
     const heading = await screen.findByRole('heading', { name: 'Чат с клиентом' });
     await screen.findByText('Сообщение 40');
     expectPinnedChatInput(heading);
+  });
+});
+
+const MINIMAL_BOOKING_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const QUICK_REPLY = 'Добрый день! Мы подобрали для вас тур.';
+
+describe('manager booking notes and invoice stubs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getMessages).mockResolvedValue([]);
+    mockApiClient.get.mockImplementation((url: string) => {
+      const path = String(url);
+      if (path.startsWith('/catalog/tours/cards')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (path.startsWith('/bookings/')) {
+        return Promise.resolve({ data: bookingMinimal });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    mockApiClient.post.mockResolvedValue({ data: {} });
+    mockApiClient.patch.mockImplementation((_url: string, body: { newStatus: number }) =>
+      Promise.resolve({
+        data: { ...JSON.parse(BOOKING_MINIMAL_JSON), status: body.newStatus },
+      }),
+    );
+  });
+
+  function renderManagerBooking() {
+    return renderAt(
+      `/manager/bookings/${MINIMAL_BOOKING_ID}`,
+      '/manager/bookings/:id',
+      <ManagerBookingDetailPage />,
+    );
+  }
+
+  it('keeps notes and invoice inactive without a «Скоро» toast', async () => {
+    const user = userEvent.setup();
+    renderManagerBooking();
+
+    const notesCard = (await screen.findByRole('heading', { name: 'Заметки менеджера' }))
+      .parentElement;
+    expect(notesCard).not.toBeNull();
+    const notes = within(notesCard as HTMLElement).getByRole('textbox', {
+      name: 'Заметки менеджера',
+    });
+    const saveLater = within(notesCard as HTMLElement).getByRole('button', {
+      name: 'Появится позже',
+    });
+    expect(notes).toBeDisabled();
+    expect(notes).toHaveValue('');
+    expect(saveLater).toBeDisabled();
+    expect(saveLater).toHaveTextContent('Появится позже');
+    await waitFor(() => expect(saveLater).toBeVisible());
+    expect(saveLater).not.toHaveAttribute('title');
+
+    fireEvent.change(notes, { target: { value: 'внутренняя заметка' } });
+    expect(notes).toHaveValue('');
+
+    const actionsCard = screen.getByRole('heading', { name: 'Действия' }).parentElement;
+    expect(actionsCard).not.toBeNull();
+    const invoice = within(actionsCard as HTMLElement).getByRole('button', {
+      name: 'Появится позже',
+    });
+    expect(invoice).toBeDisabled();
+    expect(invoice).toHaveTextContent('Появится позже');
+    await waitFor(() => expect(invoice).toBeVisible());
+    expect(invoice).not.toHaveAttribute('title');
+
+    fireEvent.click(saveLater);
+    fireEvent.click(invoice);
+
+    expect(screen.queryByText('Скоро', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText('Сохранить (скоро)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Создать счёт (скоро)')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Скоро')).not.toBeInTheDocument();
+    expect(mockApiClient.post).not.toHaveBeenCalled();
+
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    await user.click(screen.getByRole('button', { name: QUICK_REPLY }));
+    expect(writeText).toHaveBeenCalledWith(QUICK_REPLY);
+    expect(await screen.findByText('Шаблон скопирован')).toBeInTheDocument();
+    expect(screen.queryByText('Скоро', { exact: true })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Отправить предложение' }));
+    expect(mockApiClient.post).toHaveBeenCalledWith(
+      `/bookings/${MINIMAL_BOOKING_ID}/proposal`,
+      { notes: '' },
+    );
+    expect(await screen.findByText('Предложение отправлено')).toBeInTheDocument();
+    expect(screen.queryByText('Скоро', { exact: true })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Новая' }));
+    await user.click(await screen.findByRole('button', { name: 'В работе' }));
+    await user.click(screen.getByRole('button', { name: 'Применить' }));
+    expect(mockApiClient.patch).toHaveBeenCalledWith(
+      `/bookings/${MINIMAL_BOOKING_ID}/status`,
+      { newStatus: 1 },
+    );
+    expect(await screen.findByText('Статус обновлён')).toBeInTheDocument();
+    expect(screen.queryByText('Скоро', { exact: true })).not.toBeInTheDocument();
   });
 });
