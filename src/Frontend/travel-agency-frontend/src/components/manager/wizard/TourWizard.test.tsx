@@ -307,7 +307,8 @@ describe('TourWizard', () => {
     renderAt(<TourWizard tourId="tour-1" />, '/manager/tours/tour-1?step=5');
 
     expect(await screen.findByRole('heading', { name: 'Даты и цены' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Заезд 1'), { target: { value: '2026-11-02' } });
+    await user.click(screen.getByLabelText('Заезд 1'));
+    await user.click(screen.getByRole('gridcell', { name: '2 ноября 2026' }));
     await user.click(screen.getByRole('button', { name: 'Далее' }));
 
     expect(saveOffers).toHaveBeenCalledWith('tour-1', '"1"', [

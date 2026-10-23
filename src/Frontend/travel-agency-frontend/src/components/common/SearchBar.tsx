@@ -293,7 +293,7 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
           anchorRef={dateCellRef}
           dialog
           label="Выбор дат"
-          minWidth={700}
+          contentSized
           onClose={closeCalendar}
         >
           <DateRangeCalendar

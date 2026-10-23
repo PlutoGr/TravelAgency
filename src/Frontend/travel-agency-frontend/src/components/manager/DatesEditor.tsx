@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui';
+import DateField from '@/components/common/DateField';
 
 interface DatesEditorProps {
   dates: { start: string; end: string }[];
@@ -10,6 +11,8 @@ interface DatesEditorProps {
 export default function DatesEditor({ dates, onChange }: DatesEditorProps) {
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
+  const startId = useId();
+  const endId = useId();
 
   const addDate = () => {
     if (!newStart || !newEnd) return;
@@ -34,7 +37,7 @@ export default function DatesEditor({ dates, onChange }: DatesEditorProps) {
             className="flex items-center gap-2 rounded-lg bg-cream px-3 py-1.5 text-sm text-dark"
           >
             <span className="flex-1">
-              {d.start} — {d.end}
+              {d.start} - {d.end}
             </span>
             <button
               onClick={() => removeDate(i)}
@@ -46,17 +49,17 @@ export default function DatesEditor({ dates, onChange }: DatesEditorProps) {
         ))}
       </div>
       <div className="mt-2 grid grid-cols-[1fr_1fr_auto] gap-2">
-        <input
-          type="date"
+        <DateField
+          id={startId}
+          ariaLabel="Начало заезда"
           value={newStart}
-          onChange={(e) => setNewStart(e.target.value)}
-          className="rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+          onChange={(value) => setNewStart(value ?? '')}
         />
-        <input
-          type="date"
+        <DateField
+          id={endId}
+          ariaLabel="Конец заезда"
           value={newEnd}
-          onChange={(e) => setNewEnd(e.target.value)}
-          className="rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+          onChange={(value) => setNewEnd(value ?? '')}
         />
         <Button variant="secondary" size="sm" onClick={addDate}>
           +
