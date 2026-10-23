@@ -58,9 +58,10 @@ public class GlobalExceptionHandlerMiddleware
     };
 
     /// <summary>
-    /// The single place where a failed HTTP request is logged (issues #57 and #13):
+    /// The single place where a failed HTTP request is logged (issues #57, #13 and #198):
     /// expected client errors (401, 403, 404, validation and any other 4xx) are logged once as Warning
-    /// with the exception type and message, but without the exception object, so there is no stack trace;
+    /// without the exception object, so there is no stack trace.
+    /// The exception message is included only for our AppException; other 4xx log the exception type only.
     /// 5xx and unmapped exceptions are logged once as Error with the exception.
     /// MediatR behaviors only rethrow and do not log the exception again.
     /// The same middleware is used by Identity, Catalog, Booking, Chat, Media and Gateway.
@@ -112,14 +113,30 @@ public class GlobalExceptionHandlerMiddleware
         if (IsExpectedClientError(statusCode))
         {
             // Do not pass the exception: Serilog prints {Exception} with the stack trace.
-            _logger.LogWarning(
-                "{Method} {Path} {StatusCode} {ExceptionType}: {ExceptionMessage} traceId={TraceId}",
-                context.Request.Method,
-                context.Request.Path,
-                statusCode,
-                exception.GetType().Name,
-                exception.Message,
-                correlationId);
+            // ex.Message only for our AppException (Guid and enum). Other 4xx keep the type,
+            // so framework text (ArgumentException, Enum.Parse) cannot repeat user input.
+            if (IsOwnAppException(exception))
+            {
+                _logger.LogWarning(
+                    "{Method} {Path} {StatusCode} {ExceptionType}: {ExceptionMessage} traceId={TraceId}",
+                    context.Request.Method,
+                    context.Request.Path,
+                    statusCode,
+                    exception.GetType().Name,
+                    exception.Message,
+                    correlationId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "{Method} {Path} {StatusCode} {ExceptionType} traceId={TraceId}",
+                    context.Request.Method,
+                    context.Request.Path,
+                    statusCode,
+                    exception.GetType().Name,
+                    correlationId);
+            }
+
             return;
         }
 
@@ -133,6 +150,26 @@ public class GlobalExceptionHandlerMiddleware
     /// </summary>
     private static bool IsExpectedClientError(int statusCode) =>
         statusCode is >= StatusCodes.Status400BadRequest and < StatusCodes.Status500InternalServerError;
+
+    /// <summary>
+    /// Identity, Booking and Chat each declare their own AppException.
+    /// Shared infrastructure does not reference those assemblies, so the match is by type name
+    /// inside the TravelAgency namespace, including subclasses such as UnauthorizedException.
+    /// </summary>
+    private static bool IsOwnAppException(Exception exception)
+    {
+        for (var type = exception.GetType(); type is not null && type != typeof(Exception); type = type.BaseType)
+        {
+            if (type.Name == "AppException"
+                && type.Namespace is not null
+                && type.Namespace.StartsWith("TravelAgency.", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// The client already dropped the request. OperationCanceledException here is not a failure,
