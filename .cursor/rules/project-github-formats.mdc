@@ -13,14 +13,14 @@ alwaysApply: false
   Как работает: <коротко, что поменялось>
   Задача: #NN
   ```
-- PR title = commit title without number. Sections: «Что сделано», «Зачем», «Как это работает» (simple example first), «Учебный кейс», «Как проверить», «Задача» (`#NN` only). Never use GitHub `closes`/`fix`/`fixes` in the PR: merge must not auto-close the issue before acceptance. Name the `Doc-` page updated or «вики не затронута». No first person («убрано», not «убрал»). Tick template checkboxes that hold.
-- Comments (never rewrite published ones):
+- PR title = commit title without number. Sections: «Что сделано», «Зачем», «Как это работает» (simple example first), «Как проверить», «Задача» (`#NN` only). Never «Учебный кейс» in PR/commits/issues (learning notes go only to the owner chat). Never use GitHub `closes`/`fix`/`fixes` in the PR: merge must not auto-close the issue before acceptance. Name the `Doc-` page updated or «вики не затронута». Impersonal only («убрано», not «убрал»); no agents, bots, tools, role labels, or names. Tick template checkboxes that hold.
+- Comments (do not casually rewrite published ones; delete+repost only to remove a forbidden leak such as an agent mention):
   ```markdown
   **Итог:** одна фраза
   **Подробно:** факты, sha, шаги, без секретов
   **Дальше:** следующий шаг или «нет»
   ```
-- Issue: title as commit; body «Зачем», «Что сделать», «Критерии приёмки» (testable), «Связи» (epic, issues, PR, wiki page). Epic adds sub-issues.
+- Issue: title as commit; body «Зачем», «Что сделать», «Критерии приёмки» (testable), «Связи» (epic, issues, PR, wiki page). Epic adds sub-issues. Never name agents, bots, cloud runs or tools in issue/PR comments; say «взято в разработку», «ветка `…`», «PR #NN».
 ## Board statuses
 - Label `статус: очередь|в работе|на ревью|готово` drives the column (`board-sync.yml`); never move cards or edit view filters by hand. Also `тип: бэклог`, `тип: родительская` (epic + field «Тип» = «Эпик»).
 - Очередь: nobody on it. В работе: someone works on it (incl. review, test, deploy, Doc- after merge); set at once when taken. На ревью: ONLY when the owner must decide. Готово: only after acceptance on dev (and Doc- gap closed if required), or closed as not planned. Closing the GitHub issue moves the card to Готово (`board-sync`); therefore close the issue only at that moment, never from the PR body.
