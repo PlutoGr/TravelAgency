@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from './authStore';
+import {
+  clearSessionSignal,
+  hasSessionSignal,
+  markSessionPresent,
+} from '@/api/sessionSignal';
 import type { User } from '@/types';
 
 const { mockLogin, mockRegister, mockLogout, mockGetMe } = vi.hoisted(() => ({
@@ -38,10 +43,12 @@ function resetStore() {
 describe('authStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearSessionSignal();
     resetStore();
   });
 
   afterEach(() => {
+    clearSessionSignal();
     resetStore();
   });
 
@@ -113,20 +120,24 @@ describe('authStore', () => {
         isAuthenticated: true,
       });
       mockLogout.mockResolvedValue(undefined);
+      markSessionPresent();
 
       await useAuthStore.getState().logout();
 
       expect(mockLogout).toHaveBeenCalled();
+      expect(hasSessionSignal()).toBe(false);
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
 
     it('clears state even when authApi.logout throws', async () => {
       useAuthStore.setState({ user: sampleUser, isAuthenticated: true });
+      markSessionPresent();
       mockLogout.mockRejectedValue(new Error('Network error'));
 
       await expect(useAuthStore.getState().logout()).rejects.toThrow('Network error');
 
+      expect(hasSessionSignal()).toBe(false);
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
@@ -166,6 +177,7 @@ describe('authStore', () => {
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(useAuthStore.getState().isLoading).toBe(false);
+      expect(hasSessionSignal()).toBe(false);
     });
   });
 
@@ -183,6 +195,7 @@ describe('authStore', () => {
       expect(useAuthStore.getState().user).toEqual(sampleUser);
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useAuthStore.getState().isLoading).toBe(false);
+      expect(hasSessionSignal()).toBe(true);
     });
 
     it('does not apply a checkAuth result that arrives after login', async () => {

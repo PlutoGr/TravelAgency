@@ -5,6 +5,11 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 import { apiClient, setAuthSessionHandler } from './client';
+import {
+  clearSessionSignal,
+  hasSessionSignal,
+  markSessionPresent,
+} from './sessionSignal';
 import { afterSessionEstablished } from '@/store/authIntent';
 import { useAuthStore } from '@/store/authStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
@@ -48,6 +53,7 @@ describe('auth session refresh', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    clearSessionSignal();
     useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
     setAuthSessionHandler(() => {
       useAuthStore.getState().markSessionExpired();
@@ -56,6 +62,7 @@ describe('auth session refresh', () => {
 
   afterEach(() => {
     apiClient.defaults.adapter = originalAdapter;
+    clearSessionSignal();
     setAuthSessionHandler(null);
     useUIStore.setState({
       isAuthModalOpen: false,
@@ -73,6 +80,7 @@ describe('auth session refresh', () => {
   });
 
   it('refreshes once after an expired session and then loads the user', async () => {
+    markSessionPresent();
     let meCalls = 0;
     let refreshCalls = 0;
     apiClient.defaults.adapter = async (config) => {
@@ -125,7 +133,65 @@ describe('auth session refresh', () => {
     }
   });
 
+  it('does not refresh when auth/me returns 401 without a session signal', async () => {
+    let meCalls = 0;
+    let refreshCalls = 0;
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        return httpResponse(config, 200, { success: true });
+      }
+      if (url.includes('/auth/me')) {
+        meCalls += 1;
+        throw httpError(config, 401);
+      }
+      throw httpError(config, 404);
+    };
+
+    useAuthStore.getState().checkAuth();
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(refreshCalls).toBe(0);
+    expect(meCalls).toBe(1);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('refreshes once when a session signal is present and retries the original request', async () => {
+    markSessionPresent();
+    let meCalls = 0;
+    let refreshCalls = 0;
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        return httpResponse(config, 200, { success: true });
+      }
+      if (url.includes('/auth/me')) {
+        meCalls += 1;
+        if (meCalls === 1) throw httpError(config, 401);
+        return httpResponse(config, 200, profile);
+      }
+      throw httpError(config, 404);
+    };
+
+    await expect(apiClient.get('/auth/me')).resolves.toMatchObject({
+      status: 200,
+      data: profile,
+    });
+
+    expect(refreshCalls).toBe(1);
+    expect(meCalls).toBe(2);
+    expect(hasSessionSignal()).toBe(true);
+  });
+
   it('stays a guest after one failed refresh and does not retry', async () => {
+    markSessionPresent();
     let meCalls = 0;
     let refreshCalls = 0;
     apiClient.defaults.adapter = async (config) => {
@@ -151,10 +217,60 @@ describe('auth session refresh', () => {
     expect(useAuthStore.getState().user).toBeNull();
     expect(refreshCalls).toBe(1);
     expect(meCalls).toBe(1);
+    expect(hasSessionSignal()).toBe(false);
     expect(toast.error).not.toHaveBeenCalled();
+
+    useAuthStore.getState().checkAuth();
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+
+    expect(refreshCalls).toBe(1);
+    expect(meCalls).toBe(2);
+  });
+
+  it('clears the session signal when refresh returns 400 and does not call it again', async () => {
+    markSessionPresent();
+    let refreshCalls = 0;
+    let meCalls = 0;
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        throw httpError(config, 400);
+      }
+      if (url.includes('/auth/me')) {
+        meCalls += 1;
+        throw httpError(config, 401);
+      }
+      throw httpError(config, 404);
+    };
+
+    useAuthStore.getState().checkAuth();
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+
+    expect(refreshCalls).toBe(1);
+    expect(meCalls).toBe(1);
+    expect(hasSessionSignal()).toBe(false);
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(toast.error).not.toHaveBeenCalled();
+
+    useAuthStore.getState().checkAuth();
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+
+    expect(refreshCalls).toBe(1);
+    expect(meCalls).toBe(2);
   });
 
   it('opens login without a toast when startup refresh returns 502 on a protected page', async () => {
+    markSessionPresent();
     let refreshCalls = 0;
     apiClient.defaults.adapter = async (config) => {
       const url = config.url ?? '';
@@ -180,6 +296,7 @@ describe('auth session refresh', () => {
   });
 
   it('opens login without a toast when a background refresh returns 502', async () => {
+    markSessionPresent();
     let bookingCalls = 0;
     let refreshCalls = 0;
     apiClient.defaults.adapter = async (config) => {
@@ -222,6 +339,7 @@ describe('auth session refresh', () => {
   });
 
   it('adds a pending favorite after startup refresh and closes the login window', async () => {
+    markSessionPresent();
     let meCalls = 0;
     apiClient.defaults.adapter = async (config) => {
       const url = config.url ?? '';
@@ -256,6 +374,7 @@ describe('auth session refresh', () => {
   });
 
   it('keeps the login window and the intent when startup refresh returns 502', async () => {
+    markSessionPresent();
     apiClient.defaults.adapter = async (config) => {
       const url = config.url ?? '';
       if (url.includes('/auth/refresh')) throw httpError(config, 502);
@@ -285,6 +404,47 @@ describe('auth session refresh', () => {
     });
     expect(useFavoritesStore.getState().favoriteIds).toEqual([]);
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('remembers a session after login or register and forgets it after logout', async () => {
+    apiClient.defaults.adapter = async (config) =>
+      httpResponse(config, 200, { success: true });
+
+    for (const path of ['/auth/login', '/auth/register']) {
+      clearSessionSignal();
+      await apiClient.post(path, {});
+      expect(hasSessionSignal()).toBe(true);
+    }
+
+    await apiClient.post('/auth/logout', {});
+    expect(hasSessionSignal()).toBe(false);
+  });
+
+  it('does not refresh again after logout', async () => {
+    markSessionPresent();
+    let refreshCalls = 0;
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/logout')) return httpResponse(config, 204, null);
+      if (url.includes('/auth/refresh')) {
+        refreshCalls += 1;
+        return httpResponse(config, 200, { success: true });
+      }
+      if (url.includes('/auth/me')) throw httpError(config, 401);
+      throw httpError(config, 404);
+    };
+
+    await useAuthStore.getState().logout();
+    expect(hasSessionSignal()).toBe(false);
+
+    useAuthStore.getState().checkAuth();
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+
+    expect(refreshCalls).toBe(0);
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { RegisterRequest, User } from '@/types';
 import * as authApi from '@/api/auth';
+import { clearSessionSignal, markSessionPresent } from '@/api/sessionSignal';
 
 type AuthState = {
   user: User | null;
@@ -60,6 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       // The in-flight checkAuth will not clear isLoading: its generation
       // is already stale. Logout leaves the store as a settled guest.
+      clearSessionSignal();
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
@@ -78,6 +80,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       .getMe()
       .then((user) => {
         if (generation !== authGeneration) return;
+        markSessionPresent();
         set({ user, isAuthenticated: true, isLoading: false });
       })
       .catch((error) => {

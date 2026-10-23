@@ -1,5 +1,10 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
+import {
+  clearSessionSignal,
+  hasSessionSignal,
+  markSessionPresent,
+} from './sessionSignal';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api/v1',
@@ -17,6 +22,14 @@ function isAuthMe(url: string): boolean {
   return url.includes('/auth/me');
 }
 
+function grantsSession(url: string): boolean {
+  return (
+    url.includes('/auth/login') ||
+    url.includes('/auth/register') ||
+    url.includes('/auth/refresh')
+  );
+}
+
 type SessionHandler = () => void;
 let sessionHandler: SessionHandler | null = null;
 
@@ -32,7 +45,12 @@ function notifySessionInvalid(): void {
 let refreshPromise: Promise<void> | null = null;
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const url = response.config?.url ?? '';
+    if (grantsSession(url)) markSessionPresent();
+    if (url.includes('/auth/logout')) clearSessionSignal();
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retried?: boolean;
@@ -41,7 +59,9 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (url.includes('/auth/refresh')) {
-      if (status === 401 || status === 502) notifySessionInvalid();
+      // 400: cookie нет, Gateway не подставил токен. 401: токен отвергнут.
+      if (status === 400 || status === 401) clearSessionSignal();
+      if (status === 400 || status === 401 || status === 502) notifySessionInvalid();
       return Promise.reject(error);
     }
 
@@ -55,6 +75,11 @@ apiClient.interceptors.response.use(
 
     if (originalRequest?._retried) {
       if (!isAuthMe(url)) redirectToLogin();
+      return Promise.reject(error);
+    }
+
+    // Гость без признака сессии не тратит лимит auth на заведомо пустой refresh.
+    if (!hasSessionSignal()) {
       return Promise.reject(error);
     }
 
