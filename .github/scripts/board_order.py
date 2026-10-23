@@ -4,28 +4,35 @@
 Что делает за один запуск:
   1. Добавляет на доску открытые issues репозитория, которых там нет
      (возвращает из архива, если карточка была заархивирована).
-  2. Сверяет колонку Status с состоянием issue: закрытая задача идёт в «Готово»,
+  2. Выравнивает метки статуса с open/closed (без изобретения других меток):
+       закрытая → «статус: готово», остальные «статус: …» снимаются;
+       открытая без статуса → «статус: очередь» (или «статус: удержание» при hold);
+       открытая с «статус: готово» → замена на «статус: очередь»;
+       «статус: в работе» / «на ревью» / «очередь» / «удержание» на открытых не трогаются.
+  3. Сверяет колонку Status с состоянием issue: закрытая задача идёт в «Готово»,
      задача на удержании в «Очередь», остальные по метке «статус: …».
-     Открытая задача без метки статуса остаётся в своей колонке
+     После выравнивания меток открытая без статуса не должна оставаться
      (новая карточка без колонки попадает в «Очередь»).
-  3. Очищает поле «Приоритет» у карточек, которые ушли из «Очереди».
-  4. Архивирует карточки задач, закрытых 30 и более дней назад (--no-archive отключает).
-  5. Расставляет порядок внутри колонок:
+  4. Очищает поле «Приоритет» у карточек, которые ушли из «Очереди».
+  5. Архивирует карточки задач, закрытых 30 и более дней назад (--no-archive отключает).
+  6. Расставляет порядок внутри колонок:
        Готово             сначала недавно закрытые;
        Очередь            по полю «Приоритет» (1 сверху), затем открытые баги по номеру,
                           затем остальные по номеру, задачи на удержании в самом низу;
        В работе, На ревью по номеру.
      Двигаются только карточки не на своём месте (наибольшая возрастающая
      подпоследовательность остаётся на месте).
-  6. Печатает итог и после реального запуска перечитывает доску и сверяет порядок.
+  7. Печатает итог (включая план смены меток) и после реального запуска
+     перечитывает доску и сверяет порядок.
 
-PR, черновики и архивные карточки не двигаются. Метки, issues и виды доски не меняются.
+PR, черновики и архивные карточки не двигаются. Виды доски не меняются.
+Меняются только метки «статус: …» по правилам выше (через gh issue edit).
 
 Запуск:
   python3 board_order.py --dry-run     # только показать план
   python3 board_order.py               # применить
   python3 board_order.py --no-archive  # применить без архивации
-Доступ: токен с правом project из GH_PROJECT_TOKEN (бокс) или GH_TOKEN (Actions).
+Доступ: токен с правом project и issues из GH_PROJECT_TOKEN (бокс) или GH_TOKEN (Actions).
 Значение токена не печатается. Нужны только стандартная библиотека Python и gh.
 """
 import argparse
@@ -49,6 +56,9 @@ LABEL_TO_COL = {"статус: очередь": "Очередь", "статус:
                 "статус: удержание": "Очередь"}
 HOLD_LABEL = "статус: удержание"
 HOLD_PREFIX = "⏸ На удержании"
+STATUS_LABELS = tuple(LABEL_TO_COL)
+QUEUE_LABEL = "статус: очередь"
+DONE_LABEL = "статус: готово"
 ARCHIVE_DAYS = 30
 CHUNK = 5          # мутаций в одном запросе: на 20 GitHub отвечал HTTP 502
 RETRIES = 4        # повторы при ответе 5xx, пауза 2, 4, 8, 16 с
@@ -141,6 +151,69 @@ def read_items():
 
 def is_hold(it):
     return HOLD_LABEL in it["labels"] or it["body1"].startswith(HOLD_PREFIX)
+
+
+def status_labels_of(it):
+    return [l for l in it["labels"] if l in LABEL_TO_COL]
+
+
+def wanted_status_label(it):
+    """Нужная единственная метка статуса или None, если метки не трогать."""
+    if it["state"] == "CLOSED":
+        return DONE_LABEL
+    if "статус: готово" in it["labels"]:
+        return QUEUE_LABEL
+    if status_labels_of(it):
+        return None
+    return HOLD_LABEL if is_hold(it) else QUEUE_LABEL
+
+
+def plan_label_fixes(items, notes):
+    """Список (issue, add, remove) для выравнивания меток статуса."""
+    fixes = []
+    for it in items:
+        if it.get("type") != "ISSUE" or it.get("number") is None or it.get("archived"):
+            continue
+        want = wanted_status_label(it)
+        if want is None:
+            continue
+        have = set(status_labels_of(it))
+        if have == {want}:
+            continue
+        add = want if want not in have else None
+        remove = sorted(have - {want})
+        if not add and not remove:
+            continue
+        fixes.append((it, add, remove))
+        if it["state"] == "OPEN" and DONE_LABEL in have:
+            notes.append(f"#{it['number']}: открыта с «статус: готово», метка заменяется на «{want}»")
+        elif it["state"] == "CLOSED" and have - {DONE_LABEL}:
+            notes.append(f"#{it['number']}: закрыта, лишние метки статуса снимаются → «{DONE_LABEL}»")
+        elif not have:
+            notes.append(f"#{it['number']}: нет метки статуса → «{want}»")
+    return fixes
+
+
+def apply_label_memory(fixes):
+    for it, add, remove in fixes:
+        labs = [l for l in it["labels"] if l not in remove]
+        if add and add not in labs:
+            labs.append(add)
+        it["labels"] = labs
+
+
+def apply_status_labels(fixes):
+    env = dict(os.environ, GH_TOKEN=token())
+    for it, add, remove in fixes:
+        cmd = [GH, "issue", "edit", str(it["number"]), "--repo", f"{OWNER}/{REPO}"]
+        if add:
+            cmd.extend(["--add-label", add])
+        for name in remove:
+            cmd.extend(["--remove-label", name])
+        p = subprocess.run(cmd, env=env, capture_output=True, text=True)
+        if p.returncode != 0:
+            err = (p.stderr or p.stdout or "").strip()
+            raise RuntimeError(f"#{it['number']}: не удалось сменить метки статуса: {err}")
 
 
 def managed(it):
@@ -286,8 +359,20 @@ def main():
             m.update(id=f"new-{k}", type="ISSUE", archived=False, status=None, prio=None)
             items.append(m)
 
+    label_notes = []
+    label_fixes = plan_label_fixes(items, label_notes)
+    print(f"{tag}меток статуса: {len(label_fixes)}")
+    for it, add, remove in label_fixes:
+        add_s = f"+«{add}»" if add else ""
+        rem_s = ", ".join(f"−«{r}»" for r in remove)
+        print(f"  {label(it)}: " + ", ".join(x for x in (add_s, rem_s) if x))
+    apply_label_memory(label_fixes)
+    if label_fixes and not a.dry_run:
+        apply_status_labels(label_fixes)
+
     before = {c: sum(1 for i in items if managed(i) and i["status"] == c) for c in OPTIONS}
     fixes, clears, archives, moves, desired, notes = plan(items, not a.no_archive)
+    notes = label_notes + notes
     after = {c: len(desired[c]) for c in OPTIONS}
     other = sum(1 for i in items if not managed(i))
 

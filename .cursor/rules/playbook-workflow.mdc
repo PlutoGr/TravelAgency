@@ -35,11 +35,12 @@ alwaysApply: false
 - Cloud agent executor: give it this file + the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 ## End-to-end checklist (no silent hangs)
-1. Take from Очередь → `статус: в работе` + comment.
+1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment.
 2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
-3. Step 5: one cloud agent, one PR, link `#NN` without `closes`.
-4. Step 6: wait for automation comments + green CI; escalate per step 6; lead merges (one PR at a time; next after Deploy green).
+3. Step 5: one cloud agent, one PR; branch includes issue number; `## Задача` `#NN` without `closes`; connect PR in GitHub Development immediately.
+4. Step 6: wait for automation comments + green CI; escalate per step 6; lead verifies Development link, then merges (one PR at a time; next after Deploy green).
 5. Step 7: acceptance on dev; comment; keep issue open until pass.
-6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then close issue → Готово.
+6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then `статус: готово` and close issue in the same moment → Готово.
 7. If anything waits >60 min (green CI, no merge) or Doc- gap same day: lead acts or asks the owner once.
+8. Process gap found (labels, commits, PR wording, statuses, docs, Development links): fix artifacts and update `.cursor/rules/` in the same delivery cycle.
 
