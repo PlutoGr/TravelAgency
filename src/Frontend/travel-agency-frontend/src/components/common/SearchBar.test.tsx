@@ -1,0 +1,394 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import type { Destination } from '@/types';
+import { catalogPath, resolveHomeSearch } from '@/utils/catalogQuery';
+import DateRangeCalendar from './DateRangeCalendar';
+import SearchBar, { type SearchBarValues } from './SearchBar';
+
+function place(partial: Pick<Destination, 'id' | 'name' | 'country'> & { description?: string }): Destination {
+  return {
+    photo: '',
+    tourCount: 1,
+    description: '',
+    ...partial,
+  };
+}
+
+const places: Destination[] = [
+  place({ id: 'dir-bali', name: 'Бали', country: 'Индонезия', description: 'секретное описание бали' }),
+  place({ id: 'dir-rome', name: 'Рим', country: 'Италия' }),
+  place({ id: 'dir-black', name: 'Чёрное море', country: 'Россия' }),
+  place({ id: 'dir-spb', name: 'Санкт Петербург', country: 'Россия' }),
+  place({ id: 'dir-italy', name: 'Италия', country: 'Италия' }),
+];
+
+function setViewport(width: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => {
+      const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0);
+      return {
+        matches: width >= min,
+        media: query,
+        onchange: null,
+        addEventListener() {},
+        removeEventListener() {},
+        addListener() {},
+        removeListener() {},
+        dispatchEvent() {
+          return false;
+        },
+      };
+    },
+  });
+}
+
+function freezeCalendar(isoUtc: string) {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(isoUtc));
+}
+
+function contrastOnWhite(hex: string): number {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const channel = (part: number) => {
+    const srgb = part / 255;
+    return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * channel((value >> 16) & 255) +
+    0.7152 * channel((value >> 8) & 255) +
+    0.0722 * channel(value & 255);
+  return (1 + 0.05) / (luminance + 0.05);
+}
+
+function optionLabels() {
+  return screen.getAllByRole('option').map((option) => option.getAttribute('aria-label'));
+}
+
+describe('SearchBar', () => {
+  beforeEach(() => {
+    setViewport(1280);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
+  it('keeps labels, placeholders and icons in one field system', () => {
+    render(<SearchBar destinations={places} />);
+
+    const where = screen.getByText('Куда?');
+    const when = screen.getByText('Когда?');
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+    const find = screen.getByRole('button', { name: 'Найти' });
+
+    expect(contrastOnWhite('#4B5563')).toBeGreaterThanOrEqual(4.5);
+    expect(where.className).toContain('text-xs');
+    expect(where.className).toContain('text-[#4B5563]');
+    expect(where.className).not.toContain('warm-gray');
+    expect(when.className).toBe(where.className);
+    expect(input.className).toContain('text-base');
+    expect(input.className).toContain('font-sans');
+    expect(input.className).toContain('placeholder:text-[#4B5563]');
+    expect(input).toHaveAttribute('placeholder', 'Город или страна');
+    expect(screen.getByText('Выберите даты').className).toContain('text-base');
+    expect(screen.getByText('Выберите даты').className).toContain('text-[#4B5563]');
+    expect(find.className).toContain('min-h-11');
+    expect(find.className).toContain('w-full');
+    expect(find.className).toContain('md:w-auto');
+    expect(find.className).toContain('bg-primary');
+    expect(find.className).toContain('text-white');
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/dd\.mm\.yyyy/);
+
+    const pin = document.querySelector('.lucide-map-pin');
+    const calendar = document.querySelector('.lucide-calendar');
+    expect(pin).toHaveAttribute('aria-hidden', 'true');
+    expect(pin).toHaveAttribute('width', '20');
+    expect(pin?.getAttribute('class')).toContain('row-start-2');
+    expect(calendar).toHaveAttribute('aria-hidden', 'true');
+    expect(calendar).toHaveAttribute('width', '20');
+    expect(calendar?.getAttribute('class')).toContain('row-start-2');
+  });
+
+  it('filters suggestions by yo, case and outer spaces and caps the list at 8', async () => {
+    const user = userEvent.setup();
+    render(<SearchBar destinations={places} />);
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+
+    await user.click(input);
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveAttribute('aria-controls');
+    expect(optionLabels()).toEqual([
+      'Бали',
+      'Италия',
+      'Рим',
+      'Санкт Петербург',
+      'Чёрное море',
+      'Индонезия',
+      'Россия',
+    ]);
+    expect(screen.getAllByRole('option', { name: 'Италия' })).toHaveLength(1);
+    expect(screen.queryByText('секретное описание бали')).not.toBeInTheDocument();
+
+    await user.type(input, '  БАЛИ  ');
+    expect(screen.getByRole('option', { name: 'Бали' })).toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, 'черное');
+    expect(screen.getByRole('option', { name: 'Чёрное море' })).toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, 'санкт  петербург');
+    expect(screen.getByRole('option', { name: 'Санкт Петербург' })).toBeInTheDocument();
+
+    await user.clear(input);
+    await user.type(input, 'Атлантида');
+    expect(screen.getByText('Ничего не найдено')).toBeInTheDocument();
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+
+  it('shows at most eight suggestion rows', async () => {
+    const user = userEvent.setup();
+    const many = 'АБВГДЕЖЗИ'.split('').map((letter, index) =>
+      place({ id: `city-${index}`, name: `Город ${letter}`, country: 'Общая' }),
+    );
+    render(<SearchBar destinations={many} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Куда?' }));
+
+    expect(screen.getAllByRole('option')).toHaveLength(8);
+    expect(screen.queryByRole('option', { name: 'Город И' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Общая' })).not.toBeInTheDocument();
+  });
+
+  it('selects a suggestion with Enter and does not open the catalog', async () => {
+    const user = userEvent.setup();
+    renderSearchRoute(places);
+
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+    await user.click(input);
+    await user.keyboard('{ArrowDown}');
+    expect(input).toHaveAttribute('aria-activedescendant', screen.getByRole('option', { name: 'Бали' }).id);
+    await user.keyboard('{Enter}');
+
+    expect(input).toHaveValue('Бали');
+    expect(input).toHaveFocus();
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.getByTestId('url').textContent).toBe('/');
+  });
+
+  it('closes suggestions with Escape and keeps focus in the field', async () => {
+    const user = userEvent.setup();
+    render(<SearchBar destinations={places} />);
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+
+    await user.click(input);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(input).toHaveFocus();
+  });
+
+  it('clears the place without leaving the page', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    render(<SearchBar destinations={places} onSearch={onSearch} />);
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+
+    await user.type(input, 'Бали');
+    const clear = screen.getByRole('button', { name: /^Очистить$/ });
+    expect(clear.className).toContain('size-11');
+    await user.click(clear);
+
+    expect(input).toHaveValue('');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(onSearch).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /^Очистить$/ })).not.toBeInTheDocument();
+  });
+
+  it('scrolls the place field into view on focus and walks the tab order', async () => {
+    const user = userEvent.setup();
+    if (!HTMLElement.prototype.scrollIntoView) {
+      HTMLElement.prototype.scrollIntoView = () => {};
+    }
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+    render(<SearchBar destinations={places} />);
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+
+    act(() => {
+      input.focus();
+    });
+    expect(scroll).toHaveBeenCalled();
+
+    await user.type(input, 'Рим');
+    act(() => {
+      input.focus();
+    });
+    await user.tab();
+    expect(screen.getByRole('button', { name: /^Очистить$/ })).toHaveFocus();
+    await user.tab();
+    const when = screen.getByRole('button', { name: /Когда\?/ });
+    expect(when).toHaveFocus();
+    expect(when).toHaveAttribute('aria-haspopup', 'dialog');
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Найти' })).toHaveFocus();
+    scroll.mockRestore();
+  });
+
+  it('formats a range, keeps a single start and blocks yesterday in Moscow', async () => {
+    freezeCalendar('2026-11-11T22:00:00.000Z');
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    render(<SearchBar destinations={places} onSearch={onSearch} />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Выбор дат' });
+    expect(dialog.className).not.toContain('inset-x-0');
+    expect(screen.getByRole('heading', { name: 'ноябрь 2026' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'декабрь 2026' })).toBeInTheDocument();
+    expect(screen.getAllByText('пн').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('вс').length).toBeGreaterThan(0);
+
+    const yesterday = screen.getByRole('gridcell', { name: '11 ноября 2026' });
+    const today = screen.getByRole('gridcell', { name: '12 ноября 2026' });
+    expect(yesterday).toBeDisabled();
+    expect(today).toBeEnabled();
+    expect(today).toHaveFocus();
+    expect(today.className).toContain('size-11');
+
+    await user.keyboard('{ArrowLeft}');
+    expect(today).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(today).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(onSearch).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Выбор дат' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Когда\?/ })).toHaveTextContent('12 ноя');
+
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('gridcell', { name: '19 ноября 2026' })).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(screen.getByRole('gridcell', { name: '22 ноября 2026' })).toHaveFocus();
+
+    await user.click(screen.getByRole('gridcell', { name: '20 ноября 2026' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const when = screen.getByRole('button', { name: /Когда\?/ });
+    expect(when).toHaveTextContent('с 12 по 20 ноя');
+    expect(when.textContent).not.toMatch(/[-—–]/);
+    expect(when).toHaveFocus();
+  });
+
+  it('shows one month in a bottom sheet below 768px and mutes neighbouring days', async () => {
+    freezeCalendar('2026-10-23T09:00:00.000Z');
+    setViewport(390);
+    const user = userEvent.setup();
+    render(<SearchBar />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Выбор дат' });
+    expect(dialog.className).toContain('fixed');
+    expect(dialog.className).toContain('inset-x-0');
+    expect(dialog.className).toContain('bottom-0');
+    expect(dialog.className).toContain('w-full');
+    expect(dialog.innerHTML).toContain('env(safe-area-inset-bottom)');
+    expect(screen.getByRole('heading', { name: 'октябрь 2026' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'ноябрь 2026' })).not.toBeInTheDocument();
+
+    for (const cell of screen.getAllByRole('gridcell')) {
+      expect(cell.getAttribute('aria-label') ?? '').not.toMatch(/сентября|ноября/);
+    }
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Когда\?/ })).toHaveFocus();
+  });
+
+  it('formats cross-month and cross-year ranges and resets the field', async () => {
+    freezeCalendar('2026-10-23T09:00:00.000Z');
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    await user.click(screen.getByRole('gridcell', { name: '28 октября 2026' }));
+    await user.click(screen.getByRole('gridcell', { name: '3 ноября 2026' }));
+    expect(screen.getByRole('button', { name: /Когда\?/ })).toHaveTextContent('с 28 окт по 3 ноя');
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    await user.click(screen.getByRole('button', { name: 'Сбросить' }));
+    expect(screen.getByText('Выберите даты')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+    expect(onSearch).toHaveBeenCalledWith({ destination: '', date: '', dateTo: undefined });
+
+    onSearch.mockClear();
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    await user.click(screen.getByRole('button', { name: 'Следующий месяц' }));
+    await user.click(screen.getByRole('button', { name: 'Следующий месяц' }));
+    await user.click(screen.getByRole('gridcell', { name: '28 декабря 2026' }));
+    await user.click(screen.getByRole('gridcell', { name: '3 января 2027' }));
+    expect(screen.getByRole('button', { name: /Когда\?/ })).toHaveTextContent('с 28 дек 2026 по 3 янв 2027');
+
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+    const values = onSearch.mock.calls.at(-1)?.[0] as SearchBarValues;
+    expect(values).toEqual({ destination: '', date: '2026-12-28', dateTo: '2027-01-03' });
+  });
+
+  it('keeps the start when the calendar closes before the end and submits dates only', async () => {
+    freezeCalendar('2026-10-23T09:00:00.000Z');
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    await user.click(screen.getByRole('gridcell', { name: '1 ноября 2026' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: /Когда\?/ })).toHaveTextContent('1 ноя');
+
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+    expect(onSearch).toHaveBeenCalledWith({ destination: '', date: '2026-11-01', dateTo: undefined });
+  });
+
+  it('disables days after 31 December 2100', () => {
+    freezeCalendar('2026-10-23T09:00:00.000Z');
+    render(
+      <DateRangeCalendar value={{ from: '2100-12-31' }} onChange={() => {}} onClose={() => {}} />,
+    );
+
+    expect(screen.getByRole('gridcell', { name: '31 декабря 2100' })).toBeEnabled();
+    expect(screen.getByRole('gridcell', { name: '1 января 2101' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Следующий месяц' })).toBeDisabled();
+  });
+});
+
+function UrlProbe() {
+  const location = useLocation();
+  return <div data-testid="url">{`${location.pathname}${location.search}`}</div>;
+}
+
+function SearchRoute({ destinations }: { destinations: Destination[] }) {
+  const navigate = useNavigate();
+  return (
+    <SearchBar
+      destinations={destinations}
+      onSearch={(values) => navigate(catalogPath(resolveHomeSearch(values, destinations)))}
+    />
+  );
+}
+
+function renderSearchRoute(destinations: Destination[]) {
+  return render(
+    <MemoryRouter initialEntries={['/']}>
+      <UrlProbe />
+      <Routes>
+        <Route path="*" element={<SearchRoute destinations={destinations} />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}

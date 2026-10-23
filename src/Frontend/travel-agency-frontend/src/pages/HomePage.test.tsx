@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -15,6 +15,10 @@ vi.mock('@/api/catalog', () => ({
 }));
 
 describe('HomePage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.stubGlobal(
       'IntersectionObserver',
@@ -66,6 +70,7 @@ describe('HomePage', () => {
   });
 
   it('opens the catalog with a direction and departure date, without a travelers field', async () => {
+    freezeCalendar('2026-10-23T09:00:00Z');
     const user = userEvent.setup();
     vi.mocked(getDestinations).mockResolvedValue([bali]);
 
@@ -76,15 +81,100 @@ describe('HomePage', () => {
       '/tours?direction=dir-bali',
     );
     expect(screen.queryByLabelText('Сколько?')).not.toBeInTheDocument();
+    expect(document.querySelector('input[type="date"]')).toBeNull();
 
     await user.type(screen.getByLabelText('Куда?'), 'Бали');
-    fireEvent.change(screen.getByLabelText('Когда?'), { target: { value: '2026-11-01' } });
+    await pickHomeDay(user, '1 ноября 2026');
     await user.click(screen.getByRole('button', { name: 'Найти' }));
 
     expect(await screen.findByRole('heading', { name: 'Каталог' })).toBeInTheDocument();
     expect(screen.getByTestId('url').textContent).toBe('/tours?direction=dir-bali&dateFrom=2026-11-01');
   });
+
+  it('opens /tours without a query when both fields are empty', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getDestinations).mockResolvedValue([bali]);
+    renderHome();
+
+    await screen.findByRole('button', { name: 'Найти' });
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+
+    expect(await screen.findByRole('heading', { name: 'Каталог' })).toBeInTheDocument();
+    expect(screen.getByTestId('url').textContent).toBe('/tours');
+  });
+
+  it('adds dateTo for a departure range', async () => {
+    freezeCalendar('2026-10-23T09:00:00Z');
+    const user = userEvent.setup();
+    vi.mocked(getDestinations).mockResolvedValue([bali]);
+    renderHome();
+    await screen.findByRole('link', { name: /Бали/ });
+
+    await user.type(screen.getByLabelText('Куда?'), 'Бали');
+    await pickHomeDay(user, '12 ноября 2026');
+    await pickHomeDay(user, '20 ноября 2026');
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+
+    expect(await screen.findByTestId('url')).toHaveTextContent(
+      '/tours?direction=dir-bali&dateFrom=2026-11-12&dateTo=2026-11-20',
+    );
+  });
+
+  it('writes equal dateFrom and dateTo when the same day is chosen twice', async () => {
+    freezeCalendar('2026-10-23T09:00:00Z');
+    const user = userEvent.setup();
+    vi.mocked(getDestinations).mockResolvedValue([bali]);
+    renderHome();
+    await screen.findByRole('link', { name: /Бали/ });
+
+    await pickHomeDay(user, '1 ноября 2026');
+    await pickHomeDay(user, '1 ноября 2026');
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+
+    expect(await screen.findByTestId('url')).toHaveTextContent(
+      '/tours?dateFrom=2026-11-01&dateTo=2026-11-01',
+    );
+  });
+
+  it('drops direction and country when the place is cleared', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getDestinations).mockResolvedValue([bali]);
+    renderHome();
+    await screen.findByRole('link', { name: /Бали/ });
+
+    await user.type(screen.getByLabelText('Куда?'), 'Бали');
+    await user.click(screen.getByRole('button', { name: /^Очистить$/ }));
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+
+    expect(await screen.findByRole('heading', { name: 'Каталог' })).toBeInTheDocument();
+    expect(screen.getByTestId('url').textContent).toBe('/tours');
+  });
+
+  it('keeps a typed place when directions fail to load', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getDestinations).mockRejectedValue(new Error('offline'));
+    renderHome();
+
+    await user.type(await screen.findByLabelText('Куда?'), 'Атлантида');
+    await user.click(screen.getByRole('button', { name: 'Найти' }));
+
+    expect(await screen.findByTestId('url')).toHaveTextContent(
+      `/tours?country=${encodeURIComponent('Атлантида')}`,
+    );
+  });
 });
+
+function freezeCalendar(isoUtc: string) {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(isoUtc));
+}
+
+async function pickHomeDay(user: ReturnType<typeof userEvent.setup>, name: string) {
+  if (!screen.queryByRole('dialog', { name: 'Выбор дат' })) {
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+  }
+  await user.click(screen.getByRole('gridcell', { name }));
+}
 
 const bali: Destination = {
   id: 'dir-bali',

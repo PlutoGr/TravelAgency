@@ -1,9 +1,9 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BadgeCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { SearchBar } from '@/components/common';
+import { SearchBar, type SearchBarValues } from '@/components/common';
 import { getDestinations } from '@/api/catalog';
 import type { Destination } from '@/types';
 import { catalogPath, resolveHomeSearch } from '@/utils/catalogQuery';
@@ -28,18 +28,24 @@ const childVariants = {
 export default function HeroSection() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: destinations = [] } = useQuery({
+    queryKey: ['destinations'],
+    queryFn: getDestinations,
+  });
 
-  async function handleSearch(values: { destination: string; date: string }) {
-    let destinations: Destination[];
-    try {
-      destinations = await queryClient.fetchQuery({
-        queryKey: ['destinations'],
-        queryFn: getDestinations,
-      });
-    } catch {
-      destinations = [];
+  async function handleSearch(values: SearchBarValues) {
+    let known: Destination[] = destinations;
+    if (known.length === 0) {
+      try {
+        known = await queryClient.fetchQuery({
+          queryKey: ['destinations'],
+          queryFn: getDestinations,
+        });
+      } catch {
+        known = [];
+      }
     }
-    navigate(catalogPath(resolveHomeSearch(values, destinations)));
+    navigate(catalogPath(resolveHomeSearch(values, known)));
   }
 
   return (
@@ -74,7 +80,11 @@ export default function HeroSection() {
         </motion.p>
 
         <motion.div variants={childVariants} className="mt-10">
-          <SearchBar className="mx-auto max-w-4xl" onSearch={handleSearch} />
+          <SearchBar
+            className="mx-auto w-full max-w-4xl"
+            destinations={destinations}
+            onSearch={handleSearch}
+          />
         </motion.div>
 
         {advantages.length > 0 && (
