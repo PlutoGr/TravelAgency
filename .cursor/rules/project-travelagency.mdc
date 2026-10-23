@@ -15,31 +15,33 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 ## Roles (overrides playbook role names)
 | Role | Who | Zone |
 |---|---|---|
-| Lead / merger | Grok Bot | `.cursor/agents/lead.md`: owner channel, triage, merges, board, approvals routing, server access, audit |
-| Architect / reviewer | Вирт (or a cloud agent) | `.cursor/agents/architect.md`: mandatory PR review, architecture, ADR, labels, task split; code only skeletons/contracts |
-| Developer | TA Разработчик | app code + tests |
-| Tester | TA Тестировщик | tests, bug issues, acceptance on dev |
-| DevOps | TA DevOps | CI, Docker, nginx, deploy, server, security check |
-| Analyst | TA Продакт-аналитик | wiki, requirements, acceptance criteria |
-- Touch only your zone; out of zone, hand over via the issue. Only the lead talks to the owner; team agents never @mention him.
+| Lead / merger | Grok Bot | `.cursor/agents/lead.md`: owner channel, triage, merges, board, cloud launches, server access, audit, Doc- gaps |
+| Architect / reviewer | Вирт when escalated; else cloud agent brief | `.cursor/agents/architect.md`: architecture, ADR, labels, task split; review on escalation (not every routine PR) |
+| Developer | cloud agent | app code + tests via PR (`playbook-cloud-agents.mdc`) |
+| Tester | lead or cloud agent | test cases and automated tests via cloud; acceptance on dev needs lead (dev access) |
+| DevOps | lead (+ cloud for CI/Docker files) | CI, Docker, nginx, deploy, server; automation vulns cover PR comment security, not server changes |
+| Analyst | lead via cloud agent | wiki Epic/Feature sections, requirements, acceptance criteria |
+- Touch only your zone; out of zone, hand over via the issue. Only the lead talks to the owner.
+- Persistent TA chat bots are retired; do not route new work through team group chats.
 ## Priorities
-1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Analyst orders within this; order changes need the owner.
+1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Lead orders within this; order changes need the owner.
 ## Parallel work
-- Merge one PR at a time; work may continue: per agent 1 active item + at most 1 waiting.
+- Merge one PR at a time; work may continue: per stream 1 active item + at most 1 waiting.
 - Next issue only if it touches no files/endpoints/migrations of an open PR, does not depend on an unmerged PR, and its criteria are final. Branch from fresh `main`.
-- Any doubt about overlap: wait or ask the architect. After the previous merge, update the branch before review.
-- Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work: bring the current item to a checkpoint (push/comment), then take the return. Analyst keeps at most 2 issues ahead with final criteria.
+- Any doubt about overlap: wait or escalate to the architect. After the previous merge, update the branch before review.
+- Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work.
 ## Merge order
-- Reviewer: Вирт on every PR (incl. impersonal wording, format). Security: DevOps on risky PRs. Merger: Grok Bot, after green CI, review, and Cursor Automations comments per `project-cursor-automations.mdc`; next merge only after «Deploy to dev» is green.
-- Dependabot minor/patch: review + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
-- Docs-with-code = the matching wiki `Doc-` page.
+- Merger: Grok Bot. Before merge: green CI + Cursor Automations comments per `project-cursor-automations.mdc` + step 6 escalation rules. Next merge only after «Deploy to dev» is green.
+- Do not require a separate architect approve on every small/routine PR when automations are clean; require it when step 6 escalation triggers.
+- Dependabot minor/patch: automations + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
+- Docs-with-code = the matching wiki `Doc-` page (or a Doc- gap issue opened from the after-merge automation).
 - Temporary dumps on dev allowed if deleted after the check.
 ## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
+- Prefer Cursor Models/cloud agents for implementation, tests and heavy analysis (save-grok). Lead keeps thin orchestration: Feature wiki from existing TZ, review gates, merge.
 - Developer: all code via a cloud agent, including small fixes. In chat only work needing dev/server access, or small and mid code when the usage mode says so.
-- Analyst: any analysis beyond a short answer via a cloud agent on Grok (xhigh for heavy ones): specs, criteria drafts, ADRs, code reading, `Doc-` fact checks, full text of issues and wiki edits (returned as ready Russian text). In chat: briefs, coordination, posting, small fixes.
-- Tester: acceptance on dev stays in chat (needs dev access); API/curl first, browser only for what must be seen, batch several issues per deploy. Automated tests via a cloud agent when an issue needs them.
-- DevOps: server stays in chat; a cloud agent may edit workflows or Dockerfiles, DevOps checks the diff.
-- Architect: review per `.cursor/agents/architect.md`.
-- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `<role>/<NN>-<slug>`; announce one line to the team: `#NN: cloud agent <id>, <model> <params>`.
-- Gates after a cloud agent: architect review, green CI, DevOps on risky PRs, merge by the lead, acceptance on dev. Cloud agents never touch the wiki, the board or merges.
+- Analyst / architecture text: cloud agent returns ready Russian wiki/issue text; lead publishes.
+- Tester: acceptance on dev stays with whoever has dev access (lead); automated tests via a cloud agent when an issue needs them.
+- DevOps: server stays with the lead; a cloud agent may edit workflows or Dockerfiles, lead checks the diff.
+- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `<role>/<NN>-<slug>`.
+- Gates after a cloud agent: strip Cursor PR markers, then merge order above. Cloud agents never touch the wiki, the board or merges.
 - Usage mode and budgets: ask the lead (it keeps them current).
