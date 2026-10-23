@@ -8,8 +8,6 @@ import { getDestinations } from '@/api/catalog';
 import { Skeleton } from '@/components/ui';
 import { catalogPath } from '@/utils/catalogQuery';
 
-const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop';
-
 export default function DestinationsGrid() {
   const { data: destinations = [], isLoading } = useQuery({
     queryKey: ['destinations'],
@@ -51,6 +49,7 @@ export default function DestinationsGrid() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {destinations.map((dest, idx) => {
             const isLarge = idx < 2;
+            const photo = dest.photo.trim();
 
             return (
               <FadeInOnScroll
@@ -65,13 +64,23 @@ export default function DestinationsGrid() {
                     isLarge ? 'aspect-[16/9]' : 'aspect-[4/3]',
                   )}
                 >
-                  <img
-                    src={dest.photo || PLACEHOLDER_IMAGE}
-                    alt={dest.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    loading="lazy"
+                  {photo ? (
+                    <img
+                      src={photo}
+                      alt={dest.name}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-sand" aria-hidden="true" />
+                  )}
+                  <div
+                    className={
+                      photo
+                        ? 'absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent'
+                        : 'absolute inset-0 bg-gradient-to-t from-dark/80 via-dark/35 to-transparent'
+                    }
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
                   <div className="absolute inset-x-0 bottom-0 p-5">
                     <div className="flex items-center gap-1.5 text-white/70">

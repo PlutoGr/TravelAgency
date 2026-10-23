@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, Phone, Mail, MapPin } from 'lucide-react';
-import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+
+const LATER = 'Появится позже';
 
 const TOURIST_LINKS = [
   { label: 'Популярные туры', href: '/tours' },
@@ -10,21 +9,12 @@ const TOURIST_LINKS = [
 ] as const;
 
 const CONTACTS = [
-  { icon: Phone, text: '+7 (800) 555-35-35' },
-  { icon: Mail, text: 'info@travelagency.ru' },
-  { icon: MapPin, text: 'Москва, ул. Тверская 1' },
+  { id: 'phone', icon: Phone, text: '+7 999 999-99-99', withLater: true },
+  { id: 'email', icon: Mail, text: LATER, withLater: false },
+  { id: 'address', icon: MapPin, text: LATER, withLater: false },
 ] as const;
 
 export default function Footer() {
-  const [email, setEmail] = useState('');
-
-  function handleSubscribe(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    toast.success('Спасибо за подписку!');
-    setEmail('');
-  }
-
   return (
     <footer id="contacts" className="bg-dark text-white/80">
       <div className="mx-auto max-w-7xl px-4 py-16 lg:px-8">
@@ -68,10 +58,13 @@ export default function Footer() {
               Контакты
             </h3>
             <ul className="space-y-3">
-              {CONTACTS.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-3 text-sm text-white/60">
+              {CONTACTS.map(({ id, icon: Icon, text, withLater }) => (
+                <li key={id} className="flex items-center gap-3 text-sm text-white/60">
                   <Icon size={16} className="shrink-0 text-terracotta" />
-                  {text}
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span>{text}</span>
+                    {withLater ? <span>{LATER}</span> : null}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -87,29 +80,28 @@ export default function Footer() {
             <p className="mt-1 text-sm text-white/60">
               Получайте лучшие предложения первыми
             </p>
+            <p className="mt-1 text-sm text-white/60">{LATER}</p>
           </div>
           <form
-            onSubmit={handleSubscribe}
+            onSubmit={(event) => event.preventDefault()}
             className="flex gap-3"
           >
             <div className="min-w-0 flex-1">
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                disabled
                 placeholder="Ваш email"
-                className="h-11 w-full min-w-[200px] rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder-white/40 outline-none transition-colors focus:border-terracotta"
+                className="h-11 w-full min-w-[200px] rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder-white/40 outline-none disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+            <button
               type="submit"
-              className="flex h-11 items-center gap-2 rounded-xl bg-terracotta px-5 font-heading text-sm font-semibold text-white transition-colors hover:bg-terracotta-light"
+              disabled
+              className="flex h-11 items-center gap-2 rounded-xl bg-terracotta px-5 font-heading text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={16} />
               <span className="hidden sm:inline">Подписаться</span>
-            </motion.button>
+            </button>
           </form>
         </div>
 
