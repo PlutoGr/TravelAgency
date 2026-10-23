@@ -42,5 +42,5 @@ alwaysApply: false
 5. Step 7: acceptance on dev; comment; keep issue open until pass.
 6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then `статус: готово` and close issue in the same moment → Готово.
 7. If anything waits >60 min (green CI, no merge) or Doc- gap same day: lead acts or asks the owner once.
-8. Process gap found (labels, commits, PR wording, statuses, docs, Development links): fix artifacts and update `.cursor/rules/` in the same delivery cycle.
+8. Process gap found: fix artifacts and update `.cursor/rules/` in the same delivery cycle. Change must be holistic (scan related rules, templates, automations, board-sync for side effects; update all affected places together). Goal: staged delivery, tracked/closed work, order, and throughput — not a one-spot patch that drifts elsewhere.
 
