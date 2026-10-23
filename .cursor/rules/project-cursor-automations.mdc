@@ -1,0 +1,27 @@
+---
+description: Cursor Automations comments are a merge and post-merge gate for TravelAgency
+alwaysApply: false
+---
+# Cursor Automations (TravelAgency)
+Active project automations post GitHub comments as `cursor`. They do not notify the lead chat.
+
+## Before merge (lead / designated merger)
+1. Open the PR conversation and read comments from:
+   - `TA: PR review (TravelAgency)` (process, format, Doc-, obvious bugs)
+   - any enabled Cursor-managed reviewers (Bugbot, Security Reviewer) if present
+2. If `TA: CI failed triage (TravelAgency)` left a failure note, confirm CI is green again or the failure is accepted with a written reason.
+3. Do not merge while a blocker from those comments is unresolved (format, Doc- required, red CI, validated security/bug finding), unless the owner overrides via the lead.
+4. Treat missing automation comments on a non-draft PR as a soft signal: wait briefly or trigger a re-run; do not skip the checklist just because the bot was silent.
+
+## After merge
+1. Read `TA: Doc- after merge (TravelAgency)` on recently merged PRs that changed behavior, API, contracts, config or infra.
+2. If it reports a Doc- gap, open or update a documentation issue (or fix the wiki) before calling the task done.
+3. When merging a batch the same day, scan those merged PRs for Doc- gap comments before leaving the queue.
+
+## Weekly audit (lead)
+- Confirm the three TA automations are still Active for `PlutoGr/TravelAgency`.
+- Spot-check 1-2 recent PRs: expected automation comments appeared; Doc- gaps were not left unanswered.
+
+## Scope
+- Automations are second reviewers, not mergers. They must not approve or merge.
+- Private links and dashboard notes: box-only ops file (not in git).
