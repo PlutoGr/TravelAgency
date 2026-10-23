@@ -35,6 +35,16 @@ describe('HomePage', () => {
     vi.mocked(getTours).mockReset();
   });
 
+  it('marks empty reviews as not ready and keeps the reviews anchor', async () => {
+    renderPage(<HomePage />);
+
+    const section = document.getElementById('reviews');
+    expect(section).not.toBeNull();
+    expect(await screen.findByRole('heading', { name: 'Отзывы наших клиентов' })).toBeInTheDocument();
+    expect(section).toHaveTextContent('Появится позже');
+    expect(screen.queryByText('Скоро здесь появятся отзывы')).not.toBeInTheDocument();
+  });
+
   it('does not show hot deals or request them', async () => {
     renderPage(<HomePage />);
 

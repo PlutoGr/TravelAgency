@@ -378,15 +378,19 @@ export default function ManagerBookingDetailPage() {
                         ? `${booking.tour.country}, ${booking.tour.city}`
                         : booking.tour.duration + ' дн.'}
                     </p>
-                    <div className="mt-1 flex items-center gap-1">
-                      <Star
-                        size={12}
-                        className="fill-amber-400 text-amber-400"
-                      />
-                      <span className="text-xs text-warm-gray">
-                        {booking.tour.rating || '—'}
-                      </span>
-                    </div>
+                    {booking.tour.rating > 0 ? (
+                      <div className="mt-1 flex items-center gap-1">
+                        <Star
+                          size={12}
+                          className="fill-amber-400 text-amber-400"
+                        />
+                        <span className="text-xs text-warm-gray">
+                          {booking.tour.rating}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-warm-gray">Появится позже</p>
+                    )}
                     <p className="mt-1 text-sm font-bold text-primary">
                       {formatMoney(booking.tour.price, booking.tour.currency)}
                     </p>

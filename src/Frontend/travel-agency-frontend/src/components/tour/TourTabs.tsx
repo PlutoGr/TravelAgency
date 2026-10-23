@@ -136,7 +136,7 @@ function ReviewsPanel({ tour }: { tour: Tour }) {
   if (reviews.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-warm-gray">
-        Пока нет отзывов для этого тура
+        Появится позже
       </div>
     );
   }
