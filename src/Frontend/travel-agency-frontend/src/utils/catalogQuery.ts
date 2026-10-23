@@ -1,4 +1,5 @@
 import type { Destination, TourFilters } from '@/types';
+import { parseCalendarIso } from '@/utils/homeCalendar';
 
 const SORTS = new Set<NonNullable<TourFilters['sortBy']>>([
   'popularity',
@@ -43,6 +44,25 @@ export function formatCatalogDateChip(prefix: 'с' | 'по', isoDate: string): s
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!match) return `${prefix} ${isoDate}`;
   return `${prefix} ${match[3]}.${match[2]}.${match[1]}`;
+}
+
+/** Короткие месяцы заданы явно: date-fns `d MMM` с локалью ru даёт «нояб.» и «окт.». */
+const HOME_MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'] as const;
+
+export function formatHomeDateLabel(dateFrom?: string, dateTo?: string): string {
+  const from = dateFrom ? parseCalendarIso(dateFrom) : null;
+  if (!from) return '';
+  const to = dateTo ? parseCalendarIso(dateTo) : null;
+  const sameDay = !to || (to.year === from.year && to.month === from.month && to.day === from.day);
+  const startMonth = HOME_MONTHS[from.month - 1];
+  if (sameDay) return `${from.day} ${startMonth}`;
+  if (!to) return '';
+  const endMonth = HOME_MONTHS[to.month - 1];
+  if (from.year !== to.year) {
+    return `с ${from.day} ${startMonth} ${from.year} по ${to.day} ${endMonth} ${to.year}`;
+  }
+  if (from.month !== to.month) return `с ${from.day} ${startMonth} по ${to.day} ${endMonth}`;
+  return `с ${from.day} по ${to.day} ${startMonth}`;
 }
 
 export function isDepartureRangeInverted(dateFrom?: string, dateTo?: string): boolean {
@@ -154,7 +174,7 @@ export function hasCatalogQuery(filters: TourFilters): boolean {
 }
 
 export function resolveHomeSearch(
-  input: { destination: string; date: string },
+  input: { destination: string; date: string; dateTo?: string },
   destinations: Destination[],
 ): TourFilters {
   const filters: TourFilters = {};
@@ -166,8 +186,54 @@ export function resolveHomeSearch(
     else filters.country = [query];
   }
   const dateFrom = readDate(input.date);
-  if (dateFrom) filters.dateFrom = dateFrom;
+  const dateTo = readDate(input.dateTo);
+  if (dateFrom) {
+    filters.dateFrom = dateFrom;
+    if (dateTo && dateTo >= dateFrom) filters.dateTo = dateTo;
+  }
   return filters;
+}
+
+export type PlaceSuggestion = {
+  id: string;
+  value: string;
+  hint?: string;
+  kind: 'direction' | 'country';
+};
+
+/** Подсказки строки на главной: сначала направления, затем страны, которых ещё нет отдельной строкой. */
+export function suggestPlaces(query: string, destinations: Destination[], limit = 8): PlaceSuggestion[] {
+  const normalized = normalizePlace(query);
+  const directions = destinations
+    .filter((item) => item.name.trim())
+    .filter((item) => !normalized || normalizePlace(item.name).includes(normalized))
+    .slice()
+    .sort((left, right) => left.name.localeCompare(right.name, 'ru'));
+
+  const directionRows: PlaceSuggestion[] = directions.map((item, index) => {
+    const value = item.name.trim();
+    const country = item.country?.trim() ?? '';
+    return {
+      id: `direction:${item.id || index}:${normalizePlace(value)}`,
+      value,
+      hint: country && normalizePlace(country) !== normalizePlace(value) ? country : undefined,
+      kind: 'direction',
+    };
+  });
+
+  const taken = new Set(directionRows.map((row) => normalizePlace(row.value)));
+  const countryRows: PlaceSuggestion[] = uniqueCountries(destinations)
+    .filter((country) => !normalized || normalizePlace(country).includes(normalized))
+    .filter((country) => !taken.has(normalizePlace(country)))
+    .slice()
+    .sort((left, right) => left.localeCompare(right, 'ru'))
+    .map((country) => ({
+      id: `country:${normalizePlace(country)}`,
+      value: country,
+      kind: 'country' as const,
+    }));
+
+  return [...directionRows, ...countryRows].slice(0, limit);
 }
 
 function uniqueCountries(destinations: Destination[]): string[] {

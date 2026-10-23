@@ -6,6 +6,7 @@ import {
   filtersFromSearchParams,
   filtersToSearchParams,
   formatCatalogDateChip,
+  formatHomeDateLabel,
   DEPARTURE_YEAR_HINT,
   departureDateIssue,
   isDepartureDateOutOfRange,
@@ -128,5 +129,47 @@ describe('catalogQuery', () => {
     });
 
     expect(resolveHomeSearch({ destination: '', date: '' }, destinations)).toEqual({});
+  });
+
+  it('formats a home date range with short months and no dash', () => {
+    expect(formatHomeDateLabel('2026-11-12')).toBe('12 ноя');
+    expect(formatHomeDateLabel('2026-11-12', '2026-11-12')).toBe('12 ноя');
+    expect(formatHomeDateLabel('2026-05-02')).toBe('2 мая');
+    expect(formatHomeDateLabel('2026-11-12', '2026-11-20')).toBe('с 12 по 20 ноя');
+    expect(formatHomeDateLabel('2026-10-28', '2026-11-03')).toBe('с 28 окт по 3 ноя');
+    expect(formatHomeDateLabel('2026-12-28', '2027-01-03')).toBe('с 28 дек 2026 по 3 янв 2027');
+    expect(formatHomeDateLabel()).toBe('');
+    expect(formatHomeDateLabel('не дата')).toBe('');
+    expect(formatHomeDateLabel('2026-11-12', '2026-11-20')).not.toMatch(/[-—–]/);
+  });
+
+  it('writes dateTo only when the home search has an end on or after the start', () => {
+    expect(
+      resolveHomeSearch({ destination: 'Бали', date: '2026-11-12', dateTo: '2026-11-20' }, destinations),
+    ).toEqual({
+      directionId: 'dir-bali',
+      dateFrom: '2026-11-12',
+      dateTo: '2026-11-20',
+    });
+
+    expect(resolveHomeSearch({ destination: '', date: '2026-11-01', dateTo: '2026-11-01' }, destinations)).toEqual({
+      dateFrom: '2026-11-01',
+      dateTo: '2026-11-01',
+    });
+
+    expect(resolveHomeSearch({ destination: '', date: '2026-11-20', dateTo: '2026-11-12' }, destinations)).toEqual({
+      dateFrom: '2026-11-20',
+    });
+
+    expect(resolveHomeSearch({ destination: '', date: '2026-11-01', dateTo: 'не дата' }, destinations)).toEqual({
+      dateFrom: '2026-11-01',
+    });
+
+    expect(resolveHomeSearch({ destination: '', date: '', dateTo: '2026-11-01' }, destinations)).toEqual({});
+
+    expect(resolveHomeSearch({ destination: '  бали ', date: '2026-11-01' }, destinations)).toEqual({
+      directionId: 'dir-bali',
+      dateFrom: '2026-11-01',
+    });
   });
 });
