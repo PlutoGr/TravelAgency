@@ -287,10 +287,10 @@ export default function ChatWindow({
           <button
             type="button"
             disabled
-            className="mb-1 shrink-0 cursor-not-allowed rounded-lg p-2 text-warm-gray/60"
-            title="Скоро"
+            className="mb-1 flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg px-2 py-2 text-warm-gray"
           >
-            <Paperclip size={20} />
+            <Paperclip size={20} className="shrink-0 opacity-60" aria-hidden />
+            <span className="whitespace-nowrap text-xs leading-none">Появится позже</span>
           </button>
 
           <textarea
