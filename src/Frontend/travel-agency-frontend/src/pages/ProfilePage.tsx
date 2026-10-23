@@ -89,8 +89,13 @@ export default function ProfilePage() {
                 name={`${user.firstName} ${user.lastName}`}
                 size="xl"
               />
-              <button className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-button transition-colors hover:bg-primary-light">
-                <Camera size={14} />
+              <button
+                type="button"
+                disabled
+                aria-label="Появится позже"
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-full bg-primary text-white opacity-50 shadow-button"
+              >
+                <Camera size={14} aria-hidden="true" />
               </button>
             </div>
             <div>
@@ -128,13 +133,17 @@ export default function ProfilePage() {
               disabled
             />
 
-            <Input
-              label="Паспорт"
-              value={form.passport}
-              disabled
-              placeholder="Пока не поддерживается"
-              title="Редактирование паспортных данных пока недоступно"
-            />
+            <div>
+              <Input
+                label="Паспорт"
+                value={form.passport}
+                disabled
+                aria-describedby="profile-passport-later"
+              />
+              <p id="profile-passport-later" className="mt-1.5 text-sm text-warm-gray">
+                Появится позже
+              </p>
+            </div>
           </div>
 
           <div className="mt-8 flex justify-end">
