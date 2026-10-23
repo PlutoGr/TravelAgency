@@ -296,7 +296,8 @@ public class GlobalExceptionHandlerMiddlewareTests
         entry.Exception.Should().BeNull("expected 401 is logged without stack trace");
         entry.Message.Should().Contain("POST").And.Contain("/identity/login")
             .And.Contain("401").And.Contain(nameof(UnauthorizedException))
-            .And.Contain("Invalid credentials").And.Contain("traceId=");
+            .And.Contain("traceId=");
+        entry.Message.Should().NotContain("Invalid credentials");
         entry.Message.Should().NotContain("Unhandled exception");
         logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
     }
@@ -345,6 +346,60 @@ public class GlobalExceptionHandlerMiddlewareTests
         entry.Exception.Should().BeNull("expected 4xx are logged without stack trace");
         entry.Message.Should().Contain("PUT").And.Contain("/api/v1/catalog/tours/42")
             .And.Contain("409").And.Contain(nameof(ConflictException)).And.Contain("traceId=");
+        logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenAppException_LogsWarningWithMessage()
+    {
+        var logs = new CapturingLoggerProvider();
+        const string message = "3fa85f64-5717-4562-b3fc-2c963f66afa6 TourUnavailable";
+        RequestDelegate next = _ => throw new OwnedAppException(message);
+        using var host = await CreateHostAsync(
+            isDevelopment: false,
+            next,
+            new[] { new OwnedAppExceptionMapper() },
+            logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/api/v1/bookings/3fa85f64-5717-4562-b3fc-2c963f66afa6");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        var entry = entries[0];
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull("expected 4xx are logged without stack trace");
+        entry.Message.Should().Contain("404").And.Contain(nameof(OwnedAppException)).And.Contain(message);
+        logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenArgumentException_LogsWarningWithTypeOnly()
+    {
+        var logs = new CapturingLoggerProvider();
+        const string message = "Requested value 'user-typed-status' was not found.";
+        RequestDelegate next = _ => throw new ArgumentException(message);
+        using var host = await CreateHostAsync(isDevelopment: false, next, logs: logs);
+        var client = host.GetTestClient();
+
+        var response = await client.GetAsync("/api/v1/catalog/tours");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await response.Content.ReadAsStringAsync();
+        using (var document = JsonDocument.Parse(json))
+        {
+            document.RootElement.GetProperty("detail").GetString().Should().Be(message);
+        }
+
+        var entries = MiddlewareEntries(logs);
+        entries.Should().ContainSingle();
+        var entry = entries[0];
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull("expected 4xx are logged without stack trace");
+        entry.Message.Should().Contain("400").And.Contain(nameof(ArgumentException)).And.Contain("traceId=");
+        entry.Message.Should().NotContain(message);
+        entry.Message.Should().NotContain("user-typed-status");
         logs.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
     }
 
@@ -604,6 +659,35 @@ public class GlobalExceptionHandlerMiddlewareTests
     }
 
     private sealed class UnauthorizedException(string message) : Exception(message);
+
+    /// <summary>
+    /// Stand-in for Identity, Booking and Chat AppException: the shared test project
+    /// does not reference those assemblies. The namespace still starts with TravelAgency.
+    /// </summary>
+    private abstract class AppException(string message) : Exception(message);
+
+    private sealed class OwnedAppException(string message) : AppException(message);
+
+    private sealed class OwnedAppExceptionMapper : IExceptionMapper
+    {
+        public bool TryMap(Exception exception, HttpContext context, out (int StatusCode, ProblemDetails Details) result)
+        {
+            if (exception is OwnedAppException owned)
+            {
+                result = (StatusCodes.Status404NotFound, new ProblemDetails
+                {
+                    Title = "Not Found",
+                    Status = StatusCodes.Status404NotFound,
+                    Detail = owned.Message,
+                    Instance = context.Request.Path
+                });
+                return true;
+            }
+
+            result = default;
+            return false;
+        }
+    }
 
     private sealed class ClientErrorException(string message) : Exception(message);
 
