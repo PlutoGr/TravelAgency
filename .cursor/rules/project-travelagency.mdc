@@ -30,7 +30,7 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Any doubt about overlap: wait or ask the architect. After the previous merge, update the branch before review.
 - Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work: bring the current item to a checkpoint (push/comment), then take the return. Analyst keeps at most 2 issues ahead with final criteria.
 ## Merge order
-- Reviewer: Вирт on every PR (incl. impersonal wording, format). Security: DevOps on risky PRs. Merger: Grok Bot, after green CI and review; next merge only after «Deploy to dev» is green.
+- Reviewer: Вирт on every PR (incl. impersonal wording, format). Security: DevOps on risky PRs. Merger: Grok Bot, after green CI, review, and Cursor Automations comments per `project-cursor-automations.mdc`; next merge only after «Deploy to dev» is green.
 - Dependabot minor/patch: review + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
 - Docs-with-code = the matching wiki `Doc-` page.
 - Temporary dumps on dev allowed if deleted after the check.

@@ -22,3 +22,4 @@ Load on demand:
 | `project-travelagency.mdc` | facts, stack, roles, merge order |
 | `project-github-formats.mdc` | commit/PR/issue/comment text, board statuses |
 | `project-wiki.mdc` | any wiki edit |
+| `project-cursor-automations.mdc` | merge, PR review, or weekly audit (Cursor Automations comments) |

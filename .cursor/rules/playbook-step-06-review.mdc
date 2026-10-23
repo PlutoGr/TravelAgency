@@ -6,3 +6,5 @@ alwaysApply: false
 - Diff vs page «Архитектура» and «Тест-кейсы» (automated ones present), plus `playbook-git-pr.mdc`, impersonal wording, commit/PR format, secrets, docs-with-code.
 - Risky PRs: separate security verdict by devops.
 - Page mismatch: changes requested, or a «Решения» row if the page is wrong. Verdict: GitHub review, Russian, comment template.
+- Before merge: read Cursor Automations PR comments per `project-cursor-automations.mdc` (process review, CI triage, plus any enabled Bugbot/security).
+
