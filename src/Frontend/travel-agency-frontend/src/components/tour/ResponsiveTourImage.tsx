@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import clsx from 'clsx';
 import { resolveTourMedia, type MediaVariant } from '@/utils/media';
 
@@ -19,7 +20,10 @@ export default function ResponsiveTourImage({
   onLoad,
 }: ResponsiveTourImageProps) {
   const media = resolveTourMedia(mediaFileId, variant);
-  if (!media) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const failed = media != null && failedSrc === media.src;
+
+  if (!media || failed) {
     return <div className={clsx('bg-sand', className)} aria-hidden />;
   }
 
@@ -35,6 +39,10 @@ export default function ResponsiveTourImage({
       fetchPriority={priority ? 'high' : 'auto'}
       decoding="async"
       onLoad={onLoad}
+      onError={(event) => {
+        event.currentTarget.hidden = true;
+        setFailedSrc(media.src);
+      }}
       className={className}
     />
   );

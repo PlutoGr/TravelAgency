@@ -63,7 +63,7 @@ export function resolveTourMedia(
     srcSet: mediaSrcSet(mediaFileId, VARIANT_MAX[variant]),
     sizes: MEDIA_SIZES_ATTR[variant],
     width,
-    height: Math.round(width * (variant === 'gallery' ? 10 / 16 : 3 / 4)),
+    height: Math.round(width * (variant === 'gallery' ? 9 / 16 : 3 / 4)),
   };
 }
 
