@@ -15,7 +15,8 @@ alwaysApply: false
 ## Review and CI
 - CI is the gate: do not re-run locally what CI runs green; read failures from the job log, quote only failing lines.
 - Review the diff, not the repo; comment only on problems.
-- Depth by risk: trivial (docs, typos, trivial config) = CI + reviewer; normal code = CI + reviewer; risky (infra, CI, Docker/nginx, auth, data/migrations, secrets handling, runtime/network dependencies) = CI + reviewer + security check.
+- Depth by risk: trivial (docs, typos, trivial config) = CI + first-line review; normal code = CI + first-line review; risky (infra, CI, Docker/nginx, auth, data/migrations, secrets handling, runtime/network dependencies) = CI + first-line review + deeper security check.
+- When the project enables Cursor Automations (`project-cursor-automations.mdc`), those comments are the first-line review; do not duplicate the same checklist in a second pass. Escalation rules live in `playbook-step-06-review.mdc`.
 ## Merge and deploy
 - Merge only when all gates are met; only the designated merger merges.
 - Merge = deploy: one PR at a time; next merge only after the previous deploy is green.

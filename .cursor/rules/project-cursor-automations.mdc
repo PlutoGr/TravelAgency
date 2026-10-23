@@ -3,25 +3,37 @@ description: Cursor Automations comments are a merge and post-merge gate for Tra
 alwaysApply: false
 ---
 # Cursor Automations (TravelAgency)
-Active project automations post GitHub comments as `cursor`. They do not notify the lead chat.
+Active project automations post GitHub comments as `cursor`. They do not notify the lead chat. They are the first-line review for routine PRs; they do not replace the Epic/Feature wiki workflow or Doc- authorship.
+
+## Inventory (keep Active)
+| Automation | When | Gate |
+|---|---|---|
+| `TA: PR review` | PR open/push | before merge: process, format, Doc-, obvious bugs |
+| `TA: Find vulnerabilities` | PR open/push | before merge: security findings (comment only) |
+| Bugbot (From Cursor) | every push | before merge: bug findings; Autofix Off |
+| `TA: CI failed triage` | checks failed | before merge: only if CI was red; confirm green or accepted |
+| `TA: Doc- after merge` | PR merged | after merge: Doc- gap → issue or wiki fix |
+| `TA: Weekly vuln scan` | Mon 09:00 MSK | weekly: read run history; open issues if needed |
+
+Private URLs and dashboard notes: box-only ops file (not in git).
 
 ## Before merge (lead / designated merger)
-1. Open the PR conversation and read comments from:
-   - `TA: PR review (TravelAgency)` (process, format, Doc-, obvious bugs)
-   - any enabled Cursor-managed reviewers (Bugbot, Security Reviewer) if present
-2. If `TA: CI failed triage (TravelAgency)` left a failure note, confirm CI is green again or the failure is accepted with a written reason.
+1. Open the PR conversation and read comments from `TA: PR review`, `TA: Find vulnerabilities`, Bugbot, and any other Cursor-managed reviewers present.
+2. If `TA: CI failed triage` left a failure note, confirm CI is green again or the failure is accepted with a written reason.
 3. Do not merge while a blocker from those comments is unresolved (format, Doc- required, red CI, validated security/bug finding), unless the owner overrides via the lead.
-4. Treat missing automation comments on a non-draft PR as a soft signal: wait briefly or trigger a re-run; do not skip the checklist just because the bot was silent.
+4. Missing automation comments on a non-draft PR is a soft signal: wait briefly or re-run; do not skip the checklist because the bot was silent.
+5. Do not re-do the same checklist in a second human review when automations already covered it. Escalate to architect review only per `playbook-step-06-review.mdc`.
 
 ## After merge
-1. Read `TA: Doc- after merge (TravelAgency)` on recently merged PRs that changed behavior, API, contracts, config or infra.
-2. If it reports a Doc- gap, open or update a documentation issue (or fix the wiki) before calling the task done.
+1. Read `TA: Doc- after merge` on recently merged PRs that changed behavior, API, contracts, config or infra.
+2. If it reports a Doc- gap, open or update a documentation issue (or fix the wiki) before calling the task done. Step 8 (`playbook-step-08-docs.mdc`) still owns the actual Doc-/ADR text.
 3. When merging a batch the same day, scan those merged PRs for Doc- gap comments before leaving the queue.
 
 ## Weekly audit (lead)
-- Confirm the three TA automations are still Active for `PlutoGr/TravelAgency`.
+- Confirm all inventory rows above are still Active for `PlutoGr/TravelAgency` (including Bugbot scope = this repo only).
 - Spot-check 1-2 recent PRs: expected automation comments appeared; Doc- gaps were not left unanswered.
+- Spot-check the latest weekly vuln scan run history.
 
 ## Scope
 - Automations are second reviewers, not mergers. They must not approve or merge.
-- Private links and dashboard notes: box-only ops file (not in git).
+- They do not write wiki pages, move board columns, or replace steps 1-4 / 7-8.

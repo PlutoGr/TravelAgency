@@ -3,8 +3,21 @@ description: Step 6 review against the page
 alwaysApply: false
 ---
 # Step 6: Review
-- Diff vs page «Архитектура» and «Тест-кейсы» (automated ones present), plus `playbook-git-pr.mdc`, impersonal wording, commit/PR format, secrets, docs-with-code.
-- Risky PRs: separate security verdict by devops.
-- Page mismatch: changes requested, or a «Решения» row if the page is wrong. Verdict: GitHub review, Russian, comment template.
-- Before merge: read Cursor Automations PR comments per `project-cursor-automations.mdc` (process review, CI triage, plus any enabled Bugbot/security).
+## First line (every PR)
+- Read Cursor Automations comments per `project-cursor-automations.mdc` (PR review, Find vulnerabilities, Bugbot; CI triage if CI was red).
+- Green CI (build, tests, gitleaks). Formats and impersonal wording: `playbook-git-pr.mdc`.
+- Docs-with-code: PR names the `Doc-` page to update, or «вики не затронута».
 
+## Escalation (lead via cloud agent)
+Lead runs a dedicated review (itself for trivial diffs, else cloud agent briefed with `.cursor/agents/architect.md`) when any of:
+- an automation left a blocker or a validated finding;
+- the PR is risky (auth, secrets, payments, infra, migrations, public API contracts);
+- the diff is large or crosses services;
+- the Feature/Epic page changed in «Архитектура» or «Решения» for this work;
+- the lead or owner asks for a human/architect pass.
+
+Otherwise the lead may merge on automations + green CI alone (bugs/small fixes and routine cloud-agent PRs).
+
+## Verdict
+- Page mismatch: changes requested, or a «Решения» row if the page is wrong.
+- Verdict: lead posts a Russian GitHub review/comment (template). Server-side security for risky infra still needs the lead (server access), not only automation comments.

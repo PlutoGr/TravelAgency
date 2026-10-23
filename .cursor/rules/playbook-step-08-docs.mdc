@@ -6,3 +6,4 @@ alwaysApply: false
 - What works in `main` -> `Doc-` pages; decisions -> `Doc-ADR-NNN-<Name>` (next free number).
 - Feature page: «сделано» + links (Doc-, ADR, PRs), content kept. Epic: «сделано» when all features are done.
 - Wiki push checks: `project-wiki.mdc`.
+- After merge, read `TA: Doc- after merge` (`project-cursor-automations.mdc`). A gap comment is a checklist item, not the Doc- text itself: fix the wiki or open a docs issue, then close the gap. Do not skip step 8 because the automation was silent, and do not duplicate a Doc- edit the PR already merged.
