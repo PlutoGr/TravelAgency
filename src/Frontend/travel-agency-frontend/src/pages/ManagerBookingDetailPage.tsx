@@ -52,7 +52,6 @@ export default function ManagerBookingDetailPage() {
   const user = useAuthStore((s) => s.user);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [managerNotes, setManagerNotes] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isSendingProposal, setIsSendingProposal] = useState(false);
@@ -107,7 +106,7 @@ export default function ManagerBookingDetailPage() {
     if (!booking || !id) return;
     setIsSendingProposal(true);
     try {
-      await createProposal(booking.id, { notes: managerNotes });
+      await createProposal(booking.id, { notes: '' });
       await updateBookingStatus(booking.id, 'proposal_sent');
       const refreshed = await getBookingById(id);
       setBooking(refreshed);
@@ -242,11 +241,13 @@ export default function ManagerBookingDetailPage() {
                 Заметки менеджера
               </h3>
               <textarea
-                value={managerNotes}
-                onChange={(e) => setManagerNotes(e.target.value)}
+                value=""
+                readOnly
+                disabled
                 rows={4}
                 placeholder="Внутренние заметки по заявке..."
-                className="w-full resize-none rounded-[12px] border border-sand bg-cream px-4 py-3 text-sm text-dark outline-none transition-all placeholder:text-warm-gray focus:border-primary focus:ring-2 focus:ring-primary/10"
+                aria-label="Заметки менеджера"
+                className="w-full resize-none rounded-[12px] border border-sand bg-cream px-4 py-3 text-sm text-dark outline-none transition-all placeholder:text-warm-gray focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <Button
                 variant="secondary"
@@ -254,9 +255,8 @@ export default function ManagerBookingDetailPage() {
                 leftIcon={<Save size={14} />}
                 className="mt-3"
                 disabled
-                title="Скоро"
               >
-                Сохранить (скоро)
+                Появится позже
               </Button>
             </Card>
           </div>
@@ -405,10 +405,9 @@ export default function ManagerBookingDetailPage() {
                 size="sm"
                 fullWidth
                 leftIcon={<FileText size={14} />}
-                onClick={() => showToast('Скоро')}
-                title="Скоро"
+                disabled
               >
-                Создать счёт (скоро)
+                Появится позже
               </Button>
             </Card>
           </div>
