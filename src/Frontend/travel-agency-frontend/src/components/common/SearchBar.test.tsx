@@ -71,6 +71,28 @@ function optionLabels() {
   return screen.getAllByRole('option').map((option) => option.getAttribute('aria-label'));
 }
 
+function suggestionPanel(): HTMLElement {
+  const panel = screen.getByRole('listbox').parentElement?.parentElement;
+  if (!(panel instanceof HTMLElement)) throw new Error('нет панели подсказок');
+  return panel;
+}
+
+function pinScroll(value: number) {
+  Object.defineProperty(window, 'scrollY', { configurable: true, value });
+}
+
+function trackScrollTop(element: HTMLElement, start: number): () => number {
+  let top = start;
+  Object.defineProperty(element, 'scrollTop', {
+    configurable: true,
+    get: () => top,
+    set: (value: number) => {
+      top = value;
+    },
+  });
+  return () => top;
+}
+
 describe('SearchBar', () => {
   beforeEach(() => {
     setViewport(1280);
@@ -215,7 +237,7 @@ describe('SearchBar', () => {
     expect(screen.queryByRole('button', { name: /^Очистить$/ })).not.toBeInTheDocument();
   });
 
-  it('scrolls the place field into view on focus and walks the tab order', async () => {
+  it('does not scroll the place field into view and walks the tab order', async () => {
     const user = userEvent.setup();
     if (!HTMLElement.prototype.scrollIntoView) {
       HTMLElement.prototype.scrollIntoView = () => {};
@@ -227,7 +249,7 @@ describe('SearchBar', () => {
     act(() => {
       input.focus();
     });
-    expect(scroll).toHaveBeenCalled();
+    expect(scroll).not.toHaveBeenCalled();
 
     await user.type(input, 'Рим');
     act(() => {
@@ -265,7 +287,8 @@ describe('SearchBar', () => {
     expect(today).toHaveFocus();
     expect(today.className).toContain('size-10');
     expect(dialog.innerHTML).not.toContain('overflow-y-auto');
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.body.style.overflow).toBe('');
+    expect(document.documentElement.style.overflow).toBe('');
 
     await user.keyboard('{ArrowLeft}');
     expect(today).toHaveFocus();
@@ -303,7 +326,8 @@ describe('SearchBar', () => {
     expect(dialog.className).toContain('w-full');
     expect(dialog.innerHTML).toContain('env(safe-area-inset-bottom)');
     expect(dialog.innerHTML).not.toContain('overflow-y-auto');
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.body.style.overflow).toBe('');
+    expect(document.documentElement.style.overflow).toBe('');
     expect(screen.getByRole('heading', { name: 'октябрь 2026' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'ноябрь 2026' })).not.toBeInTheDocument();
 
@@ -417,26 +441,145 @@ describe('SearchBar', () => {
     expect(screen.getByRole('button', { name: 'Следующий месяц' })).toBeDisabled();
   });
 
-  it('locks document scroll for city suggestions and does not follow window scroll', async () => {
+  it('opens suggestions without scrolling the document or hiding the scrollbar', async () => {
     const user = userEvent.setup();
-    const listen = vi.spyOn(window, 'addEventListener');
+    pinScroll(240);
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
     render(<SearchBar destinations={places} />);
 
     await user.click(screen.getByRole('combobox', { name: 'Куда?' }));
 
-    expect(document.body.style.overflow).toBe('hidden');
-    expect(document.documentElement.style.overflow).toBe('hidden');
-    expect(listen.mock.calls.some((call) => call[0] === 'scroll')).toBe(false);
-    expect(document.querySelector('[data-popup-scroll]')?.className).toContain('overflow-y-auto');
-
-    const wheel = new WheelEvent('wheel', { deltaY: 80, cancelable: true, bubbles: true });
-    window.dispatchEvent(wheel);
-    expect(wheel.defaultPrevented).toBe(true);
-
-    await user.keyboard('{Escape}');
+    expect(window.scrollY).toBe(240);
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
     expect(document.body.style.overflow).toBe('');
     expect(document.documentElement.style.overflow).toBe('');
-    listen.mockRestore();
+    expect(document.body.style.paddingRight).toBe('');
+    expect(document.documentElement.style.paddingRight).toBe('');
+    expect(document.documentElement.style.scrollbarGutter).toBe('');
+    expect(suggestionPanel()).toHaveAttribute('data-place', 'below');
+    expect(document.querySelector('[data-popup-scroll]')?.className).toContain('overflow-y-auto');
+    expect(document.querySelector('[data-popup-scroll]')?.className).toContain('overscroll-contain');
+
+    scrollBy.mockRestore();
+    scrollTo.mockRestore();
+    scrollIntoView.mockRestore();
+  });
+
+  it('opens the calendar without scrolling the document or hiding the scrollbar', async () => {
+    const user = userEvent.setup();
+    pinScroll(180);
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+    render(<SearchBar />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+
+    expect(screen.getByRole('dialog', { name: 'Выбор дат' })).toBeInTheDocument();
+    expect(window.scrollY).toBe(180);
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(document.body.style.overflow).toBe('');
+    expect(document.documentElement.style.overflow).toBe('');
+    expect(document.body.style.paddingRight).toBe('');
+
+    scrollBy.mockRestore();
+    scrollIntoView.mockRestore();
+  });
+
+  it('closes suggestions on window scroll and the calendar on document scroll', async () => {
+    const user = userEvent.setup();
+    render(<SearchBar destinations={places} />);
+    const input = screen.getByRole('combobox', { name: 'Куда?' });
+
+    await user.click(input);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    await user.click(input);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Выбор дат' })).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new Event('scroll'));
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('keeps the wheel over the city list inside that list', async () => {
+    const user = userEvent.setup();
+    pinScroll(80);
+    render(<SearchBar destinations={places} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Куда?' }));
+    const scrollEl = document.querySelector('[data-popup-scroll]');
+    if (!(scrollEl instanceof HTMLElement)) throw new Error('нет внутреннего списка');
+    const readTop = trackScrollTop(scrollEl, 0);
+    Object.defineProperty(scrollEl, 'scrollHeight', { configurable: true, value: 100 });
+    Object.defineProperty(scrollEl, 'clientHeight', { configurable: true, value: 160 });
+
+    const idle = new WheelEvent('wheel', { deltaY: 40, bubbles: true, cancelable: true });
+    screen.getAllByRole('option')[0].dispatchEvent(idle);
+    expect(idle.defaultPrevented).toBe(true);
+    expect(readTop()).toBe(0);
+    expect(window.scrollY).toBe(80);
+
+    Object.defineProperty(scrollEl, 'scrollHeight', { configurable: true, value: 480 });
+    Object.defineProperty(scrollEl, 'clientHeight', { configurable: true, value: 160 });
+    const overList = new WheelEvent('wheel', { deltaY: 36, bubbles: true, cancelable: true });
+    screen.getAllByRole('option')[0].dispatchEvent(overList);
+    expect(overList.defaultPrevented).toBe(true);
+    expect(readTop()).toBe(36);
+    expect(window.scrollY).toBe(80);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+    const atEnd = new WheelEvent('wheel', { deltaY: 400, bubbles: true, cancelable: true });
+    screen.getAllByRole('option')[0].dispatchEvent(atEnd);
+    expect(atEnd.defaultPrevented).toBe(true);
+    expect(readTop()).toBe(320);
+    expect(window.scrollY).toBe(80);
+
+    const outside = new WheelEvent('wheel', { deltaY: 36, bubbles: true, cancelable: true });
+    document.body.dispatchEvent(outside);
+    expect(outside.defaultPrevented).toBe(false);
+    expect(readTop()).toBe(320);
+    expect(window.scrollY).toBe(80);
+  });
+
+  it('opens the city list above the field when there is no room below', async () => {
+    setViewport(1280, 700);
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({
+      x: 40,
+      y: 640,
+      top: 640,
+      left: 40,
+      right: 320,
+      bottom: 690,
+      width: 280,
+      height: 50,
+      toJSON() {
+        return {};
+      },
+    }));
+    const user = userEvent.setup();
+    render(<SearchBar destinations={places} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Куда?' }));
+    const panel = suggestionPanel();
+    expect(panel).toHaveAttribute('data-place', 'above');
+    expect(panel.style.top).toBe('');
+    expect(panel.style.bottom).toBe('68px');
+    const scrollEl = panel.querySelector('[data-popup-scroll]');
+    expect(scrollEl).toHaveStyle({ maxHeight: '632px' });
+    rect.mockRestore();
   });
 
   it('opens the calendar above the field when there is no room below', async () => {
