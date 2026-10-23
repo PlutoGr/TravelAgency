@@ -3,7 +3,9 @@ import {
   calendarPanelHeight,
   calendarPanelWidth,
   planCalendarPopover,
+  planListPopover,
   type CalendarPlanInput,
+  type ListPlanInput,
 } from './searchPopupLayout';
 
 function input(partial: Partial<CalendarPlanInput> = {}): CalendarPlanInput {
@@ -16,8 +18,20 @@ function input(partial: Partial<CalendarPlanInput> = {}): CalendarPlanInput {
     anchorWidth: 280,
     wide: true,
     allowTwoMonths: true,
-    scrollY: 0,
-    maxScrollDown: 5000,
+    ...partial,
+  };
+}
+
+function listInput(partial: Partial<ListPlanInput> = {}): ListPlanInput {
+  return {
+    viewportWidth: 1280,
+    viewportHeight: 800,
+    anchorTop: 120,
+    anchorBottom: 180,
+    anchorLeft: 40,
+    anchorWidth: 280,
+    minWidth: 280,
+    contentHeight: 200,
     ...partial,
   };
 }
@@ -31,7 +45,7 @@ describe('planCalendarPopover', () => {
     expect(plan.months).toBe(2);
     expect(plan.compact).toBe(false);
     expect(plan.placeBelow).toBe(true);
-    expect(plan.scrollDelta).toBe(0);
+    expect(plan.anchorTop).toBe(450);
     expect(plan.height).toBe(calendarPanelHeight(false, 'desktop'));
     expect(plan.width).toBe(calendarPanelWidth(2, false));
   });
@@ -42,10 +56,10 @@ describe('planCalendarPopover', () => {
     expect(plan.placeBelow).toBe(false);
     expect(plan.compact).toBe(false);
     expect(plan.months).toBe(2);
-    expect(plan.scrollDelta).toBe(0);
+    expect(plan.anchorTop).toBe(620);
   });
 
-  it('shrinks day cells before scrolling when only a compact panel fits', () => {
+  it('shrinks day cells when only a compact panel fits in place', () => {
     const plan = planCalendarPopover(
       input({ viewportHeight: 760, anchorTop: 360, anchorBottom: 420 }),
     );
@@ -53,21 +67,20 @@ describe('planCalendarPopover', () => {
     expect(plan.compact).toBe(true);
     expect(plan.months).toBe(2);
     expect(plan.placeBelow).toBe(false);
-    expect(plan.scrollDelta).toBe(0);
+    expect(plan.anchorTop).toBe(360);
     expect(plan.height).toBe(calendarPanelHeight(true, 'desktop'));
   });
 
-  it('scrolls the anchor toward the upper third when the panel does not fit in place', () => {
+  it('keeps the anchor in place when even a compact panel does not fit', () => {
     const plan = planCalendarPopover(
       input({ viewportHeight: 640, anchorTop: 300, anchorBottom: 372 }),
     );
 
     expect(plan.compact).toBe(true);
     expect(plan.months).toBe(2);
-    expect(plan.placeBelow).toBe(true);
-    expect(plan.scrollDelta).toBeCloseTo(300 - 640 / 3, 5);
-    expect(plan.anchorTop).toBeCloseTo(640 / 3, 5);
-    expect(plan.height).toBeLessThanOrEqual(640 - plan.anchorBottom - 8);
+    expect(plan.placeBelow).toBe(false);
+    expect(plan.anchorTop).toBe(300);
+    expect(plan.anchorBottom).toBe(372);
   });
 
   it('uses one month on a wide layout when two months are wider than the viewport', () => {
@@ -90,23 +103,6 @@ describe('planCalendarPopover', () => {
     expect(plan.compact).toBe(true);
   });
 
-  it('does not scroll when the page cannot move', () => {
-    const plan = planCalendarPopover(
-      input({
-        viewportHeight: 640,
-        anchorTop: 300,
-        anchorBottom: 372,
-        scrollY: 0,
-        maxScrollDown: 0,
-      }),
-    );
-
-    expect(plan.scrollDelta).toBe(0);
-    expect(plan.compact).toBe(true);
-    expect(plan.months).toBe(2);
-    expect(plan.placeBelow).toBe(false);
-  });
-
   it('keeps a single date on one month', () => {
     const plan = planCalendarPopover(input({ allowTwoMonths: false }));
 
@@ -120,9 +116,39 @@ describe('planCalendarPopover', () => {
 
     expect(roomy.months).toBe(1);
     expect(roomy.compact).toBe(false);
-    expect(roomy.scrollDelta).toBe(0);
+    expect(roomy.anchorTop).toBe(100);
     expect(short.compact).toBe(true);
     expect(short.height).toBe(calendarPanelHeight(true, 'sheet'));
     expect(short.height).toBeLessThanOrEqual(400 - 8);
+  });
+});
+
+describe('planListPopover', () => {
+  it('places a short city list below the field', () => {
+    const plan = planListPopover(listInput());
+
+    expect(plan.placeBelow).toBe(true);
+    expect(plan.maxHeight).toBeGreaterThanOrEqual(200);
+    expect(plan.left).toBe(40);
+    expect(plan.width).toBe(280);
+  });
+
+  it('flips the list above when it does not fit below', () => {
+    const plan = planListPopover(
+      listInput({ viewportHeight: 700, anchorTop: 640, anchorBottom: 690, contentHeight: 320 }),
+    );
+
+    expect(plan.placeBelow).toBe(false);
+    expect(plan.maxHeight).toBe(632);
+  });
+
+  it('caps a long list to the roomier side so the rest scrolls inside', () => {
+    const plan = planListPopover(
+      listInput({ viewportHeight: 500, anchorTop: 240, anchorBottom: 300, contentHeight: 480 }),
+    );
+
+    expect(plan.placeBelow).toBe(false);
+    expect(plan.maxHeight).toBe(232);
+    expect(plan.maxHeight).toBeLessThan(480);
   });
 });

@@ -7,9 +7,11 @@ import {
   calendarChrome,
   calendarPanelHeight,
   calendarPanelWidth,
+  clampPanelLeft,
   planCalendarPopover,
-  readScrollBudget,
+  planListPopover,
   type CalendarPlan,
+  type ListPlan,
 } from './searchPopupLayout';
 
 interface SearchPopupProps {
@@ -52,40 +54,16 @@ function readAnchor(anchorRef: RefObject<HTMLElement | null>): AnchorBox | null 
   };
 }
 
-function clampLeft(anchorLeft: number, panelWidth: number): number {
-  const viewportWidth = window.innerWidth;
-  const maxWidth = Math.max(160, viewportWidth - VIEWPORT_MARGIN * 2);
-  const width = Math.min(panelWidth, maxWidth);
-  let left = anchorLeft;
-  if (left + width > viewportWidth - VIEWPORT_MARGIN) {
-    left = Math.max(VIEWPORT_MARGIN, viewportWidth - VIEWPORT_MARGIN - width);
-  }
-  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
-  return left;
-}
-
-function listFrame(anchor: AnchorBox | null, minWidth: number): { position: CSSProperties; maxHeight: number } {
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  const maxWidth = Math.max(160, viewportWidth - VIEWPORT_MARGIN * 2);
-  const width = Math.min(Math.max(anchor?.width ?? 0, minWidth), maxWidth);
-  const left = anchor ? clampLeft(anchor.left, width) : VIEWPORT_MARGIN;
-  const anchorTop = anchor?.top ?? VIEWPORT_MARGIN;
-  const anchorBottom = anchor?.bottom ?? anchorTop;
-  const spaceBelow = viewportHeight - anchorBottom - VIEWPORT_MARGIN;
-  const spaceAbove = anchorTop - VIEWPORT_MARGIN;
-  const placeBelow = spaceBelow >= 240 || spaceBelow >= spaceAbove;
-  const maxHeight = Math.max(120, Math.floor(placeBelow ? spaceBelow : spaceAbove));
-  const position: CSSProperties = placeBelow
-    ? { top: anchorBottom + VIEWPORT_MARGIN, left, width }
-    : { bottom: viewportHeight - anchorTop + VIEWPORT_MARGIN, left, width };
-  return { position, maxHeight };
+function listPosition(anchor: AnchorBox, plan: ListPlan): CSSProperties {
+  const shared = { left: plan.left, width: plan.width };
+  if (plan.placeBelow) return { ...shared, top: anchor.bottom + VIEWPORT_MARGIN };
+  return { ...shared, bottom: window.innerHeight - anchor.top + VIEWPORT_MARGIN };
 }
 
 function calendarPosition(plan: CalendarPlan): CSSProperties {
   const maxWidth = Math.max(160, window.innerWidth - VIEWPORT_MARGIN * 2);
   const width = Math.min(plan.width, maxWidth);
-  const left = clampLeft(plan.anchorLeft, width);
+  const left = clampPanelLeft(plan.anchorLeft, width, window.innerWidth);
   if (plan.placeBelow) {
     return { top: plan.anchorBottom + VIEWPORT_MARGIN, left, width, maxWidth };
   }
@@ -140,14 +118,28 @@ function DragHandle({ onClose }: { onClose: () => void }) {
   );
 }
 
-function canConsumeWheel(panel: HTMLElement | null, event: WheelEvent): boolean {
-  if (!panel || !(event.target instanceof Node) || !panel.contains(event.target)) return false;
+function wheelDistance(event: WheelEvent, pageSize: number): number {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * pageSize;
+  return event.deltaY;
+}
+
+function scrollListUnderCursor(panel: HTMLElement, event: WheelEvent): void {
   const scrollEl = panel.querySelector('[data-popup-scroll]');
-  if (!(scrollEl instanceof HTMLElement) || !scrollEl.contains(event.target)) return false;
-  if (scrollEl.scrollHeight <= scrollEl.clientHeight + 1) return false;
-  if (event.deltaY < 0) return scrollEl.scrollTop > 0;
-  if (event.deltaY > 0) return scrollEl.scrollTop + scrollEl.clientHeight < scrollEl.scrollHeight - 1;
-  return false;
+  if (!(scrollEl instanceof HTMLElement) || !(event.target instanceof Node) || !scrollEl.contains(event.target)) return;
+  const distance = wheelDistance(event, scrollEl.clientHeight);
+  if (scrollEl.scrollHeight <= scrollEl.clientHeight + 1 || distance === 0) return;
+  const max = scrollEl.scrollHeight - scrollEl.clientHeight;
+  const next = Math.min(max, Math.max(0, scrollEl.scrollTop + distance));
+  if (next !== scrollEl.scrollTop) scrollEl.scrollTop = next;
+}
+
+function isDocumentScroll(target: EventTarget | null, panel: HTMLElement | null): boolean {
+  if (target instanceof Node) {
+    if (panel?.contains(target)) return false;
+    return target === document || target === document.documentElement || target === document.body;
+  }
+  return target != null;
 }
 
 export default function SearchPopup({
@@ -167,78 +159,48 @@ export default function SearchPopup({
   const inset = useKeyboardInset(!wide && keyboardInset);
   const [anchor, setAnchor] = useState<AnchorBox | null>(null);
   const [plan, setPlan] = useState<CalendarPlan | null>(null);
+  const [listContentHeight, setListContentHeight] = useState(0);
 
   useLayoutEffect(() => {
-    const body = document.body;
-    const root = document.documentElement;
-    const previous = { body: body.style.overflow, root: root.style.overflow };
-
-    const lock = () => {
-      body.style.overflow = 'hidden';
-      root.style.overflow = 'hidden';
-    };
-
     const place = () => {
       const box = readAnchor(anchorRef);
       setAnchor(box);
-      if (!contentSized) {
-        lock();
+      if (!contentSized || !box) {
+        setPlan(null);
         return;
       }
-      if (!box) {
-        lock();
-        return;
-      }
-      root.style.overflow = previous.root;
-      body.style.overflow = previous.body;
-      const budget = readScrollBudget();
-      let next = planCalendarPopover({
-        viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
-        anchorTop: box.top,
-        anchorBottom: box.bottom,
-        anchorLeft: box.left,
-        anchorWidth: box.width,
-        wide,
-        allowTwoMonths,
-        scrollY: budget.scrollY,
-        maxScrollDown: budget.maxScrollDown,
-      });
-      if (next.scrollDelta !== 0) {
-        window.scrollBy({ top: next.scrollDelta, left: 0, behavior: 'instant' });
-        const moved = readAnchor(anchorRef);
-        if (moved) {
-          next = planCalendarPopover({
-            viewportWidth: window.innerWidth,
-            viewportHeight: window.innerHeight,
-            anchorTop: moved.top,
-            anchorBottom: moved.bottom,
-            anchorLeft: moved.left,
-            anchorWidth: moved.width,
-            wide,
-            allowTwoMonths,
-            scrollY: window.scrollY || document.documentElement.scrollTop || 0,
-            maxScrollDown: 0,
-          });
-        }
-      }
-      lock();
-      setPlan(next);
+      setPlan(
+        planCalendarPopover({
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          anchorTop: box.top,
+          anchorBottom: box.bottom,
+          anchorLeft: box.left,
+          anchorWidth: box.width,
+          wide,
+          allowTwoMonths,
+        }),
+      );
     };
 
     place();
     window.addEventListener('resize', place);
-    return () => {
-      window.removeEventListener('resize', place);
-      body.style.overflow = previous.body;
-      root.style.overflow = previous.root;
-    };
+    return () => window.removeEventListener('resize', place);
   }, [allowTwoMonths, anchorRef, contentSized, wide]);
+
+  useLayoutEffect(() => {
+    if (contentSized || !wide) return;
+    const scrollEl = panelRef.current?.querySelector('[data-popup-scroll]');
+    if (!(scrollEl instanceof HTMLElement)) return;
+    const next = Math.ceil(scrollEl.scrollHeight);
+    setListContentHeight((current) => (current === next ? current : next));
+  }, [anchor, children, contentSized, wide]);
 
   useLayoutEffect(() => {
     const panel = panelRef.current;
     const blockWheel = (event: WheelEvent) => {
-      if (canConsumeWheel(panel, event)) return;
+      if (!panel || !(event.target instanceof Node) || !panel.contains(event.target)) return;
+      scrollListUnderCursor(panel, event);
       event.preventDefault();
     };
     const blockTouch = (event: TouchEvent) => {
@@ -260,6 +222,19 @@ export default function SearchPopup({
       window.removeEventListener('touchmove', blockTouch, { capture: true });
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const onScroll = (event: Event) => {
+      if (!isDocumentScroll(event.target, panelRef.current)) return;
+      onClose();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('scroll', onScroll);
+    };
+  }, [onClose]);
 
   useLayoutEffect(() => {
     if (!contentSized || !wide || !plan || !panelRef.current) return;
@@ -299,7 +274,6 @@ export default function SearchPopup({
           placeBelow: false,
           anchorTop: box.top,
           anchorBottom: box.bottom,
-          scrollDelta: 0,
         };
       }
       return current;
@@ -318,20 +292,39 @@ export default function SearchPopup({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [anchorRef, onClose]);
 
-  const frame = listFrame(anchor, minWidth);
+  const listPlan =
+    !contentSized && wide && anchor
+      ? planListPopover({
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          anchorTop: anchor.top,
+          anchorBottom: anchor.bottom,
+          anchorLeft: anchor.left,
+          anchorWidth: anchor.width,
+          minWidth,
+          contentHeight: listContentHeight,
+        })
+      : null;
   const chrome = calendarChrome(plan?.compact ?? false, plan?.months ?? 1);
   const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
   const mobileStyle: CSSProperties = {
     bottom: inset,
   };
-  const listMax = wide
-    ? frame.maxHeight
-    : Math.max(120, Math.round(viewportHeight - inset - 48));
+  const listMax = wide ? (listPlan?.maxHeight ?? 0) : Math.max(120, Math.round(viewportHeight - inset - 48));
   const ready = contentSized ? plan != null : !wide || anchor != null;
+  const place: 'above' | 'below' = contentSized
+    ? plan?.placeBelow === false
+      ? 'above'
+      : 'below'
+    : listPlan?.placeBelow === false
+      ? 'above'
+      : 'below';
   const positionStyle: CSSProperties = wide
     ? contentSized && plan
       ? calendarPosition(plan)
-      : frame.position
+      : anchor && listPlan
+        ? listPosition(anchor, listPlan)
+        : {}
     : mobileStyle;
 
   return createPortal(
@@ -343,7 +336,7 @@ export default function SearchPopup({
         role={dialog ? 'dialog' : undefined}
         aria-label={dialog ? label : undefined}
         data-anchored={ready ? 'true' : 'false'}
-        data-place={contentSized ? (plan?.placeBelow === false ? 'above' : 'below') : undefined}
+        data-place={wide ? place : undefined}
         style={{
           ...positionStyle,
           visibility: ready ? 'visible' : 'hidden',

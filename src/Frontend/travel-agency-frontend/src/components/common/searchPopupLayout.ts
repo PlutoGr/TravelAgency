@@ -1,13 +1,14 @@
 /**
- * Геометрия попапа календаря: панель целиком над полем или под ним,
- * без внутреннего скролла. Два месяца стоят рядом, поэтому узкая высота
- * сама по себе не лечится отключением второго месяца: сначала компактные
- * ячейки, затем переворот, затем сдвиг якоря. Второй месяц убирается,
- * когда пара не входит в окно по ширине.
+ * Геометрия попапа у поля: панель над полем или под ним.
+ * Документ не прокручивается и не блокируется.
+ * Календарь без внутренней прокрутки: обычные ячейки, затем плотные,
+ * затем один месяц, если два не входят по ширине. Два месяца стоят рядом,
+ * поэтому узкая высота сама по себе не лечится отключением второго месяца.
+ * Список городов ограничен свободным местом и прокручивается внутри,
+ * только если пункты не помещаются.
  */
 
 export const VIEWPORT_MARGIN = 8;
-export const HEADER_CLEARANCE = 88;
 
 const WEEK_ROWS = 6;
 const BORDER = 2;
@@ -16,7 +17,6 @@ export type CalendarPlan = {
   months: 1 | 2;
   compact: boolean;
   placeBelow: boolean;
-  scrollDelta: number;
   width: number;
   height: number;
   anchorTop: number;
@@ -34,9 +34,24 @@ export type CalendarPlanInput = {
   anchorWidth: number;
   wide: boolean;
   allowTwoMonths: boolean;
-  scrollY: number;
-  maxScrollDown: number;
-  headerClearance?: number;
+};
+
+export type ListPlanInput = {
+  viewportWidth: number;
+  viewportHeight: number;
+  anchorTop: number;
+  anchorBottom: number;
+  anchorLeft: number;
+  anchorWidth: number;
+  minWidth: number;
+  contentHeight: number;
+};
+
+export type ListPlan = {
+  placeBelow: boolean;
+  maxHeight: number;
+  left: number;
+  width: number;
 };
 
 type Scale = { months: 1 | 2; compact: boolean };
@@ -151,14 +166,12 @@ function finish(
   input: CalendarPlanInput,
   top: number,
   bottom: number,
-  scrollDelta: number,
   placeBelow: boolean,
 ): CalendarPlan {
   return {
     months: scale.months,
     compact: scale.compact,
     placeBelow,
-    scrollDelta,
     width: calendarPanelWidth(scale.months, scale.compact),
     height: calendarPanelHeight(scale.compact, shellOf(input.wide)),
     anchorTop: top,
@@ -168,81 +181,60 @@ function finish(
   };
 }
 
-function fitAt(
-  input: CalendarPlanInput,
-  top: number,
-  bottom: number,
-  scrollDelta: number,
-): CalendarPlan | null {
+function fitAt(input: CalendarPlanInput, top: number, bottom: number): CalendarPlan | null {
   const options = scalesFor(input);
   const list = options.length > 0 ? options : [{ months: 1 as const, compact: true }];
   for (const scale of list) {
     const height = calendarPanelHeight(scale.compact, shellOf(input.wide));
     const side = sideOf(top, bottom, height, input.viewportHeight);
     if (!side) continue;
-    return finish(scale, input, top, bottom, scrollDelta, side === 'below');
+    return finish(scale, input, top, bottom, side === 'below');
   }
   return null;
 }
 
-function clampDelta(delta: number, input: CalendarPlanInput): number | null {
-  if (delta > input.maxScrollDown + 0.5 || delta < -input.scrollY - 0.5) return null;
-  return delta;
+export function clampPanelLeft(anchorLeft: number, panelWidth: number, viewportWidth: number): number {
+  const maxWidth = Math.max(160, viewportWidth - VIEWPORT_MARGIN * 2);
+  const width = Math.min(panelWidth, maxWidth);
+  let left = anchorLeft;
+  if (left + width > viewportWidth - VIEWPORT_MARGIN) {
+    left = Math.max(VIEWPORT_MARGIN, viewportWidth - VIEWPORT_MARGIN - width);
+  }
+  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
+  return left;
 }
 
-export function readScrollBudget(): { scrollY: number; maxScrollDown: number } {
-  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-  const maxScrollDown = Math.max(0, document.documentElement.scrollHeight - window.innerHeight - scrollY);
-  return { scrollY, maxScrollDown };
+export function planListPopover(input: ListPlanInput): ListPlan {
+  const maxWidth = Math.max(160, input.viewportWidth - VIEWPORT_MARGIN * 2);
+  const width = Math.min(Math.max(input.anchorWidth, input.minWidth), maxWidth);
+  const spaceBelow = input.viewportHeight - input.anchorBottom - VIEWPORT_MARGIN;
+  const spaceAbove = input.anchorTop - VIEWPORT_MARGIN;
+  const content = input.contentHeight;
+  const fitsBelow = content > 0 && content <= spaceBelow;
+  const fitsAbove = content > 0 && content <= spaceAbove;
+  const placeBelow = fitsBelow || (!fitsAbove && spaceBelow >= spaceAbove);
+  const available = Math.max(0, placeBelow ? spaceBelow : spaceAbove);
+  return {
+    placeBelow,
+    maxHeight: Math.floor(available),
+    left: clampPanelLeft(input.anchorLeft, width, input.viewportWidth),
+    width,
+  };
 }
 
 export function planCalendarPopover(input: CalendarPlanInput): CalendarPlan {
-  const header = input.headerClearance ?? HEADER_CLEARANCE;
-
   if (!input.wide) {
     const regularFits = calendarPanelHeight(false, 'sheet') <= input.viewportHeight - VIEWPORT_MARGIN;
-    return finish(
-      { months: 1, compact: !regularFits },
-      input,
-      input.anchorTop,
-      input.anchorBottom,
-      0,
-      true,
-    );
+    return finish({ months: 1, compact: !regularFits }, input, input.anchorTop, input.anchorBottom, true);
   }
 
-  const here = fitAt(input, input.anchorTop, input.anchorBottom, 0);
+  const here = fitAt(input, input.anchorTop, input.anchorBottom);
   if (here) return here;
-
-  const smallest = scalesFor(input).at(-1) ?? { months: 1 as const, compact: true };
-  const need = calendarPanelHeight(smallest.compact, 'desktop');
-  const upperTarget = Math.max(header, input.viewportHeight / 3);
-  const attempts = [
-    input.anchorTop - upperTarget,
-    need + VIEWPORT_MARGIN - (input.viewportHeight - input.anchorBottom),
-    input.anchorTop - (need + VIEWPORT_MARGIN),
-    input.anchorTop - header,
-  ];
-
-  const seen = new Set<string>();
-  for (const raw of attempts) {
-    const delta = clampDelta(raw, input);
-    if (delta == null || Math.abs(delta) < 0.5) continue;
-    const key = delta.toFixed(2);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const top = input.anchorTop - delta;
-    const bottom = input.anchorBottom - delta;
-    if (top < header - 0.5) continue;
-    if (bottom > input.viewportHeight - VIEWPORT_MARGIN) continue;
-    const fitted = fitAt(input, top, bottom, delta);
-    if (fitted) return fitted;
-  }
 
   const fallback: Scale =
     input.allowTwoMonths && widthFits(2, true, input.viewportWidth)
       ? { months: 2, compact: true }
       : { months: 1, compact: true };
   const { below, above } = room(input.anchorTop, input.anchorBottom, input.viewportHeight);
-  return finish(fallback, input, input.anchorTop, input.anchorBottom, 0, below >= above);
+  return finish(fallback, input, input.anchorTop, input.anchorBottom, below >= above);
 }

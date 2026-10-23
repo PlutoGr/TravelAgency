@@ -94,7 +94,6 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
 
   function onDestinationFocus() {
     setCalendarOpen(false);
-    destinationRef.current?.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: 'instant' });
     if (skipSuggestionOpen.current) {
       skipSuggestionOpen.current = false;
       return;
@@ -174,6 +173,12 @@ export default function SearchBar({ onSearch, className, destinations = [] }: Se
               setActiveIndex(-1);
             }}
             onFocus={onDestinationFocus}
+            onMouseDown={() => {
+              if (document.activeElement !== destinationRef.current) return;
+              setCalendarOpen(false);
+              setSuggestionsOpen(true);
+              setActiveIndex(-1);
+            }}
             onKeyDown={onDestinationKeyDown}
             className="col-start-2 row-start-2 min-h-11 w-full min-w-0 bg-transparent text-base font-sans text-dark outline-none placeholder:text-[#4B5563] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           />
