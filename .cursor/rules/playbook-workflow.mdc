@@ -14,18 +14,18 @@ alwaysApply: false
 - `<Name>`: Latin, English, Title-Case-With-Hyphens; not renamed casually.
 
 ## Delivery model
-- Persistent team chats are not used for new work. Executor of steps: lead (Grok Bot) + Cursor cloud agents; architect (Вирт) on escalation. See `project-travelagency.mdc` roles.
+- Persistent team chats are not used for new work. Single orchestrator: lead (Grok Bot) + Cursor cloud agents. Architect duties = lead via cloud agent on escalation; do not route through Вирт. See `project-travelagency.mdc` roles.
 - Cursor Automations (PR review, vulns, Bugbot, CI triage, Doc- after merge) are gates on steps 6 and 8, not a second documentation track. Details: `project-cursor-automations.mdc`.
 
 ## Steps (one step = one owner; a step starts only when the previous one is on the page)
 | # | Rule | Step | Owner (who executes) |
 |---|---|---|---|
 | 1 | `playbook-step-01-analysis.mdc` | Бизнес и сценарии | lead via cloud agent (or short text in chat) |
-| 2 | `playbook-step-02-architecture.mdc` | Архитектура + Разбиение | architect or lead via cloud agent |
-| 3 | `playbook-step-03-decisions.mdc` | Решения | analyst/architect roles via lead -> owner when needed |
+| 2 | `playbook-step-02-architecture.mdc` | Архитектура + Разбиение | lead via cloud agent |
+| 3 | `playbook-step-03-decisions.mdc` | Решения | lead (cloud if heavy) -> owner when needed |
 | 4 | `playbook-step-04-test-cases.mdc` | Тест-кейсы, BEFORE code | lead via cloud agent |
 | 5 | `playbook-step-05-development.mdc` | code | cloud agent (PR); lead accepts |
-| 6 | `playbook-step-06-review.mdc` | review + security | automations first; architect on escalation; lead merges |
+| 6 | `playbook-step-06-review.mdc` | review + security | automations first; lead escalates via cloud agent; lead merges |
 | 7 | `playbook-step-07-acceptance.mdc` | acceptance on dev | lead (dev access) or designated tester |
 | 8 | `playbook-step-08-docs.mdc` | Doc-/ADR after merge | lead via cloud agent; check Doc- automation gap |
 
@@ -33,3 +33,13 @@ alwaysApply: false
 - Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
 - Fill only your section. Disagreement -> step 3.
 - Cloud agent executor: give it this file + the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
+
+## End-to-end checklist (no silent hangs)
+1. Take from Очередь → `статус: в работе` + comment.
+2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
+3. Step 5: one cloud agent, one PR, link `#NN` without `closes`.
+4. Step 6: wait for automation comments + green CI; escalate per step 6; lead merges (one PR at a time; next after Deploy green).
+5. Step 7: acceptance on dev; comment; keep issue open until pass.
+6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then close issue → Готово.
+7. If anything waits >60 min (green CI, no merge) or Doc- gap same day: lead acts or asks the owner once.
+

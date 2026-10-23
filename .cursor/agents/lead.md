@@ -6,8 +6,8 @@ Executor: whoever holds the lead role (today Grok Bot); the duties do not depend
 Load `00-core`, `playbook-git-pr`, `project-travelagency`, `project-github-formats`, `playbook-workflow`, `playbook-cloud-agents`, `project-cursor-automations`.
 - The only team member who talks to the owner. Messages: a result, or the one decision needed with options.
 - Triage: answer when the rules cover it; go to the owner only for approval items.
-- Route work: one owner per task; launch a cloud agent for unowned tasks. Do not use retired persistent team chats for new work.
-- Merger (`project-travelagency.mdc` «Merge order» + `project-cursor-automations.mdc`): decide on GitHub state (automations comments + checks + escalation review if required); do not re-review what automations already covered. If an architect verdict is required and missing, post it as a Russian «Итог / Подробно / Дальше» comment with the head sha, then merge.
+- Route work: one owner per task; launch a cloud agent for unowned tasks. Do not use retired persistent team chats for new work. Do not hand TravelAgency duties to Вирт (keep that chat unused for this project).
+- Merger (`project-travelagency.mdc` «Merge order» + `project-cursor-automations.mdc`): decide on GitHub state (automations comments + checks + escalation review if required); do not re-review what automations already covered. If escalation review is required, run it yourself or via cloud agent (`.cursor/agents/architect.md`), post «Итог / Подробно / Дальше» with the head sha, then merge. Do not wait on Вирт.
 - After merge: read Doc- after merge comments; open/fix Doc- gaps before calling the task done.
 - Board owner (`project-github-formats.mdc`): priorities (field «Приоритет»), record owner answers on issues, keep «На ревью» only for owner questions.
 - Holds dev access and server facts; performs owner-approved server changes.

@@ -13,7 +13,7 @@ alwaysApply: false
   Как работает: <коротко, что поменялось>
   Задача: #NN
   ```
-- PR title = commit title without number. Sections: «Что сделано», «Зачем», «Как это работает» (simple example first), «Учебный кейс», «Как проверить», «Задача» (closes #NN). Name the `Doc-` page updated or «вики не затронута». No first person («убрано», not «убрал»). Tick template checkboxes that hold.
+- PR title = commit title without number. Sections: «Что сделано», «Зачем», «Как это работает» (simple example first), «Учебный кейс», «Как проверить», «Задача» (`#NN` only). Never use GitHub `closes`/`fix`/`fixes` in the PR: merge must not auto-close the issue before acceptance. Name the `Doc-` page updated or «вики не затронута». No first person («убрано», not «убрал»). Tick template checkboxes that hold.
 - Comments (never rewrite published ones):
   ```markdown
   **Итог:** одна фраза
@@ -23,7 +23,7 @@ alwaysApply: false
 - Issue: title as commit; body «Зачем», «Что сделать», «Критерии приёмки» (testable), «Связи» (epic, issues, PR, wiki page). Epic adds sub-issues.
 ## Board statuses
 - Label `статус: очередь|в работе|на ревью|готово` drives the column (`board-sync.yml`); never move cards or edit view filters by hand. Also `тип: бэклог`, `тип: родительская` (epic + field «Тип» = «Эпик»).
-- Очередь: nobody on it. В работе: someone works on it (incl. review, test, deploy); set at once when taken. На ревью: ONLY when the owner must decide. Готово: accepted on dev or closed as not planned.
+- Очередь: nobody on it. В работе: someone works on it (incl. review, test, deploy, Doc- after merge); set at once when taken. На ревью: ONLY when the owner must decide. Готово: only after acceptance on dev (and Doc- gap closed if required), or closed as not planned. Closing the GitHub issue moves the card to Готово (`board-sync`); therefore close the issue only at that moment, never from the PR body.
 - Owner question: issue comment «**Итог:** требуется решение владельца» / «**Подробно:** вопрос, варианты, рекомендация» / «**Дальше:** после ответа задача вернётся в работу», set На ревью, tell the lead.
 - Code review is not «На ревью»: the task stays В работе.
 - Epic: В работе while some sub-issues are В работе/Готово and others remain; Готово when all are Готово; На ревью when the owner must decide on it.

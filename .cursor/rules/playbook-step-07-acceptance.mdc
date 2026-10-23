@@ -3,5 +3,7 @@ description: Step 7 acceptance on dev by test cases
 alwaysApply: false
 ---
 # Step 7: Acceptance on dev
-- After merge + green deploy: run the page's manual/e2e cases + short smoke. One issue comment listing cases passed/failed by id.
-- Failure: bug issue linking the case id, status stays В работе. Passed: Готово (feature: when all subtasks pass).
+- After merge + green deploy: run the page's manual/e2e cases (bugs: the issue criteria) + short smoke. One issue comment listing cases passed/failed by id.
+- Failure: bug issue linking the case id; parent stays open / В работе. Do not close the parent issue.
+- Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then close the issue (that moves the board to Готово) and set label `статус: готово` if needed. Feature: Готово when all subtasks are closed after their acceptance.
+- The owner may spot-check major features; lead still owns the acceptance comment and the close.

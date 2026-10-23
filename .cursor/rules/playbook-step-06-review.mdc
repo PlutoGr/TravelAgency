@@ -8,8 +8,8 @@ alwaysApply: false
 - Green CI (build, tests, gitleaks). Formats and impersonal wording: `playbook-git-pr.mdc`.
 - Docs-with-code: PR names the `Doc-` page to update, or «вики не затронута».
 
-## Escalation (architect / designated reviewer)
-Run a dedicated review (diff vs page «Архитектура» and «Тест-кейсы», plus security depth) when any of:
+## Escalation (lead via cloud agent)
+Lead runs a dedicated review (itself for trivial diffs, else cloud agent briefed with `.cursor/agents/architect.md`) when any of:
 - an automation left a blocker or a validated finding;
 - the PR is risky (auth, secrets, payments, infra, migrations, public API contracts);
 - the diff is large or crosses services;
@@ -20,4 +20,4 @@ Otherwise the lead may merge on automations + green CI alone (bugs/small fixes a
 
 ## Verdict
 - Page mismatch: changes requested, or a «Решения» row if the page is wrong.
-- Architect verdict: GitHub review, Russian, comment template. Server-side security for risky infra still needs a person with server access (lead), not only the automation comments.
+- Verdict: lead posts a Russian GitHub review/comment (template). Server-side security for risky infra still needs the lead (server access), not only automation comments.

@@ -15,13 +15,13 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 ## Roles (overrides playbook role names)
 | Role | Who | Zone |
 |---|---|---|
-| Lead / merger | Grok Bot | `.cursor/agents/lead.md`: owner channel, triage, merges, board, cloud launches, server access, audit, Doc- gaps |
-| Architect / reviewer | Вирт when escalated; else cloud agent brief | `.cursor/agents/architect.md`: architecture, ADR, labels, task split; review on escalation (not every routine PR) |
-| Developer | cloud agent | app code + tests via PR (`playbook-cloud-agents.mdc`) |
-| Tester | lead or cloud agent | test cases and automated tests via cloud; acceptance on dev needs lead (dev access) |
-| DevOps | lead (+ cloud for CI/Docker files) | CI, Docker, nginx, deploy, server; automation vulns cover PR comment security, not server changes |
-| Analyst | lead via cloud agent | wiki Epic/Feature sections, requirements, acceptance criteria |
-- Touch only your zone; out of zone, hand over via the issue. Only the lead talks to the owner.
+| Lead | Grok Bot | Owner channel, triage, board, merges, cloud launches, server, audit, Doc- gaps; also executes architect duties below |
+| Architect / escalated review | lead via cloud agent (brief `.cursor/agents/architect.md`) | Architecture, ADR, labels, task split; review only on step-6 escalation |
+| Developer | cloud agent | App code + tests via PR (`playbook-cloud-agents.mdc`) |
+| Tester | lead or cloud agent | Test cases / automated tests via cloud; acceptance on dev = lead (dev access) |
+| DevOps | lead (+ cloud for CI/Docker files) | CI, Docker, nginx, deploy, server; PR security comments = automations |
+| Analyst | lead via cloud agent | Wiki Epic/Feature sections, requirements, acceptance criteria |
+- Single orchestrator: the lead. Do not hand TravelAgency work to Вирт or other teammate chats (handoff risk). The Вирт chat may stay unused.
 - Persistent TA chat bots are retired; do not route new work through team group chats.
 ## Priorities
 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Lead orders within this; order changes need the owner.
@@ -32,7 +32,7 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work.
 ## Merge order
 - Merger: Grok Bot. Before merge: green CI + Cursor Automations comments per `project-cursor-automations.mdc` + step 6 escalation rules. Next merge only after «Deploy to dev» is green.
-- Do not require a separate architect approve on every small/routine PR when automations are clean; require it when step 6 escalation triggers.
+- Do not require a separate architect pass on every small/routine PR when automations are clean; when step 6 escalation triggers, the lead launches a cloud agent with `.cursor/agents/architect.md` (or reviews trivial diffs itself) and posts the verdict.
 - Dependabot minor/patch: automations + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
 - Docs-with-code = the matching wiki `Doc-` page (or a Doc- gap issue opened from the after-merge automation).
 - Temporary dumps on dev allowed if deleted after the check.
