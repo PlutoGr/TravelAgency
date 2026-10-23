@@ -1,0 +1,28 @@
+---
+description: Generic git, PR, review, CI, merge and testing rules
+alwaysApply: false
+---
+# Git, PR, review, merge (generic)
+## Git
+- Follow the repo's architecture, neighbouring code and its `.cursor/rules` / `AGENTS.md`.
+- Own branch per task: `<role>/<issue>-<slug>`. Never push to the default branch, never force-push; history rewrite only with owner approval.
+- Minimal diff, implement to acceptance criteria. No libraries "just in case", no refactoring of neighbouring layers unless asked.
+- Leave shared clones clean (default branch, no uncommitted changes).
+## Tasks and PRs
+- One issue = one owner = one PR (batch small related fixes). PR links its issue. Status lives in the tracker (labels, board, review state), not in chat.
+- Post to chat only the PR link when ready, a blocker, or a decision question.
+- Behaviour/API/contract/settings/infra change merges with the matching doc update.
+## Review and CI
+- CI is the gate: do not re-run locally what CI runs green; read failures from the job log, quote only failing lines.
+- Review the diff, not the repo; comment only on problems.
+- Depth by risk: trivial (docs, typos, trivial config) = CI + reviewer; normal code = CI + reviewer; risky (infra, CI, Docker/nginx, auth, data/migrations, secrets handling, runtime/network dependencies) = CI + reviewer + security check.
+## Merge and deploy
+- Merge only when all gates are met; only the designated merger merges.
+- Merge = deploy: one PR at a time; next merge only after the previous deploy is green.
+- Dependencies: minor/patch = normal gates; major = also owner approval.
+## Testing
+- Locally: only tests for the touched area. After deploy: affected flows vs criteria + short smoke. Full regression only before a release or after wide changes (auth, routing, migrations).
+## Servers
+- Read logs/status freely. Any change, manual deploy or rollback: owner approval, back up configs first.
+## Stop rule
+- On «стоп»: finish or revert the current atomic step, leave clones clean, push nothing half-done, report branch/PR state, start nothing new.

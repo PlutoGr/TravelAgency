@@ -1,0 +1,9 @@
+---
+description: Step 2 architecture and split
+alwaysApply: false
+---
+# Step 2: Architecture + split («Архитектура», «Разбиение»)
+- Epic: overall scheme, services, links, options and why chosen. Feature: model fields, API (method, path, access, body, response, errors), contracts, migrations, impact.
+- Business part unclear: do not rewrite it; options to «Решения», hand back.
+- Split: epic -> features (page + issue); feature -> subtasks (issue linking the anchor). Use GitHub sub-issues.
+- Every important choice = one «Решения» row; impactful «how we do it» choices need owner approval via the lead.

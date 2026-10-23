@@ -1,0 +1,29 @@
+---
+description: Doc-driven workflow (epic/feature/subtask, steps 1-8); index of step rules
+alwaysApply: false
+---
+# Doc-driven workflow
+## Hierarchy
+| Level | What | Artifact |
+|---|---|---|
+| Epic | big business goal | wiki `Epic-<Name>` + parent issue |
+| Feature | demonstrable, checkable result | wiki `Feature-<Name>` + issue; links its epic |
+| Subtask | small work item | issue only; links `Feature-<Name>#<anchor>` |
+- Subtask needing own analysis -> promote to feature. Bugs/small fixes: issue with criteria, then steps 5-7. Closed work: no new docs.
+- Page sections: «Бизнес и сценарии», «Архитектура», «Решения», «Разбиение», «Тест-кейсы». Templates: wiki `Epic-Template`, `Feature-Template`.
+- `<Name>`: Latin, English, Title-Case-With-Hyphens; not renamed casually.
+## Steps (one step = one owner; a step starts only when the previous one is on the page)
+| # | Rule | Step | Owner |
+|---|---|---|---|
+| 1 | `playbook-step-01-analysis.mdc` | Бизнес и сценарии | analyst |
+| 2 | `playbook-step-02-architecture.mdc` | Архитектура + Разбиение | architect |
+| 3 | `playbook-step-03-decisions.mdc` | Решения | analyst <-> architect -> lead -> owner |
+| 4 | `playbook-step-04-test-cases.mdc` | Тест-кейсы, BEFORE code | tester |
+| 5 | `playbook-step-05-development.mdc` | code | developer |
+| 6 | `playbook-step-06-review.mdc` | review + security | architect + devops |
+| 7 | `playbook-step-07-acceptance.mdc` | acceptance on dev | tester |
+| 8 | `playbook-step-08-docs.mdc` | Doc-/ADR after merge | analyst + architect |
+## Common
+- Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
+- Fill only your section. Disagreement -> step 3.
+- Cloud agent executor: give it this file + the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.

@@ -1,0 +1,10 @@
+---
+description: Step 1 analysis: Бизнес и сценарии
+alwaysApply: false
+---
+# Step 1: Analysis («Бизнес и сценарии»)
+Input: issue. Output: section on the epic/feature page.
+- New page from the template; add to sidebar; issue «Связи» gets the link.
+- Write: goal, users/roles, scenarios (simple example first), in/out of scope, constraints, open questions.
+- Feature: concrete scenarios + testable Given/When/Then criteria. Epic: business goal, end-to-end scenarios, no field detail.
+- Do not design the solution. Disagreement: step 3.

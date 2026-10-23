@@ -1,0 +1,11 @@
+---
+description: When and how to delegate repo work to a Cursor cloud agent, and how to accept it
+alwaysApply: false
+---
+# Cloud agents
+- Delegate code or analysis that reads/changes many files or needs build/test loops (brief ~10-20 lines). Do it yourself for a few lines, one file, or work needing server, secrets or chat history. Never both.
+- Launch: check no branch/PR/agent exists for the issue; one issue, one agent; branch `<role>/<NN>-<slug>`; attach this repo's rules (they are in `.cursor/`, the agent reads them); prompt in English: issue number, goal, acceptance criteria, known context, out of scope, branch.
+- Prefer the cheaper pool for routine code and repo-reading analysis/review; follow the current usage mode if the project sets one.
+- Model: default Grok, medium effort (low mechanical, high multi-file/auth/security, xhigh hard). Opus only if Grok xhigh failed or the task is big and critical; state why.
+- Cloud agent rules: regular PR into `main`, never push to `main`, never merge, never edit wiki/board, no secrets or server access. Mark PR ready when CI is green. Final report (English): PR URL, head sha, what changed, tests added, open doubts.
+- Acceptance: the launcher owns the result. Strip Cursor PR-body markers and the «Open in Cursor» footer (`gh pr edit --body-file`). Fixes via reply to the same agent. Normal gates unchanged.
