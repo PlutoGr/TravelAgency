@@ -24,7 +24,7 @@ function DetailSkeleton() {
       <Skeleton className="mb-6 h-4 w-48" />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <Skeleton variant="rectangular" className="aspect-[16/10] w-full" />
+          <Skeleton variant="rectangular" className="aspect-[16/9] w-full" />
           <Skeleton className="h-8 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton variant="rectangular" className="h-64 w-full" />

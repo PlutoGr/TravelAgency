@@ -77,7 +77,7 @@ export default function TourGallery({ images, title }: TourGalleryProps) {
 
   if (!active) {
     return (
-      <div className="flex aspect-[16/10] items-center justify-center rounded-[16px] bg-sand text-sm text-warm-gray">
+      <div className="flex aspect-[16/9] items-center justify-center rounded-[16px] bg-sand text-sm text-warm-gray">
         Фото пока нет
       </div>
     );
@@ -92,7 +92,7 @@ export default function TourGallery({ images, title }: TourGalleryProps) {
   return (
     <>
       <div className="space-y-3">
-        <div className="group relative aspect-[16/10] overflow-hidden rounded-[16px] bg-sand">
+        <div className="group relative aspect-[16/9] overflow-hidden rounded-[16px] bg-sand">
           <AnimatePresence initial={false} custom={direction} mode="popLayout">
             <motion.div
               key={active.key}
@@ -109,7 +109,7 @@ export default function TourGallery({ images, title }: TourGalleryProps) {
                 alt={active.alt}
                 variant="gallery"
                 priority
-                className="h-full w-full cursor-pointer object-cover"
+                className="h-full w-full cursor-pointer object-contain"
               />
             </motion.div>
           </AnimatePresence>
@@ -142,7 +142,7 @@ export default function TourGallery({ images, title }: TourGalleryProps) {
         </div>
 
         {slides.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto p-1">
             {slides.map((slide, index) => (
               <button
                 key={slide.key}

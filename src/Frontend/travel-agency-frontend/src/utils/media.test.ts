@@ -19,6 +19,13 @@ describe('media urls', () => {
     expect(resolveTourMedia(undefined, 'thumb')).toBeNull();
   });
 
+  it('reserves a 16:9 box for the gallery frame', () => {
+    const gallery = resolveTourMedia(FILE, 'gallery');
+    expect(gallery?.width).toBe(1600);
+    expect(gallery?.height).toBe(900);
+    expect(resolveTourMedia(FILE, 'thumb')?.height).toBe(150);
+  });
+
   it('builds a manage preview from the file id', () => {
     const src = manageMediaFileUrl(FILE, 'w200');
     expect(src).toBe(`/api/v1/media/manage/files/${FILE}/w200`);

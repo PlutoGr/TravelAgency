@@ -84,6 +84,15 @@ describe('TourDetailPage', () => {
     });
   });
 
+  it('reserves a 16:9 frame while the tour is loading', () => {
+    vi.mocked(getTourById).mockReturnValue(new Promise(() => undefined));
+
+    const { container } = renderDetail();
+
+    expect(container.querySelector('.aspect-\\[16\\/9\\]')).toBeTruthy();
+    expect(container.querySelector('.aspect-\\[16\\/10\\]')).toBeNull();
+  });
+
   it('shows gallery, program, inclusions, stay and offers, then opens a request', async () => {
     vi.mocked(getTourById).mockResolvedValue(sampleTour());
     const user = userEvent.setup();
