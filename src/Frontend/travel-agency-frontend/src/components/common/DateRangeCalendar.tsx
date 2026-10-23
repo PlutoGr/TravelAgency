@@ -1,19 +1,28 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
+import {
+  DayPicker,
+  type DayButtonProps,
+  type DayProps,
+  type Matcher,
+} from 'react-day-picker';
+import { ru } from 'react-day-picker/locale/ru';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 import { DEPARTURE_DATE_MAX } from '@/utils/catalogQuery';
 import {
-  addCalendarDays,
+  WEEKDAY_LABELS,
   dayAccessibleName,
-  isDayUnavailable,
-  monthGrid,
-  monthKey,
   monthTitle,
   moscowToday,
   parseCalendarIso,
   shiftCalendarMonth,
-  WEEKDAY_LABELS,
-  weekStartMonday,
 } from '@/utils/homeCalendar';
 import { useWideScreen } from './useWideScreen';
 
@@ -26,75 +35,208 @@ interface DateRangeCalendarProps {
   value: DateRange;
   onChange: (value: DateRange) => void;
   onClose: () => void;
-  /** Включительно. По умолчанию сегодня по календарю Europe/Moscow. */
+  /** Одна дата или диапазон. По умолчанию диапазон, как на главной. */
+  mode?: 'single' | 'range';
+  /** Включительно. Для диапазона по умолчанию сегодня по календарю Europe/Moscow. */
   minDate?: string;
-  /** Включительно. По умолчанию 2100-12-31. */
+  /** Включительно. Для диапазона по умолчанию 2100-12-31. */
   maxDate?: string;
 }
+
+const navButtonClass =
+  'inline-flex size-11 items-center justify-center rounded-full text-dark hover:bg-sand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-40';
+
+const dayButtonClass =
+  'inline-flex size-11 items-center justify-center text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
+
+function isoToDate(iso: string): Date | undefined {
+  const parts = parseCalendarIso(iso);
+  if (!parts) return undefined;
+  return new Date(parts.year, parts.month - 1, parts.day);
+}
+
+function dateToIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function monthStart(iso: string): Date | undefined {
+  const parts = parseCalendarIso(iso);
+  if (!parts) return undefined;
+  return new Date(parts.year, parts.month - 1, 1);
+}
+
+function monthAfter(iso: string): Date | undefined {
+  const parts = parseCalendarIso(iso);
+  if (!parts) return undefined;
+  const next = shiftCalendarMonth(parts.year, parts.month, 1);
+  return new Date(next.year, next.month - 1, 1);
+}
+
+function inBounds(iso: string, min?: string, max?: string): boolean {
+  if (min && iso < min) return false;
+  if (max && iso > max) return false;
+  return true;
+}
+
+function CalendarChevron({
+  orientation,
+  className,
+}: {
+  orientation?: 'up' | 'down' | 'left' | 'right';
+  className?: string;
+  size?: number;
+  disabled?: boolean;
+}) {
+  const Icon = orientation === 'right' || orientation === 'down' ? ChevronRight : ChevronLeft;
+  return <Icon size={20} aria-hidden="true" className={clsx('pointer-events-none', className)} />;
+}
+
+function omitKeys<T extends object>(source: T, keys: readonly string[]): T {
+  const next = { ...source };
+  for (const key of keys) delete (next as Record<string, unknown>)[key];
+  return next;
+}
+
+function CalendarCaption(props: HTMLAttributes<HTMLSpanElement>) {
+  const { className, children, ...rest } = omitKeys(props, ['role']);
+  return (
+    <h2 className={clsx('mb-2 text-center text-base font-semibold text-dark', className)} {...rest}>
+      {children}
+    </h2>
+  );
+}
+
+function CalendarNavButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+  const blocked = props['aria-disabled'] === true || props['aria-disabled'] === 'true';
+  return <button {...props} disabled={blocked || props.disabled} />;
+}
+
+function CalendarDayCell(props: DayProps) {
+  return <td {...omitKeys(props, ['day', 'modifiers', 'role'])} role="presentation" />;
+}
+
+function CalendarDayButton(props: DayButtonProps) {
+  const { modifiers, className } = props;
+  const buttonProps = omitKeys(props, ['day', 'modifiers']);
+  const ref = useRef<HTMLButtonElement>(null);
+  const edge = Boolean(modifiers.range_start || modifiers.range_end || (modifiers.selected && !modifiers.range_middle));
+  const middle = Boolean(modifiers.range_middle);
+
+  useEffect(() => {
+    if (modifiers.focused) ref.current?.focus();
+  }, [modifiers.focused]);
+
+  return (
+    <button
+      ref={ref}
+      {...buttonProps}
+      role="gridcell"
+      className={clsx(
+        dayButtonClass,
+        edge && 'rounded-full bg-primary text-white',
+        middle && !edge && 'bg-transparent text-dark',
+        !edge && !middle && !modifiers.disabled && 'rounded-full text-dark hover:bg-sand',
+        modifiers.today && !edge && 'rounded-full ring-2 ring-inset ring-primary',
+        modifiers.disabled && 'rounded-full text-[#4B5563] opacity-40',
+        className,
+      )}
+    />
+  );
+}
+
+const calendarComponents = {
+  CaptionLabel: CalendarCaption,
+  Chevron: CalendarChevron,
+  Day: CalendarDayCell,
+  DayButton: CalendarDayButton,
+  NextMonthButton: CalendarNavButton,
+  PreviousMonthButton: CalendarNavButton,
+};
+
+const calendarFormatters = {
+  formatCaption: (month: Date) => monthTitle(month.getFullYear(), month.getMonth() + 1),
+  formatWeekdayName: (date: Date) => WEEKDAY_LABELS[(date.getDay() + 6) % 7],
+  formatDay: (date: Date) => String(date.getDate()),
+};
+
+const calendarLabels = {
+  labelPrevious: () => 'Предыдущий месяц',
+  labelNext: () => 'Следующий месяц',
+  labelDayButton: (date: Date) => dayAccessibleName(dateToIso(date)),
+};
 
 export default function DateRangeCalendar({
   value,
   onChange,
   onClose,
+  mode = 'range',
   minDate,
-  maxDate = DEPARTURE_DATE_MAX,
+  maxDate,
 }: DateRangeCalendarProps) {
   const wide = useWideScreen();
-  const min = minDate ?? moscowToday();
-  const today = moscowToday();
-  const initial =
-    value.from && !isDayUnavailable(value.from, min, maxDate) ? value.from : min;
-  const initialParts = parseCalendarIso(initial) ?? parseCalendarIso(min) ?? { year: 2026, month: 1, day: 1 };
-  const [focusedIso, setFocusedIso] = useState(initial);
-  const [visible, setVisible] = useState({ year: initialParts.year, month: initialParts.month });
-  const focusedRef = useRef<HTMLButtonElement>(null);
+  const min = minDate ?? (mode === 'range' ? moscowToday() : undefined);
+  const max = maxDate ?? (mode === 'range' ? DEPARTURE_DATE_MAX : undefined);
+  const months = mode === 'range' && wide ? 2 : 1;
 
-  useEffect(() => {
-    focusedRef.current?.focus();
-  }, [focusedIso, visible.year, visible.month, wide]);
+  const startMonth = min ? monthStart(min) : undefined;
+  // Два месяца: следующий за максимумом остаётся на экране, но дни в нём недоступны.
+  const endMonth = max ? (months > 1 ? monthAfter(max) : monthStart(max)) : undefined;
+  const defaultMonth = useMemo(() => {
+    const preferred = value.from ?? value.to;
+    if (preferred && inBounds(preferred, min, max)) return isoToDate(preferred);
+    const today = moscowToday();
+    if (inBounds(today, min, max)) return isoToDate(today);
+    return (min && isoToDate(min)) || isoToDate(today);
+  }, [value.from, value.to, min, max]);
 
-  const months = [visible];
-  if (wide) months.push(shiftCalendarMonth(visible.year, visible.month, 1));
+  const disabled = useMemo(() => {
+    const matchers: Matcher[] = [];
+    const minDateValue = min ? isoToDate(min) : undefined;
+    const maxDateValue = max ? isoToDate(max) : undefined;
+    if (minDateValue) matchers.push({ before: minDateValue });
+    if (maxDateValue) matchers.push({ after: maxDateValue });
+    return matchers.length > 0 ? matchers : undefined;
+  }, [min, max]);
 
-  const minParts = parseCalendarIso(min);
-  const maxParts = parseCalendarIso(maxDate);
-  const prevDisabled = minParts
-    ? monthKey(visible.year, visible.month) <= monthKey(minParts.year, minParts.month)
-    : false;
-  const last = months[months.length - 1];
-  const nextDisabled = maxParts ? monthKey(last.year, last.month) >= monthKey(maxParts.year, maxParts.month) : false;
+  const classNames = useMemo(
+    () => ({
+      root: 'w-max max-w-full text-dark',
+      months: months > 1 ? 'flex gap-6' : 'block',
+      month: 'w-max max-w-full',
+      month_caption: 'flex justify-center',
+      nav: 'mb-2 flex items-center justify-between gap-2',
+      button_previous: navButtonClass,
+      button_next: navButtonClass,
+      month_grid: 'w-full border-collapse',
+      weekdays: '',
+      weekday: 'h-8 w-11 p-0 text-center text-xs font-medium text-[#4B5563]',
+      week: '',
+      day: 'p-0 text-center',
+      day_button: dayButtonClass,
+      range_start: 'bg-sand',
+      range_middle: 'bg-sand',
+      range_end: 'bg-sand',
+    }),
+    [months],
+  );
 
-  function shiftVisible(delta: number) {
-    const next = shiftCalendarMonth(visible.year, visible.month, delta);
-    setVisible(next);
-    const left = monthKey(next.year, next.month);
-    const span = wide ? 1 : 0;
-    const parts = parseCalendarIso(focusedIso);
-    const target = parts ? monthKey(parts.year, parts.month) : left;
-    if (target >= left && target <= left + span) return;
-    const candidate = monthGrid(next.year, next.month)
-      .flat()
-      .find((iso) => iso != null && !isDayUnavailable(iso, min, maxDate));
-    if (candidate) setFocusedIso(candidate);
-  }
-
-  function moveFocus(nextIso: string) {
-    if (isDayUnavailable(nextIso, min, maxDate)) return;
-    const parts = parseCalendarIso(nextIso);
-    if (!parts) return;
-    setFocusedIso(nextIso);
-    setVisible((current) => {
-      const left = monthKey(current.year, current.month);
-      const span = wide ? 1 : 0;
-      const target = monthKey(parts.year, parts.month);
-      if (target >= left && target <= left + span) return current;
-      return { year: parts.year, month: parts.month };
-    });
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    onClose();
   }
 
   function choose(iso: string) {
-    if (isDayUnavailable(iso, min, maxDate)) return;
-    setFocusedIso(iso);
+    if (!inBounds(iso, min, max)) return;
+    if (mode === 'single') {
+      onChange({ from: iso });
+      onClose();
+      return;
+    }
     const start = value.from;
     const end = value.to;
     if (!start || end) {
@@ -109,80 +251,40 @@ export default function DateRangeCalendar({
     onClose();
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-    const target = event.target as HTMLElement;
-    const onDay = Boolean(target.dataset.calendarDay);
-    if (!onDay) return;
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      choose(target.dataset.calendarDay ?? focusedIso);
-      return;
-    }
-
-    const step: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
-    if (event.key in step) {
-      event.preventDefault();
-      moveFocus(addCalendarDays(focusedIso, step[event.key]));
-      return;
-    }
-    if (event.key === 'Home') {
-      event.preventDefault();
-      moveFocus(weekStartMonday(focusedIso));
-      return;
-    }
-    if (event.key === 'End') {
-      event.preventDefault();
-      moveFocus(addCalendarDays(weekStartMonday(focusedIso), 6));
-    }
-  }
+  const shared = {
+    locale: ru,
+    weekStartsOn: 1 as const,
+    numberOfMonths: months,
+    showOutsideDays: false,
+    autoFocus: true,
+    today: isoToDate(moscowToday()),
+    startMonth,
+    endMonth,
+    defaultMonth,
+    disabled,
+    components: calendarComponents,
+    formatters: calendarFormatters,
+    labels: calendarLabels,
+    classNames,
+    onSelect: (_selected: unknown, triggerDate: Date) => {
+      choose(dateToIso(triggerDate));
+    },
+  };
 
   return (
     <div onKeyDown={onKeyDown}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          aria-label="Предыдущий месяц"
-          disabled={prevDisabled}
-          onClick={() => shiftVisible(-1)}
-          className="inline-flex size-11 items-center justify-center rounded-full text-dark hover:bg-sand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
-        >
-          <ChevronLeft size={20} aria-hidden="true" className="pointer-events-none" />
-        </button>
-        <button
-          type="button"
-          aria-label="Следующий месяц"
-          disabled={nextDisabled}
-          onClick={() => shiftVisible(1)}
-          className="inline-flex size-11 items-center justify-center rounded-full text-dark hover:bg-sand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
-        >
-          <ChevronRight size={20} aria-hidden="true" className="pointer-events-none" />
-        </button>
-      </div>
-
-      <div className={clsx('grid gap-6', wide ? 'grid-cols-2' : 'grid-cols-1')}>
-        {months.map((month) => (
-          <MonthGrid
-            key={monthKey(month.year, month.month)}
-            year={month.year}
-            month={month.month}
-            value={value}
-            today={today}
-            min={min}
-            max={maxDate}
-            focusedIso={focusedIso}
-            focusedRef={focusedRef}
-            onChoose={choose}
-          />
-        ))}
-      </div>
-
+      {mode === 'single' ? (
+        <DayPicker mode="single" selected={value.from ? isoToDate(value.from) : undefined} {...shared} />
+      ) : (
+        <DayPicker
+          mode="range"
+          selected={{
+            from: value.from ? isoToDate(value.from) : undefined,
+            to: value.to ? isoToDate(value.to) : undefined,
+          }}
+          {...shared}
+        />
+      )}
       <button
         type="button"
         onClick={() => onChange({})}
@@ -190,85 +292,6 @@ export default function DateRangeCalendar({
       >
         Сбросить
       </button>
-    </div>
-  );
-}
-
-function MonthGrid({
-  year,
-  month,
-  value,
-  today,
-  min,
-  max,
-  focusedIso,
-  focusedRef,
-  onChoose,
-}: {
-  year: number;
-  month: number;
-  value: DateRange;
-  today: string;
-  min: string;
-  max: string;
-  focusedIso: string;
-  focusedRef: RefObject<HTMLButtonElement | null>;
-  onChoose: (iso: string) => void;
-}) {
-  const titleId = `month-${year}-${month}`;
-  const weeks = monthGrid(year, month);
-
-  return (
-    <div>
-      <h2 id={titleId} className="mb-2 text-center text-base font-semibold text-dark">
-        {monthTitle(year, month)}
-      </h2>
-      <div className="mb-1 grid grid-cols-7 text-center text-xs font-medium text-[#4B5563]">
-        {WEEKDAY_LABELS.map((label) => (
-          <span key={label}>{label}</span>
-        ))}
-      </div>
-      <div role="grid" aria-labelledby={titleId}>
-        {weeks.map((week, weekIndex) => (
-          <div role="row" key={weekIndex} className="grid grid-cols-7">
-            {week.map((iso, dayIndex) => {
-              if (!iso) {
-                return <span role="gridcell" key={`empty-${weekIndex}-${dayIndex}`} className="size-11" />;
-              }
-              const disabled = isDayUnavailable(iso, min, max);
-              const selected = iso === value.from || (Boolean(value.to) && iso === value.to);
-              const between = Boolean(
-                value.from && value.to && value.from !== value.to && iso > value.from && iso < value.to,
-              );
-              const parts = parseCalendarIso(iso);
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  role="gridcell"
-                  data-calendar-day={iso}
-                  aria-label={dayAccessibleName(iso)}
-                  aria-selected={selected || undefined}
-                  disabled={disabled}
-                  tabIndex={iso === focusedIso ? 0 : -1}
-                  ref={iso === focusedIso ? focusedRef : undefined}
-                  onClick={() => onChoose(iso)}
-                  className={clsx(
-                    'inline-flex size-11 items-center justify-center rounded-full text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-                    selected && 'bg-primary text-white',
-                    !selected && between && 'bg-sand text-dark',
-                    !selected && !between && 'text-dark hover:bg-sand',
-                    !selected && iso === today && 'ring-2 ring-inset ring-primary',
-                    disabled && 'text-[#4B5563] opacity-40 hover:bg-transparent',
-                  )}
-                >
-                  {parts?.day}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

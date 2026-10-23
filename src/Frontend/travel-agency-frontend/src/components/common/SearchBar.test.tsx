@@ -281,7 +281,7 @@ describe('SearchBar', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     const when = screen.getByRole('button', { name: /Когда\?/ });
     expect(when).toHaveTextContent('с 12 по 20 ноя');
-    expect(when.textContent).not.toMatch(/[-—–]/);
+    expect(when.textContent).not.toMatch(/[-\u2013\u2014]/);
     expect(when).toHaveFocus();
   });
 
@@ -353,6 +353,50 @@ describe('SearchBar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Найти' }));
     expect(onSearch).toHaveBeenCalledWith({ destination: '', date: '2026-11-01', dateTo: undefined });
+  });
+
+  it('closes the calendar when the click lands outside the field', async () => {
+    const user = userEvent.setup();
+    render(<SearchBar />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    expect(screen.getByRole('dialog', { name: 'Выбор дат' })).toBeInTheDocument();
+    await user.click(document.body);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('anchors the calendar to the field instead of the corner', async () => {
+    const user = userEvent.setup();
+    const anchor = {
+      x: 420,
+      y: 180,
+      width: 200,
+      height: 72,
+      top: 180,
+      left: 420,
+      right: 620,
+      bottom: 252,
+      toJSON() {
+        return {};
+      },
+    } as DOMRect;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function rect(this: HTMLElement) {
+      if (this.getAttribute('role') === 'dialog') {
+        return { ...anchor, width: 640, height: 420, right: anchor.left + 640, bottom: anchor.top + 420 } as DOMRect;
+      }
+      return anchor;
+    });
+    render(<SearchBar />);
+
+    await user.click(screen.getByRole('button', { name: /Когда\?/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Выбор дат' });
+    expect(dialog).toHaveAttribute('data-anchored', 'true');
+    expect(dialog.style.visibility).toBe('visible');
+    expect(dialog.style.left).toBe('420px');
+    expect(dialog.style.top).toBe('260px');
+    expect(dialog.style.width).toBe('max-content');
+    expect(dialog.style.minWidth).not.toBe('700px');
+    spy.mockRestore();
   });
 
   it('disables days after 31 December 2100', () => {

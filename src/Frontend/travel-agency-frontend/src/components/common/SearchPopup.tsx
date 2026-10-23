@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 
@@ -9,38 +9,85 @@ interface SearchPopupProps {
   dialog?: boolean;
   label?: string;
   keyboardInset?: boolean;
-  /** На ширине от 768px календарь из двух месяцев не влезает в узкую ячейку. */
+  /** Минимальная ширина панели. Игнорируется, когда ширина берётся по содержимому. */
   minWidth?: number;
+  /** Ширина по содержимому и не шире окна. Жёсткий minWidth вроде 700px не задаётся. */
+  contentSized?: boolean;
   onClose: () => void;
   children: ReactNode;
 }
 
-function desktopFrame(anchor: DOMRect | null, minWidth: number): {
-  position: CSSProperties;
-  maxHeight: number;
-} {
-  const margin = 8;
+type AnchorBox = {
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+const VIEWPORT_MARGIN = 8;
+
+function readAnchor(anchorRef: RefObject<HTMLElement | null>): AnchorBox | null {
+  const node = anchorRef.current;
+  if (!node) return null;
+  const rect = node.getBoundingClientRect();
+  return {
+    top: rect.top,
+    left: rect.left,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function clampLeft(anchorLeft: number, panelWidth: number): number {
+  const viewportWidth = window.innerWidth;
+  const maxWidth = Math.max(160, viewportWidth - VIEWPORT_MARGIN * 2);
+  const width = Math.min(panelWidth, maxWidth);
+  let left = anchorLeft;
+  if (left + width > viewportWidth - VIEWPORT_MARGIN) {
+    left = Math.max(VIEWPORT_MARGIN, viewportWidth - VIEWPORT_MARGIN - width);
+  }
+  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN;
+  return left;
+}
+
+function desktopFrame(
+  anchor: AnchorBox | null,
+  minWidth: number,
+  contentSized: boolean,
+  panelWidth: number,
+): { position: CSSProperties; maxHeight: number } {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const width = Math.min(Math.max(anchor?.width ?? 0, minWidth), Math.max(160, viewportWidth - margin * 2));
-  let left = anchor?.left ?? margin;
-  if (left + width > viewportWidth - margin) left = Math.max(margin, viewportWidth - margin - width);
-  const anchorTop = anchor?.top ?? margin;
+  const maxWidth = Math.max(160, viewportWidth - VIEWPORT_MARGIN * 2);
+  const anchorWidth = anchor?.width ?? 0;
+  const width = contentSized ? undefined : Math.min(Math.max(anchorWidth, minWidth), maxWidth);
+  const left = anchor
+    ? clampLeft(anchor.left, contentSized ? panelWidth || anchorWidth : width ?? anchorWidth)
+    : VIEWPORT_MARGIN;
+  const anchorTop = anchor?.top ?? VIEWPORT_MARGIN;
   const anchorBottom = anchor?.bottom ?? anchorTop;
-  const spaceBelow = viewportHeight - anchorBottom - margin;
-  const spaceAbove = anchorTop - margin;
+  const spaceBelow = viewportHeight - anchorBottom - VIEWPORT_MARGIN;
+  const spaceAbove = anchorTop - VIEWPORT_MARGIN;
   const placeBelow = spaceBelow >= 320 || spaceBelow >= spaceAbove;
   const maxHeight = Math.max(160, Math.floor(placeBelow ? spaceBelow : spaceAbove));
-  const position = placeBelow
-    ? { top: anchorBottom + margin, left, width }
-    : { bottom: viewportHeight - anchorTop + margin, left, width };
+  const position: CSSProperties = placeBelow
+    ? { top: anchorBottom + VIEWPORT_MARGIN, left, width, maxWidth }
+    : { bottom: viewportHeight - anchorTop + VIEWPORT_MARGIN, left, width, maxWidth };
+  if (contentSized) {
+    position.width = 'max-content';
+    position.minWidth = Math.min(anchorWidth, maxWidth) || undefined;
+  }
   return { position, maxHeight };
 }
 
 function useKeyboardInset(active: boolean): number {
   const [inset, setInset] = useState(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) return;
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -88,15 +135,22 @@ export default function SearchPopup({
   label,
   keyboardInset = false,
   minWidth = 280,
+  contentSized = false,
   onClose,
   children,
 }: SearchPopupProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const inset = useKeyboardInset(!wide && keyboardInset);
-  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [anchor, setAnchor] = useState<AnchorBox | null>(null);
+  const [panelWidth, setPanelWidth] = useState(0);
 
-  useEffect(() => {
-    const update = () => setAnchor(anchorRef.current?.getBoundingClientRect() ?? null);
+  useLayoutEffect(() => {
+    const update = () => {
+      // До первой отрисовки панель скрыта: координаты появляются в этом эффекте, не в углу экрана.
+      setAnchor(readAnchor(anchorRef));
+      const width = panelRef.current?.getBoundingClientRect().width ?? 0;
+      setPanelWidth((current) => (current === width ? current : width));
+    };
     update();
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
@@ -104,9 +158,9 @@ export default function SearchPopup({
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [anchorRef]);
+  }, [anchorRef, children, wide, contentSized]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     function onPointerDown(event: MouseEvent) {
       const target = event.target as Node | null;
       if (!target) return;
@@ -118,12 +172,13 @@ export default function SearchPopup({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [anchorRef, onClose]);
 
-  const frame = desktopFrame(anchor, minWidth);
+  const frame = desktopFrame(anchor, minWidth, contentSized, panelWidth);
   const viewportHeight = window.visualViewport?.height;
   const mobileStyle = {
     bottom: inset,
     maxHeight: viewportHeight ? Math.max(240, Math.round(viewportHeight - inset - 8)) : undefined,
   };
+  const positioned = !wide || anchor != null;
 
   return createPortal(
     <>
@@ -133,7 +188,11 @@ export default function SearchPopup({
         id={id}
         role={dialog ? 'dialog' : undefined}
         aria-label={dialog ? label : undefined}
-        style={wide ? frame.position : mobileStyle}
+        data-anchored={positioned ? 'true' : 'false'}
+        style={{
+          ...(wide ? frame.position : mobileStyle),
+          visibility: positioned ? 'visible' : 'hidden',
+        }}
         className={clsx(
           'z-50 border border-sand bg-cream font-sans text-dark shadow-modal',
           wide
@@ -144,10 +203,10 @@ export default function SearchPopup({
         {wide ? null : <DragHandle onClose={onClose} />}
         <div
           className={clsx(
-            'overflow-y-auto px-3',
+            'overflow-x-hidden overflow-y-auto px-3',
             wide ? 'py-3' : 'pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1',
           )}
-          style={wide ? { maxHeight: frame.maxHeight } : undefined}
+          style={wide ? { maxHeight: frame.maxHeight } : { maxHeight: 'calc(85dvh - 2.5rem)' }}
         >
           {children}
         </div>

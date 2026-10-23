@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useId } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -17,6 +17,7 @@ import { Card, Select, Skeleton } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/booking';
 import { Breadcrumbs } from '@/components/layout';
 import { PageTransition } from '@/components/common';
+import DateField from '@/components/common/DateField';
 import { bookingTourTitle } from '@/api/bookings';
 import { formatDate, formatBookingId } from '@/utils/format';
 
@@ -44,6 +45,8 @@ export default function ManagerBookingsPage() {
   const [createdFrom, setCreatedFrom] = useState('');
   const [createdTo, setCreatedTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const createdFromId = useId();
+  const createdToId = useId();
 
   const loadBookings = useCallback(async () => {
     setIsLoading(true);
@@ -135,29 +138,25 @@ export default function ManagerBookingsPage() {
               placeholder="Все статусы"
             />
 
-            {/* Date from */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-warm-gray">
+              <label htmlFor={createdFromId} className="mb-1.5 block text-xs font-medium text-warm-gray">
                 Создана с
               </label>
-              <input
-                type="date"
+              <DateField
+                id={createdFromId}
                 value={createdFrom}
-                onChange={(e) => setCreatedFrom(e.target.value)}
-                className="w-full rounded-[12px] border border-sand bg-white px-4 py-2.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                onChange={(value) => setCreatedFrom(value ?? '')}
               />
             </div>
 
-            {/* Date to */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-warm-gray">
+              <label htmlFor={createdToId} className="mb-1.5 block text-xs font-medium text-warm-gray">
                 Создана по
               </label>
-              <input
-                type="date"
+              <DateField
+                id={createdToId}
                 value={createdTo}
-                onChange={(e) => setCreatedTo(e.target.value)}
-                className="w-full rounded-[12px] border border-sand bg-white px-4 py-2.5 text-sm text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                onChange={(value) => setCreatedTo(value ?? '')}
               />
             </div>
           </div>

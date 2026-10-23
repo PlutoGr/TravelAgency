@@ -41,6 +41,7 @@ import {
 import { Button, Card } from '@/components/ui';
 import { Breadcrumbs } from '@/components/layout';
 import { PageTransition } from '@/components/common';
+import DateField from '@/components/common/DateField';
 import { manageMediaFileUrl } from '@/utils/media';
 import { TOUR_TYPE_OPTIONS, mealPlanLabel, tourStatusLabel } from '@/utils/tourLabels';
 import type { Destination } from '@/types';
@@ -795,32 +796,28 @@ function OffersStep({
       {form.offers.map((offer, index) => (
         <div key={index} className="grid gap-3 rounded-[12px] border border-sand p-4 sm:grid-cols-2">
           <Field id={`offer-${index}-from`} label={`Заезд ${index + 1}`} error={errors[`offer-${index}`]}>
-            <input
+            <DateField
               id={`offer-${index}-from`}
-              type="date"
-              className={fieldClass}
               value={offer.validFrom}
-              onChange={(event) =>
+              onChange={(value) =>
                 onChange({
                   ...form,
                   offers: form.offers.map((row, rowIndex) =>
-                    rowIndex === index ? { ...row, validFrom: event.target.value } : row,
+                    rowIndex === index ? { ...row, validFrom: value ?? '' } : row,
                   ),
                 })
               }
             />
           </Field>
           <Field id={`offer-${index}-to`} label={`Выезд ${index + 1}`}>
-            <input
+            <DateField
               id={`offer-${index}-to`}
-              type="date"
-              className={fieldClass}
               value={offer.validTo}
-              onChange={(event) =>
+              onChange={(value) =>
                 onChange({
                   ...form,
                   offers: form.offers.map((row, rowIndex) =>
-                    rowIndex === index ? { ...row, validTo: event.target.value } : row,
+                    rowIndex === index ? { ...row, validTo: value ?? '' } : row,
                   ),
                 })
               }
@@ -913,7 +910,7 @@ function PhotosStep({
   return (
     <div className="space-y-4">
       <p className="text-sm text-warm-gray">
-        JPEG, PNG или WebP, до 10 МБ и не больше 20 фото. Обложка — от 1280 пикселей по ширине. Превью черновика
+        JPEG, PNG или WebP, до 10 МБ и не больше 20 фото. Обложка: от 1280 пикселей по ширине. Превью черновика
         открывается по служебной ссылке и появится в каталоге после публикации.
       </p>
       <Field id="tour-photo" label="Загрузить фото">

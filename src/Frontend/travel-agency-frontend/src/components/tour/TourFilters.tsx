@@ -5,6 +5,7 @@ import { ChevronDown, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
 import type { TourFilters as TourFiltersType } from '@/types';
 import { RangeSlider, Button, CloseButton } from '@/components/ui';
+import DateField from '@/components/common/DateField';
 import { getDestinations } from '@/api/catalog';
 import { TOUR_TYPE_OPTIONS } from '@/utils/tourLabels';
 import {
@@ -94,6 +95,8 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
   );
 
   const dateHintId = useId();
+  const dateFromId = useId();
+  const dateToId = useId();
   const dateIssue = departureDateIssue(filters.dateFrom, filters.dateTo);
   const dateFromOutOfRange = isDepartureDateOutOfRange(filters.dateFrom);
   const dateToOutOfRange = isDepartureDateOutOfRange(filters.dateTo);
@@ -174,32 +177,34 @@ function FilterContent({ filters, onChange, onReset }: TourFiltersProps) {
 
       <AccordionSection title="Даты выезда">
         <div className="grid grid-cols-1 gap-3">
-          <label className="block text-xs font-medium text-primary">
-            С
-            <input
-              type="date"
-              min={DEPARTURE_DATE_MIN}
-              max={DEPARTURE_DATE_MAX}
-              value={filters.dateFrom ?? ''}
-              aria-invalid={dateFromInvalid || undefined}
-              aria-describedby={dateFromInvalid ? dateHintId : undefined}
-              onChange={(event) => updateFilter('dateFrom', event.target.value || undefined)}
-              className="mt-1 w-full rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+          <div>
+            <label htmlFor={dateFromId} className="mb-1 block text-xs font-medium text-primary">
+              С
+            </label>
+            <DateField
+              id={dateFromId}
+              value={filters.dateFrom}
+              minDate={DEPARTURE_DATE_MIN}
+              maxDate={DEPARTURE_DATE_MAX}
+              invalid={dateFromInvalid}
+              describedBy={dateFromInvalid ? dateHintId : undefined}
+              onChange={(value) => updateFilter('dateFrom', value)}
             />
-          </label>
-          <label className="block text-xs font-medium text-primary">
-            По
-            <input
-              type="date"
-              min={DEPARTURE_DATE_MIN}
-              max={DEPARTURE_DATE_MAX}
-              value={filters.dateTo ?? ''}
-              aria-invalid={dateToInvalid || undefined}
-              aria-describedby={dateToInvalid ? dateHintId : undefined}
-              onChange={(event) => updateFilter('dateTo', event.target.value || undefined)}
-              className="mt-1 w-full rounded-[12px] border border-sand bg-white px-3 py-2 text-sm text-dark outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+          </div>
+          <div>
+            <label htmlFor={dateToId} className="mb-1 block text-xs font-medium text-primary">
+              По
+            </label>
+            <DateField
+              id={dateToId}
+              value={filters.dateTo}
+              minDate={DEPARTURE_DATE_MIN}
+              maxDate={DEPARTURE_DATE_MAX}
+              invalid={dateToInvalid}
+              describedBy={dateToInvalid ? dateHintId : undefined}
+              onChange={(value) => updateFilter('dateTo', value)}
             />
-          </label>
+          </div>
           {dateHint && (
             <p id={dateHintId} className="text-xs text-terracotta">
               {dateHint}
