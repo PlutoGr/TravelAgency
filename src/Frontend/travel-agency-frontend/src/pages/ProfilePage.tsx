@@ -140,9 +140,7 @@ export default function ProfilePage() {
                 disabled
                 aria-describedby="profile-passport-later"
               />
-              <p id="profile-passport-later" className="mt-1.5 text-sm text-warm-gray">
-                Появится позже
-              </p>
+              <p id="profile-passport-later" className="mt-1.5 text-sm text-warm-gray">Появится позже</p>
             </div>
           </div>
 

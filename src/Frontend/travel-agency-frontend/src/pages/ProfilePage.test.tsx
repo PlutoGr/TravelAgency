@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import ProfilePage from './ProfilePage';
 import * as authApi from '@/api/auth';
@@ -92,7 +92,14 @@ describe('ProfilePage unfinished photo and passport', () => {
     const passport = screen.getByLabelText('Паспорт');
     expect(passport).toBeDisabled();
     expect(passport).toHaveValue('4510 123456');
-    expect(screen.getByText('Появится позже')).toBeVisible();
+    const caption = document.getElementById('profile-passport-later');
+    expect(caption).not.toBeNull();
+    expect(caption).toHaveTextContent('Появится позже');
+    expect(caption?.textContent?.trim()).toBe('Появится позже');
+    expect(caption?.closest('button')).toBeNull();
+    await waitFor(() => {
+      expect(caption).toBeVisible();
+    });
     expect(passport).toHaveAccessibleDescription('Появится позже');
     expect(passport).not.toHaveAttribute('placeholder', 'Пока не поддерживается');
     expect(passport).not.toHaveAttribute('title');
