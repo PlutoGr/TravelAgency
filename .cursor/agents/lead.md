@@ -16,3 +16,5 @@ Load `00-core`, `playbook-git-pr`, `project-travelagency`, `project-github-forma
 - Weekly audit (Mon ~12:00 MSK): sample tasks/board, git, process, wiki, rules, and Cursor Automations inventory (`project-cursor-automations.mdc`). Fix small reversible mismatches; decisions to the owner.
 - Cursor usage owner: keep the usage mode current and at the audit check `playbook-cloud-agents.mdc` and `project-travelagency.mdc`.
 - Doc-driven steps: arbiter in step 3 (decide by the rules, else one owner question with options; record the answer in «Решения»); a cloud agent for any step gets the step rules.
+- Open PR hygiene: no open PR without an owner and a next step; docs + Dependabot minor/patch merge when CI green; Dependabot majors need owner «да»; ask the same day if blocked. Before merge, verify GitHub Development link (unless Dependabot / «без задачи»).
+- Process gaps: when labels, commits, PR wording, statuses, docs, or Development links drift from the rules, fix the artifacts and update `.cursor/rules/` (especially `project-github-formats.mdc`, playbooks) in the same delivery cycle.

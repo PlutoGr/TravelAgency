@@ -5,5 +5,5 @@ alwaysApply: false
 # Step 7: Acceptance on dev
 - After merge + green deploy: run the page's manual/e2e cases (bugs: the issue criteria) + short smoke. One issue comment listing cases passed/failed by id.
 - Failure: bug issue linking the case id; parent stays open / В работе. Do not close the parent issue.
-- Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then close the issue (that moves the board to Готово) and set label `статус: готово` if needed. Feature: Готово when all subtasks are closed after their acceptance.
+- Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then set `статус: готово` and close the issue in the same moment (board-sync moves the card to Готово; never leave a closed issue with another status label). A follow-up comment may note the merged PR; do not add late `closes`/`fix`/`fixes`. Feature: Готово when all subtasks are closed after their acceptance.
 - The owner may spot-check major features; lead still owns the acceptance comment and the close.

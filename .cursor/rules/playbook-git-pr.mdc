@@ -5,11 +5,12 @@ alwaysApply: false
 # Git, PR, review, merge (generic)
 ## Git
 - Follow the repo's architecture, neighbouring code and its `.cursor/rules` / `AGENTS.md`.
-- Own branch per task: `<role>/<issue>-<slug>`. Never push to the default branch, never force-push; history rewrite only with owner approval.
+- Own branch per task: `type/NN-short-slug` (issue number in the name, e.g. `fix/198-appexception-warning`; role prefix still fine if it includes `NN`). Never push to the default branch, never force-push; history rewrite only with owner approval.
 - Minimal diff, implement to acceptance criteria. No libraries "just in case", no refactoring of neighbouring layers unless asked.
 - Leave shared clones clean (default branch, no uncommitted changes).
 ## Tasks and PRs
-- One issue = one owner = one PR (batch small related fixes). PR links its issue. Status lives in the tracker (labels, board, review state), not in chat.
+- One issue = one owner = one PR (batch small related fixes). Status lives in the tracker (labels, board, review state), not in chat.
+- **Canonical PR ↔ issue link (unless Dependabot):** branch includes `NN`; PR body `## Задача` with `#NN` only — never `closes`/`fix`/`fixes` before acceptance; immediately after opening (or before review) connect the PR in GitHub Development so the issue sidebar shows it (GraphQL / `gh` / branch from issue / `gh issue develop`). Lead verifies the Development link before merge; missing link = process bug to fix first. Dependabot: no issue link. Docs/process-only meta with no tracker task: «без задачи» (rare). Do not retrofit old closed issues.
 - Post to chat only the PR link when ready, a blocker, or a decision question.
 - Behaviour/API/contract/settings/infra change merges with the matching doc update.
 ## Review and CI
@@ -18,9 +19,10 @@ alwaysApply: false
 - Depth by risk: trivial (docs, typos, trivial config) = CI + first-line review; normal code = CI + first-line review; risky (infra, CI, Docker/nginx, auth, data/migrations, secrets handling, runtime/network dependencies) = CI + first-line review + deeper security check.
 - When the project enables Cursor Automations (`project-cursor-automations.mdc`), those comments are the first-line review; do not duplicate the same checklist in a second pass. Escalation rules live in `playbook-step-06-review.mdc`.
 ## Merge and deploy
-- Merge only when all gates are met; only the designated merger merges.
+- Merge only when all gates are met; only the designated merger merges. Before merge: Development link present (unless Dependabot / «без задачи»).
 - Merge = deploy: one PR at a time; next merge only after the previous deploy is green.
-- Dependencies: minor/patch = normal gates; major = also owner approval.
+- Dependencies: minor/patch = normal gates, merge when CI green; major = also owner «да».
+- Open PR hygiene (lead): no open PR without an owner and a next step; ask the same day if blocked.
 ## Testing
 - Locally: only tests for the touched area. After deploy: affected flows vs criteria + short smoke. Full regression only before a release or after wide changes (auth, routing, migrations).
 ## Servers
