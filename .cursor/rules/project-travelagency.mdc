@@ -11,7 +11,8 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo; dev access and server facts come from the lead. Smoke on dev = login, catalog, booking.
 - Merge to `main` = automatic deploy to dev («Deploy to dev»). Green CI = `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `gitleaks`.
 - Secret values live only on the server `.env`, GitHub Secrets (env `dev`), local `dotnet user-secrets`. Never in the repo.
-- Repo wins over any doc; repo `docs/COMMIT_CONVENTION.md` and `.github/pull_request_template.md` win on format conflicts.
+- Repo wins over any doc; `.cursor/rules/project-github-formats.mdc` and `.github/pull_request_template.md` win on format conflicts.
+- Normative and product documentation lives only in `.cursor/` (rules/agents), `AGENTS.md`, and the GitHub wiki (`Home`, `Doc-`, `Plan-`, `Epic-`, `Feature-`). Do not keep a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts. Do not commit agent skill manifests (`skills-lock.json`, cloned skill packs, Refero/design skill locks): those belong in the owner global Cursor/agent setup, not this project repo.
 ## Roles (overrides playbook role names)
 | Role | Who | Zone |
 |---|---|---|
