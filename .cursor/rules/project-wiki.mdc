@@ -4,6 +4,7 @@ alwaysApply: false
 ---
 # Wiki
 - Pages: `Home`, `Doc-` (only what works in `main`), `Epic-`/`Feature-` (in progress), `Plan-` only for current Vision + Roadmap (obsolete Plan-MVP pages stay deleted; roadmap must reflect reality — big MVP, operators table), `_Sidebar`, `_Footer`. No team rules in the wiki.
+- Placement: normative and product docs live only in `.cursor/`, `AGENTS.md`, and this wiki. Do not keep a parallel repo `docs/` tree for conventions, product TZ, research, or one-off artifacts.
 - Unprovable `Doc-` claim: move to `Plan-` or drop; unverified: «требует проверки» + issue link.
 - Writers: analyst and architect; tester only «Тест-кейсы»; others send text via issue/PR.
 - Impersonal (what the system does: «Gateway отвечает 404»), no customer company names, simple example first; public sources (e.g. Tourvisor) may be cited; links to `#81`, `PR #82` welcome. Dates `2026-10-17`, no «Обновлено» line.
@@ -12,3 +13,4 @@ alwaysApply: false
 - Shipped: `Doc-` (+ ADR), source page marked «сделано» with links. Cancelled: «отменено» with reason. Doc vs code mismatch: fix the wiki if code is right, else open an issue.
 - Sidebar updated in the same commit as any new/renamed/deleted page; rename updates all links (external: stub «Страница перенесена: ...»).
 - Before push: `git pull --rebase`; sidebar/links checked; `playbook-security.mdc` checks. Commit `документация(вики): ...` with «Зачем»/«Как работает».
+- No `skills-lock.json` or third-party agent skill packs in this repo; skills live in the owner global Cursor/agent setup.

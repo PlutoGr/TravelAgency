@@ -43,4 +43,5 @@ alwaysApply: false
 6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then `статус: готово` and close issue in the same moment → Готово.
 7. If anything waits >60 min (green CI, no merge) or Doc- gap same day: lead acts or asks the owner once.
 8. Process gap found: fix artifacts and update `.cursor/rules/` in the same delivery cycle. Change must be holistic (scan related rules, templates, automations, board-sync for side effects; update all affected places together). Goal: staged delivery, tracked/closed work, order, and throughput — not a one-spot patch that drifts elsewhere.
-
+9. Normative/product documentation placement: `.cursor/` (rules/agents), `AGENTS.md`, and the GitHub wiki only. Do not recreate a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts.
+- No `skills-lock.json` or third-party agent skill packs in this repo; skills live in the owner global Cursor/agent setup.
