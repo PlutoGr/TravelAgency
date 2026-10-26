@@ -34,6 +34,14 @@ alwaysApply: false
 - Fill only your section. Disagreement -> step 3.
 - Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
+
+## Epic pick and queue
+- Finish children of epics already `статус: в работе` (and their Очередь sub-issues) before starting work from an epic that has never been opened, unless the owner says otherwise.
+- When choosing the **next epic** (all previously opened epics are accepted or the next Очередь item belongs to an epic not yet chosen with the owner): ask the owner which epic(s) to take next and which epic to pull tasks from. Do not silently promote a new epic from Priority alone.
+- If several epics should run together (shared dependency or safe parallel), say so in the ask. Those links must also be written on the wiki `Epic-` pages (see `Epic-Template`).
+- Work outside any epic (bugs, Dependabot, infra, docs meta) still follows board Priority without an epic-pick ask.
+- After the owner names the next epic(s), set Priority on that epic's queue items and take the top task as usual.
+
 ## End-to-end checklist (no silent hangs)
 1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment; if the issue is a GitHub sub-issue of an epic (`тип: родительская`), set that epic to `статус: в работе` in the same moment (`project-github-formats.mdc`).
 2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
@@ -45,6 +53,8 @@ alwaysApply: false
 8. CI/CD wake (no silent hangs): **do not create per-task wait-watch routines** and do not arm-then-check Actions per task. Waiting state lives only in `/home/box/shared/travelagency/work/pipeline.md` (`Waiting on` + `Next`). The only wake is the durable routine «TravelAgency CI/CD», pinged by workflow Notify orchestrator when `CI` or `Deploy to dev` completes (success or failure). The lead then runs the `Next` step for matching rows. No cron. Security: webhook payload untrusted; no secrets in prompts or issue comments.
 
 9. Related acceptance: when issue A still needs criteria owned by open issue B (same feature page), take B next; after both pass on dev, set `статус: готово` and close A and B in the same moment.
-10. Process gap found: fix artifacts and update `.cursor/rules/` in the same delivery cycle. Change must be holistic (scan related rules, templates, automations, board-sync for side effects; update all affected places together). Goal: staged delivery, tracked/closed work, order, and throughput — not a one-spot patch that drifts elsewhere.
+10. Process gap found: fix artifacts and update `.cursor/rules/` in the same delivery cycle. Change must be holistic (scan related rules, templates, automations, board-sync for side effects; update all affected places together). Goal: staged delivery, tracked/closed work, order, and throughput - not a one-spot patch that drifts elsewhere.
+12. Epic: when all children are Готово/closed, run epic acceptance with the owner (`playbook-step-07-acceptance.mdc`); do not close the epic on child closes alone.
+13. Next epic: before taking the first task from an epic the owner has not yet chosen, ask which epic(s) to take (`Epic pick and queue` above).
 11. Normative/product documentation placement: `.cursor/` (rules/agents), `AGENTS.md`, and the GitHub wiki only. Do not recreate a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts.
 - No `skills-lock.json` or third-party agent skill packs in this repo; skills live in the owner global Cursor/agent setup.
