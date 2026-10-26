@@ -1,0 +1,41 @@
+name: Доработка
+description: Новая функция или улучшение
+title: "разработка(<сервис>): "
+labels: ["enhancement", "статус: очередь"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Заголовок: `<тип>(<сервис>): …` (`разработка`, реже `аналитика` / `инфраструктура`).
+        Сервисы: `чат`, `каталог`, `бронирование`, `identity`, `медиа`, `шлюз`, `фронт`, `ci`, `деплой`, `бд`, `общее`.
+        Текст безличный. Правила: `.cursor/rules/project-github-formats.mdc`.
+  - type: textarea
+    id: zachem
+    attributes:
+      label: Зачем
+      description: Какую проблему или потребность закрывает
+    validations:
+      required: true
+  - type: textarea
+    id: chto
+    attributes:
+      label: Что сделать
+      description: Объём работ и границы
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Критерии приёмки
+      description: Проверяемые условия
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: svyazi
+    attributes:
+      label: Связи
+      description: Эпик, issues, PR, вики
+    validations:
+      required: false

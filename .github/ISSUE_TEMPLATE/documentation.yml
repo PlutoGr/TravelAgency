@@ -1,0 +1,36 @@
+name: Документация
+description: Правила, вики, процесс, README
+title: "документация(<сервис>): "
+labels: ["documentation", "статус: очередь"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Заголовок: `документация(<сервис>): …` (часто `общее` или `вики`).
+        Текст безличный. Правила: `.cursor/rules/project-github-formats.mdc`.
+  - type: textarea
+    id: zachem
+    attributes:
+      label: Зачем
+    validations:
+      required: true
+  - type: textarea
+    id: chto
+    attributes:
+      label: Что сделать
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Критерии приёмки
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: svyazi
+    attributes:
+      label: Связи
+    validations:
+      required: false
