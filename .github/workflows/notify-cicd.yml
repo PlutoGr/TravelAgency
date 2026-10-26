@@ -1,4 +1,4 @@
-# Пинок lead-боту после CI или Deploy (успех или ошибка). Секреты репозитория:
+# Уведомление оркестратора после CI или Deploy (успех или ошибка). Секреты репозитория:
 #   GROK_BOT_CICD_WEBHOOK_URL  : URL webhook routine «TravelAgency CI/CD»
 #   GROK_BOT_CICD_WEBHOOK_KEY  : sender key из панели routine
 # Пока секретов нет, job завершается без ошибки и пишет в лог.
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   ping:
-    name: Пинок lead
+    name: Уведомление
     runs-on: ubuntu-latest
     steps:
       - name: Отправить webhook
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
-            echo "Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY ещё не заданы : пинок пропущен."
+            echo "Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY ещё не заданы : уведомление пропущено."
             exit 0
           fi
           payload=$(jq -n \
@@ -56,5 +56,5 @@ jobs:
           head -c 500 /tmp/cicd-ping.out || true
           case "$code" in
             2*) exit 0 ;;
-            *) echo "Webhook не принял пинок (HTTP $code)"; exit 1 ;;
+            *) echo "Webhook не принял уведомление (HTTP $code)"; exit 1 ;;
           esac
