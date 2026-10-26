@@ -205,4 +205,64 @@ public class UserEntityTests
 
         user.Email.Should().Be("user@example.com");
     }
+
+    [Fact]
+    public void ChangeRole_FromClientToManager_UpdatesRole()
+    {
+        var user = User.Create("user@example.com", "hash", "Иван", "Петров", null);
+
+        user.ChangeRole(UserRole.Manager).Should().BeTrue();
+
+        user.Role.Should().Be(UserRole.Manager);
+        user.SessionVersion.Should().Be(0);
+    }
+
+    [Fact]
+    public void ChangeRole_WhenRoleIsTheSame_DoesNothing()
+    {
+        var user = User.Create("user@example.com", "hash", "Иван", "Петров", null, UserRole.Manager);
+
+        user.ChangeRole(UserRole.Manager).Should().BeFalse();
+        user.SessionVersion.Should().Be(0);
+    }
+
+    [Fact]
+    public void Block_SetsReasonAndRevokesSessionVersion()
+    {
+        var user = User.Create("user@example.com", "hash", "Иван", "Петров", null);
+        var actorId = Guid.NewGuid();
+        var now = new DateTime(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc);
+
+        user.Block("спам", actorId, now);
+
+        user.IsBlocked.Should().BeTrue();
+        user.BlockReason.Should().Be("спам");
+        user.BlockedByUserId.Should().Be(actorId);
+        user.BlockedAt.Should().Be(now);
+        user.SessionVersion.Should().Be(1);
+    }
+
+    [Fact]
+    public void Unblock_ClearsBlockAndKeepsSessionVersion()
+    {
+        var user = User.Create("user@example.com", "hash", "Иван", "Петров", null);
+        user.Block("спам", Guid.NewGuid(), DateTime.UtcNow);
+
+        user.Unblock(DateTime.UtcNow);
+
+        user.IsBlocked.Should().BeFalse();
+        user.BlockReason.Should().BeNull();
+        user.SessionVersion.Should().Be(1);
+    }
+
+    [Fact]
+    public void MarkLoggedIn_SetsLastLoginAt()
+    {
+        var user = User.Create("user@example.com", "hash", "Иван", "Петров", null);
+        var now = new DateTime(2026, 10, 26, 8, 0, 0, DateTimeKind.Utc);
+
+        user.MarkLoggedIn(now);
+
+        user.LastLoginAt.Should().Be(now);
+    }
 }

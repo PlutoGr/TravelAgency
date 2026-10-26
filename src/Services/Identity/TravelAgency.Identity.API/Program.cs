@@ -88,6 +88,7 @@ public partial class Program
 
         app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseMiddleware<ActiveSessionMiddleware>();
         app.UseAuthorization();
 
         app.MapControllers();

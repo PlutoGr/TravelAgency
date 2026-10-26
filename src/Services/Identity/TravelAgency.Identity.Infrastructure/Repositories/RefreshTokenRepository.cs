@@ -39,16 +39,17 @@ public sealed class RefreshTokenRepository(IdentityDbContext dbContext) : IRefre
 
     public async Task RevokeAllByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        var activeTokens = await dbContext.RefreshTokens
-            .Where(rt => rt.UserId == userId && rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
-            .ToListAsync(ct);
+        var now = DateTime.UtcNow;
+        await dbContext.RefreshTokens
+            .Where(rt => rt.UserId == userId && rt.RevokedAt == null && rt.ExpiresAt > now)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.RevokedAt, now), ct);
 
-        foreach (var token in activeTokens)
+        foreach (var local in dbContext.RefreshTokens.Local
+                     .Where(token => token.UserId == userId && token.RevokedAt == null && token.ExpiresAt > now)
+                     .ToList())
         {
-            token.Revoke();
+            dbContext.Entry(local).State = EntityState.Detached;
         }
-
-        await dbContext.SaveChangesAsync(ct);
     }
 
     public async Task<bool> TryRotateAsync(

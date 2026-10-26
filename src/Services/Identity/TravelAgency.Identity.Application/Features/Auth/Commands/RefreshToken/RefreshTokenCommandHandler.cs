@@ -41,6 +41,12 @@ public sealed class RefreshTokenCommandHandler(
         var user = await userRepository.GetByIdAsync(oldToken.UserId, cancellationToken)
             ?? throw new UnauthorizedException("Invalid or expired refresh token.");
 
+        if (user.IsBlocked)
+        {
+            await refreshTokenRepository.RevokeAllByUserIdAsync(user.Id, cancellationToken);
+            throw new UnauthorizedException("Invalid or expired refresh token.");
+        }
+
         var accessTokenDto = jwtTokenService.GenerateAccessToken(user);
         var newRefreshTokenString = jwtTokenService.GenerateRefreshToken();
         var newRefreshToken = Domain.Entities.RefreshToken.Create(

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 using TravelAgency.Gateway.Extensions;
 using TravelAgency.Gateway.Middleware;
+using TravelAgency.Shared.Infrastructure.Authorization;
 using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
@@ -14,6 +15,7 @@ builder.Host.AddGatewaySerilog();
 // Services
 builder.Services.AddGatewayAuthentication(configuration);
 builder.Services.AddGatewayAuthorization();
+builder.Services.AddSessionRevocation(configuration);
 builder.Services.AddGatewayYarp(configuration);
 builder.Services.AddGatewayRateLimiting(configuration);
 builder.Services.AddGatewayCors(configuration);
@@ -50,6 +52,7 @@ app.UseCors(CorsExtensions.GatewayCorsPolicyName);
 app.UseGatewayRateLimiting();
 app.UseMiddleware<CookieToAuthHeaderMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<SessionRevocationMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<AuthRequestMiddleware>();
 

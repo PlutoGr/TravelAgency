@@ -10,6 +10,16 @@ describe('authFormError', () => {
     ).toEqual({ place: 'form', text: AUTH_FORM_TEXT.registerEmailTaken });
   });
 
+  it('shows the blocked-account text with the support phone', () => {
+    const text = 'Доступ к аккаунту ограничен. Свяжитесь с поддержкой: +79991234567';
+    expect(
+      authFormError(
+        { response: { status: 401, data: { code: 'AccountBlocked', detail: text } } },
+        'login',
+      ),
+    ).toEqual({ place: 'form', text });
+  });
+
   it('maps login 401 to the credentials text and drops the English detail', () => {
     expect(
       authFormError(

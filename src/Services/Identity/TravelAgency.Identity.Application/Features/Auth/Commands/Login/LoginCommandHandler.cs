@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
+using TravelAgency.Identity.Application.Features.Auth;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Identity.Domain.Entities;
@@ -16,6 +17,7 @@ public sealed class LoginCommandHandler(
     IJwtTokenService jwtTokenService,
     IPasswordHasher passwordHasher,
     ILockoutService lockoutService,
+    ISiteSettingsRepository siteSettingsRepository,
     IUnitOfWork unitOfWork,
     IOptions<JwtSettings> jwtSettings)
     : IRequestHandler<LoginCommand, AuthTokensDto>
@@ -45,6 +47,13 @@ public sealed class LoginCommandHandler(
 
         lockoutService.ResetFailedAttempts(email);
 
+        if (user.IsBlocked)
+        {
+            var settings = await siteSettingsRepository.GetAsync(cancellationToken);
+            throw new AccountBlockedException(AccountAccessText.Blocked(settings?.SupportPhone));
+        }
+
+        user.MarkLoggedIn(DateTime.UtcNow);
         var accessTokenDto = jwtTokenService.GenerateAccessToken(user);
         var refreshTokenString = jwtTokenService.GenerateRefreshToken();
 

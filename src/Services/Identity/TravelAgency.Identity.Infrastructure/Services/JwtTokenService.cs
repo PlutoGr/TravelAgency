@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -9,6 +10,7 @@ using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Identity.Domain.Entities;
 using TravelAgency.Identity.Domain.Enums;
+using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Identity.Infrastructure.Services;
 
@@ -23,6 +25,7 @@ public sealed class JwtTokenService(IOptions<JwtSettings> settings) : IJwtTokenS
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role.ToRoleString()),
+            new Claim(SessionRevocationNames.ClaimType, user.SessionVersion.ToString(CultureInfo.InvariantCulture)),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

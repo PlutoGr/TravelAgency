@@ -45,6 +45,16 @@ public class UserRoleExtensionsTests
         act.Should().Throw<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData(UserRole.Admin, UserRole.Manager, true)]
+    [InlineData(UserRole.Manager, UserRole.Client, true)]
+    [InlineData(UserRole.Client, UserRole.Manager, false)]
+    [InlineData(UserRole.Manager, UserRole.Admin, false)]
+    public void IsDowngradeTo_ComparesRank(UserRole current, UserRole next, bool expected)
+    {
+        current.IsDowngradeTo(next).Should().Be(expected);
+    }
+
     [Fact]
     public void ToRoleString_RoundTrip_ProducesOriginalRole()
     {

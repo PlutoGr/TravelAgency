@@ -44,5 +44,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.CreatedAt)
             .IsRequired();
+
+        builder.Property(u => u.BlockReason)
+            .HasMaxLength(User.MaxBlockReasonLength);
+
+        builder.Property(u => u.SessionVersion)
+            .IsRequired()
+            .HasDefaultValue(0L);
     }
 }

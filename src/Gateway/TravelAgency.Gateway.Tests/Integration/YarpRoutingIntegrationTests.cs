@@ -623,6 +623,62 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
     }
 
     [Fact]
+    public async Task AdminUsers_WithoutJwt_Returns401()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.GetAsync("/api/v1/admin/users");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(AppRoles.Manager)]
+    [InlineData(AppRoles.Client)]
+    public async Task AdminUsers_AsNonAdmin_Returns403(string role)
+    {
+        var client = CreateClientForRole(role);
+        var id = Guid.NewGuid();
+
+        var list = await client.GetAsync("/api/v1/admin/users");
+        var card = await client.GetAsync($"/api/v1/admin/users/{id}");
+        var roleChange = await client.PutAsync(
+            $"/api/v1/admin/users/{id}/role",
+            new StringContent("{}", Encoding.UTF8, "application/json"));
+        var block = await client.PostAsync(
+            $"/api/v1/admin/users/{id}/block",
+            new StringContent("{}", Encoding.UTF8, "application/json"));
+        var unblock = await client.PostAsync($"/api/v1/admin/users/{id}/unblock", new StringContent(string.Empty));
+
+        Assert.Equal(HttpStatusCode.Forbidden, list.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, card.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, roleChange.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, block.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, unblock.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminUsers_AsAdmin_ProxiesToIdentity()
+    {
+        var client = CreateClientForRole(AppRoles.Admin);
+        var id = Guid.NewGuid();
+
+        var list = await client.GetAsync("/api/v1/admin/users?q=ivan&role=Client&page=1");
+        var card = await client.GetAsync($"/api/v1/admin/users/{id}");
+        var roleChange = await client.PutAsync(
+            $"/api/v1/admin/users/{id}/role",
+            new StringContent("{\"role\":\"Manager\"}", Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        Assert.Equal("admin-users-route", (await ReadEchoAsync(list)).RouteId);
+        Assert.Equal("/identity/admin/users", (await ReadEchoAsync(list)).Path);
+        Assert.Equal(HttpStatusCode.OK, card.StatusCode);
+        Assert.Equal($"/identity/admin/users/{id}", (await ReadEchoAsync(card)).Path);
+        Assert.Equal(HttpStatusCode.OK, roleChange.StatusCode);
+        Assert.Equal($"/identity/admin/users/{id}/role", (await ReadEchoAsync(roleChange)).Path);
+    }
+
+    [Fact]
     public async Task HealthReady_Returns200_WithMockBackend()
     {
         // Arrange

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TravelAgency.Identity.API.Extensions;
 using TravelAgency.Identity.Domain.Entities;
+using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Domain.Interfaces;
 using TravelAgency.Testing;
 
@@ -94,5 +95,22 @@ public sealed class IdentityGrpcKestrelFixture : IAsyncLifetime
 
         public Task<bool> ExistsAsync(string email, CancellationToken ct = default) =>
             Task.FromResult(false);
+
+        public Task<(IReadOnlyList<User> Items, int Total)> SearchAsync(
+            string? term,
+            UserRole? role,
+            bool? blocked,
+            int page,
+            int pageSize,
+            CancellationToken ct = default) =>
+            Task.FromResult<(IReadOnlyList<User>, int)>((Array.Empty<User>(), 0));
+
+        public Task<int> CountActiveAdminsAsync(CancellationToken ct = default) =>
+            Task.FromResult(1);
+
+        public Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
+            IReadOnlyCollection<Guid> ids,
+            CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>());
     }
 }
