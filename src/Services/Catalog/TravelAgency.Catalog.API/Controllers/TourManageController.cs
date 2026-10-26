@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TravelAgency.Catalog.Application.DTOs;
 using TravelAgency.Catalog.Application.Features.Tours.Manage;
+using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Catalog.API.Controllers;
 
 [ApiController]
 [Route("catalog/manage/tours")]
-[Authorize(Policy = "ManagerOrAdmin")]
+[Authorize(Policy = AuthPolicies.RequireManagerOrAdmin)]
 public class TourManageController(IMediator mediator) : ControllerBase
 {
     [HttpGet]

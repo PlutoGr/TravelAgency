@@ -9,7 +9,9 @@ import {
   LogOut,
   LayoutDashboard,
   ChevronDown,
+  Settings,
 } from 'lucide-react';
+import { hasAtLeastRole } from '@/domain/roles';
 import clsx from 'clsx';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
@@ -31,6 +33,8 @@ export default function Header() {
   const navigate = useNavigate();
 
   const { user, isAuthenticated, logout } = useAuthStore();
+  const showManagerPanel = hasAtLeastRole(user?.role, 'manager');
+  const showAdminSection = hasAtLeastRole(user?.role, 'admin');
   const { isMobileMenuOpen, toggleMobileMenu, closeMobileMenu, openAuthModal } =
     useUIStore();
   const favoriteCount = useFavoritesStore((s) => s.count);
@@ -186,12 +190,22 @@ export default function Header() {
                           setDropdownOpen(false);
                         }}
                       />
-                      {user.role === 'manager' && (
+                      {showManagerPanel && (
                         <DropdownLink
                           icon={LayoutDashboard}
                           label="Панель менеджера"
                           onClick={() => {
                             navigate('/manager');
+                            setDropdownOpen(false);
+                          }}
+                        />
+                      )}
+                      {showAdminSection && (
+                        <DropdownLink
+                          icon={Settings}
+                          label="Администрирование"
+                          onClick={() => {
+                            navigate('/admin');
                             setDropdownOpen(false);
                           }}
                         />
@@ -303,7 +317,7 @@ export default function Header() {
                   >
                     Мои бронирования
                   </button>
-                  {user.role === 'manager' && (
+                  {showManagerPanel && (
                     <button
                       onClick={() => {
                         navigate('/manager');
@@ -312,6 +326,17 @@ export default function Header() {
                       className="rounded-xl px-4 py-3 text-left text-lg font-medium text-primary transition-colors hover:bg-sand"
                     >
                       Панель менеджера
+                    </button>
+                  )}
+                  {showAdminSection && (
+                    <button
+                      onClick={() => {
+                        navigate('/admin');
+                        closeMobileMenu();
+                      }}
+                      className="rounded-xl px-4 py-3 text-left text-lg font-medium text-primary transition-colors hover:bg-sand"
+                    >
+                      Администрирование
                     </button>
                   )}
                   <button

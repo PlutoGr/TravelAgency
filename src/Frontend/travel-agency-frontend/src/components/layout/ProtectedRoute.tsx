@@ -1,10 +1,11 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Skeleton } from '@/components/ui';
+import { allowsRole, type AppRole } from '@/domain/roles';
 import { resolveReturnTo } from '@/utils/safeReturnTo';
 
 interface ProtectedRouteProps {
-  allowedRoles?: ('client' | 'manager' | 'admin')[];
+  allowedRoles?: readonly AppRole[];
 }
 
 function AuthLoadingFallback() {
@@ -38,7 +39,7 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to={`/?auth=login&returnTo=${returnTo}`} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !allowsRole(user.role, allowedRoles)) {
     return <Navigate to="/" replace />;
   }
 
