@@ -1,0 +1,50 @@
+# =====================================================================
+# После закрытия задачи ставит чип PR в блоке Development (Projects).
+# Скрипт .github/scripts/link_closed_by.py выбирает лучший смерженный PR
+# (сегмент номера задачи в имени ветки и/или #NN в заголовке или тексте,
+# без обязательного closes) и вызывает addCloseIssueReferences.
+# Уже связанный closedBy, Dependabot и отсутствие PR: лог и код 0.
+# Повтор безопасен. Старые закрытые задачи не обходятся: только это событие.
+#
+# Права GITHUB_TOKEN, Projects API не вызывается (BOARD_TOKEN не нужен).
+# Чип читает closedByPullRequestsReferences с самой задачи.
+#   contents: read        checkout скрипта. contents: write не нужен:
+#                         мутация не пишет git-объекты.
+#   issues: write         addCloseIssueReferences. В схеме цель мутации: issue.
+#   pull-requests: read   список смерженных PR.
+# Проверено по схеме GraphQL (мутация с 2026-08-26, цель именно issue)
+# и вызовом с несуществующим id: ответ NOT_FOUND, не отказ в правах.
+# Если ран получит «Resource not accessible by integration», следующий шаг
+# всё ещё GITHUB_TOKEN с pull-requests: write, не токен доски.
+# =====================================================================
+name: Чип PR после закрытия
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: link-closed-by-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  link:
+    name: Связь closedBy
+    if: github.event.issue.pull_request == null
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Привязать смерженный PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 .github/scripts/link_closed_by.py
