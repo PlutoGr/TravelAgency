@@ -6,4 +6,4 @@ alwaysApply: false
 - Epic: overall scheme, services, links, options and why chosen. Feature: model fields, API (method, path, access, body, response, errors), contracts, migrations, impact.
 - Business part unclear: do not rewrite it; options to «Решения», hand back.
 - Split: epic -> features (page + issue); feature -> subtasks (issue linking the anchor). Use GitHub sub-issues.
-- Every important choice = one «Решения» row; impactful «how we do it» choices need owner approval via the lead.
+- Every important choice = one «Решения» row. An impactful «how we do it» choice that is not already in the authorized task goes to the owner via the lead (step 3). Once that decision is recorded, or the owner already put this task in work, a matching PR does not need a second yes at merge (`00-core.mdc`).
