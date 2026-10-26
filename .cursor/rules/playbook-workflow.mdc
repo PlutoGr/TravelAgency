@@ -35,7 +35,7 @@ alwaysApply: false
 - Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 ## End-to-end checklist (no silent hangs)
-1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment.
+1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment; if the issue is a GitHub sub-issue of an epic (`тип: родительская`), set that epic to `статус: в работе` in the same moment (`project-github-formats.mdc`).
 2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
 3. Step 5: one cloud agent, one PR; branch includes issue number; `## Задача` `#NN` without `closes`; connect PR in GitHub Development immediately.
 4. Step 6: wait until automation comments and CI have finished; reply to every open finding (`playbook-step-06-review.mdc`); escalate per step 6; lead verifies the Development link. Authorized in-scope work merges without a separate yes, then the owner is notified (one PR at a time; next after Deploy green).
