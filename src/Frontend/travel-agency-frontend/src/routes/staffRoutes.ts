@@ -23,5 +23,6 @@ export const MANAGER_ROUTE_DEFS: readonly StaffRouteDef[] = [
 export const ADMIN_ROUTE_DEFS: readonly StaffRouteDef[] = [
   { path: 'admin', url: '/admin' },
   { path: 'admin/users', url: '/admin/users' },
+  { path: 'admin/users/:userId', url: '/admin/users/11111111-1111-1111-1111-111111111111' },
   { path: 'admin/settings', url: '/admin/settings' },
 ];

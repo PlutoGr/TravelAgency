@@ -1,6 +1,10 @@
+using Microsoft.AspNetCore.SignalR;
 using TravelAgency.Chat.API.Extensions;
+using TravelAgency.Chat.API.Hosting;
+using TravelAgency.Chat.API.Hubs;
 using TravelAgency.Chat.API.Middleware;
 using TravelAgency.Chat.Infrastructure;
+using TravelAgency.Shared.Infrastructure.Authorization;
 using TravelAgency.Shared.Infrastructure.Logging;
 using TravelAgency.Shared.Infrastructure.Middleware;
 
@@ -11,10 +15,14 @@ builder.Services.AddSingleton<IExceptionMapper, ChatExceptionMapper>();
 builder.Host.AddChatSerilog();
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+builder.Services.AddSingleton<ChatConnectionRegistry>();
+builder.Services.AddSingleton<SessionRevocationHubFilter>();
+builder.Services.AddSignalR(options => options.AddFilter<SessionRevocationHubFilter>());
 builder.Services.AddChatAuthentication(builder.Configuration);
 builder.Services.AddChatAuthorization();
 builder.Services.AddChatInfrastructure(builder.Configuration);
+builder.Services.AddSessionRevocation(builder.Configuration);
+builder.Services.AddHostedService<SessionRevocationListener>();
 builder.Services.AddChatCors(builder.Configuration);
 builder.Services.AddChatHealthChecks(builder.Configuration);
 builder.Services.AddChatTracing();
@@ -34,6 +42,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthentication();
+app.UseMiddleware<SessionRevocationMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

@@ -22,9 +22,10 @@ import {
   MANAGER_ROUTE_DEFS,
 } from '@/routes/staffRoutes';
 import { Skeleton } from '@/components/ui';
-import AdminPlaceholderPage from '@/pages/AdminPlaceholderPage';
 import AdminSectionPage from '@/pages/AdminSectionPage';
 import AdminSiteSettingsPage from '@/pages/AdminSiteSettingsPage';
+import AdminUserCardPage from '@/pages/AdminUserCardPage';
+import AdminUsersPage from '@/pages/AdminUsersPage';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const TourCatalogPage = lazy(() => import('@/pages/TourCatalogPage'));
@@ -70,7 +71,9 @@ function adminRouteElement(path: string): ReactElement | null {
     case 'admin':
       return <AdminSectionPage />;
     case 'admin/users':
-      return <AdminPlaceholderPage title="Пользователи" />;
+      return <AdminUsersPage />;
+    case 'admin/users/:userId':
+      return <AdminUserCardPage />;
     case 'admin/settings':
       return <AdminSiteSettingsPage />;
     default:

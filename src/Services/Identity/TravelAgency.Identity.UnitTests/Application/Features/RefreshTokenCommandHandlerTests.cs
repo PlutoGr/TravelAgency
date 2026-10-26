@@ -182,6 +182,30 @@ public class RefreshTokenCommandHandlerTests
         _logger.Messages.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_WhenUserIsBlocked_RevokesRefreshAndThrowsUnauthorized()
+    {
+        var user = User.Create("u@example.com", "hash", "J", "D", null);
+        user.Block("спам", Guid.NewGuid(), DateTime.UtcNow);
+        var oldToken = RefreshToken.Create(user.Id, "blocked-refresh", DateTime.UtcNow.AddDays(7));
+
+        _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync("blocked-refresh", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldToken);
+        _userRepoMock.Setup(r => r.GetByIdAsync(oldToken.UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _refreshTokenRepoMock
+            .Setup(r => r.RevokeAllByUserIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var act = async () => await _handler.Handle(
+            new RefreshTokenCommand(new RefreshTokenRequest("blocked-refresh")),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedException>();
+        _refreshTokenRepoMock.Verify(r => r.RevokeAllByUserIdAsync(user.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _jwtServiceMock.Verify(j => j.GenerateAccessToken(It.IsAny<User>()), Times.Never);
+    }
+
     private sealed class CollectingLogger : ILogger<RefreshTokenCommandHandler>
     {
         public List<string> Messages { get; } = [];

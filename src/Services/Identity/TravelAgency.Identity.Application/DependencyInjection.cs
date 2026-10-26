@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using TravelAgency.Identity.Application.Features.Admin;
 
 namespace TravelAgency.Identity.Application;
 
@@ -12,6 +13,7 @@ public static class DependencyInjection
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
+        services.AddScoped<UserAdminMutator>();
 
         return services;
     }

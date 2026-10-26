@@ -24,4 +24,14 @@ public static class UserRoleExtensions
         "Admin" => UserRole.Admin,
         _ => throw new ArgumentException($"Unknown role: {role}", nameof(role))
     };
+
+    public static int Rank(this UserRole role) => role switch
+    {
+        UserRole.Client => 0,
+        UserRole.Manager => 1,
+        UserRole.Admin => 2,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
+    };
+
+    public static bool IsDowngradeTo(this UserRole current, UserRole next) => next.Rank() < current.Rank();
 }

@@ -14,6 +14,7 @@ using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Repositories;
 using TravelAgency.Identity.Infrastructure.Seeding;
 using TravelAgency.Identity.Infrastructure.Services;
+using TravelAgency.Shared.Infrastructure.Authorization;
 using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Identity.Infrastructure.Extensions;
@@ -57,6 +58,8 @@ public static class InfrastructureExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ISiteSettingsRepository, SiteSettingsRepository>();
+        services.AddScoped<IUserAdminAuditRepository, UserAdminAuditRepository>();
+        services.AddScoped<IUserAdminLock, UserAdminLock>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasherService>();
@@ -83,6 +86,7 @@ public static class InfrastructureExtensions
             services.AddMemoryCache();
             services.AddSingleton<ISiteSettingsPublicCache, MemorySiteSettingsCache>();
         }
+        services.AddSessionRevocation(configuration);
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
         services.AddHostedService<IdentityDataSeeder>();

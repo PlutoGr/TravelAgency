@@ -43,6 +43,12 @@ function readCode(error: unknown): string | undefined {
   return typeof code === 'string' && code.length > 0 ? code : undefined;
 }
 
+function readDetail(error: unknown): string | undefined {
+  if (!isRecord(error) || !isRecord(error.response) || !isRecord(error.response.data)) return undefined;
+  const detail = error.response.data.detail;
+  return typeof detail === 'string' && detail.length > 0 ? detail : undefined;
+}
+
 /**
  * Текст формы по статусу HTTP и, для 400, по `code` из ProblemDetails.
  * `detail` и список `errors` сюда не попадают: неизвестный код даёт запасную фразу формы.
@@ -59,6 +65,13 @@ export function authFormError(error: unknown, form: AuthFormKind): AuthFormError
   }
   if (status === 429 && form === 'login') {
     return { place: 'form', text: AUTH_FORM_TEXT.loginRateLimited };
+  }
+  if (status === 401 && code === 'AccountBlocked' && form === 'login') {
+    const detail = readDetail(error);
+    if (detail?.startsWith('Доступ к аккаунту ограничен. Свяжитесь с поддержкой')) {
+      return { place: 'form', text: detail };
+    }
+    return { place: 'form', text: 'Доступ к аккаунту ограничен. Свяжитесь с поддержкой.' };
   }
   if (status === 401 && form === 'login') {
     return { place: 'form', text: AUTH_FORM_TEXT.loginInvalid };

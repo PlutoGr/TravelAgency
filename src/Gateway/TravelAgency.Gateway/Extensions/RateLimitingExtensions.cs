@@ -14,7 +14,7 @@ public static class RateLimitingExtensions
         var redisConnection = configuration.GetConnectionString("Redis");
         var useRedis = !string.IsNullOrWhiteSpace(redisConnection);
 
-        if (useRedis)
+        if (useRedis && !services.Any(descriptor => descriptor.ServiceType == typeof(IConnectionMultiplexer)))
         {
             services.AddSingleton<IConnectionMultiplexer>(_ =>
                 ConnectionMultiplexer.Connect(redisConnection!));

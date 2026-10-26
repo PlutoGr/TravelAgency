@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Identity.Application.Settings;
+using TravelAgency.Shared.Contracts.Authorization;
 using TravelAgency.Identity.Domain.Entities;
 using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Infrastructure.Services;
@@ -103,6 +104,18 @@ public class JwtTokenServiceTests
 
         var claims = ParseClaims(result.AccessToken);
         claims.Should().Contain(c => c.Type == ClaimTypes.Role && c.Value == "Manager");
+    }
+
+    [Fact]
+    public void GenerateAccessToken_TokenContainsSessionVersionClaim()
+    {
+        var user = User.Create("test@example.com", "hash", "John", "Doe", null);
+        user.RevokeSessions();
+
+        var result = _service.GenerateAccessToken(user);
+
+        var claims = ParseClaims(result.AccessToken);
+        claims.Should().Contain(c => c.Type == SessionRevocationNames.ClaimType && c.Value == "1");
     }
 
     [Fact]

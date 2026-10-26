@@ -14,7 +14,11 @@ internal sealed class IdentityExceptionMapper : IExceptionMapper
             return false;
         }
 
-        result = (appEx.StatusCode, CreateAppProblemDetails(context, appEx));
+        var details = CreateAppProblemDetails(context, appEx);
+        if (exception is AccountBlockedException)
+            details.Extensions["code"] = AccountBlockedException.ErrorCode;
+
+        result = (appEx.StatusCode, details);
         return true;
     }
 
@@ -22,7 +26,9 @@ internal sealed class IdentityExceptionMapper : IExceptionMapper
     {
         var title = exception.StatusCode switch
         {
+            400 => "Bad Request",
             401 => "Unauthorized",
+            403 => "Forbidden",
             404 => "Not Found",
             409 => "Conflict",
             _ => "Application Error"

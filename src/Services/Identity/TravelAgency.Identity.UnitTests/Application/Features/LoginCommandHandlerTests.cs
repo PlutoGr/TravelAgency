@@ -4,6 +4,7 @@ using Moq;
 using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
+using TravelAgency.Identity.Application.Features.Auth;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Login;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
@@ -19,6 +20,7 @@ public class LoginCommandHandlerTests
     private readonly Mock<IJwtTokenService> _jwtServiceMock = new();
     private readonly Mock<IPasswordHasher> _passwordHasherMock = new();
     private readonly Mock<ILockoutService> _lockoutMock = new();
+    private readonly Mock<ISiteSettingsRepository> _settingsMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly LoginCommandHandler _handler;
 
@@ -40,6 +42,7 @@ public class LoginCommandHandlerTests
             _jwtServiceMock.Object,
             _passwordHasherMock.Object,
             _lockoutMock.Object,
+            _settingsMock.Object,
             _unitOfWorkMock.Object,
             Options.Create(_jwtSettings));
     }
@@ -133,5 +136,26 @@ public class LoginCommandHandlerTests
         await act.Should().ThrowAsync<UnauthorizedException>();
         _userRepoMock.Verify(r => r.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _lockoutMock.Verify(l => l.RecordFailedAttempt(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPasswordMatchesAndUserIsBlocked_ThrowsAccountBlockedWithSupportPhone()
+    {
+        var user = User.Create("user@example.com", "hashedPw", "John", "Doe", null);
+        user.Block("спам", Guid.NewGuid(), DateTime.UtcNow);
+        _userRepoMock.Setup(r => r.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _passwordHasherMock.Setup(h => h.Verify("myPassword", "hashedPw")).Returns(true);
+        _settingsMock.Setup(s => s.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SiteSettings { SupportPhone = "+79990001122" });
+
+        var act = async () => await _handler.Handle(
+            new LoginCommand(new LoginRequest("user@example.com", "myPassword")),
+            CancellationToken.None);
+
+        var error = await act.Should().ThrowAsync<AccountBlockedException>();
+        error.Which.Message.Should().Be(AccountAccessText.Blocked("+79990001122"));
+        _refreshTokenRepoMock.Verify(r => r.Stage(It.IsAny<RefreshToken>()), Times.Never);
+        user.LastLoginAt.Should().BeNull();
     }
 }

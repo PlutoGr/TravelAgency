@@ -48,6 +48,15 @@ vi.mock('@/pages/ManagerClientsPage', () => ({
   default: () => createElement('h1', null, 'Клиенты менеджера'),
 }));
 
+vi.mock('@/api/adminUsers', () => ({
+  getAdminUsers: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
+  getAdminUser: vi.fn(),
+  changeAdminUserRole: vi.fn(),
+  blockAdminUser: vi.fn(),
+  unblockAdminUser: vi.fn(),
+  adminUserErrorMessage: () => 'Не удалось выполнить действие',
+}));
+
 vi.mock('@/api/siteSettings', () => ({
   getAdminSiteSettings: vi.fn().mockResolvedValue({
     siteName: 'TravelAgency',
@@ -222,7 +231,8 @@ describe('role access', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: 'Пользователи' })).toBeInTheDocument();
     });
-    expect(screen.getByText('Раздел в разработке.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Поиск')).toBeInTheDocument();
+    expect(screen.queryByText('Раздел в разработке.')).not.toBeInTheDocument();
 
     usersView.unmount();
     renderAt('/admin/settings');

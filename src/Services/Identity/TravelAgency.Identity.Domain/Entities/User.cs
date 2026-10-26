@@ -11,9 +11,18 @@ public class User
     public string FirstName { get; private set; } = null!;
     public string LastName { get; private set; } = null!;
     public string? Phone { get; private set; }
+    public const int MaxBlockReasonLength = 500;
+
     public UserRole Role { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    public DateTime? LastLoginAt { get; private set; }
+    public DateTime? BlockedAt { get; private set; }
+    public string? BlockReason { get; private set; }
+    public Guid? BlockedByUserId { get; private set; }
+    public long SessionVersion { get; private set; }
+
+    public bool IsBlocked => BlockedAt.HasValue;
 
     private User() { }
 
@@ -60,5 +69,53 @@ public class User
     {
         PasswordHash = newPasswordHash;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkLoggedIn(DateTime utcNow)
+    {
+        LastLoginAt = utcNow;
+    }
+
+    public bool ChangeRole(UserRole newRole)
+    {
+        if (Role == newRole)
+            return false;
+
+        Role = newRole;
+        UpdatedAt = DateTime.UtcNow;
+        return true;
+    }
+
+    public void RevokeSessions()
+    {
+        SessionVersion++;
+    }
+
+    public void Block(string reason, Guid actorId, DateTime utcNow)
+    {
+        var trimmed = reason.Trim();
+        if (trimmed.Length == 0)
+            throw new IdentityDomainException("Block reason is required.");
+        if (trimmed.Length > MaxBlockReasonLength)
+            throw new IdentityDomainException("Block reason is too long.");
+        if (actorId == Guid.Empty)
+            throw new IdentityDomainException("Actor is required.");
+
+        BlockReason = trimmed;
+        BlockedByUserId = actorId;
+        BlockedAt = utcNow;
+        UpdatedAt = utcNow;
+        SessionVersion++;
+    }
+
+    public void Unblock(DateTime utcNow)
+    {
+        if (!IsBlocked)
+            throw new IdentityDomainException("User is not blocked.");
+
+        BlockedAt = null;
+        BlockReason = null;
+        BlockedByUserId = null;
+        UpdatedAt = utcNow;
     }
 }

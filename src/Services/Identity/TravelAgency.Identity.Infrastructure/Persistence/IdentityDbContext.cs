@@ -10,6 +10,7 @@ public class IdentityDbContext : DbContext, IUnitOfWork
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
     public DbSet<SiteSettingsAudit> SiteSettingsAudits => Set<SiteSettingsAudit>();
+    public DbSet<UserAdminAudit> UserAdminAudits => Set<UserAdminAudit>();
 
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
 
