@@ -8,15 +8,21 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Infrastructure.Persistence;
+using TravelAgency.Identity.Infrastructure.Services;
+using TravelAgency.Identity.IntegrationTests.API;
 
 namespace TravelAgency.Identity.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
-    // Keep the connection open for the factory lifetime so the SQLite in-memory
-    // database persists across all requests made during a test class.
-    private readonly SqliteConnection _connection;
+    // Общая in-memory база живёт, пока открыто хотя бы одно соединение.
+    // У каждого DbContext своё соединение: одно общее соединение на параллельные
+    // запросы даёт SQLITE_BUSY «unable to delete/modify user-function due to active statements»
+    // и ответ «A database error occurred.» вместо бизнес-ошибки.
+    private readonly string _connectionString;
+    private readonly SqliteConnection _keepAlive;
 
     /// <summary>
     /// Лимит политики auth для этого хоста. Не читается из процесса:
@@ -26,8 +32,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public CustomWebApplicationFactory()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
+        _connectionString = $"Data Source=identity-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+        _keepAlive = new SqliteConnection(_connectionString);
+        _keepAlive.Open();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -56,15 +63,20 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             // which causes a "two database providers registered" conflict with Npgsql.
             // Using a factory bypasses that registration path entirely.
             //
-            // Passing the open SqliteConnection (rather than a connection string) prevents
-            // EF Core from closing it between requests — the in-memory database lives as
-            // long as at least one connection is open.
+            // Строка подключения, а не один SqliteConnection: параллельные запросы
+            // получают разные соединения к общей базе (её держит _keepAlive).
             var sqliteOptions = new DbContextOptionsBuilder<IdentityDbContext>()
-                .UseSqlite(_connection)
+                .UseSqlite(_connectionString)
                 .Options;
 
             services.AddScoped<IdentityDbContext>(_ => new IdentityDbContext(sqliteOptions));
             services.AddScoped<DbContextOptions<IdentityDbContext>>(_ => sqliteOptions);
+
+            services.RemoveAll<IUserAdminLock>();
+            services.AddScoped<UserAdminLock>();
+            services.AddScoped<IUserAdminLock>(sp => new DemoteRaceLock(
+                sp.GetRequiredService<UserAdminLock>(),
+                sp.GetRequiredService<IHttpContextAccessor>()));
 
             // Override JWT validation parameters after all service configuration runs.
             // AddIdentityAuthentication reads config values eagerly, so PostConfigure is
@@ -118,6 +130,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        await _connection.DisposeAsync();
+        await _keepAlive.DisposeAsync();
     }
 }
