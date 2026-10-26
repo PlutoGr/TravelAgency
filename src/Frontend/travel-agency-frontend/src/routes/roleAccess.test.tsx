@@ -48,6 +48,25 @@ vi.mock('@/pages/ManagerClientsPage', () => ({
   default: () => createElement('h1', null, 'Клиенты менеджера'),
 }));
 
+vi.mock('@/api/siteSettings', () => ({
+  getAdminSiteSettings: vi.fn().mockResolvedValue({
+    siteName: 'TravelAgency',
+    supportPhone: null,
+    contactEmail: null,
+    officeAddress: null,
+    workingHours: null,
+    socialLinks: [],
+    bannerText: null,
+    bannerEnabled: false,
+    updatedAt: '2026-10-26T00:00:00.000Z',
+    updatedByUserId: null,
+  }),
+  getSiteSettingsAudit: vi.fn().mockResolvedValue([]),
+  updateSiteSettings: vi.fn(),
+  getPublicSiteSettings: vi.fn(),
+  siteSettingsFieldErrors: vi.fn().mockReturnValue({}),
+}));
+
 const MANAGER_PAGE_TITLES: Record<string, string> = {
   '/manager': 'Дашборд менеджера',
   '/manager/bookings': 'Бронирования менеджера',
@@ -210,8 +229,9 @@ describe('role access', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: 'Настройки сайта' })).toBeInTheDocument();
     });
-    expect(screen.getByText('Раздел в разработке.')).toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Название сайта')).toBeInTheDocument();
+    expect(screen.queryByText('Раздел в разработке.')).not.toBeInTheDocument();
   });
 
   it('guest opening /admin is sent to login and keeps the return path', async () => {

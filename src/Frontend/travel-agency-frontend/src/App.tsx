@@ -24,6 +24,7 @@ import {
 import { Skeleton } from '@/components/ui';
 import AdminPlaceholderPage from '@/pages/AdminPlaceholderPage';
 import AdminSectionPage from '@/pages/AdminSectionPage';
+import AdminSiteSettingsPage from '@/pages/AdminSiteSettingsPage';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const TourCatalogPage = lazy(() => import('@/pages/TourCatalogPage'));
@@ -71,7 +72,7 @@ function adminRouteElement(path: string): ReactElement | null {
     case 'admin/users':
       return <AdminPlaceholderPage title="Пользователи" />;
     case 'admin/settings':
-      return <AdminPlaceholderPage title="Настройки сайта" />;
+      return <AdminSiteSettingsPage />;
     default:
       return null;
   }

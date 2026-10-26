@@ -1,20 +1,68 @@
+import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Send, Phone, Mail, MapPin } from 'lucide-react';
+import { Send, Phone, Mail, MapPin, Clock } from 'lucide-react';
+import {
+  FOOTER_PHONE_PLACEHOLDER,
+  LATER_LABEL,
+  isContactEmail,
+  isE164Phone,
+  isHttpsUrl,
+} from '@/domain/siteSettings';
+import { usePublicSiteSettings } from '@/store/siteSettingsStore';
 
-const LATER = 'Появится позже';
+const LATER = LATER_LABEL;
 
 const TOURIST_LINKS = [
   { label: 'Популярные туры', href: '/tours' },
   { label: 'Отзывы', href: '/#reviews' },
 ] as const;
 
-const CONTACTS = [
-  { id: 'phone', icon: Phone, text: '+7 999 999-99-99', withLater: true },
-  { id: 'email', icon: Mail, text: LATER, withLater: false },
-  { id: 'address', icon: MapPin, text: LATER, withLater: false },
-] as const;
+interface ContactItem {
+  id: string;
+  icon: LucideIcon;
+  text: string;
+  withLater: boolean;
+  href?: string;
+}
 
 export default function Footer() {
+  const settings = usePublicSiteSettings();
+  const phone = settings.supportPhone?.trim() ?? '';
+  const email = settings.contactEmail?.trim() ?? '';
+  const address = settings.officeAddress?.trim() ?? '';
+  const hours = settings.workingHours?.trim() ?? '';
+  const socialLinks = (settings.socialLinks ?? []).filter(
+    (link) => link.label.trim() && isHttpsUrl(link.url.trim()),
+  );
+
+  const contacts: ContactItem[] = [
+    phone
+      ? {
+          id: 'phone',
+          icon: Phone,
+          text: phone,
+          withLater: false,
+          href: isE164Phone(phone) ? `tel:${phone}` : undefined,
+        }
+      : { id: 'phone', icon: Phone, text: FOOTER_PHONE_PLACEHOLDER, withLater: true },
+    email
+      ? {
+          id: 'email',
+          icon: Mail,
+          text: email,
+          withLater: false,
+          href: isContactEmail(email) ? `mailto:${email}` : undefined,
+        }
+      : { id: 'email', icon: Mail, text: LATER, withLater: false },
+    address
+      ? { id: 'address', icon: MapPin, text: address, withLater: false }
+      : { id: 'address', icon: MapPin, text: LATER, withLater: false },
+  ];
+
+  if (hours) {
+    contacts.push({ id: 'hours', icon: Clock, text: hours, withLater: false });
+  }
+
   return (
     <footer id="contacts" className="bg-dark text-white/80">
       <div className="mx-auto max-w-7xl px-4 py-16 lg:px-8">
@@ -25,7 +73,7 @@ export default function Footer() {
               to="/"
               className="font-heading text-2xl font-bold text-white"
             >
-              TravelAgency
+              {settings.siteName}
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-white/60">
               Откройте мир незабываемых путешествий. Мы создаём уникальные туры,
@@ -58,13 +106,31 @@ export default function Footer() {
               Контакты
             </h3>
             <ul className="space-y-3">
-              {CONTACTS.map(({ id, icon: Icon, text, withLater }) => (
+              {contacts.map(({ id, icon: Icon, text, withLater, href }) => (
                 <li key={id} className="flex items-center gap-3 text-sm text-white/60">
                   <Icon size={16} className="shrink-0 text-terracotta" />
                   <span className="flex flex-wrap items-baseline gap-x-2">
-                    <span>{text}</span>
+                    {href ? (
+                      <a href={href} className="transition-colors hover:text-terracotta">
+                        {text}
+                      </a>
+                    ) : (
+                      <span>{text}</span>
+                    )}
                     {withLater ? <span>{LATER}</span> : null}
                   </span>
+                </li>
+              ))}
+              {socialLinks.map((link) => (
+                <li key={`${link.label}-${link.url}`}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-white/60 transition-colors hover:text-terracotta"
+                  >
+                    {link.label}
+                  </a>
                 </li>
               ))}
             </ul>
@@ -108,7 +174,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 md:flex-row">
           <p className="text-sm text-white/40">
-            © {new Date().getFullYear()} TravelAgency. Все права защищены.
+            © {new Date().getFullYear()} {settings.siteName}. Все права защищены.
           </p>
         </div>
       </div>

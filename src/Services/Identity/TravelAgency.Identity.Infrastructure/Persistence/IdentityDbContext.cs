@@ -8,6 +8,8 @@ public class IdentityDbContext : DbContext, IUnitOfWork
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
+    public DbSet<SiteSettingsAudit> SiteSettingsAudits => Set<SiteSettingsAudit>();
 
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
 
