@@ -34,7 +34,7 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 ## Merge order
 - Merger: Grok Bot. Before merge: green CI + Cursor Automations comments per `project-cursor-automations.mdc` + step 6 escalation rules. Next merge only after «Deploy to dev» is green.
 - Do not require a separate architect pass on every small/routine PR when automations are clean; when step 6 escalation triggers, the lead launches a cloud agent with `.cursor/agents/architect.md` (or reviews trivial diffs itself) and posts the verdict.
-- Dependabot minor/patch: automations + CI. Major (e.g. vitest, eslint, jsdom, node majors): also owner approval via the lead.
+- Dependabot (minor, patch, and major, including vitest, eslint, jsdom, node): automations plus the dependency rule in `playbook-git-pr.mdc` (green CI and no owner clarification, then report the merge; otherwise do not merge).
 - Docs-with-code = the matching wiki `Doc-` page (or a Doc- gap issue opened from the after-merge automation).
 - Temporary dumps on dev allowed if deleted after the check.
 ## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
