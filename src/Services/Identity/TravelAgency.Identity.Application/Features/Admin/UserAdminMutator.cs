@@ -24,6 +24,9 @@ public sealed class UserAdminMutator(
     IOptions<JwtSettings> jwtSettings,
     ILogger<UserAdminMutator> logger)
 {
+    private const int SessionPublishAttempts = 3;
+    private static readonly TimeSpan SessionPublishRetryBaseDelay = TimeSpan.FromMilliseconds(50);
+
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
 
     public Task<AdminUserMutationResponse> ChangeRoleAsync(Guid targetId, string? role, CancellationToken cancellationToken)
@@ -179,14 +182,34 @@ public sealed class UserAdminMutator(
     private async Task PublishAsync(Guid userId, long version, bool blocked, CancellationToken cancellationToken)
     {
         var ttl = TimeSpan.FromMinutes(Math.Max(1, _jwtSettings.AccessTokenExpirationMinutes) + 2);
-        try
+        for (var attempt = 1; attempt <= SessionPublishAttempts; attempt++)
         {
-            await sessionRevocationStore.SetAsync(userId, version, blocked, ttl, cancellationToken);
-            await sessionRevocationStore.PublishAsync(userId, cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Не удалось записать отзыв сессии {UserId}", userId);
+            try
+            {
+                await sessionRevocationStore.SetAsync(userId, version, blocked, ttl, cancellationToken);
+                await sessionRevocationStore.PublishAsync(userId, cancellationToken);
+                return;
+            }
+            catch (Exception exception)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogWarning(exception, "Не удалось записать отзыв сессии {UserId}", userId);
+                    return;
+                }
+
+                if (attempt == SessionPublishAttempts)
+                {
+                    logger.LogError(
+                        exception,
+                        "Не удалось записать отзыв сессии {UserId} после {Attempts} попыток",
+                        userId,
+                        attempt);
+                    return;
+                }
+
+                await Task.Delay(SessionPublishRetryBaseDelay * attempt, CancellationToken.None);
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -30,6 +31,15 @@ public class UserAdminMutatorTests
         _current.Setup(c => c.UserId).Returns(_actorId);
         _users.Setup(r => r.CountActiveAdminsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(2);
         _refresh.Setup(r => r.RevokeAllByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _sessions.Setup(s => s.SetAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<long>(),
+                It.IsAny<bool>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _sessions.Setup(s => s.PublishAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _mutator = new UserAdminMutator(
             _current.Object,
@@ -134,6 +144,74 @@ public class UserAdminMutatorTests
     }
 
     [Fact]
+    public async Task Block_RetriesTransientSessionPublishThenSucceeds()
+    {
+        var target = User.Create("client@example.com", "hash", "Иван", "Петров", null);
+        SetupUsers(target);
+        _sessions.SetupSequence(s => s.SetAsync(
+                target.Id,
+                1,
+                true,
+                TimeSpan.FromMinutes(17),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("redis"))
+            .Returns(Task.CompletedTask)
+            .Returns(Task.CompletedTask);
+        _sessions.SetupSequence(s => s.PublishAsync(target.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("redis"))
+            .Returns(Task.CompletedTask);
+
+        var result = await _mutator.BlockAsync(target.Id, "спам", CancellationToken.None);
+
+        result.Message.Should().Be(UserAdminText.UserBlocked);
+        target.SessionVersion.Should().Be(1);
+        _sessions.Verify(
+            s => s.SetAsync(target.Id, 1, true, TimeSpan.FromMinutes(17), It.IsAny<CancellationToken>()),
+            Times.Exactly(3));
+        _sessions.Verify(s => s.PublishAsync(target.Id, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _refresh.Verify(r => r.RevokeAllByUserIdAsync(target.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Block_KeepsMutationWhenSessionPublishRetriesAreExhausted()
+    {
+        var target = User.Create("client@example.com", "hash", "Иван", "Петров", null);
+        SetupUsers(target);
+        var logger = new CollectingLogger();
+        var mutator = new UserAdminMutator(
+            _current.Object,
+            _users.Object,
+            _audit.Object,
+            _refresh.Object,
+            new ImmediateLock(),
+            Mock.Of<TravelAgency.Identity.Application.Abstractions.IUnitOfWork>(),
+            _sessions.Object,
+            Options.Create(new JwtSettings { AccessTokenExpirationMinutes = 15 }),
+            logger);
+        _sessions.Setup(s => s.SetAsync(
+                target.Id,
+                1,
+                true,
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _sessions.Setup(s => s.PublishAsync(target.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("redis"));
+
+        var result = await mutator.BlockAsync(target.Id, "спам", CancellationToken.None);
+
+        result.Message.Should().Be(UserAdminText.UserBlocked);
+        result.User.Status.Should().Be("Blocked");
+        target.SessionVersion.Should().Be(1);
+        _refresh.Verify(r => r.RevokeAllByUserIdAsync(target.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _sessions.Verify(
+            s => s.SetAsync(target.Id, 1, true, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(3));
+        _sessions.Verify(s => s.PublishAsync(target.Id, It.IsAny<CancellationToken>()), Times.Exactly(3));
+        logger.Levels.Should().Equal(LogLevel.Error);
+    }
+
+    [Fact]
     public async Task Block_Self_Throws()
     {
         var self = User.Create("admin@example.com", "hash", "Админ", "Главный", null, UserRole.Admin, _actorId);
@@ -206,5 +284,25 @@ public class UserAdminMutatorTests
     {
         public Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken) =>
             action(cancellationToken);
+    }
+
+    private sealed class CollectingLogger : ILogger<UserAdminMutator>
+    {
+        public List<LogLevel> Levels { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Levels.Add(logLevel);
+            formatter(state, exception);
+        }
     }
 }
