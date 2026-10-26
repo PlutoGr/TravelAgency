@@ -89,6 +89,12 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
         body.Should().NotBeNull();
         body!.AccessToken.Should().NotBeNullOrEmpty();
         body.RefreshToken.Should().NotBeNullOrEmpty();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var stored = await db.RefreshTokens.AsNoTracking().SingleAsync();
+        stored.Token.Should().Be(RefreshToken.Hash(body.RefreshToken));
+        stored.Token.Should().NotBe(body.RefreshToken);
     }
 
     [Fact]
@@ -144,6 +150,12 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
         var body = await response.Content.ReadFromJsonAsync<AuthTokensDto>();
         body.Should().NotBeNull();
         body!.AccessToken.Should().NotBeNullOrEmpty();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var stored = await db.RefreshTokens.AsNoTracking().SingleAsync();
+        stored.Token.Should().Be(RefreshToken.Hash(body.RefreshToken));
+        stored.Token.Should().NotBe(body.RefreshToken);
     }
 
     [Fact]
@@ -202,6 +214,12 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
         var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var stored = await db.RefreshTokens.AsNoTracking().SingleAsync();
+        stored.Token.Should().Be(RefreshToken.Hash(tokens.RefreshToken));
+        stored.IsRevoked.Should().BeTrue();
     }
 
     [Fact]
@@ -342,6 +360,7 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
             "/identity/refresh",
             new RefreshTokenRequest(tokens!.RefreshToken));
         refreshResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var newTokens = await refreshResp.Content.ReadFromJsonAsync<AuthTokensDto>();
 
         var reuse = await _client.PostAsJsonAsync(
             "/identity/refresh",
@@ -350,8 +369,16 @@ public class AuthControllerIntegrationTests : IClassFixture<CustomWebApplication
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var stored = await db.RefreshTokens.SingleAsync(t => t.Token == tokens.RefreshToken);
+        var stored = await db.RefreshTokens.SingleAsync(t => t.Token == RefreshToken.Hash(tokens.RefreshToken));
         stored.RevokedAt.Should().NotBeNull();
         stored.IsRevoked.Should().BeTrue();
+        stored.ReplacedByToken.Should().Be(RefreshToken.Hash(newTokens!.RefreshToken));
+        var rows = await db.RefreshTokens.AsNoTracking().ToListAsync();
+        rows.Should().OnlyContain(row =>
+            row.Token.Length == RefreshToken.HashLength
+            && row.Token != tokens.RefreshToken
+            && row.Token != newTokens.RefreshToken
+            && (row.ReplacedByToken == null || row.ReplacedByToken.Length == RefreshToken.HashLength));
+        rows.Should().NotContain(row => row.RevokedAt == null);
     }
 }

@@ -35,16 +35,16 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ReplacedByToken")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Token")
                         .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

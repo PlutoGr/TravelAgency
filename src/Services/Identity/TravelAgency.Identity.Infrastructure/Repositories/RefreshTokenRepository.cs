@@ -9,7 +9,11 @@ public sealed class RefreshTokenRepository(IdentityDbContext dbContext) : IRefre
 {
     public async Task<RefreshToken?> GetByTokenAsync(string token, CancellationToken ct = default)
     {
-        return await dbContext.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == token, ct);
+        if (string.IsNullOrEmpty(token))
+            return null;
+
+        var hash = RefreshToken.Hash(token);
+        return await dbContext.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == hash, ct);
     }
 
     public async Task<IReadOnlyList<RefreshToken>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default)
@@ -45,5 +49,40 @@ public sealed class RefreshTokenRepository(IdentityDbContext dbContext) : IRefre
         }
 
         await dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task<bool> TryRotateAsync(
+        Guid activeTokenId,
+        RefreshToken replacement,
+        string replacementPlaintext,
+        CancellationToken ct = default)
+    {
+        var tracked = dbContext.RefreshTokens.Local.FirstOrDefault(token => token.Id == activeTokenId);
+        if (tracked is not null)
+            dbContext.Entry(tracked).State = EntityState.Detached;
+
+        var now = DateTime.UtcNow;
+        var replacementHash = RefreshToken.Hash(replacementPlaintext);
+
+        // Условный UPDATE: второй параллельный запрос меняет 0 строк и не получает новый токен.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
+        var affected = await dbContext.RefreshTokens
+            .Where(token => token.Id == activeTokenId && token.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(token => token.RevokedAt, now)
+                    .SetProperty(token => token.ReplacedByToken, replacementHash),
+                ct);
+
+        if (affected != 1)
+        {
+            await transaction.RollbackAsync(ct);
+            return false;
+        }
+
+        dbContext.RefreshTokens.Add(replacement);
+        await dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return true;
     }
 }

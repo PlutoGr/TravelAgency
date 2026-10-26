@@ -14,7 +14,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 
         builder.Property(rt => rt.Token)
             .IsRequired()
-            .HasMaxLength(512);
+            .HasMaxLength(RefreshToken.HashLength);
 
         builder.HasIndex(rt => rt.Token)
             .IsUnique();
@@ -26,7 +26,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .IsRequired();
 
         builder.Property(rt => rt.ReplacedByToken)
-            .HasMaxLength(512);
+            .HasMaxLength(RefreshToken.HashLength);
 
         builder.HasOne(rt => rt.User)
             .WithMany()

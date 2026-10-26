@@ -58,7 +58,8 @@ public class RefreshTokenRepositoryTests : IDisposable
         var result = await _repository.GetByTokenAsync("findme");
 
         result.Should().NotBeNull();
-        result!.Token.Should().Be("findme");
+        result!.Token.Should().Be(RefreshToken.Hash("findme"));
+        result.Token.Should().NotBe("findme");
     }
 
     [Fact]
@@ -85,7 +86,7 @@ public class RefreshTokenRepositoryTests : IDisposable
         var result = await _repository.GetActiveByUserIdAsync(user.Id);
 
         result.Should().HaveCount(1);
-        result[0].Token.Should().Be("active");
+        result[0].Token.Should().Be(RefreshToken.Hash("active"));
     }
 
     [Fact]
@@ -112,7 +113,8 @@ public class RefreshTokenRepositoryTests : IDisposable
 
         var updated = await _repository.GetByTokenAsync("updatable");
         updated!.IsRevoked.Should().BeTrue();
-        updated.ReplacedByToken.Should().Be("newToken");
+        updated.ReplacedByToken.Should().Be(RefreshToken.Hash("newToken"));
+        updated.ReplacedByToken.Should().NotBe("newToken");
     }
 
     [Fact]
@@ -169,6 +171,43 @@ public class RefreshTokenRepositoryTests : IDisposable
 
         var found = await _repository.GetByTokenAsync("cascade-token");
         found.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TryRotateAsync_StoresHashesAndRevokesPrevious()
+    {
+        var user = await CreateAndSaveUserAsync();
+        var token = RefreshToken.Create(user.Id, "plain-old", DateTime.UtcNow.AddDays(7));
+        await _repository.AddAsync(token);
+        var replacement = RefreshToken.Create(user.Id, "plain-new", DateTime.UtcNow.AddDays(7));
+
+        var rotated = await _repository.TryRotateAsync(token.Id, replacement, "plain-new");
+
+        rotated.Should().BeTrue();
+        var old = await _repository.GetByTokenAsync("plain-old");
+        old!.IsRevoked.Should().BeTrue();
+        old.Token.Should().Be(RefreshToken.Hash("plain-old"));
+        old.ReplacedByToken.Should().Be(RefreshToken.Hash("plain-new"));
+        var created = await _repository.GetByTokenAsync("plain-new");
+        created.Should().NotBeNull();
+        created!.Token.Should().Be(RefreshToken.Hash("plain-new"));
+        created.Token.Should().NotBe("plain-new");
+    }
+
+    [Fact]
+    public async Task TryRotateAsync_WhenAlreadyRevoked_ReturnsFalseAndDoesNotInsert()
+    {
+        var user = await CreateAndSaveUserAsync();
+        var token = RefreshToken.Create(user.Id, "plain-old", DateTime.UtcNow.AddDays(7));
+        await _repository.AddAsync(token);
+        token.Revoke();
+        await _repository.UpdateAsync(token);
+        var replacement = RefreshToken.Create(user.Id, "plain-new", DateTime.UtcNow.AddDays(7));
+
+        var rotated = await _repository.TryRotateAsync(token.Id, replacement, "plain-new");
+
+        rotated.Should().BeFalse();
+        (await _repository.GetByTokenAsync("plain-new")).Should().BeNull();
     }
 
     public void Dispose()

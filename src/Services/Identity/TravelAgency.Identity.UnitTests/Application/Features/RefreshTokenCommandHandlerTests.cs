@@ -1,9 +1,9 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Exceptions;
-using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.Features.Auth.Commands.RefreshToken;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
@@ -17,7 +17,7 @@ public class RefreshTokenCommandHandlerTests
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepoMock = new();
     private readonly Mock<IJwtTokenService> _jwtServiceMock = new();
-    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
+    private readonly CollectingLogger _logger = new();
     private readonly RefreshTokenCommandHandler _handler;
 
     private readonly JwtSettings _jwtSettings = new() { RefreshTokenExpirationDays = 7 };
@@ -28,8 +28,8 @@ public class RefreshTokenCommandHandlerTests
             _userRepoMock.Object,
             _refreshTokenRepoMock.Object,
             _jwtServiceMock.Object,
-            _unitOfWorkMock.Object,
-            Options.Create(_jwtSettings));
+            Options.Create(_jwtSettings),
+            _logger);
     }
 
     [Fact]
@@ -50,9 +50,10 @@ public class RefreshTokenCommandHandlerTests
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(user))
             .Returns(new AuthTokensDto(newAccessToken, string.Empty, expiresAt, DateTime.UtcNow.AddDays(1)));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(newRefreshStr);
-        _refreshTokenRepoMock.Setup(r => r.Stage(It.IsAny<RefreshToken>()))
-            .Callback<RefreshToken>(token => staged = token);
-        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _refreshTokenRepoMock
+            .Setup(r => r.TryRotateAsync(oldToken.Id, It.IsAny<RefreshToken>(), newRefreshStr, It.IsAny<CancellationToken>()))
+            .Callback<Guid, RefreshToken, string, CancellationToken>((_, token, _, _) => staged = token)
+            .ReturnsAsync(true);
 
         var command = new RefreshTokenCommand(new RefreshTokenRequest("old-refresh"));
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -63,10 +64,12 @@ public class RefreshTokenCommandHandlerTests
         result.RefreshExpiresAt.Should().Be(staged!.ExpiresAt);
         result.RefreshExpiresAt.Should().NotBe(result.ExpiresAt);
         result.RefreshExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(7), TimeSpan.FromSeconds(5));
+        staged.Token.Should().Be(RefreshToken.Hash(newRefreshStr));
+        staged.Token.Should().NotBe(newRefreshStr);
     }
 
     [Fact]
-    public async Task Handle_WithActiveToken_RevokesOldTokenWithNewToken()
+    public async Task Handle_WithActiveToken_RotatesWithoutKeepingPlaintext()
     {
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "J", "D", null);
@@ -79,12 +82,16 @@ public class RefreshTokenCommandHandlerTests
         _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
             .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
         _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("new-rt");
-        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        _refreshTokenRepoMock
+            .Setup(r => r.TryRotateAsync(oldToken.Id, It.IsAny<RefreshToken>(), "new-rt", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         await _handler.Handle(new RefreshTokenCommand(new RefreshTokenRequest("old-refresh")), CancellationToken.None);
 
-        oldToken.IsRevoked.Should().BeTrue();
-        oldToken.ReplacedByToken.Should().Be("new-rt");
+        _refreshTokenRepoMock.Verify(
+            r => r.TryRotateAsync(oldToken.Id, It.Is<RefreshToken>(token => token.Token == RefreshToken.Hash("new-rt")), "new-rt", It.IsAny<CancellationToken>()),
+            Times.Once);
+        _logger.Messages.Should().BeEmpty();
     }
 
     [Fact]
@@ -113,21 +120,84 @@ public class RefreshTokenCommandHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>();
+        _refreshTokenRepoMock.Verify(
+            r => r.RevokeAllByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
-    public async Task Handle_WhenTokenRevoked_ThrowsUnauthorizedException()
+    public async Task Handle_WhenTokenRevoked_RevokesActiveSessionsAndThrowsUnauthorizedException()
     {
         var revokedToken = RefreshToken.Create(Guid.NewGuid(), "revoked-t", DateTime.UtcNow.AddDays(7));
         revokedToken.Revoke();
 
         _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync("revoked-t", It.IsAny<CancellationToken>()))
             .ReturnsAsync(revokedToken);
+        _refreshTokenRepoMock
+            .Setup(r => r.RevokeAllByUserIdAsync(revokedToken.UserId, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var act = async () => await _handler.Handle(
             new RefreshTokenCommand(new RefreshTokenRequest("revoked-t")),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>();
+        _refreshTokenRepoMock.Verify(
+            r => r.RevokeAllByUserIdAsync(revokedToken.UserId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _refreshTokenRepoMock.Verify(
+            r => r.TryRotateAsync(It.IsAny<Guid>(), It.IsAny<RefreshToken>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _logger.Messages.Should().ContainSingle();
+        _logger.Messages[0].Should().NotContain("revoked-t");
+        _logger.Messages[0].Should().Contain(revokedToken.Id.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_WhenRotateLosesRace_ThrowsUnauthorizedWithoutRevokingFamily()
+    {
+        var userId = Guid.NewGuid();
+        var user = User.Create("u@example.com", "hash", "J", "D", null);
+        var oldToken = RefreshToken.Create(userId, "old-refresh", DateTime.UtcNow.AddDays(7));
+
+        _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync("old-refresh", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(oldToken);
+        _userRepoMock.Setup(r => r.GetByIdAsync(oldToken.UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _jwtServiceMock.Setup(j => j.GenerateAccessToken(It.IsAny<User>()))
+            .Returns(new AuthTokensDto("t", string.Empty, DateTime.UtcNow.AddHours(1), default));
+        _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns("new-rt");
+        _refreshTokenRepoMock
+            .Setup(r => r.TryRotateAsync(oldToken.Id, It.IsAny<RefreshToken>(), "new-rt", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var act = async () => await _handler.Handle(
+            new RefreshTokenCommand(new RefreshTokenRequest("old-refresh")),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedException>();
+        _refreshTokenRepoMock.Verify(
+            r => r.RevokeAllByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _logger.Messages.Should().BeEmpty();
+    }
+
+    private sealed class CollectingLogger : ILogger<RefreshTokenCommandHandler>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
     }
 }
