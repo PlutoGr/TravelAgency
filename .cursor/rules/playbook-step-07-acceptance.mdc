@@ -9,6 +9,6 @@ alwaysApply: false
 - The owner may spot-check major features; lead still owns the acceptance comment and the close.
 
 ## Wait-watch
-- After merge, do not end the turn waiting for Deploy without a short-lived GitHub `ci-passed`/`ci-failed` routine on `main` whose prompt runs this step for the issue, then deletes itself. Mirror the wait in the lead pipeline note (OPS.md).
+- After merge, in the **same turn**, create a short-lived GitHub `ci-passed`/`ci-failed` routine on `main` (`ciBranch: main`) whose prompt requires workflow `Deploy to dev` for a head that includes the merge sha, then runs this step, then deletes itself. Mirror the wait in the lead pipeline note (OPS.md). Do not use cron. Arm-then-check: if Deploy is already green, accept now.
 - When this issue's remaining criteria live on a sibling issue, keep both open until joint acceptance; close them together (`playbook-workflow.mdc` related acceptance).
 
