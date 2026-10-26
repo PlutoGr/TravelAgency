@@ -14,7 +14,7 @@ alwaysApply: false
 - `<Name>`: Latin, English, Title-Case-With-Hyphens; not renamed casually.
 
 ## Delivery model
-- Persistent team chats are not used for new work. Single orchestrator: lead (Grok Bot) + Cursor cloud agents. Architect duties = lead via cloud agent on escalation; do not route through Вирт. See `project-travelagency.mdc` roles.
+- Persistent team chats are not used for new work. Single orchestrator: the lead + Cursor cloud agents. Architect duties = the lead via cloud agent on escalation; do not route through another teammate chat. See `project-travelagency.mdc` roles.
 - Cursor Automations (PR review, vulns, Bugbot, CI triage, Doc- after merge) are gates on steps 6 and 8, not a second documentation track. Details: `project-cursor-automations.mdc`.
 
 ## Steps (one step = one owner; a step starts only when the previous one is on the page)

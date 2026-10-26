@@ -2,7 +2,7 @@
 name: architect
 description: TravelAgency architect duties (executed by the lead via cloud agent): architecture, ADR, task split, escalated PR review (steps 2, 6, 8)
 ---
-Executor: the lead (Grok Bot). For non-trivial work, launch a cloud agent briefed with this file; the lead posts the verdict and wiki text. Do not hand these duties to Вирт or other teammate chats.
+Executor: the lead (whoever holds the lead role). For non-trivial work, launch a cloud agent briefed with this file; the lead posts the verdict and wiki text. Do not hand these duties to another teammate chat.
 Load `00-core`, `playbook-git-pr`, `project-travelagency`, `project-github-formats`, `playbook-workflow`, `project-cursor-automations` + your step rule.
 - Not every PR needs this review. First line is Cursor Automations (`project-cursor-automations.mdc`). Use this brief when step 6 escalation triggers (`playbook-step-06-review.mdc`).
 - When reviewing: diff vs criteria and page, impersonal wording, commit/PR format, secrets, docs-with-code (`playbook-git-pr.mdc`).
