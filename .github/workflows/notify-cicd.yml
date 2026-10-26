@@ -1,7 +1,9 @@
 # Уведомление оркестратора после CI или Deploy (успех или ошибка). Секреты репозитория:
 #   GROK_BOT_CICD_WEBHOOK_URL  : URL webhook routine «TravelAgency CI/CD»
-#   GROK_BOT_CICD_WEBHOOK_KEY  : sender key из панели routine
+#   GROK_BOT_CICD_WEBHOOK_KEY  : полное значение заголовка Authorization из панели routine
+#     (схема может уже входить в значение). Значение секрета в репозиторий не записывается.
 # Пока секретов нет, job завершается без ошибки и пишет в лог.
+# Ответ не 2xx завершает job с ошибкой.
 name: Notify CI/CD
 
 on:
@@ -38,6 +40,9 @@ jobs:
             echo "Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY ещё не заданы : уведомление пропущено."
             exit 0
           fi
+          # Хвостовой перевод строки в секрете не входит в значение заголовка.
+          WEBHOOK_KEY=${WEBHOOK_KEY//$'\r'/}
+          WEBHOOK_KEY=${WEBHOOK_KEY//$'\n'/}
           payload=$(jq -n \
             --arg workflow "$WORKFLOW" \
             --arg conclusion "$CONCLUSION" \
@@ -47,10 +52,10 @@ jobs:
             --arg event "$EVENT" \
             --arg run_id "$RUN_ID" \
             '{source:"github-actions",workflow:$workflow,conclusion:$conclusion,sha:$sha,branch:$branch,html_url:$url,event:$event,run_id:$run_id}')
-          # Sender key: заголовок x-webhook-key (Cursor Grok Bot webhook routines)
+          # Секрет целиком является значением заголовка Authorization.
           code=$(curl -sS -o /tmp/cicd-ping.out -w "%{http_code}" -X POST "$WEBHOOK_URL" \
             -H "Content-Type: application/json" \
-            -H "x-webhook-key: $WEBHOOK_KEY" \
+            -H "Authorization: $WEBHOOK_KEY" \
             -d "$payload" || true)
           echo "HTTP $code"
           head -c 500 /tmp/cicd-ping.out || true
