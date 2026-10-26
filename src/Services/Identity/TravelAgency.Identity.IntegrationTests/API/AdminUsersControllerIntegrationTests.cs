@@ -238,21 +238,33 @@ public class AdminUsersControllerIntegrationTests : IClassFixture<CustomWebAppli
     [Fact]
     public async Task ParallelDemote_LeavesOneActiveAdmin()
     {
-        var first = await SeedAsync("admin-a@example.com", UserRole.Admin);
-        var second = await SeedAsync("admin-b@example.com", UserRole.Admin);
+        ParallelAdminDemote.Reset();
+        try
+        {
+            var first = await SeedAsync("admin-a@example.com", UserRole.Admin);
+            var second = await SeedAsync("admin-b@example.com", UserRole.Admin);
 
-        var left = PutRoleAsync(first.Id, second.Id);
-        var right = PutRoleAsync(second.Id, first.Id);
-        var responses = await Task.WhenAll(left, right);
-        var details = await Task.WhenAll(responses.Select(DetailAsync));
+            var left = PutRoleAsync(first.Id, second.Id);
+            var right = PutRoleAsync(second.Id, first.Id);
+            var responses = await Task.WhenAll(left, right);
+            var details = await Task.WhenAll(responses.Select(DetailAsync));
 
-        responses.Count(response => response.StatusCode == HttpStatusCode.OK).Should().Be(1);
-        details.Should().Contain(text => text.Contains(UserAdminText.LastAdmin, StringComparison.Ordinal));
+            responses.Select(response => response.StatusCode)
+                .Should()
+                .BeEquivalentTo([HttpStatusCode.OK, HttpStatusCode.BadRequest]);
+            details.Should().Contain(text => text.Contains(UserAdminText.RoleChanged, StringComparison.Ordinal));
+            details.Should().Contain(text => text.Contains(UserAdminText.LastAdmin, StringComparison.Ordinal));
+            details.Should().NotContain(text => text.Contains("A database error occurred.", StringComparison.Ordinal));
 
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var active = await db.Users.CountAsync(user => user.Role == UserRole.Admin && user.BlockedAt == null);
-        active.Should().Be(1);
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var active = await db.Users.CountAsync(user => user.Role == UserRole.Admin && user.BlockedAt == null);
+            active.Should().Be(1);
+        }
+        finally
+        {
+            ParallelAdminDemote.Reset();
+        }
     }
 
     private static async Task<string> DetailAsync(HttpResponseMessage response)
@@ -264,8 +276,14 @@ public class AdminUsersControllerIntegrationTests : IClassFixture<CustomWebAppli
             : json;
     }
 
-    private async Task<HttpResponseMessage> PutRoleAsync(Guid actorId, Guid targetId) =>
-        await SendAsync(HttpMethod.Put, $"/identity/admin/users/{targetId}/role", actorId, AppRoles.Admin, new { role = "Client" });
+    private async Task<HttpResponseMessage> PutRoleAsync(Guid actorId, Guid targetId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/identity/admin/users/{targetId}/role");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token(actorId, AppRoles.Admin));
+        request.Headers.TryAddWithoutValidation(DemoteRaceLock.HeaderName, "1");
+        request.Content = JsonContent.Create(new { role = "Client" });
+        return await _client.SendAsync(request);
+    }
 
     private async Task<HttpResponseMessage> LoginAsync(string email) =>
         await _client.PostAsJsonAsync("/identity/login", new { email, password = Password });
