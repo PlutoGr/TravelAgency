@@ -10,7 +10,7 @@ alwaysApply: false
 - Docs-with-code: PR names the `Doc-` page to update, or «вики не затронута».
 
 ## Findings (reply before merge)
-- After the checks have finished, every open finding gets a reply on its thread before merge. Impersonal Russian; name the automatic check as a process actor only when clarity needs it.
+- After the checks have finished, every open finding gets a reply on its thread before merge. Impersonal Russian. Cursor Automations may be named when the sentence needs it. Do not name a role or another agent as the actor.
 - If a newer commit already fixed the finding, do not re-open it: reply «исправлено» (or the same meaning) with the head sha.
 - Otherwise the reply is one of: «неактуально: <причина>»; «принято, будет исправлено»; «исправлено в `<sha>`»; «нужно решение владельца: <вопрос>».
 - «Будет исправлено» is not a finished state. Fix, push, then reply «исправлено» with the head sha. Do not claim fixed before that push.

@@ -7,7 +7,8 @@ body:
     attributes:
       value: |
         Заголовок: `документация(<сервис>): …` (часто `общее`, `процесс` или `вики`).
-        Текст безличный. Правила: `.cursor/rules/project-github-formats.mdc`.
+        Текст безличный: без личных имён, без ролей и агентов как действующих лиц, без «я/мы». Если без этого неясно, можно назвать Cursor Automations.
+        Правила: `.cursor/rules/project-github-formats.mdc`.
   - type: textarea
     id: zachem
     attributes:

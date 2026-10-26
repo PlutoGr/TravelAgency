@@ -6,5 +6,5 @@ alwaysApply: false
 Input: feature page (architecture + test cases) + subtask issue. Output: PR.
 - Implement exactly the page «Архитектура» for this subtask; automate marked test cases.
 - Deviation needed: stop, propose a «Решения» row via the issue; do not code around the page.
-- PR: branch includes issue number; `## Задача` `#NN` without `closes`; connect in GitHub Development right after open; name the page section implemented. Formats: `project-github-formats.mdc`.
+- PR: branch includes the issue number as its own segment (`type/NN-short-slug`), created with `gh issue develop` when the branch does not exist yet; `## Задача` `#NN` without `closes`; do not call `addCloseIssueReferences` or set closedBy before acceptance. Name the page section implemented. Formats: `project-github-formats.mdc`.
 - Cloud agent launch uses the brief in `playbook-cloud-agents.mdc`: goal and acceptance, issue and wiki links, stack touchpoints, hard boundaries, where the PR or issue text goes, minimal diff. Stop at the acceptance criteria.
