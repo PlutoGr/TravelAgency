@@ -32,16 +32,16 @@ alwaysApply: false
 ## Common
 - Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
 - Fill only your section. Disagreement -> step 3.
-- Cloud agent executor: give it this file + the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
+- Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 ## End-to-end checklist (no silent hangs)
 1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment.
 2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
 3. Step 5: one cloud agent, one PR; branch includes issue number; `## Задача` `#NN` without `closes`; connect PR in GitHub Development immediately.
-4. Step 6: wait for automation comments + green CI; escalate per step 6; lead verifies Development link, then merges (one PR at a time; next after Deploy green).
+4. Step 6: wait until automation comments and CI have finished; reply to every open finding (`playbook-step-06-review.mdc`); escalate per step 6; lead verifies the Development link. Authorized in-scope work merges without a separate yes, then the owner is notified (one PR at a time; next after Deploy green).
 5. Step 7: acceptance on dev; comment; keep issue open until pass.
 6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then `статус: готово` and close issue in the same moment → Готово.
-7. If anything waits >60 min (green CI, no merge) or Doc- gap same day: lead acts or asks the owner once.
+7. If anything waits >60 min (green CI, findings answered, no merge) or a Doc- gap the same day: the lead acts. Ask the owner only for a case in `00-core.mdc`.
 8. Process gap found: fix artifacts and update `.cursor/rules/` in the same delivery cycle. Change must be holistic (scan related rules, templates, automations, board-sync for side effects; update all affected places together). Goal: staged delivery, tracked/closed work, order, and throughput — not a one-spot patch that drifts elsewhere.
 9. Normative/product documentation placement: `.cursor/` (rules/agents), `AGENTS.md`, and the GitHub wiki only. Do not recreate a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts.
 - No `skills-lock.json` or third-party agent skill packs in this repo; skills live in the owner global Cursor/agent setup.

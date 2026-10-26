@@ -8,6 +8,6 @@ alwaysApply: true
 - Allowed in repo: variable names, placeholders (`CHANGE_ME`, `<your-password>`, angle-bracket stubs like `<POSTGRES_PASSWORD>`), `@example.com`.
 - Test-key allowlist: `.gitleaks.toml`, exact values only, never whole folders.
 - Custom gitleaks rule `connection-string-password` flags password keys in connection strings. Allowed: env substitutions, angle-bracket stubs, and explicit stubs (`CHANGE_ME`, `REPLACE_...`, `your-...`). A weak literal password value still matches.
-- Before every push: `gitleaks git --redact .` (and `gitleaks dir --redact .` for the wiki); `rg -n $'\u2014'` on changed files; grep changed files for stop-words (agent/role names, role labels, passwords, tokens).
+- Before every push: `gitleaks git --redact .` (and `gitleaks dir --redact .` for the wiki); `rg -n $'\u2014'` on changed files. On changed files outside `.cursor/`, also grep for personal names, role labels used as people, retired chat-bot names, first-person credit («я/мы»), passwords, and tokens. A neutral mention of a configured automatic agent (Cursor Automations, Bugbot, a cloud agent run) is allowed when the sentence needs it (`00-core.mdc`).
 - Public repo: pushed = public forever. Suspected leak: rotate first, then remove; report at once. Deleting without rotating is not a fix.
 - Auth errors, host-key mismatch, safety blocks: do not work around; report.
