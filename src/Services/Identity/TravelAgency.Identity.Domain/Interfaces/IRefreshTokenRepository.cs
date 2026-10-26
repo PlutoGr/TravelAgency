@@ -10,4 +10,14 @@ public interface IRefreshTokenRepository
     void Stage(RefreshToken refreshToken);
     Task UpdateAsync(RefreshToken refreshToken, CancellationToken ct = default);
     Task RevokeAllByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Отзывает активный токен и записывает замену одной транзакцией.
+    /// false, если строка уже отозвана (параллельный обмен).
+    /// </summary>
+    Task<bool> TryRotateAsync(
+        Guid activeTokenId,
+        RefreshToken replacement,
+        string replacementPlaintext,
+        CancellationToken ct = default);
 }

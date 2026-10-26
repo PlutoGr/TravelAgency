@@ -18,7 +18,9 @@ public class RefreshTokenEntityTests
 
         token.Id.Should().NotBe(Guid.Empty);
         token.UserId.Should().Be(userId);
-        token.Token.Should().Be("abc123token");
+        token.Token.Should().Be(RefreshToken.Hash("abc123token"));
+        token.Token.Should().NotBe("abc123token");
+        token.Token.Should().MatchRegex("^[0-9a-f]{64}$");
         token.ExpiresAt.Should().Be(expires);
         token.CreatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
         token.RevokedAt.Should().BeNull();
@@ -115,7 +117,8 @@ public class RefreshTokenEntityTests
 
         token.Revoke("newToken123");
 
-        token.ReplacedByToken.Should().Be("newToken123");
+        token.ReplacedByToken.Should().Be(RefreshToken.Hash("newToken123"));
+        token.ReplacedByToken.Should().NotBe("newToken123");
     }
 
     [Fact]
