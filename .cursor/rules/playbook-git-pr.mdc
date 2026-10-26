@@ -21,7 +21,7 @@ alwaysApply: false
 ## Merge and deploy
 - Merge only when all gates are met; only the designated merger merges. Before merge: Development link present (unless Dependabot / «без задачи»).
 - Merge = deploy: one PR at a time; next merge only after the previous deploy is green.
-- Dependencies (Dependabot, minor, patch, and major): squash-merge without a separate owner yes when CI is green and nothing needs the owner's clarification. Treat a peer conflict, red CI, or an unclear breaking change as needing clarification. After every such merge, report to the owner what was merged. When something needs a decision or a coordinated fix, do not merge: report it or follow the fix path.
+- Dependencies (Dependabot): for npm and NuGet only (minor, patch, and major; majors are separate PRs, groups are minor/patch only), squash-merge without a separate owner yes when CI is green and nothing needs the owner's clarification. Treat a peer conflict, red CI, or an unclear breaking change as needing clarification. After every such merge, report to the owner what was merged. When something needs a decision or a coordinated fix, do not merge: report it or follow the fix path. docker and github-actions (including grouped updates that may contain majors) still need owner «да» before merge: merge deploys to dev with SSH secrets, and CI does not validate image or action supply chain the way app build and tests do.
 - Open PR hygiene (lead): no open PR without an owner and a next step; ask the same day if blocked.
 ## Testing
 - Locally: only tests for the touched area. After deploy: affected flows vs criteria + short smoke. Full regression only before a release or after wide changes (auth, routing, migrations).

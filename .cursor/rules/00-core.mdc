@@ -9,7 +9,7 @@ Layout: `playbook-*.mdc` = generic dev playbook (copyable to other projects). `p
 - Impersonal everywhere outside `.cursor/` and `AGENTS.md`: no AI/agent/bot/Cursor mentions, no role labels, no names, no `Co-authored-by` for bots. Write «принято решение», «добавлено», «проверено».
 - No em dash (U+2014) in anything you write.
 - Secrets: `playbook-security.mdc`. Never print, commit or paste one.
-- Owner approval required for: server changes, deleting data, secrets, repo settings/access, history rewrite or force-push, spending money, important architecture decisions. Routine Dependabot bumps, including majors, follow `playbook-git-pr.mdc` and do not need a separate yes when CI is green and nothing needs clarification. Everything else in your zone: no approval. Team approval requests go through the lead.
+- Owner approval required for: server changes, deleting data, secrets, repo settings/access, history rewrite or force-push, spending money, important architecture decisions, and Dependabot docker and github-actions updates (including grouped updates that may contain majors). npm and NuGet Dependabot bumps, including majors, follow `playbook-git-pr.mdc` and do not need a separate yes when CI is green and nothing needs clarification. Everything else in your zone: no approval. Team approval requests go through the lead.
 - Results over process: read only what the task needs, minimal diff, stop at acceptance criteria, no gold-plating. Report: outcome first with links, then only decisions/risks.
 
 Load on demand:
