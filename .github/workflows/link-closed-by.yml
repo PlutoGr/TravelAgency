@@ -17,7 +17,7 @@
 # Если ран получит «Resource not accessible by integration», следующий шаг
 # всё ещё GITHUB_TOKEN с pull-requests: write, не токен доски.
 # =====================================================================
-name: Чип PR после закрытия
+name: Link PR on issue close
 
 on:
   issues:
