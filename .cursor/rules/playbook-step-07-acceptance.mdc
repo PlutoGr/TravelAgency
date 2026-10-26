@@ -8,6 +8,12 @@ alwaysApply: false
 - Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then set `статус: готово` and close the issue in the same moment (board-sync moves the card to Готово; never leave a closed issue with another status label). Do not move the Projects card by hand. A follow-up comment may note the merged PR; do not add `closes`/`fix`/`fixes` and do not call `addCloseIssueReferences` or add/remove Development links. After close, `.github/workflows/link-closed-by.yml` sets the PR chip. Carve-out for a hand move or a manual Development link: the owner explicitly asks. Feature: Готово when all subtasks are closed after their acceptance.
 - The owner may spot-check major features; lead still owns the acceptance comment and the close.
 
+## Epic acceptance (before epic Готово)
+- When every child of an epic (`тип: родительская`) is Готово/closed, do **not** close the epic yet. Set the epic to `статус: на ревью`, summarize what shipped (features, Doc-/wiki links, how to check on dev), and ask the owner in chat to accept the epic as a whole.
+- Owner pass: set `статус: готово`, close the epic, mark the wiki `Epic-` page «сделано» (step 8).
+- Owner finds gaps: keep the epic `статус: в работе`; open new sub-issues under this epic and/or a new epic/feature as the owner directs; put them in Очередь and continue by Priority. Do not mark the epic Готово until a later owner pass.
+- Epic end-to-end cases on the wiki page are the checklist for this conversation; child issue acceptance alone is not enough.
+
 ## CI/CD wake
 - After merge, set `Waiting on` = Deploy in the lead pipeline note (`/home/box/shared/travelagency/work/pipeline.md`). Do not create a per-task wait-watch routine and do not arm-then-check Actions for this task.
 - When the durable routine «TravelAgency CI/CD» wakes on successful `Deploy to dev` for a sha that includes the merge, run this step.
