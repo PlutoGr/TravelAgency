@@ -7,5 +7,6 @@ export { default as AuthRedirectHandler } from './AuthRedirectHandler.tsx';
 export { default as PublicLayout } from './PublicLayout.tsx';
 export { default as DashboardLayout } from './DashboardLayout.tsx';
 export { default as ManagerLayout } from './ManagerLayout.tsx';
+export { default as AdminLayout } from './AdminLayout.tsx';
 export { default as ProtectedRoute } from './ProtectedRoute.tsx';
 export { default as AuthModal } from './AuthModal.tsx';

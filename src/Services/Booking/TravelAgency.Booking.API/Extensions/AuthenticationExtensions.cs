@@ -1,5 +1,4 @@
 using TravelAgency.Booking.API.Settings;
-using TravelAgency.Shared.Contracts.Authorization;
 using TravelAgency.Shared.Infrastructure.Extensions;
 
 namespace TravelAgency.Booking.API.Extensions;
@@ -14,15 +13,7 @@ public static class AuthenticationExtensions
 
     public static IServiceCollection AddBookingAuthorization(this IServiceCollection services)
     {
-        services.AddAuthorizationBuilder()
-            .AddPolicy(AuthPolicies.RequireAuthenticated, policy =>
-                policy.RequireRole(AppRoles.Client, AppRoles.Manager, AppRoles.Admin))
-            .AddPolicy(AuthPolicies.RequireManager, policy =>
-                policy.RequireRole(AppRoles.Manager, AppRoles.Admin))
-            .AddPolicy(AuthPolicies.RequireAdmin, policy =>
-                policy.RequireRole(AppRoles.Admin))
-            .AddPolicy(AuthPolicies.RequireManagerOrAdmin, policy =>
-                policy.RequireRole(AppRoles.Manager, AppRoles.Admin));
+        services.AddAuthorizationBuilder().AddRoleHierarchyPolicies();
 
         return services;
     }

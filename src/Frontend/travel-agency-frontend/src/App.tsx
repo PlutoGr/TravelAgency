@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, type ReactElement } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -9,12 +9,21 @@ import {
   PublicLayout,
   DashboardLayout,
   ManagerLayout,
+  AdminLayout,
   ProtectedRoute,
   AuthModal,
   AuthRedirectHandler,
   ScrollToTop,
 } from '@/components/layout';
+import {
+  ADMIN_AREA_ROLES,
+  ADMIN_ROUTE_DEFS,
+  MANAGER_AREA_ROLES,
+  MANAGER_ROUTE_DEFS,
+} from '@/routes/staffRoutes';
 import { Skeleton } from '@/components/ui';
+import AdminPlaceholderPage from '@/pages/AdminPlaceholderPage';
+import AdminSectionPage from '@/pages/AdminSectionPage';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const TourCatalogPage = lazy(() => import('@/pages/TourCatalogPage'));
@@ -35,6 +44,39 @@ const ManagerClientsPage = lazy(() => import('@/pages/ManagerClientsPage'));
 
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
+function managerRouteElement(path: string): ReactElement | null {
+  switch (path) {
+    case 'manager':
+      return <ManagerDashboardPage />;
+    case 'manager/bookings':
+      return <ManagerBookingsPage />;
+    case 'manager/bookings/:id':
+      return <ManagerBookingDetailPage />;
+    case 'manager/tours/new':
+    case 'manager/tours/:tourId':
+      return <TourWizardPage />;
+    case 'manager/tours':
+      return <ManagerToursPage />;
+    case 'manager/clients':
+      return <ManagerClientsPage />;
+    default:
+      return null;
+  }
+}
+
+function adminRouteElement(path: string): ReactElement | null {
+  switch (path) {
+    case 'admin':
+      return <AdminSectionPage />;
+    case 'admin/users':
+      return <AdminPlaceholderPage title="Пользователи" />;
+    case 'admin/settings':
+      return <AdminPlaceholderPage title="Настройки сайта" />;
+    default:
+      return null;
+  }
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +95,55 @@ function PageFallback() {
         <Skeleton className="h-4 w-5/6" />
       </div>
     </div>
+  );
+}
+
+export function AppRoutes() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        {/* Public Routes */}
+        <Route element={<PublicLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="tours" element={<TourCatalogPage />} />
+          <Route path="tours/:id" element={<TourDetailPage />} />
+        </Route>
+
+        {/* Client Dashboard */}
+        <Route element={<ProtectedRoute allowedRoles={['client', 'manager', 'admin']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard/bookings" element={<MyBookingsPage />} />
+            <Route path="dashboard/bookings/:id" element={<BookingDetailPage />} />
+            <Route path="dashboard/profile" element={<ProfilePage />} />
+            <Route path="dashboard/favorites" element={<FavoritesPage />} />
+          </Route>
+        </Route>
+
+        {/* Панель менеджера: админ проходит по иерархии ролей. */}
+        <Route element={<ProtectedRoute allowedRoles={MANAGER_AREA_ROLES} />}>
+          <Route element={<ManagerLayout />}>
+            {MANAGER_ROUTE_DEFS.map((route) => (
+              <Route key={route.path} path={route.path} element={managerRouteElement(route.path)} />
+            ))}
+          </Route>
+        </Route>
+
+        {/* Администрирование: только админ. */}
+        <Route element={<ProtectedRoute allowedRoles={ADMIN_AREA_ROLES} />}>
+          <Route element={<AdminLayout />}>
+            {ADMIN_ROUTE_DEFS.map((route) => (
+              <Route key={route.path} path={route.path} element={adminRouteElement(route.path)} />
+            ))}
+          </Route>
+        </Route>
+
+        {/* 404 */}
+        <Route path="*" element={<PublicLayout />}>
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -85,45 +176,7 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <AuthRedirectHandler />
-        <Suspense fallback={<PageFallback />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route element={<PublicLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="tours" element={<TourCatalogPage />} />
-              <Route path="tours/:id" element={<TourDetailPage />} />
-            </Route>
-
-            {/* Client Dashboard */}
-            <Route element={<ProtectedRoute allowedRoles={['client', 'manager', 'admin']} />}>
-              <Route element={<DashboardLayout />}>
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="dashboard/bookings" element={<MyBookingsPage />} />
-                <Route path="dashboard/bookings/:id" element={<BookingDetailPage />} />
-                <Route path="dashboard/profile" element={<ProfilePage />} />
-                <Route path="dashboard/favorites" element={<FavoritesPage />} />
-              </Route>
-            </Route>
-
-            {/* Manager Panel */}
-            <Route element={<ProtectedRoute allowedRoles={['manager', 'admin']} />}>
-              <Route element={<ManagerLayout />}>
-                <Route path="manager" element={<ManagerDashboardPage />} />
-                <Route path="manager/bookings" element={<ManagerBookingsPage />} />
-                <Route path="manager/bookings/:id" element={<ManagerBookingDetailPage />} />
-                <Route path="manager/tours/new" element={<TourWizardPage />} />
-                <Route path="manager/tours/:tourId" element={<TourWizardPage />} />
-                <Route path="manager/tours" element={<ManagerToursPage />} />
-                <Route path="manager/clients" element={<ManagerClientsPage />} />
-              </Route>
-            </Route>
-
-            {/* 404 */}
-            <Route path="*" element={<PublicLayout />}>
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
-        </Suspense>
+        <AppRoutes />
         <AuthModal />
       </BrowserRouter>
       <Toaster
