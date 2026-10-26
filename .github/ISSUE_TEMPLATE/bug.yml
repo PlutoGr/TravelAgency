@@ -1,0 +1,44 @@
+name: Ошибка
+description: Сбой или неверное поведение на dev/prod
+title: "исправление(<сервис>): "
+labels: ["bug", "статус: очередь"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Заголовок: `<тип>(<сервис>): …` (для ошибки обычно `исправление`).
+        Сервисы: `чат`, `каталог`, `бронирование`, `identity`, `медиа`, `шлюз`, `фронт`, `ci`, `деплой`, `бд`, `общее`.
+        Текст безличный; без упоминаний исполнителей, агентов и инструментов.
+        Полные правила: `.cursor/rules/project-github-formats.mdc`.
+  - type: textarea
+    id: zachem
+    attributes:
+      label: Зачем
+      description: Какую проблему закрывает задача
+      placeholder: На dev …
+    validations:
+      required: true
+  - type: textarea
+    id: chto
+    attributes:
+      label: Что сделать
+      description: Конкретные шаги или ожидаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Критерии приёмки
+      description: Проверяемые условия (можно чеклистом)
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: svyazi
+    attributes:
+      label: Связи
+      description: Эпик, связанные issues, PR, страница вики
+      placeholder: "#NN, Epic-…, Doc-…"
+    validations:
+      required: false

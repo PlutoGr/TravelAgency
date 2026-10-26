@@ -132,6 +132,7 @@ riderModule.iml
 !.cursor/rules/
 !.cursor/agents/
 !.cursor/skills/
+!.cursor/templates/
 !.cursor/README.md
 ai_docs/
 
