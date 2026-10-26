@@ -564,6 +564,65 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
     }
 
     [Fact]
+    public async Task SiteSettings_PublicGet_ProxiesToIdentity()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.GetAsync("/api/v1/site-settings");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echo = await ReadEchoAsync(response);
+        Assert.Equal("site-settings-public-route", echo.RouteId);
+        Assert.Equal("/identity/site-settings", echo.Path);
+    }
+
+    [Fact]
+    public async Task SiteSettings_ManageWithoutJwt_Returns401()
+    {
+        var client = CreateClient(withAuth: false);
+
+        var response = await client.GetAsync("/api/v1/site-settings/manage");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(AppRoles.Manager)]
+    [InlineData(AppRoles.Client)]
+    public async Task SiteSettings_ManageAsNonAdmin_Returns403(string role)
+    {
+        var client = CreateClientForRole(role);
+
+        var read = await client.GetAsync("/api/v1/site-settings/manage");
+        var write = await client.PutAsync("/api/v1/site-settings/manage", new StringContent("{}"));
+        var audit = await client.GetAsync("/api/v1/site-settings/manage/audit");
+
+        Assert.Equal(HttpStatusCode.Forbidden, read.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, write.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, audit.StatusCode);
+    }
+
+    [Fact]
+    public async Task SiteSettings_ManageAsAdmin_ProxiesToIdentity()
+    {
+        var client = CreateClientForRole(AppRoles.Admin);
+
+        var read = await client.GetAsync("/api/v1/site-settings/manage");
+        var audit = await client.GetAsync("/api/v1/site-settings/manage/audit");
+        var write = await client.PutAsync(
+            "/api/v1/site-settings/manage",
+            new StringContent("{}", Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        Assert.Equal("/identity/site-settings/manage", (await ReadEchoAsync(read)).Path);
+        Assert.Equal(HttpStatusCode.OK, audit.StatusCode);
+        Assert.Equal("site-settings-admin-route", (await ReadEchoAsync(audit)).RouteId);
+        Assert.Equal("/identity/site-settings/manage/audit", (await ReadEchoAsync(audit)).Path);
+        Assert.Equal(HttpStatusCode.OK, write.StatusCode);
+        Assert.Equal("/identity/site-settings/manage", (await ReadEchoAsync(write)).Path);
+    }
+
+    [Fact]
     public async Task HealthReady_Returns200_WithMockBackend()
     {
         // Arrange

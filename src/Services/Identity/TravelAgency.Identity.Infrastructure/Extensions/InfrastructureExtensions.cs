@@ -9,6 +9,7 @@ using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Identity.Domain.Interfaces;
+using TravelAgency.Identity.Infrastructure.Caching;
 using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Repositories;
 using TravelAgency.Identity.Infrastructure.Seeding;
@@ -55,6 +56,7 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ISiteSettingsRepository, SiteSettingsRepository>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasherService>();
@@ -69,10 +71,17 @@ public static class InfrastructureExtensions
             services.AddSingleton<IConnectionMultiplexer>(_ =>
                 ConnectionMultiplexer.Connect(redisConnection!));
             services.AddSingleton<ILockoutService, RedisLockoutService>();
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+            });
+            services.AddSingleton<ISiteSettingsPublicCache, DistributedSiteSettingsCache>();
         }
         else
         {
             services.AddSingleton<ILockoutService, InMemoryLockoutService>();
+            services.AddMemoryCache();
+            services.AddSingleton<ISiteSettingsPublicCache, MemorySiteSettingsCache>();
         }
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();

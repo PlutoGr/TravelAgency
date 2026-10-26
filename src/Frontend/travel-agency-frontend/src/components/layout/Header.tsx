@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import { hasAtLeastRole } from '@/domain/roles';
 import clsx from 'clsx';
+import { isE164Phone } from '@/domain/siteSettings';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { useFavoritesStore } from '@/store/favoritesStore';
+import { usePublicSiteSettings } from '@/store/siteSettingsStore';
 import { Button, Avatar } from '@/components/ui';
 
 const NAV_LINKS = [
@@ -38,6 +40,10 @@ export default function Header() {
   const { isMobileMenuOpen, toggleMobileMenu, closeMobileMenu, openAuthModal } =
     useUIStore();
   const favoriteCount = useFavoritesStore((s) => s.count);
+  const siteSettings = usePublicSiteSettings();
+  const siteName = siteSettings.siteName;
+  const supportPhone = siteSettings.supportPhone?.trim() ?? '';
+  const phoneIsCallable = isE164Phone(supportPhone);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > SCROLL_THRESHOLD);
@@ -84,7 +90,7 @@ export default function Header() {
           className="font-heading text-xl font-bold text-primary lg:text-2xl"
           onClick={closeMobileMenu}
         >
-          TravelAgency
+          {siteName}
         </Link>
 
         {/* Desktop Nav */}
@@ -112,6 +118,15 @@ export default function Header() {
 
         {/* Right Side */}
         <div className="hidden items-center gap-3 md:flex">
+          {supportPhone ? (
+            phoneIsCallable ? (
+              <a href={`tel:${supportPhone}`} className="text-sm font-medium text-dark/70 hover:text-primary">
+                {supportPhone}
+              </a>
+            ) : (
+              <span className="text-sm font-medium text-dark/70">{supportPhone}</span>
+            )
+          ) : null}
           <Link
             to="/dashboard/favorites"
             className="relative rounded-full p-2 text-dark/70 transition-colors hover:bg-sand hover:text-primary"
@@ -267,6 +282,15 @@ export default function Header() {
             className="fixed inset-0 top-16 z-30 overflow-y-auto bg-white md:hidden"
           >
             <nav className="flex flex-col gap-2 p-6">
+              {supportPhone ? (
+                phoneIsCallable ? (
+                  <a href={`tel:${supportPhone}`} className="rounded-xl px-4 py-3 text-lg font-medium text-primary">
+                    {supportPhone}
+                  </a>
+                ) : (
+                  <span className="rounded-xl px-4 py-3 text-lg font-medium text-primary">{supportPhone}</span>
+                )
+              ) : null}
               {NAV_LINKS.map((link) =>
                 link.href.includes('#') ? (
                   <Link
