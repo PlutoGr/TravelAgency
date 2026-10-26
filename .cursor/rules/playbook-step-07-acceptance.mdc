@@ -5,10 +5,10 @@ alwaysApply: false
 # Step 7: Acceptance on dev
 - After merge + green deploy: run the page's manual/e2e cases (bugs: the issue criteria) + short smoke. One issue comment listing cases passed/failed by id.
 - Failure: bug issue linking the case id; parent stays open / В работе. Do not close the parent issue.
-- Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then set `статус: готово` and close the issue in the same moment (board-sync moves the card to Готово; never leave a closed issue with another status label). A follow-up comment may note the merged PR; do not add late `closes`/`fix`/`fixes`. Feature: Готово when all subtasks are closed after their acceptance.
+- Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then set `статус: готово` and close the issue in the same moment (board-sync moves the card to Готово; never leave a closed issue with another status label). Do not move the Projects card by hand. A follow-up comment may note the merged PR; do not add `closes`/`fix`/`fixes` and do not call `addCloseIssueReferences` or add/remove Development links. After close, `.github/workflows/link-closed-by.yml` sets the PR chip. Carve-out for a hand move or a manual Development link: the owner explicitly asks. Feature: Готово when all subtasks are closed after their acceptance.
 - The owner may spot-check major features; lead still owns the acceptance comment and the close.
 
 ## CI/CD wake
-- After merge, set `Waiting on` = Deploy in the lead pipeline note (OPS.md). Do not create a per-task wait-watch routine.
-- When «TravelAgency CI/CD» wakes on successful `Deploy to dev` for a sha that includes the merge (or the lead sees Deploy green on arm-then-check), run this step.
+- After merge, set `Waiting on` = Deploy in the lead pipeline note (`/home/box/shared/travelagency/work/pipeline.md`). Do not create a per-task wait-watch routine and do not arm-then-check Actions for this task.
+- When the durable routine «TravelAgency CI/CD» wakes on successful `Deploy to dev` for a sha that includes the merge, run this step.
 - When this issue's remaining criteria live on a sibling issue, keep both open until joint acceptance; close them together (`playbook-workflow.mdc` related acceptance).
