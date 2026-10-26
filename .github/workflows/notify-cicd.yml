@@ -1,0 +1,60 @@
+# Пинок lead-боту после CI или Deploy (успех или ошибка). Секреты репозитория:
+#   GROK_BOT_CICD_WEBHOOK_URL  — URL webhook routine «TravelAgency CI/CD»
+#   GROK_BOT_CICD_WEBHOOK_KEY  — sender key из панели routine
+# Пока секретов нет, job завершается без ошибки и пишет в лог.
+name: Notify CI/CD
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - Deploy to dev
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ping:
+    name: Пинок lead
+    runs-on: ubuntu-latest
+    steps:
+      - name: Отправить webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.GROK_BOT_CICD_WEBHOOK_URL }}
+          WEBHOOK_KEY: ${{ secrets.GROK_BOT_CICD_WEBHOOK_KEY }}
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
+            echo "Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY ещё не заданы — пинок пропущен."
+            exit 0
+          fi
+          payload=$(jq -n \
+            --arg workflow "$WORKFLOW" \
+            --arg conclusion "$CONCLUSION" \
+            --arg sha "$SHA" \
+            --arg branch "$BRANCH" \
+            --arg url "$RUN_URL" \
+            --arg event "$EVENT" \
+            --arg run_id "$RUN_ID" \
+            '{source:"github-actions",workflow:$workflow,conclusion:$conclusion,sha:$sha,branch:$branch,html_url:$url,event:$event,run_id:$run_id}')
+          # Sender key: заголовок x-webhook-key (Cursor Grok Bot webhook routines)
+          code=$(curl -sS -o /tmp/cicd-ping.out -w "%{http_code}" -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "x-webhook-key: $WEBHOOK_KEY" \
+            -d "$payload" || true)
+          echo "HTTP $code"
+          head -c 500 /tmp/cicd-ping.out || true
+          case "$code" in
+            2*) exit 0 ;;
+            *) echo "Webhook не принял пинок"; exit 0 ;;
+          esac

@@ -8,7 +8,7 @@ alwaysApply: false
 - Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then set `статус: готово` and close the issue in the same moment (board-sync moves the card to Готово; never leave a closed issue with another status label). A follow-up comment may note the merged PR; do not add late `closes`/`fix`/`fixes`. Feature: Готово when all subtasks are closed after their acceptance.
 - The owner may spot-check major features; lead still owns the acceptance comment and the close.
 
-## Wait-watch
-- After merge, in the **same turn**, create a short-lived GitHub `ci-passed`/`ci-failed` routine on `main` (`ciBranch: main`) whose prompt requires workflow `Deploy to dev` for a head that includes the merge sha, then runs this step, then deletes itself. Mirror the wait in the lead pipeline note (OPS.md). Do not use cron. Arm-then-check: if Deploy is already green, accept now.
+## CI/CD wake
+- After merge, set `Waiting on` = Deploy in the lead pipeline note (OPS.md). Do not create a per-task wait-watch routine.
+- When «TravelAgency CI/CD» wakes on successful `Deploy to dev` for a sha that includes the merge (or the lead sees Deploy green on arm-then-check), run this step.
 - When this issue's remaining criteria live on a sibling issue, keep both open until joint acceptance; close them together (`playbook-workflow.mdc` related acceptance).
-
