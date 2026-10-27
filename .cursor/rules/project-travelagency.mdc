@@ -43,6 +43,6 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Analyst / architecture text: cloud agent returns ready Russian wiki/issue text; lead publishes.
 - Tester: acceptance on dev stays with whoever has dev access (lead); automated tests via a cloud agent when an issue needs them.
 - DevOps: server stays with the lead; a cloud agent may edit workflows or Dockerfiles, lead checks the diff.
-- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `<role>/<NN>-<slug>`.
+- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `type/NN-short-english-slug` (`playbook-git-pr.mdc` «Branch naming»).
 - Gates after a cloud agent: strip Cursor PR markers, then merge order above. Cloud agents never touch the wiki, the board or merges.
 - Usage mode and budgets: ask the lead (it keeps them current).

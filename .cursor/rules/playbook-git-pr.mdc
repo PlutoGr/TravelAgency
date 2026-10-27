@@ -5,12 +5,23 @@ alwaysApply: false
 # Git, PR, review, merge (generic)
 ## Git
 - Follow the repo's architecture, neighbouring code and its `.cursor/rules` / `AGENTS.md`.
-- Own branch per task: `type/NN-short-slug` (issue number in the name, e.g. `fix/198-appexception-warning`; role prefix still fine if it includes `NN`). Never push to the default branch, never force-push; history rewrite only with owner approval.
 - Minimal diff, implement to acceptance criteria. No libraries "just in case", no refactoring of neighbouring layers unless asked.
 - Leave shared clones clean (default branch, no uncommitted changes).
+- Never push to the default branch, never force-push; history rewrite only with owner approval.
+## Branch naming
+- Template: `type/NN-short-english-slug`.
+- ASCII lowercase English only (no Cyrillic, no spaces).
+- `NN` is the GitHub issue number as its own slash segment (required for issue↔branch matching).
+- `type` is one of: `feature` | `fix` | `docs` | `infra` | `chore` | `deps` (map from Russian issue types: разработка→feature, исправление→fix, документация→docs, инфраструктура→infra, зависимости→deps, аналитика/тесты/процесс→chore or docs as fits).
+- `short-english-slug`: 2–5 kebab-case words describing the change.
+- Examples: `feature/101-client-profile-ui`, `fix/218-refresh-token-security`, `docs/303-issue-templates`, `infra/318-actions-english-names`.
+- Dependabot keeps GitHub/Dependabot default branch names (do not rename).
+- Create via: `gh issue develop <NN> --name type/NN-short-english-slug --base main`.
+- Deprecated: role prefixes like `lead/`, `cursor/`, `developer/` and Russian prefixes like `разработка/`. Replace with `type/` above. Prefer deleting old junk branches over renaming them.
+- After merge: head branches must auto-delete via the GitHub repo setting «Automatically delete head branches». If that setting is off, ask the owner to turn it on. Agents do not hand-delete after every merge as the primary path; orphans still get cleaned in the weekly audit.
 ## Tasks and PRs
 - One issue = one owner = one PR (batch small related fixes). Status lives in the tracker (labels, board, review state), not in chat.
-- **Issue ↔ branch during work; closedBy after close (unless Dependabot):** branch `type/NN-short-slug` via `gh issue develop <NN> --name type/NN-short-slug --base main` (`linkedBranches`). PR body `## Задача` with `#NN` only, never `closes`/`fix`/`fixes`. Do not call `addCloseIssueReferences` and do not attach closedBy before acceptance. If the branch already exists, do not add or remove Development links by hand. Before merge, the close workflow must be able to match the PR (branch segment and/or `#NN` in the title or body; a closing keyword is not required) and «Задача» must be `#NN`. Do not create closedBy to pass the gate. After the issue is closed, `.github/workflows/link-closed-by.yml` sets the Projects PR chip. Agents do not add or remove Development links unless the owner explicitly asks. Dependabot: no issue link. Docs/process-only meta with no tracker task: «без задачи» (rare). Do not retrofit old closed issues. Details: `project-github-formats.mdc`.
+- **Issue ↔ branch during work; closedBy after close (unless Dependabot):** branch `type/NN-short-english-slug` via `gh issue develop <NN> --name type/NN-short-english-slug --base main` (`linkedBranches`). PR body `## Задача` with `#NN` only, never `closes`/`fix`/`fixes`. Do not call `addCloseIssueReferences` and do not attach closedBy before acceptance. If the branch already exists, do not add or remove Development links by hand. Before merge, the close workflow must be able to match the PR (branch segment and/or `#NN` in the title or body; a closing keyword is not required) and «Задача» must be `#NN`. Do not create closedBy to pass the gate. After the issue is closed, `.github/workflows/link-closed-by.yml` sets the Projects PR chip. Agents do not add or remove Development links unless the owner explicitly asks. Dependabot: no issue link. Docs/process-only meta with no tracker task: «без задачи» (rare). Do not retrofit old closed issues. Details: `project-github-formats.mdc`.
 - Post to chat only the PR link when ready, a blocker, or a decision question.
 - Behaviour/API/contract/settings/infra change merges with the matching doc update.
 ## Review and CI
