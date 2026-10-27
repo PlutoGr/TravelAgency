@@ -161,6 +161,27 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("About")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("AvatarMediaFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LanguagesJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Specialization")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("TourismSince")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("BlockedAt")
                         .HasColumnType("timestamp with time zone");
 

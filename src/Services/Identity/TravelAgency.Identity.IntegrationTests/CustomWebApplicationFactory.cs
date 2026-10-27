@@ -11,7 +11,9 @@ using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Services;
+using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.IntegrationTests.API;
+using TravelAgency.Identity.IntegrationTests.Fakes;
 
 namespace TravelAgency.Identity.IntegrationTests;
 
@@ -29,6 +31,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     /// иначе параллельный тест с жёстким лимитом даёт 429 чужим запросам.
     /// </summary>
     public int RateLimitPermit { get; set; } = 1000;
+
+    public FakeAvatarMediaClient AvatarMedia { get; } = new();
 
     public CustomWebApplicationFactory()
     {
@@ -71,6 +75,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddScoped<IdentityDbContext>(_ => new IdentityDbContext(sqliteOptions));
             services.AddScoped<DbContextOptions<IdentityDbContext>>(_ => sqliteOptions);
+
+            services.RemoveAll<IAvatarMediaClient>();
+            services.AddSingleton<IAvatarMediaClient>(AvatarMedia);
 
             services.RemoveAll<IUserAdminLock>();
             services.AddScoped<UserAdminLock>();

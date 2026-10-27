@@ -12,7 +12,7 @@ public sealed class GetPublicMediaFileQueryHandler(
 {
     public async Task<MediaFileStream> Handle(GetPublicMediaFileQuery request, CancellationToken ct)
     {
-        var file = await TourImageFileLocator.RequireActiveTourImage(repository, request.Id, ct);
+        var file = await TourImageFileLocator.RequireActivePublicImage(repository, request.Id, ct);
         if (!file.IsPublic)
             throw new MediaNotFoundException(request.Id);
 

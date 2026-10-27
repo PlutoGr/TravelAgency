@@ -24,10 +24,33 @@ internal static class TourImageFileLocator
         return file;
     }
 
+    public static async Task<MediaFile> RequireActivePublicImage(
+        IMediaFileRepository repository,
+        Guid id,
+        CancellationToken ct)
+    {
+        var file = await repository.GetByIdAsync(id, ct);
+        if (file is null
+            || file.Status == MediaFileStatus.Deleted
+            || !(MediaPurposes.IsTourImage(file.Purpose) || MediaPurposes.IsAvatar(file.Purpose)))
+        {
+            throw new MediaNotFoundException(id);
+        }
+
+        return file;
+    }
+
     public static MediaFileThumbnail RequirePreview(MediaFile file, string size)
     {
-        if (!TourImageSizes.IsKnown(size))
+        if (MediaPurposes.IsAvatar(file.Purpose))
+        {
+            if (!AvatarSizes.IsKnown(size))
+                throw new MediaNotFoundException(file.Id);
+        }
+        else if (!TourImageSizes.IsKnown(size))
+        {
             throw new MediaNotFoundException(file.Id);
+        }
 
         var thumb = file.Thumbnails.FirstOrDefault(t =>
             string.Equals(t.SizeCode, size, StringComparison.Ordinal));

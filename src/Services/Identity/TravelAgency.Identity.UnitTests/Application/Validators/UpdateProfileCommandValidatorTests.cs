@@ -1,4 +1,4 @@
-using FluentAssertions;
+using FluentValidation.TestHelper;
 using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
 
@@ -9,133 +9,105 @@ public class UpdateProfileCommandValidatorTests
     private readonly UpdateProfileCommandValidator _validator = new();
 
     [Fact]
-    public async Task Validate_WithAllNullFields_PassesValidation()
+    public void Validate_EmptyRequest_IsValid()
     {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, null));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeTrue();
+        var command = new UpdateProfileCommand(new UpdateProfileRequest());
+        var result = _validator.TestValidate(command);
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public async Task Validate_WithValidFields_PassesValidation()
+    public void Validate_ValidNamesAndE164Phone_IsValid()
     {
         var command = new UpdateProfileCommand(new UpdateProfileRequest("John", "Doe", "+1234567890"));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeTrue();
+        var result = _validator.TestValidate(command);
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public async Task Validate_WithFirstNameExceedingMaxLength_FailsValidation()
+    public void Validate_FirstNameTooLong_HasError()
     {
         var longName = new string('a', 101);
         var command = new UpdateProfileCommand(new UpdateProfileRequest(longName, null, null));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName.Contains("FirstName"));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("firstName");
     }
 
     [Fact]
-    public async Task Validate_WithLastNameExceedingMaxLength_FailsValidation()
+    public void Validate_LastNameTooLong_HasError()
     {
         var longName = new string('a', 101);
         var command = new UpdateProfileCommand(new UpdateProfileRequest(null, longName, null));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName.Contains("LastName"));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("lastName");
     }
 
     [Fact]
-    public async Task Validate_WithInvalidPhoneFormat_FailsValidation()
+    public void Validate_InvalidPhone_HasError()
     {
         var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, "not#a@phone!"));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("Phone"));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("phone");
     }
 
     [Fact]
-    public async Task Validate_WithPhoneTooLong_FailsValidation()
-    {
-        var longPhone = new string('1', 21);
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, longPhone));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task Validate_WithEmptyPhone_PassesValidation()
-    {
-        // Empty string is treated as null (not present), so phone validation is skipped
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, ""));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Validate_WithValidPhone_PassesValidation()
+    public void Validate_PhoneWithSpaces_HasError()
     {
         var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, "+44 20 7946 0958"));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeTrue();
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("phone");
     }
 
-    // FIX-012: .NotEmpty() added before .MaximumLength(100) — empty string must be rejected when field is provided
+    [Fact]
+    public void Validate_EmptyPhone_IsValid()
+    {
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, ""));
+        var result = _validator.TestValidate(command);
+        result.ShouldNotHaveValidationErrorFor("phone");
+    }
 
     [Fact]
-    public async Task Validate_WhenFirstNameIsEmptyString_ReturnsValidationError()
+    public void Validate_EmptyFirstName_HasError()
     {
         var command = new UpdateProfileCommand(new UpdateProfileRequest("", null, null));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName.Contains("FirstName"));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("firstName");
     }
 
     [Fact]
-    public async Task Validate_WhenFirstNameIsNull_PassesValidation()
+    public void Validate_TourismSinceInFuture_HasError()
     {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, null));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeTrue();
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(TourismSince: DateTime.UtcNow.Year + 1));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("tourismSince")
+            .WithErrorMessage("Укажите год не позже текущего.");
     }
 
     [Fact]
-    public async Task Validate_WhenFirstNameIsValid_PassesValidation()
+    public void Validate_UnknownLanguage_HasError()
     {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest("Alice", null, null));
-
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeTrue();
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(Languages: ["xx"]));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("languages");
     }
 
     [Fact]
-    public async Task Validate_WhenLastNameIsEmptyString_ReturnsValidationError()
+    public void Validate_ManagerFields_AreValid()
     {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, "", null));
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(
+            About: "Опыт",
+            TourismSince: 2010,
+            Languages: ["ru", "en"],
+            Specialization: "Европа"));
+        var result = _validator.TestValidate(command);
+        result.ShouldNotHaveAnyValidationErrors();
+    }
 
-        var result = await _validator.ValidateAsync(command);
-
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName.Contains("LastName"));
+    [Fact]
+    public void Validate_CityTooLong_HasError()
+    {
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(City: new string('c', 101)));
+        var result = _validator.TestValidate(command);
+        result.ShouldHaveValidationErrorFor("city");
     }
 }

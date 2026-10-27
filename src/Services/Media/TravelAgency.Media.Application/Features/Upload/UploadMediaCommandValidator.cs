@@ -27,17 +27,33 @@ public sealed class UploadMediaCommandValidator : AbstractValidator<UploadMediaC
         RuleFor(x => x.SizeBytes)
             .GreaterThan(0).WithMessage("File must not be empty.")
             .LessThanOrEqualTo(s.MaxFileSizeBytes)
-            .WithMessage($"File size must not exceed {s.MaxFileSizeBytes / (1024 * 1024)} MB.");
+            .WithMessage($"File size must not exceed {s.MaxFileSizeBytes / (1024 * 1024)} MB.")
+            .When(x => !MediaPurposes.IsAvatar(x.Purpose));
 
         RuleFor(x => x.Purpose)
-            .Must(purpose => string.IsNullOrWhiteSpace(purpose) || MediaPurposes.IsTourImage(purpose))
-            .WithMessage("Purpose must be 'tour-image' when provided.");
+            .Must(purpose =>
+                string.IsNullOrWhiteSpace(purpose)
+                || MediaPurposes.IsTourImage(purpose)
+                || MediaPurposes.IsAvatar(purpose))
+            .WithMessage("Purpose must be 'tour-image' or 'avatar' when provided.");
 
         When(x => MediaPurposes.IsTourImage(x.Purpose), () =>
         {
             RuleFor(x => x.ContentType)
                 .Must(TourImageContentTypes.IsAllowed)
                 .WithMessage("Tour images must be jpeg, png, or webp.");
+        });
+
+        When(x => MediaPurposes.IsAvatar(x.Purpose), () =>
+        {
+            RuleFor(x => x.ContentType)
+                .Must(TourImageContentTypes.IsAllowed)
+                .WithMessage("Подходят JPG, PNG или WebP.");
+
+            RuleFor(x => x.SizeBytes)
+                .GreaterThan(0).WithMessage("File must not be empty.")
+                .LessThanOrEqualTo(AvatarSizes.MaxFileSizeBytes)
+                .WithMessage("Файл больше 5 МБ.");
         });
 
         RuleFor(x => x)

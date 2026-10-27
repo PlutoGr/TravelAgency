@@ -1,5 +1,6 @@
 using Grpc.Core;
 using TravelAgency.Contracts.Grpc.Identity;
+using TravelAgency.Identity.Application.Features.Profile;
 using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Domain.Interfaces;
 
@@ -26,7 +27,9 @@ public sealed class IdentityGrpcService(IUserRepository userRepository)
             Email = user.Email,
             FirstName = user.FirstName ?? string.Empty,
             LastName = user.LastName ?? string.Empty,
-            Role = user.Role.ToRoleString()
+            Role = user.Role.ToRoleString(),
+            AvatarUrl = ProfileMapper.BuildAvatarUrl(user.AvatarMediaFileId) ?? string.Empty,
+            DisplayName = user.DisplayName
         };
     }
 }

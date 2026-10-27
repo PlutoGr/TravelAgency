@@ -18,4 +18,6 @@ message UserSummaryResponse {
   string first_name = 3;
   string last_name = 4;
   string role = 5;
+  string avatar_url = 6;
+  string display_name = 7;
 }

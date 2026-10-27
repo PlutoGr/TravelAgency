@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TravelAgency.Identity.Domain.Enums;
 using TravelAgency.Identity.Domain.Exceptions;
 
@@ -5,13 +6,25 @@ namespace TravelAgency.Identity.Domain.Entities;
 
 public class User
 {
+    private static readonly JsonSerializerOptions LanguagesJsonOptions = new(JsonSerializerDefaults.Web);
+
     public Guid Id { get; private set; }
     public string Email { get; private set; } = null!;
     public string PasswordHash { get; private set; } = null!;
     public string FirstName { get; private set; } = null!;
     public string LastName { get; private set; } = null!;
     public string? Phone { get; private set; }
+    public string? City { get; private set; }
+    public string? About { get; private set; }
+    public int? TourismSince { get; private set; }
+    public string? LanguagesJson { get; private set; }
+    public string? Specialization { get; private set; }
+    public Guid? AvatarMediaFileId { get; private set; }
     public const int MaxBlockReasonLength = 500;
+    public const int MaxCityLength = 100;
+    public const int MaxAboutLength = 1000;
+    public const int MaxSpecializationLength = 300;
+    public const int MinTourismSinceYear = 1950;
 
     public UserRole Role { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -23,6 +36,8 @@ public class User
     public long SessionVersion { get; private set; }
 
     public bool IsBlocked => BlockedAt.HasValue;
+
+    public string DisplayName => $"{FirstName} {LastName}".Trim();
 
     private User() { }
 
@@ -57,11 +72,51 @@ public class User
         };
     }
 
-    public void UpdateProfile(string firstName, string lastName, string? phone)
+    public void UpdateProfile(string firstName, string lastName, string? phone, string? city)
     {
         FirstName = firstName;
         LastName = lastName;
         Phone = phone;
+        City = city;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateManagerProfile(string? about, int? tourismSince, IReadOnlyList<string>? languages, string? specialization)
+    {
+        About = about;
+        TourismSince = tourismSince;
+        LanguagesJson = languages is null ? null : JsonSerializer.Serialize(languages, LanguagesJsonOptions);
+        Specialization = specialization;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public IReadOnlyList<string>? GetLanguages()
+    {
+        if (string.IsNullOrWhiteSpace(LanguagesJson))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(LanguagesJson, LanguagesJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    public void SetAvatar(Guid mediaFileId)
+    {
+        if (mediaFileId == Guid.Empty)
+            throw new IdentityDomainException("Avatar media file id is required.");
+
+        AvatarMediaFileId = mediaFileId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ClearAvatar()
+    {
+        AvatarMediaFileId = null;
         UpdatedAt = DateTime.UtcNow;
     }
 

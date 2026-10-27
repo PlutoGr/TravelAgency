@@ -7,7 +7,9 @@ using TravelAgency.Identity.Application.Features.Auth.Commands.Login;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Logout;
 using TravelAgency.Identity.Application.Features.Auth.Commands.RefreshToken;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Register;
+using TravelAgency.Identity.Application.Features.Profile.Commands.DeleteAvatar;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
+using TravelAgency.Identity.Application.Features.Profile.Commands.UploadAvatar;
 using TravelAgency.Identity.Application.Features.Profile.Queries.GetProfile;
 using TravelAgency.Shared.Contracts.Abstractions;
 
@@ -83,10 +85,63 @@ public class AuthController : ControllerBase
     [HttpPatch("me")]
     [Authorize]
     [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
         var result = await _mediator.Send(new UpdateProfileCommand(request), ct);
+        return Ok(result);
+    }
+
+    [HttpPost("me/avatar")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UploadAvatar(IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Bad Request",
+                Detail = "Подходят JPG, PNG или WebP."
+            });
+
+        await using var stream = file.OpenReadStream();
+        // Buffer so Media client / validators can seek.
+        var ms = new MemoryStream();
+        await stream.CopyToAsync(ms, ct);
+        ms.Position = 0;
+
+        var bearer = Request.Headers.Authorization.ToString();
+        if (bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            bearer = bearer["Bearer ".Length..].Trim();
+        else
+            bearer = null;
+
+        var result = await _mediator.Send(
+            new UploadAvatarCommand(ms, file.FileName, file.ContentType, file.Length, bearer),
+            ct);
+        return Ok(result);
+    }
+
+    [HttpDelete("me/avatar")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeleteAvatar(CancellationToken ct)
+    {
+        var bearer = Request.Headers.Authorization.ToString();
+        if (bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            bearer = bearer["Bearer ".Length..].Trim();
+        else
+            bearer = null;
+
+        var result = await _mediator.Send(new DeleteAvatarCommand(bearer), ct);
         return Ok(result);
     }
 }

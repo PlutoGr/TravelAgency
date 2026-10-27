@@ -15,11 +15,17 @@ type UserProfileDto = {
   phone?: string | null;
   role: string;
   createdAt: string;
+  city?: string | null;
+  avatarUrl?: string | null;
+  about?: string | null;
+  tourismSince?: number | null;
+  languages?: string[] | null;
+  specialization?: string | null;
 };
 
 export type UserRole = 'client' | 'manager' | 'admin';
 
-/** Maps backend UserProfileDto to User. Note: avatar is not in backend DTO; reserved for future use. */
+/** Maps backend UserProfileDto to User. */
 function mapUserProfileDtoToUser(dto: UserProfileDto): User {
   return {
     id: dto.id,
@@ -27,6 +33,7 @@ function mapUserProfileDtoToUser(dto: UserProfileDto): User {
     firstName: dto.firstName,
     lastName: dto.lastName,
     phone: dto.phone ?? '',
+    avatar: dto.avatarUrl ?? undefined,
     role: dto.role.toLowerCase() as UserRole,
     createdAt: dto.createdAt,
   };
@@ -66,6 +73,7 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<User> {
   if (data.firstName !== undefined) payload.firstName = data.firstName;
   if (data.lastName !== undefined) payload.lastName = data.lastName;
   if (data.phone !== undefined) payload.phone = data.phone;
+  if (data.city !== undefined) payload.city = data.city;
 
   const { data: dto } = await apiClient.patch<UserProfileDto>(
     '/auth/me',

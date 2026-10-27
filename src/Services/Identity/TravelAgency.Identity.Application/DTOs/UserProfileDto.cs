@@ -7,4 +7,10 @@ public sealed record UserProfileDto(
     string LastName,
     string? Phone,
     string Role,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? City = null,
+    string? AvatarUrl = null,
+    string? About = null,
+    int? TourismSince = null,
+    IReadOnlyList<string>? Languages = null,
+    string? Specialization = null);

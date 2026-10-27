@@ -13,6 +13,7 @@ using TravelAgency.Identity.Infrastructure.Caching;
 using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Repositories;
 using TravelAgency.Identity.Infrastructure.Seeding;
+using TravelAgency.Identity.Infrastructure.Http;
 using TravelAgency.Identity.Infrastructure.Services;
 using TravelAgency.Shared.Infrastructure.Authorization;
 using TravelAgency.Shared.Infrastructure.Extensions;
@@ -90,6 +91,17 @@ public static class InfrastructureExtensions
         services.AddHttpContextAccessor();
         services.AddCurrentUserService();
         services.AddHostedService<IdentityDataSeeder>();
+
+        services.Configure<MediaClientSettings>(configuration.GetSection(MediaClientSettings.SectionName));
+        services.AddHttpClient<IAvatarMediaClient, AvatarMediaHttpClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MediaClientSettings>>().Value;
+            var baseUrl = string.IsNullOrWhiteSpace(settings.BaseUrl)
+                ? "http://media-service:8080"
+                : settings.BaseUrl.TrimEnd('/');
+            client.BaseAddress = new Uri(baseUrl + "/");
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
 
         return services;
     }

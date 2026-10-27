@@ -102,7 +102,12 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
         {
             new("FirstName", new ScalarValue(MaskName(request.FirstName))),
             new("LastName", new ScalarValue(MaskName(request.LastName))),
-            new("Phone", new ScalarValue(MaskPhone(request.Phone)))
+            new("Phone", new ScalarValue(MaskPhone(request.Phone))),
+            new("City", new ScalarValue(MaskName(request.City))),
+            new("About", new ScalarValue(request.About is null ? "***" : "[REDACTED]")),
+            new("TourismSince", new ScalarValue(request.TourismSince)),
+            new("Specialization", new ScalarValue(request.Specialization is null ? "***" : "[REDACTED]")),
+            new("Languages", new ScalarValue(request.Languages is null ? "***" : string.Join(',', request.Languages)))
         };
         return new StructureValue(props);
     }
@@ -114,9 +119,6 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
         return new StructureValue(props);
     }
 
-    /// <summary>
-    /// Masks email: first 2 chars of local part + ***, domain redacted (e.g. "us***@***").
-    /// </summary>
     private static string MaskEmail(string? email)
     {
         if (string.IsNullOrEmpty(email))
@@ -135,9 +137,6 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
         return maskedLocal + "@***";
     }
 
-    /// <summary>
-    /// Masks name: first 2 chars + *** (e.g. "Jo***" for "John").
-    /// </summary>
     private static string MaskName(string? name)
     {
         if (string.IsNullOrEmpty(name))
@@ -149,9 +148,6 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
         return name[..2] + "***";
     }
 
-    /// <summary>
-    /// Masks phone: full redaction to avoid PII exposure.
-    /// </summary>
     private static string MaskPhone(string? phone)
     {
         if (string.IsNullOrEmpty(phone))

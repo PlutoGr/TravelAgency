@@ -104,7 +104,7 @@ public class UserRepositoryTests : IDisposable
         var user = User.Create("update@example.com", "hash", "Old", "Name", null);
         await _repository.AddAsync(user);
 
-        user.UpdateProfile("New", "Surname", "+123");
+        user.UpdateProfile("New", "Surname", "+123", null);
         await _repository.UpdateAsync(user);
 
         var updated = await _repository.GetByIdAsync(user.Id);

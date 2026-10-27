@@ -243,11 +243,35 @@ public class UploadMediaCommandValidatorTests
     [Fact]
     public async Task Validate_UnknownPurpose_Fails()
     {
-        var command = ValidCommand() with { Purpose = "avatar" };
+        var command = ValidCommand() with { Purpose = "not-a-real-purpose" };
 
         var result = await _validator.TestValidateAsync(command);
 
         result.ShouldHaveValidationErrorFor(x => x.Purpose);
+    }
+
+    [Fact]
+    public async Task Validate_AvatarPurpose_Jpeg_Passes()
+    {
+        var command = ValidCommand() with { Purpose = MediaPurposes.Avatar, SizeBytes = 1024 };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.Purpose);
+    }
+
+    [Fact]
+    public async Task Validate_AvatarPurpose_Over5Mb_Fails()
+    {
+        var command = ValidCommand() with
+        {
+            Purpose = MediaPurposes.Avatar,
+            SizeBytes = 5 * 1024 * 1024 + 1
+        };
+
+        var result = await _validator.TestValidateAsync(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.SizeBytes);
     }
 
     [Fact]
