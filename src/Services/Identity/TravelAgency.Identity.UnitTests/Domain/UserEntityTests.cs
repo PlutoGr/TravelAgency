@@ -66,7 +66,7 @@ public class UserEntityTests
         var user = User.Create("test@example.com", "hash", "John", "Doe", null);
         var before = DateTime.UtcNow;
 
-        user.UpdateProfile("Jane", "Smith", "+9876543210");
+        user.UpdateProfile("Jane", "Smith", "+9876543210", null);
         var after = DateTime.UtcNow;
 
         user.FirstName.Should().Be("Jane");
@@ -81,7 +81,7 @@ public class UserEntityTests
     {
         var user = User.Create("test@example.com", "hash", "John", "Doe", "+1234567890");
 
-        user.UpdateProfile("John", "Doe", null);
+        user.UpdateProfile("John", "Doe", null, null);
 
         user.Phone.Should().BeNull();
     }
@@ -91,7 +91,7 @@ public class UserEntityTests
     {
         var user = User.Create("test@example.com", "hash", "John", "Doe", null, UserRole.Manager);
 
-        user.UpdateProfile("Jane", "Smith", null);
+        user.UpdateProfile("Jane", "Smith", null, null);
 
         user.Email.Should().Be("test@example.com");
         user.Role.Should().Be(UserRole.Manager);

@@ -25,12 +25,18 @@ public sealed class UploadMediaCommandHandler(
     public async Task<UploadMediaResponse> Handle(UploadMediaCommand request, CancellationToken ct)
     {
         var isTourImage = MediaPurposes.IsTourImage(request.Purpose);
+        var isAvatar = MediaPurposes.IsAvatar(request.Purpose);
         if (isTourImage)
             EnsureManagerOrAdmin();
+        if (isAvatar)
+            EnsureAuthenticated();
 
         var fileId = Guid.NewGuid();
         var sanitizedFileName = FileNameSanitizer.Sanitize(request.FileName);
         var storageKey = $"{currentUser.UserId:N}/{fileId}/{sanitizedFileName}";
+
+        if (isAvatar)
+            return await UploadAvatarAsync(request, fileId, storageKey, ct);
 
         int? width = null;
         int? height = null;
@@ -55,7 +61,8 @@ public sealed class UploadMediaCommandHandler(
             currentUser.UserId.ToString(),
             isTourImage ? MediaPurposes.TourImage : MediaPurposes.General,
             width,
-            height);
+            height,
+            fileId);
 
         if (isTourImage)
             await AddTourPreviewsAsync(request, storageKey, mediaFile, ct);
@@ -68,10 +75,61 @@ public sealed class UploadMediaCommandHandler(
         return ToResponse(mediaFile, isTourImage ? false : null);
     }
 
-    private void EnsureManagerOrAdmin()
+    private async Task<UploadMediaResponse> UploadAvatarAsync(
+        UploadMediaCommand request,
+        Guid fileId,
+        string storageKey,
+        CancellationToken ct)
+    {
+        // Validate the bytes are a real image before mutating.
+        _ = await ReadDimensionsAsync(request.FileContent, ct);
+        if (request.FileContent.CanSeek)
+            request.FileContent.Position = 0;
+
+        var avatar = await imageProcessor.CreateSquareAvatarAsync(
+            request.FileContent,
+            AvatarSizes.SidePixels,
+            ct);
+        await using (avatar.Content)
+        {
+            var avatarKey = $"{storageKey}-avatar-{AvatarSizes.A256}";
+            await storage.UploadAsync(avatar.Content, avatarKey, avatar.ContentType, ct);
+
+            // Separate preview object so delete can remove both keys safely.
+            if (avatar.Content.CanSeek)
+                avatar.Content.Position = 0;
+            var previewKey = $"{avatarKey}-preview-{AvatarSizes.A256}";
+            await storage.UploadAsync(avatar.Content, previewKey, avatar.ContentType, ct);
+
+            var mediaFile = MediaFile.Create(
+                request.FileName,
+                avatar.ContentType,
+                avatar.Content.CanSeek ? avatar.Content.Length : request.SizeBytes,
+                avatarKey,
+                currentUser.UserId.ToString(),
+                MediaPurposes.Avatar,
+                avatar.Width,
+                avatar.Height,
+                fileId);
+            mediaFile.AddThumbnail(previewKey, avatar.Width, avatar.Height, AvatarSizes.A256);
+            mediaFile.MarkPublic();
+
+            await repository.AddAsync(mediaFile, ct);
+            await repository.SaveChangesAsync(ct);
+
+            return ToResponse(mediaFile, true);
+        }
+    }
+
+    private void EnsureAuthenticated()
     {
         if (!currentUser.IsAuthenticated || currentUser.UserId == Guid.Empty)
             throw new UnauthorizedAccessException("Authentication is required.");
+    }
+
+    private void EnsureManagerOrAdmin()
+    {
+        EnsureAuthenticated();
 
         var role = currentUser.Role;
         if (!string.Equals(role, AppRoles.Manager, StringComparison.Ordinal)
@@ -133,7 +191,6 @@ public sealed class UploadMediaCommandHandler(
     {
         foreach (var thumbWidth in ThumbnailWidthList.DistinctPositive(uploadOptions.Value.ThumbnailWidths))
         {
-            // A thumbnail is not created unless the original is wider. Equal or smaller would upscale or copy.
             if (originalWidth <= thumbWidth)
                 continue;
 

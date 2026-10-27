@@ -106,6 +106,7 @@ services:
       # REQUIRED for gRPC service-to-service auth. Set GRPC_INTERNAL_SERVICE_TOKEN in your .env file.
       - GrpcSettings__InternalServiceToken=${GRPC_INTERNAL_SERVICE_TOKEN}
       - Seeding__TestUserPassword=${SEEDING_TEST_USER_PASSWORD:-}
+      - MediaClient__BaseUrl=http://media-service:8080
     depends_on:
       postgres:
         condition: service_healthy

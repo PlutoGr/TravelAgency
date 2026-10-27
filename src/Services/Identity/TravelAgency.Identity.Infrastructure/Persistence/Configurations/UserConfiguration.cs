@@ -37,6 +37,18 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Phone)
             .HasMaxLength(20);
 
+        builder.Property(u => u.City)
+            .HasMaxLength(User.MaxCityLength);
+
+        builder.Property(u => u.About)
+            .HasMaxLength(User.MaxAboutLength);
+
+        builder.Property(u => u.Specialization)
+            .HasMaxLength(User.MaxSpecializationLength);
+
+        builder.Property(u => u.LanguagesJson)
+            .HasColumnType("text");
+
         builder.Property(u => u.Role)
             .HasConversion<string>()
             .HasMaxLength(50)

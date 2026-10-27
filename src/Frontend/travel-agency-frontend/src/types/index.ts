@@ -82,7 +82,7 @@ export type User = {
   firstName: string;
   lastName: string;
   phone: string;
-  /** Optional. Not populated by backend UserProfileDto; reserved for future use. */
+  /** Public Media path `/api/v1/media/files/{id}/a256` when set. */
   avatar?: string;
   passport?: string;
   role: 'client' | 'manager' | 'admin';
@@ -172,6 +172,11 @@ export type UpdateProfileRequest = {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  city?: string;
+  about?: string;
+  tourismSince?: number;
+  languages?: string[];
+  specialization?: string;
 };
 
 export type TourFilters = {

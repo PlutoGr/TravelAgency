@@ -15,4 +15,9 @@ public interface IImageProcessingService
     /// Never enlarges. Aspect ratio is kept.
     /// </summary>
     Task<ResizedImage> ResizeWithinAsync(Stream source, int maxWidth, CancellationToken ct = default);
+
+    /// <summary>
+    /// Center-crops to a square, resizes to <paramref name="sidePixels"/>, strips EXIF/IPTC/XMP, saves as JPEG.
+    /// </summary>
+    Task<ResizedImage> CreateSquareAvatarAsync(Stream source, int sidePixels, CancellationToken ct = default);
 }

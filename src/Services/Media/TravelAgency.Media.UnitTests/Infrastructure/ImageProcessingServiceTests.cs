@@ -51,6 +51,25 @@ public class ImageProcessingServiceTests
         dimensions.Height.Should().Be(32);
     }
 
+    [Fact]
+    public async Task CreateSquareAvatarAsync_CropsTo256Jpeg_AndStripsExif()
+    {
+        await using var source = await CreatePngAsync(400, 200);
+
+        var avatar = await _service.CreateSquareAvatarAsync(source, 256);
+        await using (avatar.Content)
+        {
+            avatar.Width.Should().Be(256);
+            avatar.Height.Should().Be(256);
+            avatar.ContentType.Should().Be("image/jpeg");
+
+            using var loaded = await Image.LoadAsync(avatar.Content);
+            loaded.Width.Should().Be(256);
+            loaded.Height.Should().Be(256);
+            loaded.Metadata.ExifProfile.Should().BeNull();
+        }
+    }
+
     private static async Task<MemoryStream> CreatePngAsync(int width, int height)
     {
         using var image = new Image<Rgba32>(width, height);
