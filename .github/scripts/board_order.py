@@ -27,6 +27,8 @@
 
 PR, черновики и архивные карточки не двигаются. Виды доски не меняются.
 Меняются только метки «статус: …» по правилам выше (через gh issue edit).
+Если смена меток для одной задачи не удалась, ошибка пишется в лог и запуск
+продолжается: колонки и порядок (в т.ч. «Готово») всё равно обновляются.
 
 Запуск:
   python3 board_order.py --dry-run     # только показать план
@@ -203,7 +205,9 @@ def apply_label_memory(fixes):
 
 
 def apply_status_labels(fixes):
+    """Смена меток статуса. Ошибка по одной задаче не останавливает остальные и column moves."""
     env = dict(os.environ, GH_TOKEN=token())
+    failed = 0
     for it, add, remove in fixes:
         cmd = [GH, "issue", "edit", str(it["number"]), "--repo", f"{OWNER}/{REPO}"]
         if add:
@@ -213,7 +217,10 @@ def apply_status_labels(fixes):
         p = subprocess.run(cmd, env=env, capture_output=True, text=True)
         if p.returncode != 0:
             err = (p.stderr or p.stdout or "").strip()
-            raise RuntimeError(f"#{it['number']}: не удалось сменить метки статуса: {err}")
+            failed += 1
+            print(f"  ошибка меток #{it['number']}: {err} (продолжаем)", file=sys.stderr)
+    if failed:
+        print(f"замечание: сбой смены меток у {failed} задач(и); колонки и порядок всё равно обновляются")
 
 
 def managed(it):

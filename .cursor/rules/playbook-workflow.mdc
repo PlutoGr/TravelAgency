@@ -36,11 +36,12 @@ alwaysApply: false
 
 
 ## Epic pick and queue
-- Finish children of epics already `статус: в работе` (and their Очередь sub-issues) before starting work from an epic that has never been opened, unless the owner says otherwise.
-- When choosing the **next epic** (all previously opened epics are accepted or the next Очередь item belongs to an epic not yet chosen with the owner): ask the owner which epic(s) to take next and which epic to pull tasks from. Do not silently promote a new epic from Priority alone.
-- If several epics should run together (shared dependency or safe parallel), say so in the ask. Those links must also be written on the wiki `Epic-` pages (see `Epic-Template`).
-- Work outside any epic (bugs, Dependabot, infra, docs meta) still follows board Priority without an epic-pick ask.
-- After the owner names the next epic(s), set Priority on that epic's queue items and take the top task as usual.
+Canonical priority method: `project-github-formats.mdc` «Queue priority».
+- Finish children of epics already `статус: в работе` (and their Очередь sub-issues) before starting work from an epic that has never been opened, unless the owner says otherwise or throughput/risk warrants a one-off above them (see Queue priority «No hard bans»).
+- When choosing the **next epic** (finishing an epic, or before the first take from an epic not yet chosen with the owner): the lead proposes next epic(s) from the roadmap (wiki Plans) and `Epic-` «Связи с другими эпиками» (one epic when enough; a parallel set when dependent or more efficient). Ask the owner to confirm. Do not silently promote a new epic from «Приоритет» alone.
+- Those links must also be written on the wiki `Epic-` pages (see `Epic-Template`).
+- After the owner confirms: set epic «Приоритет» to match the agreed sequence; raise that epic's (or those epics') open Очередь children with contiguous low numbers; take the top task as usual.
+- Work outside any epic (bugs, Dependabot, infra, docs meta) still follows board «Приоритет» without an epic-pick ask; substantial out-of-epic work pulled ahead should attach to (or activate) a backlog/bugs epic when that keeps the board epic-aware.
 
 ## End-to-end checklist (no silent hangs)
 1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment; if the issue is a GitHub sub-issue of an epic (`тип: родительская`), set that epic to `статус: в работе` in the same moment (`project-github-formats.mdc`).

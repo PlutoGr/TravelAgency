@@ -13,6 +13,7 @@ alwaysApply: false
 - Owner pass: set `статус: готово`, close the epic, mark the wiki `Epic-` page «сделано» (step 8).
 - Owner finds gaps: keep the epic `статус: в работе`; open new sub-issues under this epic and/or a new epic/feature as the owner directs; put them in Очередь and continue by Priority. Do not mark the epic Готово until a later owner pass.
 - Epic end-to-end cases on the wiki page are the checklist for this conversation; child issue acceptance alone is not enough.
+- After epic acceptance (or when the next Очередь item belongs to an epic not yet chosen): run epic pick with the owner (`playbook-workflow.mdc` «Epic pick and queue»; method in `project-github-formats.mdc` «Queue priority»). Propose the next epic or parallel set from the roadmap and wiki links; after confirm, set epic and child «Приоритет» accordingly.
 
 ## CI/CD wake
 - After merge, set `Waiting on` = Deploy in the lead pipeline note (`/home/box/shared/travelagency/work/pipeline.md`). Do not create a per-task wait-watch routine and do not arm-then-check Actions for this task.

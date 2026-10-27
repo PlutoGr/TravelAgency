@@ -48,6 +48,26 @@ alwaysApply: false
 - Epic (`тип: родительская`): the moment any sub-issue becomes `статус: в работе` or `статус: готово` (or is closed), set the epic to `статус: в работе` and drop `статус: очередь` in the same edit. Keep В работе while some children are still open. When every child is Готово/closed, set the epic to `статус: на ревью` and run owner epic acceptance (`playbook-step-07-acceptance.mdc`); Готово (+ close) only after the owner accepts (or after gaps are filed and a later pass). На ревью also when the owner must decide on the epic itself for other reasons. Lead owns this sync on take/close of a child (board-sync does not infer epic status from children yet).
 - Owner answer: the lead records it on the issue impersonally («**Итог:** решено: ...») and sets В работе (or Готово).
 - Views: «Задачи» (all except epics, by field «Тип») and «Эпики» («Тип» = «Эпик»). Ordinary tasks: no «Тип».
-- Card order: Очередь top = next (field «Приоритет», 1 = next, set by the lead; then bugs, then the rest, on-hold last); Готово newest first. `board-sync.yml` (`.github/scripts/board_order.py`, on issue events, daily, manual) syncs columns, **aligns status labels with issue open/closed state**, orders cards, adds missing issues, archives items closed 30+ days, clears «Приоритет» when a card leaves Очередь.
+- Card order (mechanics): Очередь top = next; Готово newest closed first. `board-sync.yml` (`.github/scripts/board_order.py`, on issue events, daily, manual) syncs columns, **aligns status labels with issue open/closed state**, orders cards, adds missing issues, archives items closed 30+ days, clears «Приоритет» when a card leaves Очередь. How to choose numbers: **Queue priority** below.
 - Labels: the lead owns priorities, the architect keeps labels current; everyone sets the label on the task they take or finish.
 - **Process gaps (holistic):** any process inconsistency (labels, commits, PR wording, statuses, docs, branch links, closedBy chips, board, wiki, open PRs) is a symptom that order, staged delivery, or throughput may be drifting. Fix the live artifacts and update these rules / playbooks in the same delivery cycle. A process change must be deliberate and complete: before shipping it, scan related rules, templates, automations, board-sync, and recent examples for side effects; update every place that would otherwise diverge. Do not ship a local patch that breaks consistency elsewhere.
+## Queue priority
+Canonical method for field «Приоритет» on Очередь (1 = next). Efficiency and throughput beat rigid rules; the owner may override any order.
+### Layers
+1. Roadmap (wiki `Plan-` / Plans) sets the coarse sequence of work.
+2. Epic sequence or parallel sets follow the roadmap and wiki `Epic-` «Связи с другими эпиками».
+3. Field «Приоритет» on Очередь cards ranks concrete tasks (1 = next).
+### Epic selection
+When an epic finishes (or before the first take from an epic not yet chosen with the owner): the lead proposes the next epic or parallel set from the roadmap and `Epic-` links (one epic when that is enough; a parallel set when dependency or efficiency warrants it). The owner confirms. The lead then sets «Приоритет» on those epics to match the agreed sequence and keeps wiki/roadmap aligned. Detail: `playbook-workflow.mdc` «Epic pick and queue», `playbook-step-07-acceptance.mdc`.
+### Active epics to task priorities
+For every epic with `статус: в работе`, raise its open Очередь children with contiguous low «Приоритет» numbers, ordered by dependency and delivery logic inside those epics. If several epics are in work, interleave their children by the same logic (efficiency), still ahead of unrelated backlog.
+### No hard bans
+A new bug or task may sit above active-epic work when the owner asks or when throughput or risk warrants it. If that work is substantial and not under an active epic, open or activate a backlog/bugs epic (or attach the task to an existing backlog epic) so the board stays epic-aware. Small one-offs may sit above without a new epic when that is clearer.
+### Who sets «Приоритет»
+Lead only. `board-sync` / `board_order.py` never invents priority numbers: it sorts by the field, clears it when a card leaves Очередь, and orders Готово by newest closed.
+### When to refresh
+1. On demand when the owner asks (including a one-shot catch-up).
+2. Weekly audit (lead): verify Готово is newest-first; Очередь top matches active epics and stated priorities; fix cheap mismatches. Do not invent a separate delete-branch ritual here.
+3. On every new issue the lead files or accepts into the tracker: set «Приоритет» immediately (or leave/clear it so the card sits in the unprioritized bug/rest tiers); adjust neighbors only as needed, not a full reshuffle every time.
+### Fallback sort (unchanged)
+After explicit «Приоритет»: open bugs by number, then the rest by number, hold last (`board_order.py` `queue_key`).

@@ -25,7 +25,8 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Single orchestrator: the lead. Do not hand project work to another teammate chat (handoff risk).
 - Persistent TA chat bots are retired; do not route new work through team group chats.
 ## Priorities
-1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Lead orders within this; order changes need the owner.
+Product themes (coarse product focus; not the Очередь number field): 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Lead orders within this; theme-order changes need the owner.
+Board queue numbers (field «Приоритет», 1 = next): `project-github-formats.mdc` «Queue priority» (Roadmap → epic sequence/parallel sets → task priorities; lead sets the field; refresh on demand, weekly audit, and each new issue).
 ## Parallel work
 - Merge one PR at a time; work may continue: per stream 1 active item + at most 1 waiting.
 - Next issue only if it touches no files/endpoints/migrations of an open PR, does not depend on an unmerged PR, and its criteria are final. Branch from fresh `main`.
