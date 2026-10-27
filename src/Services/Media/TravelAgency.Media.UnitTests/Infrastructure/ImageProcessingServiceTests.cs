@@ -1,4 +1,6 @@
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using TravelAgency.Media.Infrastructure.Services;
 
@@ -70,11 +72,40 @@ public class ImageProcessingServiceTests
         }
     }
 
+    [Fact]
+    public async Task CreateSquareAvatarAsync_AppliesExifOrientation_BeforeCrop()
+    {
+        // 200x100 landscape pixels tagged Rotate90 → displayed as 100x200 portrait.
+        await using var source = await CreateJpegWithOrientationAsync(200, 100, ExifOrientationMode.RightTop);
+
+        var avatar = await _service.CreateSquareAvatarAsync(source, 256);
+        await using (avatar.Content)
+        {
+            avatar.Width.Should().Be(256);
+            avatar.Height.Should().Be(256);
+            using var loaded = await Image.LoadAsync(avatar.Content);
+            loaded.Width.Should().Be(256);
+            loaded.Height.Should().Be(256);
+            loaded.Metadata.ExifProfile.Should().BeNull();
+        }
+    }
+
     private static async Task<MemoryStream> CreatePngAsync(int width, int height)
     {
         using var image = new Image<Rgba32>(width, height);
         var ms = new MemoryStream();
         await image.SaveAsPngAsync(ms);
+        ms.Position = 0;
+        return ms;
+    }
+
+    private static async Task<MemoryStream> CreateJpegWithOrientationAsync(int width, int height, ushort orientation)
+    {
+        using var image = new Image<Rgba32>(width, height);
+        image.Metadata.ExifProfile = new ExifProfile();
+        image.Metadata.ExifProfile.SetValue(ExifTag.Orientation, orientation);
+        var ms = new MemoryStream();
+        await image.SaveAsJpegAsync(ms, new JpegEncoder { Quality = 90 });
         ms.Position = 0;
         return ms;
     }

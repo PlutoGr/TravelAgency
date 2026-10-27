@@ -102,10 +102,10 @@ public class UpdateProfileCommandHandlerTests
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // FIX-008: Phone is passed directly — null clears the field
+    // Partial PATCH: omitted phone keeps the stored value; empty string clears it.
 
     [Fact]
-    public async Task Handle_WhenPhoneIsNull_ClearsUserPhone()
+    public async Task Handle_WhenPhoneOmitted_KeepsExistingPhone()
     {
         var userId = Guid.NewGuid();
         var user = User.Create("u@example.com", "hash", "John", "Doe", "+111");
@@ -117,6 +117,24 @@ public class UpdateProfileCommandHandlerTests
 
         var result = await _handler.Handle(
             new UpdateProfileCommand(new UpdateProfileRequest(null, null, null)),
+            CancellationToken.None);
+
+        result.Phone.Should().Be("+111");
+    }
+
+    [Fact]
+    public async Task Handle_WhenPhoneEmpty_ClearsUserPhone()
+    {
+        var userId = Guid.NewGuid();
+        var user = User.Create("u@example.com", "hash", "John", "Doe", "+111");
+
+        _currentUserServiceMock.Setup(s => s.IsAuthenticated).Returns(true);
+        _currentUserServiceMock.Setup(s => s.UserId).Returns(userId);
+        _userRepoMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var result = await _handler.Handle(
+            new UpdateProfileCommand(new UpdateProfileRequest(null, null, "")),
             CancellationToken.None);
 
         result.Phone.Should().BeNull();

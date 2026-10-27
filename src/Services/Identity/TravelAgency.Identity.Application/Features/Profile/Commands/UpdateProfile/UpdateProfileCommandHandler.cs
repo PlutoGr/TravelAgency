@@ -36,7 +36,9 @@ public sealed class UpdateProfileCommandHandler(
                     field => new[] { $"Поле «{field}» доступно только менеджеру или администратору." }));
         }
 
-        var phone = NormalizeOptionalEmpty(req.Phone);
+        var phone = req.Phone is null
+            ? user.Phone
+            : NormalizeOptionalEmpty(req.Phone);
         var city = req.City is null
             ? user.City
             : NormalizeOptionalEmpty(req.City);

@@ -72,6 +72,8 @@ public sealed class ImageProcessingService : IImageProcessingService
             source.Position = 0;
 
         using var image = await Image.LoadAsync(source, ct);
+        // Apply EXIF orientation before crop so phone portraits are not sideways.
+        image.Mutate(x => x.AutoOrient());
 
         var side = Math.Min(image.Width, image.Height);
         if (side <= 0)
