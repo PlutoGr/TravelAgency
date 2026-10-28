@@ -3,8 +3,12 @@ description: Step 1 analysis: Бизнес и сценарии
 alwaysApply: false
 ---
 # Step 1: Analysis («Бизнес и сценарии»)
-Input: issue. Output: section on the epic/feature page.
-- New page from the template; add to sidebar; issue «Связи» gets the link.
-- Write: goal, users/roles, scenarios (simple example first), in/out of scope, constraints, open questions.
-- Feature: concrete scenarios + testable Given/When/Then criteria. Epic: business goal, end-to-end scenarios, no field detail.
-- Do not design the solution. Disagreement: step 3.
+Input: issue. Output: the «Бизнес и сценарии» section on the epic or feature page. Finish this section before any architecture text.
+- Create the page from the wiki template; add it to the sidebar; put the page link in the issue «Связи». Treat template bullets as a skeleton. This file is the bar.
+- State the product goal: which roles are served, and what success looks like for the user and for the business. Put a simple example first (one user step, or one request and response).
+- Name comparable products or interaction patterns that solve the same problem. For each, state what it does and why that approach fits or does not fit this product. Do not write "like other sites" without a concrete name.
+- State scope explicitly: in scope, out of scope, and constraints (rules, volume, speed, what already exists). Cut scope instead of leaving it vague.
+- Write scenarios, including failure paths the user can see. Feature: concrete scenarios and testable Given/When/Then criteria. Epic: business goal and end-to-end scenarios. Keep feature field lists on the feature page.
+- For every proposed field, control, or screen block, state who fills it, who reads it, why it exists, how it looks, and how it interacts (including empty and error). A name list is not enough. Omit the item when the justification is weak.
+- Describe the visual layout of each proposed screen: use of width, empty space, grouping, and the primary action. Do not stop at a data-field list. Skip layout on an epic page that proposes no screen.
+- List open questions and leave them unanswered. Do not design the solution: no services, API, storage, migrations, or contracts (step 2). Send disagreement to step 3.
