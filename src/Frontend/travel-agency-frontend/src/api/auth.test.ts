@@ -57,6 +57,9 @@ describe('auth API', () => {
         city: '',
         role: 'client',
         createdAt: '2025-01-01T00:00:00Z',
+        about: '',
+        languages: [],
+        specialization: '',
       });
     });
 
@@ -144,6 +147,9 @@ describe('auth API', () => {
         city: '',
         role: 'admin',
         createdAt: '2025-01-03T00:00:00Z',
+        about: '',
+        languages: [],
+        specialization: '',
       });
     });
 
@@ -276,6 +282,165 @@ describe('auth API', () => {
       });
       expect(result.phone).toBe('');
       expect(result.city).toBe('');
+    });
+
+    it('профиль менеджера ТК-3 и ТК-5: пустые поля менеджера уходят, пустой год не ставится', async () => {
+      mockApiClient.patch.mockResolvedValue({
+        data: {
+          id: 'm1',
+          email: 'm@example.com',
+          firstName: 'Иван',
+          lastName: 'Петров',
+          phone: '',
+          city: '',
+          role: 'Manager',
+          createdAt: '2026-01-01T00:00:00Z',
+          about: '',
+          specialization: '',
+          languages: null,
+          tourismSince: 2015,
+        },
+      });
+
+      const result = await auth.updateProfile({
+        firstName: 'Иван',
+        lastName: 'Петров',
+        phone: '',
+        city: '',
+        about: '',
+        specialization: '',
+        languages: [],
+      });
+
+      const body = mockApiClient.patch.mock.calls[0][1] as Record<string, unknown>;
+      expect(mockApiClient.patch).toHaveBeenCalledWith('/auth/me', {
+        firstName: 'Иван',
+        lastName: 'Петров',
+        phone: '',
+        city: '',
+        about: '',
+        specialization: '',
+        languages: [],
+      });
+      expect(body).not.toHaveProperty('tourismSince');
+      expect(result.about).toBe('');
+      expect(result.specialization).toBe('');
+      expect(result.languages).toEqual([]);
+      expect(result.tourismSince).toBe(2015);
+      expect(result.role).toBe('manager');
+    });
+
+    it('отправляет tourismSince, когда год передан', async () => {
+      mockApiClient.patch.mockResolvedValue({
+        data: {
+          id: 'm1',
+          email: 'm@example.com',
+          firstName: 'Иван',
+          lastName: 'Петров',
+          phone: '',
+          role: 'Admin',
+          createdAt: '2026-01-01T00:00:00Z',
+          about: 'Гид',
+          tourismSince: 2015,
+          languages: ['ru', 'en'],
+          specialization: 'Азия',
+        },
+      });
+
+      const result = await auth.updateProfile({
+        about: 'Гид',
+        tourismSince: 2015,
+        languages: ['ru', 'en'],
+        specialization: 'Азия',
+      });
+
+      expect(mockApiClient.patch).toHaveBeenCalledWith('/auth/me', {
+        about: 'Гид',
+        tourismSince: 2015,
+        languages: ['ru', 'en'],
+        specialization: 'Азия',
+      });
+      expect(result).toMatchObject({
+        role: 'admin',
+        about: 'Гид',
+        tourismSince: 2015,
+        languages: ['ru', 'en'],
+        specialization: 'Азия',
+      });
+    });
+  });
+
+  describe('mapUserProfileDtoToUser', () => {
+    const base = {
+      id: 'm1',
+      email: 'm@example.com',
+      firstName: 'Иван',
+      lastName: 'Петров',
+      phone: '+79990001122',
+      createdAt: '2026-01-01T00:00:00Z',
+      avatarUrl: '/api/v1/media/files/abc/a256',
+    };
+
+    it('профиль менеджера ТК-3: переносит поля менеджера и пустые значения', () => {
+      for (const role of ['Manager', 'Admin']) {
+        expect(
+          auth.mapUserProfileDtoToUser({
+            ...base,
+            role,
+            city: null,
+            about: 'Гид',
+            tourismSince: 2015,
+            languages: ['ru', 'en'],
+            specialization: 'Азия',
+          }),
+        ).toEqual({
+          id: 'm1',
+          email: 'm@example.com',
+          firstName: 'Иван',
+          lastName: 'Петров',
+          phone: '+79990001122',
+          city: '',
+          avatar: '/api/v1/media/files/abc/a256',
+          role: role.toLowerCase(),
+          createdAt: '2026-01-01T00:00:00Z',
+          about: 'Гид',
+          tourismSince: 2015,
+          languages: ['ru', 'en'],
+          specialization: 'Азия',
+        });
+
+        const cleared = auth.mapUserProfileDtoToUser({
+          ...base,
+          role,
+          city: null,
+          about: null,
+          tourismSince: null,
+          languages: null,
+          specialization: null,
+        });
+        expect(cleared.role).toBe(role.toLowerCase());
+        expect(cleared.city).toBe('');
+        expect(cleared.avatar).toBe('/api/v1/media/files/abc/a256');
+        expect(cleared.about).toBe('');
+        expect(cleared.specialization).toBe('');
+        expect(cleared.languages).toEqual([]);
+        expect(cleared.tourismSince).toBeUndefined();
+        expect(cleared).not.toHaveProperty('tourismSince');
+
+        const blanks = auth.mapUserProfileDtoToUser({
+          ...base,
+          role,
+          city: null,
+          about: '',
+          tourismSince: null,
+          languages: [],
+          specialization: '',
+        });
+        expect(blanks.about).toBe('');
+        expect(blanks.specialization).toBe('');
+        expect(blanks.languages).toEqual([]);
+        expect(blanks).not.toHaveProperty('tourismSince');
+      }
     });
   });
 

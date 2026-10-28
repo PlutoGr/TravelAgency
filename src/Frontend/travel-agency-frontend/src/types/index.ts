@@ -89,6 +89,14 @@ export type User = {
   passport?: string;
   role: 'client' | 'manager' | 'admin';
   createdAt: string;
+  /** Пустая строка, если на сервере `null` или `""`. */
+  about?: string;
+  /** Число, если год пришёл. Пустое значение в запрос не ставится. */
+  tourismSince?: number;
+  /** Пустой массив, если на сервере `null`. */
+  languages?: string[];
+  /** Пустая строка, если на сервере `null` или `""`. */
+  specialization?: string;
 };
 
 export type BookingStatus =

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
@@ -32,6 +35,54 @@ const user: User = {
 };
 
 const MEDIA = '/api/v1/media/files/11111111-1111-1111-1111-111111111111/a256';
+
+const PHONE_E164_ERROR =
+  'Телефон должен быть в формате E.164, например +79991234567, или пустым.';
+const ABOUT_LIMIT_ERROR = 'Текст «О себе» не длиннее 1000 символов.';
+const YEAR_ERROR = 'Укажите год не позже текущего.';
+const SPECIALIZATION_LIMIT_ERROR = 'Специализация не длиннее 300 символов.';
+
+const managerUser: User = {
+  ...user,
+  role: 'manager',
+  about: 'Гид',
+  tourismSince: 2015,
+  languages: ['ru', 'en'],
+  specialization: 'Азия',
+};
+
+function identityLanguageCodes(): string[] {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const source = readFileSync(
+    resolve(
+      here,
+      '../../../../Services/Identity/TravelAgency.Identity.Application/Features/Profile/AllowedLanguages.cs',
+    ),
+    'utf8',
+  );
+  return [...source.matchAll(/"([a-z]{2})"/g)].map((match) => match[1]);
+}
+
+function signIn(person: User) {
+  useAuthStore.setState({ user: person, isAuthenticated: true, isLoading: false });
+}
+
+function languageError(code: string): string {
+  return `Язык «${code}» не из списка ISO 639-1.`;
+}
+
+function selectedLanguageCodes(): string[] {
+  const select = screen.getByLabelText('Языки');
+  if (!(select instanceof HTMLSelectElement)) throw new Error('languages select missing');
+  return Array.from(select.selectedOptions, (option) => option.value);
+}
+
+function patchBody(config: InternalAxiosRequestConfig): Record<string, unknown> {
+  const raw = config.data;
+  if (typeof raw === 'string') return JSON.parse(raw) as Record<string, unknown>;
+  if (typeof raw === 'object' && raw !== null) return raw as Record<string, unknown>;
+  return {};
+}
 
 function LocationProbe() {
   const location = useLocation();
@@ -137,8 +188,8 @@ describe('ProfilePage', () => {
     useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
   });
 
-  it('ТК-1 shows the shared card for client, manager and admin', () => {
-    for (const role of ['client', 'manager', 'admin'] as const) {
+  it('ТК-1 shows the shared card for a client', () => {
+    for (const role of ['client'] as const) {
       useAuthStore.setState({
         user: { ...user, role, city: '' },
         isAuthenticated: true,
@@ -959,6 +1010,570 @@ describe('ProfilePage', () => {
     expect(screen.queryByText('Контакты')).not.toBeInTheDocument();
     expect(screen.queryByText('О себе')).not.toBeInTheDocument();
   });
+
+  it('профиль менеджера ТК-1: клиент не показывает поля менеджера и не отправляет их', async () => {
+    signIn({
+      ...user,
+      role: 'client',
+      about: 'Гид',
+      tourismSince: 2015,
+      languages: ['ru', 'en'],
+      specialization: 'Азия',
+    });
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
+      ...user,
+      firstName: 'Мария',
+    });
+    renderProfile('/dashboard/profile');
+
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
+    expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
+    expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
+    expect(screen.getByTestId('location').textContent).not.toContain(user.id);
+    for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
+      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+
+    setField('Имя', 'Мария');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    const body = updateProfile.mock.calls[0][0];
+    expect(body).toEqual({
+      firstName: 'Мария',
+      lastName: 'Смирнова',
+      phone: '+79990001122',
+      city: '',
+    });
+    for (const key of [
+      'about',
+      'tourismSince',
+      'languages',
+      'specialization',
+      'email',
+      'role',
+      'passport',
+      'avatarUrl',
+    ]) {
+      expect(body).not.toHaveProperty(key);
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile?tab=settings');
+    });
+    expect(screen.queryByLabelText('О себе')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+  });
+
+  it('профиль менеджера ТК-2: менеджер и администратор видят четыре поля и неактивный предпросмотр', async () => {
+    for (const role of ['manager', 'admin'] as const) {
+      signIn({ ...managerUser, role, avatar: undefined });
+      const view = renderShell('/dashboard/profile');
+
+      const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+      expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
+      expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
+      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
+      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
+
+      expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
+      expect(screen.getByLabelText('Фамилия')).toHaveValue('Смирнова');
+      expect(screen.getByLabelText('Телефон')).toHaveValue('+79990001122');
+      expect(screen.getByLabelText('Город')).toHaveValue('');
+      const email = screen.getByLabelText('Email');
+      expect(email).toBeDisabled();
+      expect(email).toHaveValue('anna@example.com');
+      expect(email).not.toHaveAccessibleDescription('Появится позже');
+      const passport = screen.getByLabelText('Паспорт');
+      expect(passport).toBeDisabled();
+      expect(passport).toHaveAccessibleDescription('Появится позже');
+
+      expect(screen.getByLabelText('О себе')).toHaveValue('Гид');
+      expect(screen.getByText('осталось 997 из 1000')).toBeInTheDocument();
+      expect(screen.getByLabelText('В туризме с')).toHaveValue('2015');
+      expect(selectedLanguageCodes().sort()).toEqual(['en', 'ru']);
+      expect(screen.getByLabelText('Специализация')).toHaveValue('Азия');
+
+      const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
+      expect(preview).toBeDisabled();
+      expect(preview).toHaveAccessibleDescription('Появится позже');
+
+      const header = screen.getByRole('banner');
+      expect(within(header).getByText('Анна')).toBeInTheDocument();
+      expect(within(header).getByText('АС')).toBeInTheDocument();
+      expect(within(header).queryByText('Гид')).not.toBeInTheDocument();
+      expect(within(header).queryByText('О себе')).not.toBeInTheDocument();
+      expect(within(header).queryByText('2015')).not.toBeInTheDocument();
+      expect(within(header).queryByText('Азия')).not.toBeInTheDocument();
+      expect(within(header).queryByText('Языки')).not.toBeInTheDocument();
+
+      const sidebar = screen.getByRole('complementary');
+      expect(within(sidebar).getByText('Анна Смирнова')).toBeInTheDocument();
+      expect(within(sidebar).getByText('АС')).toBeInTheDocument();
+      expect(within(sidebar).queryByText('Гид')).not.toBeInTheDocument();
+      expect(within(sidebar).queryByText('О себе')).not.toBeInTheDocument();
+      expect(within(sidebar).queryByText('2015')).not.toBeInTheDocument();
+      expect(within(sidebar).queryByText('Азия')).not.toBeInTheDocument();
+      expect(within(sidebar).queryByText('Специализация')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile?tab=settings');
+      });
+      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
+      for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
+        expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+      }
+      expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+
+      view.unmount();
+    }
+  });
+
+  it('профиль менеджера ТК-4: одно сохранение шлёт общие поля и поля менеджера', async () => {
+    signIn(managerUser);
+    const gate = deferred<User>();
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockReturnValue(gate.promise);
+    const getMe = vi.spyOn(authApi, 'getMe');
+    renderShell();
+
+    setField('Имя', '  Мария  ');
+    setField('Фамилия', '  Ковалева  ');
+    setField('Телефон', '  +79991234567  ');
+    setField('Город', '  Казань  ');
+    setField('О себе', '  Гид  ');
+    setField('Специализация', '  Азия  ');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
+    const body = updateProfile.mock.calls[0][0];
+    expect(body).toMatchObject({
+      firstName: 'Мария',
+      lastName: 'Ковалева',
+      phone: '+79991234567',
+      city: 'Казань',
+      about: 'Гид',
+      tourismSince: 2015,
+      specialization: 'Азия',
+    });
+    expect([...(body.languages ?? [])].sort()).toEqual(['en', 'ru']);
+    for (const key of ['email', 'role', 'passport', 'avatarUrl', 'avatar']) {
+      expect(body).not.toHaveProperty(key);
+    }
+
+    gate.resolve({
+      ...managerUser,
+      firstName: 'Мария',
+      lastName: 'Ковалева',
+      phone: '+79991234567',
+      city: 'Казань',
+      about: 'Гид',
+      tourismSince: 2015,
+      languages: ['ru', 'en'],
+      specialization: 'Азия',
+    });
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
+    expect(useAuthStore.getState().user).toMatchObject({ firstName: 'Мария', about: 'Гид' });
+    const header = screen.getByRole('banner');
+    expect(within(header).getByText('Мария')).toBeInTheDocument();
+    expect(within(header).queryByText('Гид')).not.toBeInTheDocument();
+    expect(getMe).not.toHaveBeenCalled();
+  });
+
+  it('профиль менеджера ТК-5: пустые текст, языки и специализация уходят, пустой год не ставится', async () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
+      ...managerUser,
+      about: '',
+      languages: [],
+      specialization: '',
+      tourismSince: 2015,
+    });
+    renderProfile();
+
+    setField('О себе', '');
+    setField('Специализация', '');
+    setField('В туризме с', '');
+    const select = screen.getByLabelText('Языки');
+    await userEvent.deselectOptions(select, ['ru', 'en']);
+
+    expect(screen.getByText('осталось 1000 из 1000')).toBeInTheDocument();
+    expect(screen.queryByText(ABOUT_LIMIT_ERROR)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    const body = updateProfile.mock.calls[0][0];
+    expect(body.about).toBe('');
+    expect(body.specialization).toBe('');
+    expect(body.languages).toEqual([]);
+    expect(body).not.toHaveProperty('tourismSince');
+    expect('about' in body).toBe(true);
+    expect('specialization' in body).toBe(true);
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
+    expect(screen.getByLabelText('О себе')).toHaveValue('');
+    expect(screen.getByLabelText('Специализация')).toHaveValue('');
+    expect(selectedLanguageCodes()).toEqual([]);
+    expect(screen.getByLabelText('В туризме с')).toHaveValue('2015');
+  });
+
+  it('профиль менеджера ТК-6: счётчик «О себе» и отказ длиннее 1000', async () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockImplementation(async (payload) => ({
+      ...managerUser,
+      ...payload,
+    }));
+    renderProfile();
+
+    const exactly = 'я'.repeat(1000);
+    setField('О себе', exactly);
+    expect(screen.getByText('осталось 0 из 1000')).toBeInTheDocument();
+    expect(screen.queryByText(ABOUT_LIMIT_ERROR)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0][0].about).toBe(exactly);
+
+    setField('О себе', 'я'.repeat(1001));
+    setField('В туризме с', '1949');
+    expect(screen.getByText('осталось 0 из 1000')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(ABOUT_LIMIT_ERROR)).toBeInTheDocument();
+    expect(screen.getByText(YEAR_ERROR)).toBeInTheDocument();
+
+    setField('О себе', exactly);
+    setField('В туризме с', '2015');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(2));
+    expect(updateProfile.mock.calls[1][0].about).toBe(exactly);
+  });
+
+  it('профиль менеджера ТК-7: специализация до 300 символов, пробелы уходят пустой строкой', async () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockImplementation(async (payload) => ({
+      ...managerUser,
+      ...payload,
+      tourismSince: payload.tourismSince ?? managerUser.tourismSince,
+    }));
+    renderProfile();
+
+    const fit = 'я'.repeat(300);
+    setField('Специализация', ` ${fit} `);
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0][0].specialization).toBe(fit);
+    expect(screen.queryByText(SPECIALIZATION_LIMIT_ERROR)).not.toBeInTheDocument();
+
+    setField('Специализация', ` ${'я'.repeat(301)} `);
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(SPECIALIZATION_LIMIT_ERROR)).toBeInTheDocument();
+
+    setField('Специализация', '   ');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(2));
+    expect(updateProfile.mock.calls[1][0].specialization).toBe('');
+    expect(screen.queryByText(SPECIALIZATION_LIMIT_ERROR)).not.toBeInTheDocument();
+  });
+
+  it('профиль менеджера ТК-8: год от 1950 до текущего UTC, пустой год не стирает сохранённый', async () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue(managerUser);
+    renderProfile();
+    const current = new Date().getUTCFullYear();
+
+    for (const year of ['1949', String(current + 1)]) {
+      setField('В туризме с', year);
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+      expect(updateProfile).not.toHaveBeenCalled();
+      expect(screen.getByText(YEAR_ERROR)).toBeInTheDocument();
+      expect(screen.queryByText(/1950/)).not.toBeInTheDocument();
+    }
+
+    for (const year of [1950, current]) {
+      setField('В туризме с', String(year));
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+      await waitFor(() => expect(updateProfile).toHaveBeenCalled());
+      expect(updateProfile.mock.lastCall?.[0].tourismSince).toBe(year);
+      updateProfile.mockClear();
+    }
+
+    setField('В туризме с', '   ');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0][0]).not.toHaveProperty('tourismSince');
+  });
+
+  it('профиль менеджера ТК-9: языки — коды ISO 639-1, без повторов и без русских названий', async () => {
+    const codes = identityLanguageCodes();
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockImplementation(async (payload) => ({
+      ...managerUser,
+      ...payload,
+      tourismSince: payload.tourismSince ?? managerUser.tourismSince,
+    }));
+    const view = renderProfile();
+
+    const select = screen.getByLabelText('Языки');
+    await userEvent.click(select);
+    const options = within(select).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual(codes);
+    expect(options.map((option) => (option as HTMLOptionElement).value)).toEqual(codes);
+    expect(options.some((option) => /[А-Яа-яЁё]/.test(option.textContent ?? ''))).toBe(false);
+    expect(selectedLanguageCodes().sort()).toEqual(['en', 'ru']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect([...(updateProfile.mock.calls[0][0].languages ?? [])].sort()).toEqual(['en', 'ru']);
+    view.unmount();
+
+    signIn({ ...managerUser, languages: ['ru', 'ru', 'EN'] });
+    updateProfile.mockClear();
+    const duplicate = renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    const sent = [...(updateProfile.mock.calls[0][0].languages ?? [])];
+    expect(sent.map((code) => code.toLowerCase()).sort()).toEqual(['en', 'ru']);
+    expect(new Set(sent).size).toBe(sent.length);
+    duplicate.unmount();
+
+    signIn({ ...managerUser, languages: [] });
+    updateProfile.mockClear();
+    renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+    expect(updateProfile.mock.calls[0][0].languages).toEqual([]);
+  });
+
+  it('профиль менеджера ТК-10: код вне ISO 639-1 не уходит и пишется у языков', () => {
+    const updateProfile = vi.spyOn(authApi, 'updateProfile');
+
+    signIn({ ...managerUser, languages: ['xx'] });
+    const first = renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(screen.getByText(languageError('xx'))).toBeInTheDocument();
+    expect(screen.getByLabelText('О себе').parentElement).not.toHaveTextContent(languageError('xx'));
+    first.unmount();
+
+    signIn({ ...managerUser, languages: ['xx', 'qq'] });
+    renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(screen.getByText(languageError('xx'))).toBeInTheDocument();
+    expect(screen.getByText(languageError('qq'))).toBeInTheDocument();
+    expect(screen.getByLabelText('О себе').parentElement).not.toHaveTextContent('ISO 639-1');
+  });
+
+  it('профиль менеджера ТК-11: неверный телефон блокирует сохранение целиком', () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile');
+    renderProfile();
+    setField('Телефон', '89991234567');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(screen.getAllByText(PHONE_E164_ERROR)).toHaveLength(1);
+    const phone = screen.getByLabelText('Телефон');
+    expect(phone.parentElement?.parentElement).toHaveTextContent(PHONE_E164_ERROR);
+    for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
+      expect(screen.getByLabelText(label).parentElement).not.toHaveTextContent(PHONE_E164_ERROR);
+    }
+  });
+
+  it('профиль менеджера ТК-12: русские строки 400 стоят под своими полями', async () => {
+    signIn(managerUser);
+    vi.spyOn(authApi, 'updateProfile').mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          detail: 'One or more validation errors occurred.',
+          errors: {
+            about: [ABOUT_LIMIT_ERROR],
+            tourismSince: [YEAR_ERROR],
+            languages: [languageError('xx'), languageError('qq')],
+            specialization: [SPECIALIZATION_LIMIT_ERROR],
+            firstName: ['Укажите имя длиной от 1 до 100 символов.'],
+          },
+        },
+      },
+    });
+    renderProfile();
+    setField('Имя', 'Мария');
+    setField('О себе', 'Текст о себе');
+    setField('В туризме с', '2016');
+    setField('Специализация', 'Европа');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByText(ABOUT_LIMIT_ERROR)).toBeInTheDocument();
+    expect(screen.getByText(YEAR_ERROR)).toBeInTheDocument();
+    expect(screen.getByText(languageError('xx'))).toBeInTheDocument();
+    expect(screen.getByText(languageError('qq'))).toBeInTheDocument();
+    expect(screen.getByText(SPECIALIZATION_LIMIT_ERROR)).toBeInTheDocument();
+    expect(screen.getByText('Укажите имя длиной от 1 до 100 символов.')).toBeInTheDocument();
+    expect(screen.queryByText('One or more validation errors occurred.')).not.toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+    expect(screen.getByLabelText('О себе')).toHaveValue('Текст о себе');
+    expect(screen.getByLabelText('В туризме с')).toHaveValue('2016');
+    expect(screen.getByLabelText('Специализация')).toHaveValue('Европа');
+    expect(selectedLanguageCodes().sort()).toEqual(['en', 'ru']);
+  });
+
+  it('профиль менеджера ТК-13: сеть и 400 без русской строки оставляют карточку', async () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile');
+    updateProfile.mockRejectedValueOnce(new Error('network'));
+    renderProfile();
+    setField('О себе', 'Черновик');
+    setField('Специализация', 'Азия');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось выполнить запрос. Попробуйте ещё раз.',
+    );
+    expect(screen.getByLabelText('О себе')).toHaveValue('Черновик');
+    expect(screen.getByLabelText('Специализация')).toHaveValue('Азия');
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
+
+    updateProfile.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: { detail: 'One or more validation errors occurred.' },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось выполнить запрос. Попробуйте ещё раз.',
+    );
+    expect(screen.queryByText('One or more validation errors occurred.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('О себе')).toHaveValue('Черновик');
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
+  });
+
+  it('профиль менеджера ТК-15: предпросмотр неактивен и не подставляет черновик', async () => {
+    signIn(managerUser);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile');
+    const post = vi.spyOn(apiClient, 'post');
+    const patch = vi.spyOn(apiClient, 'patch');
+    renderProfile();
+    setField('О себе', 'Черновик гида');
+
+    const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
+    expect(preview).toBeDisabled();
+    expect(preview).toHaveAccessibleDescription('Появится позже');
+    const events = userEvent.setup({ pointerEventsCheck: 0 });
+    await events.click(preview);
+
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+    expect(patch).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const draft = screen.getAllByText('Черновик гида');
+    expect(draft).toHaveLength(1);
+    expect(draft[0]).toBe(screen.getByLabelText('О себе'));
+    expect(screen.getByLabelText('О себе')).toHaveValue('Черновик гида');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('профиль менеджера ТК-16: смена пароля остаётся неактивной', async () => {
+    signIn(managerUser);
+    const post = vi.spyOn(apiClient, 'post');
+    const patch = vi.spyOn(apiClient, 'patch');
+    renderProfile('/dashboard/profile?tab=settings');
+    const password = screen.getByRole('region', { name: 'Пароль' });
+
+    expect(within(password).getByLabelText('Текущий пароль')).toBeDisabled();
+    expect(within(password).getByLabelText('Новый пароль')).toBeDisabled();
+    expect(within(password).getByLabelText('Повторите пароль')).toBeDisabled();
+    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeDisabled();
+    expect(within(password).getByText('Появится позже')).toBeInTheDocument();
+    expect(within(password).getByText(PASSWORD_HINT)).toBeInTheDocument();
+    expect(within(password).getByLabelText('Новый пароль')).toHaveAccessibleDescription(PASSWORD_HINT);
+
+    const events = userEvent.setup({ pointerEventsCheck: 0 });
+    await events.click(within(password).getByLabelText('Текущий пароль'));
+    await events.click(within(password).getByLabelText('Новый пароль'));
+    await events.click(within(password).getByLabelText('Повторите пароль'));
+    await events.click(within(password).getByRole('button', { name: 'Сменить пароль' }));
+
+    expect(post).not.toHaveBeenCalled();
+    expect(patch).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('профиль менеджера ТК-17: у менеджера два неактивных письма, у клиента одно', () => {
+    const post = vi.spyOn(apiClient, 'post');
+    const patch = vi.spyOn(apiClient, 'patch');
+
+    for (const role of ['manager', 'admin'] as const) {
+      signIn({ ...user, role });
+      const view = renderProfile('/dashboard/profile?tab=settings');
+      const notes = screen.getByRole('region', { name: 'Уведомления' });
+      const applications = within(notes).getByRole('checkbox', { name: 'Письмо о новой заявке' });
+      const messages = within(notes).getByRole('checkbox', { name: 'Письмо о новом сообщении' });
+      expect(applications).toBeDisabled();
+      expect(applications).not.toBeChecked();
+      expect(messages).toBeDisabled();
+      expect(messages).not.toBeChecked();
+      expect(
+        within(notes).queryByRole('checkbox', { name: 'Уведомления на email о новых сообщениях' }),
+      ).not.toBeInTheDocument();
+      expect(notes).toHaveTextContent('Появится позже');
+      fireEvent.click(applications);
+      fireEvent.click(messages);
+      expect(applications).not.toBeChecked();
+      expect(messages).not.toBeChecked();
+      expect(post).not.toHaveBeenCalled();
+      expect(patch).not.toHaveBeenCalled();
+      view.unmount();
+
+      const againView = renderProfile('/dashboard/profile?tab=settings');
+      const again = screen.getByRole('region', { name: 'Уведомления' });
+      expect(within(again).getByRole('checkbox', { name: 'Письмо о новой заявке' })).toBeDisabled();
+      expect(within(again).getByRole('checkbox', { name: 'Письмо о новой заявке' })).not.toBeChecked();
+      expect(within(again).getByRole('checkbox', { name: 'Письмо о новом сообщении' })).toBeDisabled();
+      expect(within(again).getByRole('checkbox', { name: 'Письмо о новом сообщении' })).not.toBeChecked();
+      againView.unmount();
+    }
+
+    signIn({ ...user, role: 'client' });
+    renderProfile('/dashboard/profile?tab=settings');
+    const clientNotes = screen.getByRole('region', { name: 'Уведомления' });
+    const clientToggle = within(clientNotes).getByRole('checkbox', {
+      name: 'Уведомления на email о новых сообщениях',
+    });
+    expect(clientToggle).toBeDisabled();
+    expect(clientToggle).not.toBeChecked();
+    expect(clientNotes).toHaveTextContent('Появится позже');
+    expect(within(clientNotes).queryByRole('checkbox', { name: 'Письмо о новой заявке' })).not.toBeInTheDocument();
+    expect(within(clientNotes).queryByRole('checkbox', { name: 'Письмо о новом сообщении' })).not.toBeInTheDocument();
+  });
+
+  it('профиль менеджера ТК-18: видимость остаётся одной неактивной подписью', () => {
+    signIn(managerUser);
+    renderProfile('/dashboard/profile?tab=settings');
+    const visibility = screen.getByRole('region', { name: 'Видимость' });
+    expect(visibility).toHaveAttribute('aria-disabled', 'true');
+    expect(within(visibility).getByText('Появится позже')).toBeInTheDocument();
+    expect(within(visibility).queryByText('Контакты')).not.toBeInTheDocument();
+    expect(within(visibility).queryByText('О себе')).not.toBeInTheDocument();
+    expect(within(visibility).queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('О себе')).not.toBeInTheDocument();
+    expect(screen.queryByText('Контакты')).not.toBeInTheDocument();
+  });
 });
 
 describe('ProfilePage session', () => {
@@ -1123,5 +1738,87 @@ describe('ProfilePage session', () => {
 
     expect(calls.every((call) => call.endsWith('/auth/me') || call.endsWith('/auth/me/avatar'))).toBe(true);
     expect(calls.some((call) => call.includes(user.id))).toBe(false);
+  });
+
+  it('профиль менеджера ТК-19: повтор PATCH после refresh сохраняет поля менеджера', async () => {
+    signIn(managerUser);
+    let patches = 0;
+    let refresh = 0;
+    const bodies: Record<string, unknown>[] = [];
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) {
+        refresh += 1;
+        return httpResponse(config, 200, { success: true });
+      }
+      if (url === '/auth/me' && config.method === 'patch') {
+        patches += 1;
+        const body = patchBody(config);
+        bodies.push(body);
+        if (patches === 1) throw httpError(config, 401);
+        return httpResponse(config, 200, {
+          ...profileDto,
+          role: 'Manager',
+          firstName: 'Мария',
+          about: 'Гид',
+          tourismSince: 2015,
+          languages: ['ru', 'en'],
+          specialization: 'Азия',
+        });
+      }
+      throw httpError(config, 404);
+    };
+
+    renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
+    expect(refresh).toBe(1);
+    expect(patches).toBe(2);
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      expect(body.about).toBe('Гид');
+      expect(body.tourismSince).toBe(2015);
+      expect(body.languages).toEqual(['ru', 'en']);
+      expect(body.specialization).toBe('Азия');
+    }
+    expect(useAuthStore.getState().user).toMatchObject({
+      firstName: 'Мария',
+      about: 'Гид',
+      tourismSince: 2015,
+      languages: ['ru', 'en'],
+      specialization: 'Азия',
+      role: 'manager',
+    });
+  });
+
+  it('профиль менеджера ТК-19: неудачный refresh не показывает чужой профиль', async () => {
+    signIn(managerUser);
+    apiClient.defaults.adapter = async (config) => {
+      const url = config.url ?? '';
+      if (url.includes('/auth/refresh')) throw httpError(config, 401);
+      if (url.includes('/auth/me')) {
+        if (config.method === 'patch' || config.method === 'post') {
+          throw httpError(config, 401);
+        }
+        return httpResponse(config, 200, {
+          ...profileDto,
+          id: 'other-user',
+          firstName: 'Чужой',
+          lastName: 'Профиль',
+          role: 'Manager',
+          about: 'Чужой текст',
+        });
+      }
+      throw httpError(config, 404);
+    };
+
+    renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(useAuthStore.getState().user).toBeNull());
+    expect(screen.queryByText('Чужой')).not.toBeInTheDocument();
+    expect(screen.queryByText('Чужой текст')).not.toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });
