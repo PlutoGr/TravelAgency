@@ -3,12 +3,17 @@ description: Step 1 analysis: Бизнес и сценарии
 alwaysApply: false
 ---
 # Step 1: Analysis («Бизнес и сценарии»)
-Input: issue. Output: the «Бизнес и сценарии» section on the epic or feature page. Finish this section before any architecture text.
+Product WHY and WHAT. No HOW. Input: issue. Output: the «Бизнес и сценарии» section on the epic or feature page. Finish this section before any architecture text.
+A complete product TZ before code («полное ТЗ») is the Feature/Epic page after steps 1-4, not this section alone. This section must still stand on its own.
 - Create the page from the wiki template; add it to the sidebar; put the page link in the issue «Связи». Treat template bullets as a skeleton. This file is the bar.
-- State the product goal: which roles are served, and what success looks like for the user and for the business. Put a simple example first (one user step, or one request and response).
-- Name comparable products or interaction patterns that solve the same problem. For each, state what it does and why that approach fits or does not fit this product. Do not write "like other sites" without a concrete name.
-- State scope explicitly: in scope, out of scope, and constraints (rules, volume, speed, what already exists). Cut scope instead of leaving it vague.
-- Write scenarios, including failure paths the user can see. Feature: concrete scenarios and testable Given/When/Then criteria. Epic: business goal and end-to-end scenarios. Keep feature field lists on the feature page.
-- For every proposed field, control, or screen block, state who fills it, who reads it, why it exists, how it looks, and how it interacts (including empty and error). A name list is not enough. Omit the item when the justification is weak.
-- Describe the visual layout of each proposed screen: use of width, empty space, grouping, and the primary action. Do not stop at a data-field list. Skip layout on an epic page that proposes no screen.
-- List open questions and leave them unanswered. Do not design the solution: no services, API, storage, migrations, or contracts (step 2). Send disagreement to step 3.
+- Write the following in this reading order.
+1. Intent: the problem, the product and business goal, what success looks like, and explicit non-goals.
+2. Actors and contexts: roles, when each role cares, and who may see or change what at business level. Do not specify tokens, sessions, or JWT.
+3. Current state: what already works (link the `Doc-` pages and the existing feature or epic pages), what hurts, and what must not break.
+4. External evidence: name comparable products or interaction patterns. For each, state what it does and why that approach fits or does not fit this product. Do not write "like other sites" without a concrete name.
+5. Jobs and scenarios: one simple example first (one user step, or one request and response), then the happy path and the user-visible failures. Feature: add testable Given/When/Then product criteria. Epic: end-to-end scenarios only. Do not put a feature field catalog on the epic page.
+6. Information needs (Feature only): for every proposed field, control, or screen block, state who fills it, who reads it, why it exists, its lifecycle (create, edit, empty, error), how it looks, and how it interacts. Omit the item when the justification is weak.
+7. Experience and layout, when a screen is proposed: screen and flow structure, grouping, the primary action, and the use of width and empty space. Do not draw pixel mockups unless one is required to settle the layout. Skip this when the page proposes no screen. An epic page usually skips it.
+8. Constraints: privacy and security expectations at business level, volume and speed, compliance, and dependencies on existing behavior.
+9. Open questions: list them and leave them unanswered. Send disagreement to step 3. Do not design the solution: no services, API paths, storage, migrations, or contracts.
+- Treat the section as done only when both hold: a developer could not invent an unjustified field or screen block from it, and an architect has enough product intent to map a system without guessing the goals.
