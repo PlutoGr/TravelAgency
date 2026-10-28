@@ -3,8 +3,10 @@ description: Step 2 architecture and split
 alwaysApply: false
 ---
 # Step 2: Architecture + split («Архитектура», «Разбиение»)
-- Epic: overall scheme, services, links, options and why chosen. Feature: model fields, API (method, path, access, body, response, errors), contracts, migrations, impact.
-- Take product fields, controls, and screen layout from step 1. Map them to the model, API, states, and error texts. Do not add a field, control, or screen block that step 1 did not justify, and do not redesign layout here.
+Map only intents that step 1 justified. Add no field, screen, or block that step 1 omitted. Do not redesign product layout. Send an unresolved how to step 3.
+
+- Epic: light scheme (services, links, options and why chosen) and the split into features (page + issue). No field catalog and no screen layout. Outcome stays enough to split features, not a buildable screen TZ.
+- Feature: map each justified information need and layout choice to model fields, API (method, path, access, body, response, errors), contracts, migrations, and impact. Then split into subtasks (issue linking `Feature-<Name>#<anchor>`). Use GitHub sub-issues.
+- Subtask and bug: no architecture section and no new fields. They implement the parent feature mapping or the issue criteria (`playbook-step-05-development.mdc`).
 - Business part unclear: do not rewrite it; options to «Решения», hand back.
-- Split: epic -> features (page + issue); feature -> subtasks (issue linking the anchor). Use GitHub sub-issues.
 - Every important choice = one «Решения» row. An impactful «how we do it» choice that is not already in the authorized task goes to the owner via the lead (step 3). Once that decision is recorded, or the owner already put this task in work, a matching PR does not need a second yes at merge (`00-core.mdc`).

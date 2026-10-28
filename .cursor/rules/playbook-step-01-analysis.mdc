@@ -3,12 +3,27 @@ description: Step 1 analysis: Бизнес и сценарии
 alwaysApply: false
 ---
 # Step 1: Analysis («Бизнес и сценарии»)
-Input: issue. Output: the «Бизнес и сценарии» section on the epic or feature page. Finish this section before any architecture text.
-- Create the page from the wiki template; add it to the sidebar; put the page link in the issue «Связи». Treat template bullets as a skeleton. This file is the bar.
-- State the product goal: which roles are served, and what success looks like for the user and for the business. Put a simple example first (one user step, or one request and response).
-- Name comparable products or interaction patterns that solve the same problem. For each, state what it does and why that approach fits or does not fit this product. Do not write "like other sites" without a concrete name.
-- State scope explicitly: in scope, out of scope, and constraints (rules, volume, speed, what already exists). Cut scope instead of leaving it vague.
-- Write scenarios, including failure paths the user can see. Feature: concrete scenarios and testable Given/When/Then criteria. Epic: business goal and end-to-end scenarios. Keep feature field lists on the feature page.
-- For every proposed field, control, or screen block, state who fills it, who reads it, why it exists, how it looks, and how it interacts (including empty and error). A name list is not enough. Omit the item when the justification is weak.
-- Describe the visual layout of each proposed screen: use of width, empty space, grouping, and the primary action. Do not stop at a data-field list. Skip layout on an epic page that proposes no screen.
-- List open questions and leave them unanswered. Do not design the solution: no services, API, storage, migrations, or contracts (step 2). Send disagreement to step 3.
+Input: the issue and, for a feature, the parent epic page. Output: «Бизнес и сценарии» on that epic or feature page. Product WHY and WHAT only. Finish this section before any architecture text.
+
+No services, API paths, storage, migrations, or contracts here (step 2). Depth by level: `playbook-workflow.mdc` «Analysis depth».
+
+## Which blocks apply
+- Epic: blocks 1, 2, 3, 4, 5 (end-to-end only), 8, 9. No field catalog, no per-control UI, no screen layout. Outcome: enough to split features and state the business arc. Not a buildable screen TZ.
+- Feature: every block that applies. Inherit the epic intent. Re-open the epic goal only when it changes. This section plus steps 2-4 on the feature page is the «полное ТЗ» before code.
+- Subtask: no step 1 page. Link `Feature-<Name>#<anchor>`; keep criteria on the issue. A subtask that needs its own analysis becomes a feature.
+- Bug or small fix: no step 1 page. Criteria on the issue, then steps 5-7.
+
+## Blocks
+1. Intent. Problem, goal, what success looks like, and explicit non-goals.
+2. Actors and contexts. Roles, when they care, and who may see or change what at business level. Not tokens or JWT.
+3. Current state. What already works (name the `Doc-` pages), what hurts, and what must not break.
+4. External evidence. Name each comparable product or pattern, what it does, and why it fits or does not fit. "Like other sites" with no name is not evidence.
+5. Jobs and scenarios. Happy path and failures the user can see. Feature: add Given/When/Then product criteria. Epic: end-to-end only, no field catalog.
+6. Information needs (feature only). For every proposed field, control, or block: who fills it, who reads it, why it exists, lifecycle (create, edit, empty, error), how it looks, and how it interacts. Omit the item when the justification is weak.
+7. Experience and layout (feature only, when a screen is proposed). Flow structure, grouping, primary action, and use of space. Add a pixel mock only when the behaviour stays unclear without it. Epic: skip.
+8. Constraints. Privacy and security at business level, volume and speed, compliance, and dependencies.
+9. Open questions. List them unanswered and send them to step 3.
+
+## Done when
+- Feature: a developer cannot invent a field or block this section did not justify, and an architect can map the product intent without guessing the goal.
+- Epic: the business arc and the feature split are clear, and the page contains no screen TZ.

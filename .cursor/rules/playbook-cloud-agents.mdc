@@ -13,10 +13,10 @@ alwaysApply: false
 ## Orchestrator loop (lead; do not skip)
 The lead stays the controller after every cloud agent. Cloud agents do not self-merge, self-accept on dev, or talk to the owner.
 
-The loop is the lead↔cloud-agent control microcycle for each workflow step (1–8). It does not replace the `playbook-workflow.mdc` hierarchy (Roadmap → Epic → Feature → Subtask) or steps 1–8. Code (step 5) starts only when steps 1–4 are on the Feature/Epic wiki page (bugs/small fixes skip 1–4 per workflow).
+The loop is the lead↔cloud-agent control microcycle for each workflow step (1-8). It does not replace the `playbook-workflow.mdc` hierarchy (Roadmap → Epic → Feature → Subtask) or steps 1-8. Code (step 5) starts only when steps 1-4 are on the Feature page («полное ТЗ»). The epic page is upper-level analysis, not that TZ. Bugs and small fixes skip 1-4 per workflow.
 
-1. **Pick and arm:** take next Очередь item (`project-github-formats.mdc` «Queue priority»); set `статус: в работе`; determine which step is due (1–4 wiki sections vs 5 code). Do not launch step 5 if steps 1–4 are missing on the Feature/Epic page (bugs/small fixes skip 1–4 per `playbook-workflow.mdc`). Record `Waiting on` / `Next` in `pipeline.md` when the task waits on CI, Deploy, or a cloud agent.
-2. **Brief and launch:** one issue, one agent, full brief (`## Brief` below). For wiki/analysis steps: agent returns ready Russian text that meets the step file (step 1: `playbook-step-01-analysis.mdc`, each field and its UI justified, no architecture); lead reviews then publishes. For code: agent opens the PR.
+1. **Pick and arm:** take next Очередь item (`project-github-formats.mdc` «Queue priority»); set `статус: в работе`; determine which step is due (1-4 wiki sections vs 5 code) and which level applies («Analysis depth» in `playbook-workflow.mdc`). Do not launch step 5 if steps 1-4 are missing on the Feature page. Bugs and small fixes skip 1-4. Do not treat the epic page as the screen TZ. Record `Waiting on` / `Next` in `pipeline.md` when the task waits on CI, Deploy, or a cloud agent.
+2. **Brief and launch:** one issue, one agent, full brief (`## Brief` below). For wiki/analysis steps: agent returns ready Russian text that meets the step file for that level (step 1: `playbook-step-01-analysis.mdc`, epic blocks or full feature blocks, no architecture); lead reviews then publishes. For code: agent opens the PR.
 3. **On result (review, do not redo):** strip Cursor PR markers/footer; check diff vs acceptance criteria and issue scope (no drive-by); formats and secrets (`playbook-git-pr.mdc`, `00-core.mdc`); open doubts from the agent report. Never re-implement the same work in chat.
 4. **Steer:** gaps or CI/automation findings → `reply` to the **same** agent with a concrete fix ask; wait for the new head. Wrong agent or obsolete run → cancel/archive; do not leave orphan PRs or agents without an owner and a next step.
 5. **Coordinate:** parallel streams only per `project-travelagency.mdc` «Parallel work»; pipeline.md is the single in-flight map. One owner per task; do not hand the same issue to two agents.
@@ -27,7 +27,7 @@ The loop is the lead↔cloud-agent control microcycle for each workflow step (1�
 ## Brief (required)
 The launch prompt includes all of the following. Do not paste this file or unrelated project guides.
 
-- Goal and acceptance: what must be true when the work stops. For step 1, that bar is `playbook-step-01-analysis.mdc` (each field and its UI justified; no architecture).
+- Goal and acceptance: what must be true when the work stops. Name the level (`playbook-workflow.mdc` «Analysis depth»). Step 1 is product WHY and WHAT only (`playbook-step-01-analysis.mdc`). Feature code waits for steps 1-4 on the Feature page.
 - Links: issue `#NN`, wiki Epic and/or Feature page (+ anchor), related `Doc-` pages for current behavior this task touches, and any comment that already decided the approach.
 - Architecture context: for feature or code work, name the parent Epic architecture choices and the applicable project-wide constraints (services, contracts, auth).
 - Minimal environment context: only the stack touchpoints this task hits (which service, gateway, frontend, tests, CI, Docker). Not the whole project guide. Stack touchpoints do not replace the Epic, Feature, and `Doc-` links above; those links stay in the brief.

@@ -3,8 +3,8 @@ description: Step 5 development from the feature page
 alwaysApply: false
 ---
 # Step 5: Development
-Input: feature page (architecture + test cases) + subtask issue. Output: PR.
-- Implement exactly the page «Архитектура» for this subtask; automate marked test cases. Do not add a field or control that «Бизнес и сценарии» did not justify.
+Input: feature page with steps 1-4 («полное ТЗ», `playbook-workflow.mdc`) plus the subtask issue, or a bug/small-fix issue with criteria. Output: PR.
+- Implement exactly the page «Архитектура» for this subtask; automate the marked test cases. Do not add a field, control, or block that feature step 1 did not justify. A bug or small fix stays inside the issue criteria and does not invent fields.
 - Deviation needed: stop, propose a «Решения» row via the issue; do not code around the page.
 - PR: branch includes the issue number as its own segment (`type/NN-short-english-slug`), created with `gh issue develop` when the branch does not exist yet; `## Задача` `#NN` without `closes`; do not call `addCloseIssueReferences` or set closedBy before acceptance. Name the page section implemented. Formats: `project-github-formats.mdc`.
 - Cloud agent launch uses the brief in `playbook-cloud-agents.mdc`: goal and acceptance, issue and wiki links, stack touchpoints, hard boundaries, where the PR or issue text goes, minimal diff. Stop at the acceptance criteria.
