@@ -6,7 +6,9 @@ import { Breadcrumbs } from '@/components/layout';
 import { Avatar, Button, Card, Input, Tabs } from '@/components/ui';
 import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
 import { authFormError } from '@/domain/authFormErrors';
+import { ALLOWED_LANGUAGE_CODES } from '@/domain/allowedLanguages';
 import {
+  aboutCharactersLeft,
   avatarFileError,
   AVATAR_ACCEPT,
   AVATAR_UPLOAD_ERROR,
@@ -39,6 +41,10 @@ function formFrom(person: User | null) {
     email: person?.email ?? '',
     passport: person?.passport ?? '',
     city: person?.city ?? '',
+    about: person?.about ?? '',
+    tourismSince: person?.tourismSince != null ? String(person.tourismSince) : '',
+    languages: [...(person?.languages ?? [])],
+    specialization: person?.specialization ?? '',
   };
 }
 
@@ -52,12 +58,17 @@ function cardSnapshot(person: User | null): string | null {
     person.email,
     person.passport ?? '',
     person.city,
+    person.about ?? '',
+    person.tourismSince ?? '',
+    (person.languages ?? []).join('\u0001'),
+    person.specialization ?? '',
   ].join('\u0000');
 }
 
 export default function ProfilePage() {
   const storeUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
+  const isStaff = storeUser?.role === 'manager' || storeUser?.role === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab') === 'settings' ? 'settings' : 'profile';
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,9 +98,17 @@ export default function ProfilePage() {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
+  function handleLanguages(event: ChangeEvent<HTMLSelectElement>) {
+    const languages = Array.from(event.target.selectedOptions, (option) => option.value);
+    setForm((prev) => ({ ...prev, languages }));
+    setFieldErrors((prev) => ({ ...prev, languages: undefined }));
+  }
+
   async function handleSave() {
     setFormError(undefined);
-    const { payload, errors } = profileCardPayload(form);
+    const { payload, errors } = profileCardPayload(form, {
+      includeManagerFields: isStaff,
+    });
     setFieldErrors(errors);
     if (!payload) return;
 
@@ -111,7 +130,20 @@ export default function ProfilePage() {
       if (serverFields.lastName) next.lastName = serverFields.lastName;
       if (serverFields.phone) next.phone = serverFields.phone;
       if (serverFields.city) next.city = serverFields.city;
-      if (next.firstName || next.lastName || next.phone || next.city) {
+      if (serverFields.about) next.about = serverFields.about;
+      if (serverFields.tourismSince) next.tourismSince = serverFields.tourismSince;
+      if (serverFields.specialization) next.specialization = serverFields.specialization;
+      if (serverFields.languages?.length) next.languages = serverFields.languages;
+      if (
+        next.firstName ||
+        next.lastName ||
+        next.phone ||
+        next.city ||
+        next.about ||
+        next.tourismSince ||
+        next.specialization ||
+        next.languages?.length
+      ) {
         setFieldErrors(next);
       } else {
         setFormError(authFormError(err, 'profile').text);
@@ -293,6 +325,81 @@ export default function ProfilePage() {
                   {LATER}
                 </p>
               </div>
+
+              {isStaff && (
+                <>
+                  <div>
+                    <label htmlFor="profile-about" className="mb-1.5 block text-xs font-medium text-primary">
+                      О себе
+                    </label>
+                    <textarea
+                      id="profile-about"
+                      value={form.about}
+                      rows={5}
+                      onChange={(event) => handleChange('about', event.target.value)}
+                      className="w-full rounded-[12px] border border-sand bg-white px-4 py-3 text-dark outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    />
+                    <p className="mt-1.5 text-sm text-warm-gray">
+                      осталось {aboutCharactersLeft(form.about)} из 1000
+                    </p>
+                    {fieldErrors.about && (
+                      <p className="mt-1.5 text-sm text-red-500">{fieldErrors.about}</p>
+                    )}
+                  </div>
+
+                  <Input
+                    label="В туризме с"
+                    value={form.tourismSince}
+                    onChange={(event) => handleChange('tourismSince', event.target.value)}
+                    error={fieldErrors.tourismSince}
+                    inputMode="numeric"
+                  />
+
+                  <div>
+                    <label
+                      htmlFor="profile-languages"
+                      className="mb-1.5 block text-xs font-medium text-primary"
+                    >
+                      Языки
+                    </label>
+                    <select
+                      id="profile-languages"
+                      multiple
+                      size={8}
+                      value={form.languages}
+                      onChange={handleLanguages}
+                      className="w-full rounded-[12px] border border-sand bg-white px-4 py-2 text-dark outline-none"
+                    >
+                      {ALLOWED_LANGUAGE_CODES.map((code) => (
+                        <option key={code} value={code}>
+                          {code}
+                        </option>
+                      ))}
+                    </select>
+                    {(fieldErrors.languages ?? []).map((text) => (
+                      <p key={text} className="mt-1.5 text-sm text-red-500">
+                        {text}
+                      </p>
+                    ))}
+                  </div>
+
+                  <Input
+                    label="Специализация"
+                    value={form.specialization}
+                    onChange={(event) => handleChange('specialization', event.target.value)}
+                    error={fieldErrors.specialization}
+                  />
+
+                  <div>
+                    <Button type="button" disabled aria-describedby="profile-preview-later">
+                      Как меня видит клиент
+                    </Button>
+                    <p id="profile-preview-later" className="mt-1.5 text-sm text-warm-gray">
+                      {LATER}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-8 flex justify-end">
@@ -331,15 +438,23 @@ export default function ProfilePage() {
 
             <section className="space-y-3" aria-label="Уведомления">
               <h2 className="font-heading text-lg font-semibold text-dark">Уведомления</h2>
-              <label className="flex items-center gap-3 text-sm text-dark">
-                <input
-                  type="checkbox"
-                  checked={false}
-                  disabled
-                  onChange={() => undefined}
-                />
-                Уведомления на email о новых сообщениях
-              </label>
+              {isStaff ? (
+                <>
+                  <label className="flex items-center gap-3 text-sm text-dark">
+                    <input type="checkbox" checked={false} disabled onChange={() => undefined} />
+                    Письмо о новой заявке
+                  </label>
+                  <label className="flex items-center gap-3 text-sm text-dark">
+                    <input type="checkbox" checked={false} disabled onChange={() => undefined} />
+                    Письмо о новом сообщении
+                  </label>
+                </>
+              ) : (
+                <label className="flex items-center gap-3 text-sm text-dark">
+                  <input type="checkbox" checked={false} disabled onChange={() => undefined} />
+                  Уведомления на email о новых сообщениях
+                </label>
+              )}
               <p className="text-sm text-warm-gray">{LATER}</p>
             </section>
 
