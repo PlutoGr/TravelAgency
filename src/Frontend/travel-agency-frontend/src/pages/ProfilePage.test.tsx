@@ -688,6 +688,69 @@ describe('ProfilePage', () => {
     });
   });
 
+  it('keeps the newer photo when the avatar request starts before save and returns first', async () => {
+    const saveGate = deferred<User>();
+    const uploadGate = deferred<User>();
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockReturnValue(saveGate.promise);
+    const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockReturnValue(uploadGate.promise);
+    renderProfile();
+
+    setField('Имя', 'Мария');
+    setField('Фамилия', 'Ковалева');
+    setField('Телефон', '+79991112233');
+    setField('Город', 'Сочи');
+    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
+
+    uploadGate.resolve({
+      ...user,
+      firstName: 'Старое',
+      lastName: 'Имя',
+      phone: '',
+      city: 'Казань',
+      avatar: MEDIA,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA),
+    );
+    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
+    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(useAuthStore.getState().user).toMatchObject({
+      firstName: 'Анна',
+      lastName: 'Смирнова',
+      phone: '+79990001122',
+      city: '',
+      avatar: MEDIA,
+    });
+
+    saveGate.resolve({
+      ...user,
+      firstName: 'Мария',
+      lastName: 'Ковалева',
+      phone: '+79991112233',
+      city: 'Сочи',
+      avatar: undefined,
+    });
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
+    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
+    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', MEDIA);
+    expect(useAuthStore.getState().user).toMatchObject({
+      firstName: 'Мария',
+      lastName: 'Ковалева',
+      phone: '+79991112233',
+      city: 'Сочи',
+      avatar: MEDIA,
+    });
+  });
+
   it('ТК-11 rejects an empty file, a foreign type and a file over 5 MiB before upload', () => {
     useAuthStore.setState({
       user: { ...user, avatar: MEDIA },

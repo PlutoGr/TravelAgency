@@ -69,7 +69,7 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
-  // Поколение запросов аватара: ответ сохранения не подменяет более новое фото.
+  // Поколение запросов аватара: устаревший ответ загрузки или удаления не применяется.
   const avatarRevision = useRef(0);
 
   if (storeUser !== formSource) {
@@ -94,12 +94,15 @@ export default function ProfilePage() {
     if (!payload) return;
 
     setIsSaving(true);
-    const revisionAtSave = avatarRevision.current;
+    const avatarAtSave = useAuthStore.getState().user?.avatar;
     try {
       const updated = await updateProfile(payload);
       const current = useAuthStore.getState().user;
-      const avatarChanged = revisionAtSave !== avatarRevision.current;
-      setUser(current && avatarChanged ? { ...updated, avatar: current.avatar } : updated);
+      setUser(
+        current != null && current.avatar !== avatarAtSave
+          ? { ...updated, avatar: current.avatar }
+          : updated,
+      );
       toast.success('Профиль успешно обновлён');
     } catch (err) {
       const serverFields = profileProblemFields(err);
