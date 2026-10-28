@@ -13,7 +13,9 @@ alwaysApply: false
 ## Orchestrator loop (lead; do not skip)
 The lead stays the controller after every cloud agent. Cloud agents do not self-merge, self-accept on dev, or talk to the owner.
 
-1. **Pick and arm:** take next Очередь item (`project-github-formats.mdc` «Queue priority»); set `статус: в работе`; record `Waiting on` / `Next` in `pipeline.md` when the task waits on CI, Deploy, or a cloud agent.
+The loop is the lead↔cloud-agent control microcycle for each workflow step (1–8). It does not replace the `playbook-workflow.mdc` hierarchy (Roadmap → Epic → Feature → Subtask) or steps 1–8. Code (step 5) starts only when steps 1–4 are on the Feature/Epic wiki page (bugs/small fixes skip 1–4 per workflow).
+
+1. **Pick and arm:** take next Очередь item (`project-github-formats.mdc` «Queue priority»); set `статус: в работе`; determine which step is due (1–4 wiki sections vs 5 code). Do not launch step 5 if steps 1–4 are missing on the Feature/Epic page (bugs/small fixes skip 1–4 per `playbook-workflow.mdc`). Record `Waiting on` / `Next` in `pipeline.md` when the task waits on CI, Deploy, or a cloud agent.
 2. **Brief and launch:** one issue, one agent, full brief (`## Brief` below). For wiki/analysis steps: agent returns ready Russian text; lead reviews then publishes. For code: agent opens the PR.
 3. **On result (review, do not redo):** strip Cursor PR markers/footer; check diff vs acceptance criteria and issue scope (no drive-by); formats and secrets (`playbook-git-pr.mdc`, `00-core.mdc`); open doubts from the agent report. Never re-implement the same work in chat.
 4. **Steer:** gaps or CI/automation findings → `reply` to the **same** agent with a concrete fix ask; wait for the new head. Wrong agent or obsolete run → cancel/archive; do not leave orphan PRs or agents without an owner and a next step.
@@ -26,8 +28,9 @@ The lead stays the controller after every cloud agent. Cloud agents do not self-
 The launch prompt includes all of the following. Do not paste this file or unrelated project guides.
 
 - Goal and acceptance: what must be true when the work stops.
-- Links: issue `#NN`, the wiki page and anchor, and any comment that already decided the approach.
-- Minimal environment context: only the stack touchpoints this task hits (which service, gateway, frontend, tests, CI, Docker). Not the whole project guide.
+- Links: issue `#NN`, wiki Epic and/or Feature page (+ anchor), related `Doc-` pages for current behavior this task touches, and any comment that already decided the approach.
+- Architecture context: for feature or code work, name the parent Epic architecture choices and the applicable project-wide constraints (services, contracts, auth).
+- Minimal environment context: only the stack touchpoints this task hits (which service, gateway, frontend, tests, CI, Docker). Not the whole project guide. Stack touchpoints do not replace the Epic, Feature, and `Doc-` links above; those links stay in the brief.
 - Hard boundaries: no wiki edits, no board changes, no merge; no secrets and no server access; stay inside the issue scope; open a regular PR into `main`.
 - Where results go: PR sections from `project-github-formats.mdc` («Что сделано», «Зачем», «Как это работает», «Как проверить», «Задача» with `#NN` only). No «Учебный кейс». No `closes` / `fix` / `fixes`. An issue comment, if one is needed, uses «Итог / Подробно / Дальше» (`.cursor/templates/issue-comment.md`). Public text follows `00-core.mdc`: impersonal Russian; Cursor Automations may be named when the sentence needs a process actor. Do not name a role or another agent as the actor.
 - Token thrift: minimal diff, no drive-by refactor, stop when the acceptance criteria hold.
