@@ -90,6 +90,23 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         Assert.Equal("/identity/me", path);
     }
 
+    [Theory]
+    [InlineData("PATCH", "/api/v1/auth/me", "/identity/me")]
+    [InlineData("POST", "/api/v1/auth/me/avatar", "/identity/me/avatar")]
+    [InlineData("DELETE", "/api/v1/auth/me/avatar", "/identity/me/avatar")]
+    public async Task Auth_ProfileAndAvatarMethods_ProxyToIdentity(string method, string url, string expectedPath)
+    {
+        var client = CreateClient(withAuth: false);
+        using var request = CreateRequest(new HttpMethod(method), url);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echo = await ReadEchoAsync(response);
+        Assert.Equal("auth-route", echo.RouteId);
+        Assert.Equal(expectedPath, echo.Path);
+    }
+
     [Fact]
     public async Task Auth_PostLogin_ProxiesToIdentityLogin()
     {
