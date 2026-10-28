@@ -32,6 +32,7 @@ alwaysApply: false
 ## Common
 - Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
 - Fill only your section. Disagreement -> step 3.
+- Step 1 must justify each field, control, and its UI (layout, not a bare list) before step 2. Bar: `playbook-step-01-analysis.mdc`.
 - Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 
