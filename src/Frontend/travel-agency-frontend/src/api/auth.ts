@@ -33,6 +33,7 @@ function mapUserProfileDtoToUser(dto: UserProfileDto): User {
     firstName: dto.firstName,
     lastName: dto.lastName,
     phone: dto.phone ?? '',
+    city: dto.city ?? '',
     avatar: dto.avatarUrl ?? undefined,
     role: dto.role.toLowerCase() as UserRole,
     createdAt: dto.createdAt,
@@ -80,4 +81,16 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<User> {
     payload,
   );
   return mapUserProfileDtoToUser(dto);
+}
+
+export async function uploadAvatar(file: File): Promise<User> {
+  const body = new FormData();
+  body.append('file', file);
+  const { data } = await apiClient.postForm<UserProfileDto>('/auth/me/avatar', body);
+  return mapUserProfileDtoToUser(data);
+}
+
+export async function deleteAvatar(): Promise<User> {
+  const { data } = await apiClient.delete<UserProfileDto>('/auth/me/avatar');
+  return mapUserProfileDtoToUser(data);
 }
