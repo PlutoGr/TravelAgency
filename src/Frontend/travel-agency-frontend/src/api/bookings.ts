@@ -110,7 +110,15 @@ export function mapBookingDto(raw: unknown): Booking {
     clientName: asNullableString(dto.clientName),
     clientEmail: asNullableString(dto.clientEmail),
     clientPhone: asNullableString(dto.clientPhone),
+    assignedManagerId: blankToNull(dto.assignedManagerId),
+    assignedManagerName: asNullableString(dto.assignedManagerName),
   };
+}
+
+function blankToNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
 }
 
 /** Название тура для экрана: из каталога, как у избранного. */

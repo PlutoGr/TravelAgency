@@ -4,8 +4,10 @@ using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using TravelAgency.Shared.Contracts.Authorization;
+using Yarp.ReverseProxy.Configuration;
 
 namespace TravelAgency.Gateway.Tests.Integration;
 
@@ -693,6 +695,76 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         Assert.Equal($"/identity/admin/users/{id}", (await ReadEchoAsync(card)).Path);
         Assert.Equal(HttpStatusCode.OK, roleChange.StatusCode);
         Assert.Equal($"/identity/admin/users/{id}/role", (await ReadEchoAsync(roleChange)).Path);
+    }
+
+    [Fact]
+    public async Task ManagerCard_GuestGet_Returns401AndDoesNotReachIdentity()
+    {
+        var id = Guid.NewGuid();
+        var client = CreateClient(withAuth: false);
+        var before = _fixture.MockServer.RequestPaths.Count;
+
+        var response = await client.GetAsync($"/api/v1/users/{id}/manager-card");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var added = _fixture.MockServer.RequestPaths.Skip(before);
+        Assert.DoesNotContain(added, path => path.Contains("manager-card", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(AppRoles.Client)]
+    [InlineData(AppRoles.Manager)]
+    [InlineData(AppRoles.Admin)]
+    public async Task ManagerCard_AuthenticatedGet_ProxiesToIdentity(string role)
+    {
+        var id = Guid.NewGuid();
+        var route = Assert.Single(
+            _fixture.Factory.Services.GetRequiredService<IProxyConfigProvider>().GetConfig().Routes,
+            item => item.RouteId == "manager-card-route");
+        Assert.Equal("identity-cluster", route.ClusterId);
+        Assert.Equal("RequireAuthenticated", route.AuthorizationPolicy);
+
+        var response = await CreateClientForRole(role).GetAsync($"/api/v1/users/{id}/manager-card");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echo = await ReadEchoAsync(response);
+        Assert.Equal("manager-card-route", echo.RouteId);
+        Assert.Equal($"/identity/users/{id}/manager-card", echo.Path);
+    }
+
+    [Fact]
+    public async Task ManagerCard_Post_DoesNotSelectRoute()
+    {
+        var id = Guid.NewGuid();
+        var client = CreateClientForRole(AppRoles.Client);
+        var before = _fixture.MockServer.RequestPaths.Count;
+
+        var response = await client.PostAsync(
+            $"/api/v1/users/{id}/manager-card",
+            new StringContent("{}", Encoding.UTF8, "application/json"));
+
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("displayName", body, StringComparison.Ordinal);
+        var added = _fixture.MockServer.RequestPaths.Skip(before);
+        Assert.DoesNotContain(added, path => path.Contains("manager-card", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("not-a-guid")]
+    [InlineData("abc")]
+    public async Task ManagerCard_NonGuid_DoesNotSelectRoute(string segment)
+    {
+        var client = CreateClientForRole(AppRoles.Client);
+        var before = _fixture.MockServer.RequestPaths.Count;
+
+        var response = await client.GetAsync($"/api/v1/users/{segment}/manager-card");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("displayName", body, StringComparison.Ordinal);
+        var added = _fixture.MockServer.RequestPaths.Skip(before);
+        Assert.DoesNotContain(added, path => path.Contains("manager-card", StringComparison.Ordinal));
     }
 
     [Fact]

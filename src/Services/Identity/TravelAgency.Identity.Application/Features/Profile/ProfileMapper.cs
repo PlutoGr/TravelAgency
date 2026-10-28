@@ -28,6 +28,22 @@ public static class ProfileMapper
             isStaff ? user.Specialization : null);
     }
 
+    public static ManagerPublicCardDto ToPublicCard(User user)
+    {
+        var about = string.IsNullOrWhiteSpace(user.About) ? null : user.About.Trim();
+        var languages = user.GetLanguages();
+        if (languages is null || languages.Count == 0)
+            languages = null;
+
+        return new ManagerPublicCardDto(
+            user.Id,
+            user.DisplayName,
+            BuildAvatarUrl(user.AvatarMediaFileId),
+            about,
+            user.TourismSince,
+            languages);
+    }
+
     public static string? BuildAvatarUrl(Guid? mediaFileId) =>
         mediaFileId is null
             ? null
