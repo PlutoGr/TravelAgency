@@ -3,6 +3,8 @@ description: Step 4 test cases before development
 alwaysApply: false
 ---
 # Step 4: Test cases («Тест-кейсы»), BEFORE development
+Derive cases from step 1 product criteria and from step 2 API and error paths. Do not invent behavior that steps 1-2 did not state.
 - Epic: end-to-end only. Feature: id (`ТК-1`), precondition, steps, expected, level (unit / integration / e2e / ручная на dev).
-- Cover every criterion and API error path; mark which become automated.
-- Gaps in scenarios/architecture: step 3, not silent fixes. Development starts only after this section is filled.
+- Cover every step 1 criterion and every step 2 API error path. Mark which cases become automated.
+- Send a gap in scenarios or architecture to step 3. Do not fill that gap inside a test case.
+- Start code (step 5) only when steps 1-4 are on the page. Bugs and small fixes still skip steps 1-4 (`playbook-workflow.mdc`).

@@ -32,7 +32,7 @@ alwaysApply: false
 ## Common
 - Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
 - Fill only your section. Disagreement -> step 3.
-- Step 1 must justify each field, control, and its UI (layout, not a bare list) before step 2. Bar: `playbook-step-01-analysis.mdc`.
+- A complete product TZ before code («полное ТЗ») is steps 1-4 filled on the Feature/Epic page. Step 1 is product why and what (`playbook-step-01-analysis.mdc`); steps 2-4 map how, decisions, and cases. Keep the detail in those step files. Bugs and small fixes still skip 1-4.
 - Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 
@@ -47,7 +47,7 @@ Canonical priority method: `project-github-formats.mdc` «Queue priority».
 
 ## End-to-end checklist (no silent hangs)
 1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment; if the issue is a GitHub sub-issue of an epic (`тип: родительская`), set that epic to `статус: в работе` in the same moment (`project-github-formats.mdc`).
-2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
+2. Feature/Epic: «полное ТЗ» (steps 1-4 on the wiki page) before code. Bugs/small fixes: criteria on the issue, skip to 5.
 3. Step 5: one cloud agent, one PR; branch `type/NN-short-english-slug`; `## Задача` `#NN` without `closes`; link the issue to the branch only (`gh issue develop` / `linkedBranches`). Do not call `addCloseIssueReferences` and do not set closedBy before acceptance.
 4. Step 6: wait until automation comments and CI have finished; reply to every open finding (`playbook-step-06-review.mdc`); escalate per step 6; lead checks the branch link and `#NN`, not a closedBy chip. Authorized in-scope work merges without a separate yes, then the owner is notified (one PR at a time; next after Deploy green).
 5. Step 7: acceptance on dev; comment; keep issue open until pass.

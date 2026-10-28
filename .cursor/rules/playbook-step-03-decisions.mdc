@@ -3,8 +3,10 @@ description: Step 3 decisions log and disagreement path
 alwaysApply: false
 ---
 # Step 3: Decisions («Решения»)
+Log open questions from steps 1-2 and disagreements. A complete TZ has either an answered row or an explicit deferral for each such question. Do not leave a silent gap.
 Row: Вопрос | Варианты | Выбрано | Почему | Дата (`2026-10-21`). Append only; a changed decision is a new row referencing the old.
 - Disagreeing side writes options (Выбрано empty) and hands back.
+- For a deferral, fill the row with what is postponed and what steps 2 and 4 must not assume. Do not leave the question only in the step 1 list.
 - No agreement: lead decides by the rules; else ONE owner question with options + recommendation (issue comment, status На ревью).
 - Owner answer: recorded impersonally in the row and on the issue («**Итог:** решено: ...»), status back to В работе.
 - Executor without wiki/owner access: return the options table; never decide approval items.

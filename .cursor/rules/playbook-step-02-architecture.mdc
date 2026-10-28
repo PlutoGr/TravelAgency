@@ -3,8 +3,9 @@ description: Step 2 architecture and split
 alwaysApply: false
 ---
 # Step 2: Architecture + split («Архитектура», «Разбиение»)
-- Epic: overall scheme, services, links, options and why chosen. Feature: model fields, API (method, path, access, body, response, errors), contracts, migrations, impact.
-- Take product fields, controls, and screen layout from step 1. Map them to the model, API, states, and error texts. Do not add a field, control, or screen block that step 1 did not justify, and do not redesign layout here.
-- Business part unclear: do not rewrite it; options to «Решения», hand back.
-- Split: epic -> features (page + issue); feature -> subtasks (issue linking the anchor). Use GitHub sub-issues.
-- Every important choice = one «Решения» row. An impactful «how we do it» choice that is not already in the authorized task goes to the owner via the lead (step 3). Once that decision is recorded, or the owner already put this task in work, a matching PR does not need a second yes at merge (`00-core.mdc`).
+HOW that maps step 1. Do not invent product intent here.
+- Epic: overall scheme, services, links, options and why chosen. Feature: model, API (method, path, access, body, response, errors), states, contracts, migrations, service boundaries, impact.
+- Map only intents that step 1 already justified onto that model, API, states, error texts, contracts, migrations, and service boundaries. Do not add a field, control, or screen that step 1 did not justify. Do not redesign product layout here.
+- Business part unclear: do not rewrite it. Put options in «Решения» and hand back.
+- Split the work from that mapping: epic to features (page + issue); feature to subtasks (issue linking the anchor). Use GitHub sub-issues.
+- Every important choice is one «Решения» row. An impactful unresolved "how" is that row with Выбрано empty until step 3; do not choose it silently. An impactful «how we do it» choice that is not already in the authorized task goes to the owner via the lead (step 3). Once that decision is recorded, or the owner already put this task in work, a matching PR does not need a second yes at merge (`00-core.mdc`).
