@@ -145,6 +145,9 @@ export type Booking = {
   clientName: string | null;
   clientEmail: string | null;
   clientPhone: string | null;
+  /** Уже приходит в BookingDto. Пустое значение — менеджер не назначен. */
+  assignedManagerId: string | null;
+  assignedManagerName: string | null;
   /** Карточка публичного каталога. В BookingDto её нет. */
   tour?: Tour;
 };
@@ -154,7 +157,7 @@ export type ChatMessage = {
   bookingId: string;
   senderId: string;
   senderName: string;
-  senderRole: 'client' | 'manager';
+  senderRole: 'client' | 'manager' | 'admin' | 'system';
   text: string;
   attachments?: string[];
   createdAt: string;

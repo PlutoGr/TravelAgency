@@ -14,9 +14,10 @@ interface ChatMessageDto {
   createdAt: string;
 }
 
-function mapDtoToMessage(dto: ChatMessageDto): ChatMessage {
+export function mapDtoToMessage(dto: ChatMessageDto): ChatMessage {
+  const role = dto.senderRole?.toLowerCase();
   const senderRole =
-    dto.senderRole?.toLowerCase() === 'manager' ? 'manager' : 'client';
+    role === 'manager' ? 'manager' : role === 'admin' ? 'admin' : role === 'system' ? 'system' : 'client';
   return {
     id: String(dto.id),
     bookingId: String(dto.bookingId),

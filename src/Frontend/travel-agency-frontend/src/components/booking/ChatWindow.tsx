@@ -6,6 +6,7 @@ import { ru } from 'date-fns/locale';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import type { ChatMessage } from '@/types';
+import { getManagerCard, type ManagerPublicCard } from '@/api/managerCard';
 import { Avatar } from '@/components/ui';
 import {
   getMessages,
@@ -13,6 +14,7 @@ import {
   subscribeToMessages,
   disconnectChat,
 } from '@/api/chat';
+import ManagerShortCard from './ManagerShortCard';
 
 interface ChatWindowProps {
   bookingId: string;
@@ -60,8 +62,18 @@ export default function ChatWindow({
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [cardUserId, setCardUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cards = useRef(new Map<string, Promise<ManagerPublicCard>>());
+
+  const loadManagerCard = useCallback((id: string) => {
+    const cached = cards.current.get(id);
+    if (cached) return cached;
+    const pending = getManagerCard(id);
+    cards.current.set(id, pending);
+    return pending;
+  }, []);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     requestAnimationFrame(() => {
@@ -223,6 +235,9 @@ export default function ChatWindow({
 
                 {group.messages.map((msg) => {
                   const isOwn = msg.senderId === currentUserId;
+                  const openManagerCard =
+                    (msg.senderRole === 'manager' || msg.senderRole === 'admin') && !isOwn;
+                  const avatar = <Avatar name={msg.senderName} size="sm" />;
                   return (
                     <motion.div
                       key={msg.id}
@@ -235,7 +250,18 @@ export default function ChatWindow({
                       )}
                     >
                       <div className="mt-1 shrink-0">
-                        <Avatar name={msg.senderName} size="sm" />
+                        {openManagerCard ? (
+                          <button
+                            type="button"
+                            className="rounded-full"
+                            aria-label={`Карточка менеджера, ${msg.senderName}`}
+                            onClick={() => setCardUserId(msg.senderId)}
+                          >
+                            {avatar}
+                          </button>
+                        ) : (
+                          avatar
+                        )}
                       </div>
 
                       <div
@@ -318,6 +344,13 @@ export default function ChatWindow({
           </button>
         </div>
       </div>
+      {cardUserId && (
+        <ManagerShortCard
+          userId={cardUserId}
+          onClose={() => setCardUserId(null)}
+          loadCard={loadManagerCard}
+        />
+      )}
     </div>
   );
 }

@@ -102,6 +102,8 @@ describe('bookings API', () => {
         clientName: 'Анна Смирнова',
         clientEmail: 'anna@example.com',
         clientPhone: '+79990001122',
+        assignedManagerId: null,
+        assignedManagerName: null,
       });
       expect(result).not.toHaveProperty('dateFrom');
       expect(result).not.toHaveProperty('dateTo');
@@ -123,6 +125,44 @@ describe('bookings API', () => {
 
     it('throws when the payload is not an object', () => {
       expect(() => bookings.mapBookingDto(null)).toThrow(/BookingDto/);
+    });
+
+    it('переносит назначенного менеджера и не тащит поля карточки', () => {
+      const withManager = bookings.mapBookingDto({
+        ...baseBookingDto,
+        assignedManagerId: '  manager-1  ',
+        assignedManagerName: 'Марина Иванова',
+        about: 'О себе',
+        phone: '+79990000000',
+        specialization: 'Море',
+      });
+      expect(withManager.assignedManagerId).toBe('manager-1');
+      expect(withManager.assignedManagerName).toBe('Марина Иванова');
+      expect(withManager).not.toHaveProperty('about');
+      expect(withManager).not.toHaveProperty('phone');
+      expect(withManager).not.toHaveProperty('specialization');
+
+      const missing = bookings.mapBookingDto({ ...baseBookingDto });
+      expect(missing.assignedManagerId).toBeNull();
+      expect(missing.assignedManagerName).toBeNull();
+
+      const emptyName = bookings.mapBookingDto({
+        ...baseBookingDto,
+        assignedManagerId: 'manager-2',
+        assignedManagerName: null,
+      });
+      expect(emptyName.assignedManagerId).toBe('manager-2');
+      expect(emptyName.assignedManagerName).toBeNull();
+      expect(emptyName.assignedManagerName).not.toBe('Менеджер');
+
+      const blankId = bookings.mapBookingDto({
+        ...baseBookingDto,
+        assignedManagerId: '   ',
+        assignedManagerName: '',
+      });
+      expect(blankId.assignedManagerId).toBeNull();
+      expect(blankId.assignedManagerName).toBe('');
+      expect(blankId.assignedManagerName).not.toBe('Менеджер');
     });
   });
 

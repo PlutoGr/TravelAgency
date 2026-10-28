@@ -22,6 +22,8 @@ function mockBooking(
     clientName: client.name,
     clientEmail: null,
     clientPhone: null,
+    assignedManagerId: null,
+    assignedManagerName: null,
     tour,
   };
 }

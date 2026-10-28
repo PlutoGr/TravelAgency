@@ -13,6 +13,7 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   size?: ModalSize;
+  dialogLabel?: string;
 }
 
 const sizeStyles: Record<ModalSize, string> = {
@@ -27,6 +28,7 @@ export default function Modal({
   title,
   children,
   size = "md",
+  dialogLabel,
 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -65,6 +67,9 @@ export default function Modal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", stiffness: 350, damping: 30 }}
+            role={dialogLabel ? "dialog" : undefined}
+            aria-modal={dialogLabel ? true : undefined}
+            aria-label={dialogLabel}
             className={clsx(
               "relative w-full rounded-[20px] bg-white shadow-modal",
               sizeStyles[size],

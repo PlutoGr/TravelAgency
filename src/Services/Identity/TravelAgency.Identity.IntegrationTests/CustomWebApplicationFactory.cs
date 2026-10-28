@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -6,8 +7,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using TravelAgency.Identity.API.Logging;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Infrastructure.Persistence;
 using TravelAgency.Identity.Infrastructure.Services;
@@ -33,6 +39,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public int RateLimitPermit { get; set; } = 1000;
 
     public FakeAvatarMediaClient AvatarMedia { get; } = new();
+
+    /// <summary>
+    /// Журнал Serilog этого хоста. Запись включается на время проверки, что тело карточки не логируется.
+    /// </summary>
+    public CapturingLogSink Logs { get; } = new();
 
     public CustomWebApplicationFactory()
     {
@@ -134,9 +145,51 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         action(db);
     }
 
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        builder.UseSerilog((_, _, configuration) =>
+            configuration
+                .MinimumLevel.Information()
+                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                .Enrich.FromLogContext()
+                .WriteTo.Sink(Logs)
+                .Destructure.With<PiiMaskingDestructuringPolicy>());
+        return base.CreateHost(builder);
+    }
+
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
         await _keepAlive.DisposeAsync();
+    }
+}
+
+/// <summary>
+/// Копит уже отрендеренные строки журнала, пока <see cref="Capture"/> включён.
+/// </summary>
+public sealed class CapturingLogSink : ILogEventSink
+{
+    private readonly ConcurrentQueue<string> _lines = new();
+
+    public bool Capture { get; set; }
+
+    public IReadOnlyList<string> Lines => _lines.ToArray();
+
+    public void Clear()
+    {
+        while (_lines.TryDequeue(out _))
+        {
+        }
+    }
+
+    public void Emit(LogEvent logEvent)
+    {
+        if (!Capture)
+            return;
+
+        _lines.Enqueue(logEvent.RenderMessage());
+        if (logEvent.Exception is not null)
+            _lines.Enqueue(logEvent.Exception.ToString());
     }
 }

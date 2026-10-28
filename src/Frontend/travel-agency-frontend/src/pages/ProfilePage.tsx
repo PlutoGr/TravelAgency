@@ -1,10 +1,12 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useRef, useState, type ChangeEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { Avatar, Button, Card, Input, Tabs } from '@/components/ui';
+import ManagerShortCard from '@/components/booking/ManagerShortCard';
 import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
+import { getManagerCard } from '@/api/managerCard';
 import { authFormError } from '@/domain/authFormErrors';
 import { ALLOWED_LANGUAGE_CODES } from '@/domain/allowedLanguages';
 import {
@@ -80,6 +82,8 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [clientViewOpen, setClientViewOpen] = useState(false);
+  const loadSavedCard = useCallback((id: string) => getManagerCard(id), []);
   // Поколение запросов аватара: устаревший ответ загрузки или удаления не применяется.
   const avatarRevision = useRef(0);
 
@@ -391,13 +395,17 @@ export default function ProfilePage() {
                   />
 
                   <div>
-                    <Button type="button" disabled aria-describedby="profile-preview-later">
+                    <Button type="button" onClick={() => setClientViewOpen(true)}>
                       Как меня видит клиент
                     </Button>
-                    <p id="profile-preview-later" className="mt-1.5 text-sm text-warm-gray">
-                      {LATER}
-                    </p>
                   </div>
+                  {clientViewOpen && storeUser && (
+                    <ManagerShortCard
+                      userId={storeUser.id}
+                      onClose={() => setClientViewOpen(false)}
+                      loadCard={loadSavedCard}
+                    />
+                  )}
                 </>
               )}
             </div>

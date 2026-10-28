@@ -1098,8 +1098,8 @@ describe('ProfilePage', () => {
       expect(screen.getByLabelText('Специализация')).toHaveValue('Азия');
 
       const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
-      expect(preview).toBeDisabled();
-      expect(preview).toHaveAccessibleDescription('Появится позже');
+      expect(preview).toBeEnabled();
+      expect(preview).not.toHaveAccessibleDescription('Появится позже');
 
       const header = screen.getByRole('banner');
       expect(within(header).getByText('Анна')).toBeInTheDocument();
@@ -1459,33 +1459,56 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
   });
 
-  it('профиль менеджера ТК-15: предпросмотр неактивен и не подставляет черновик', async () => {
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile');
-    const post = vi.spyOn(apiClient, 'post');
-    const patch = vi.spyOn(apiClient, 'patch');
-    renderProfile();
-    setField('О себе', 'Черновик гида');
-
-    const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
-    expect(preview).toBeDisabled();
-    expect(preview).toHaveAccessibleDescription('Появится позже');
-    const events = userEvent.setup({ pointerEventsCheck: 0 });
-    await events.click(preview);
-
-    expect(updateProfile).not.toHaveBeenCalled();
-    expect(post).not.toHaveBeenCalled();
-    expect(patch).not.toHaveBeenCalled();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    const draft = screen.getAllByText('Черновик гида');
-    expect(draft).toHaveLength(1);
-    expect(draft[0]).toBe(screen.getByLabelText('О себе'));
-    expect(screen.getByLabelText('О себе')).toHaveValue('Черновик гида');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+  it('профиль менеджера ТК-15: предпросмотр открывает сохранённую карточку тем же GET', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockImplementation(async (url) => {
+      if (String(url) === `/users/${user.id}/manager-card`) {
+        return {
+          data: {
+            id: user.id,
+            displayName: 'Анна Смирнова',
+            about: 'сохранено',
+          },
+        };
+      }
+      throw new Error(`unexpected ${url}`);
     });
+
+    for (const role of ['manager', 'admin'] as const) {
+      signIn({ ...managerUser, role, about: 'сохранено' });
+      const view = renderProfile();
+      setField('О себе', 'черновик');
+
+      const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
+      expect(preview).toBeEnabled();
+      expect(preview).not.toHaveAccessibleDescription('Появится позже');
+      fireEvent.click(preview);
+
+      const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
+      expect(within(dialog).getByText('сохранено')).toBeInTheDocument();
+      expect(within(dialog).queryByText('черновик')).not.toBeInTheDocument();
+      expect(get).toHaveBeenCalledWith(`/users/${user.id}/manager-card`);
+      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
+      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
+      expect(screen.getByLabelText('О себе')).toHaveValue('черновик');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+      });
+      expect(within(screen.getByRole('region', { name: 'Пароль' })).getByText('Появится позже')).toBeInTheDocument();
+      view.unmount();
+      get.mockClear();
+    }
+
+    signIn({ ...user, role: 'client' });
+    renderProfile();
+    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalled();
+    get.mockRestore();
   });
 
   it('профиль менеджера ТК-16: смена пароля остаётся неактивной', async () => {

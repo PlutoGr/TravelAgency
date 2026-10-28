@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -24,7 +24,9 @@ import {
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { BookingStatusBadge, ChatWindow } from '@/components/booking';
-import { Card, Button, Skeleton, StarRating } from '@/components/ui';
+import ManagerShortCard from '@/components/booking/ManagerShortCard';
+import { getManagerCard, type ManagerPublicCard } from '@/api/managerCard';
+import { Card, Button, Skeleton, StarRating, Avatar } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { formatDateFull, formatFromMoney } from '@/utils/format';
 
@@ -159,6 +161,17 @@ export default function BookingDetailPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [managerPreview, setManagerPreview] = useState<ManagerPublicCard | null>(null);
+  const [managerCardOpen, setManagerCardOpen] = useState(false);
+  const managerCards = useRef(new Map<string, Promise<ManagerPublicCard>>());
+
+  const loadManagerCard = useCallback((managerId: string) => {
+    const cached = managerCards.current.get(managerId);
+    if (cached) return cached;
+    const pending = getManagerCard(managerId);
+    managerCards.current.set(managerId, pending);
+    return pending;
+  }, []);
 
   const fetchBooking = useCallback(async () => {
     if (!id) return;
@@ -177,6 +190,26 @@ export default function BookingDetailPage() {
   useEffect(() => {
     fetchBooking();
   }, [fetchBooking]);
+
+  const assignedManagerId = booking?.assignedManagerId ?? null;
+  const managerPhoto =
+    managerPreview?.id === assignedManagerId ? managerPreview?.avatarUrl : undefined;
+
+  useEffect(() => {
+    if (!assignedManagerId) return undefined;
+    let cancelled = false;
+    loadManagerCard(assignedManagerId).then(
+      (card) => {
+        if (!cancelled) setManagerPreview(card);
+      },
+      () => {
+        if (!cancelled) setManagerPreview(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [assignedManagerId, loadManagerCard]);
 
   const handleStatusUpdate = async (status: BookingStatus) => {
     if (!id || isUpdating) return;
@@ -263,6 +296,25 @@ export default function BookingDetailPage() {
                   <InfoRow icon={MapPin} label="Тур">
                     {bookingTourTitle(booking)}
                   </InfoRow>
+                  {booking.assignedManagerId && (
+                    <button
+                      type="button"
+                      onClick={() => setManagerCardOpen(true)}
+                      className="flex w-full items-center gap-3 py-3 text-left"
+                    >
+                      <Avatar
+                        name={booking.assignedManagerName ?? ''}
+                        src={managerPhoto}
+                        size="sm"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-medium text-warm-gray">Менеджер</span>
+                        <span className="mt-0.5 block text-sm font-medium text-dark">
+                          {booking.assignedManagerName ?? ''}
+                        </span>
+                      </span>
+                    </button>
+                  )}
                   <InfoRow icon={StickyNote} label="Комментарий">
                     {booking.comment?.trim() || '—'}
                   </InfoRow>
@@ -365,6 +417,13 @@ export default function BookingDetailPage() {
               </Card>
             </motion.div>
           </div>
+        )}
+        {managerCardOpen && booking?.assignedManagerId && (
+          <ManagerShortCard
+            userId={booking.assignedManagerId}
+            onClose={() => setManagerCardOpen(false)}
+            loadCard={loadManagerCard}
+          />
         )}
       </div>
     </PageTransition>
