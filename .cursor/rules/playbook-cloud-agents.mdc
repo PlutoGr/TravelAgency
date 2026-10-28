@@ -3,12 +3,24 @@ description: When and how to delegate repo work to a Cursor cloud agent, and how
 alwaysApply: false
 ---
 # Cloud agents
-- Delegate code or analysis that reads/changes many files or needs build/test loops. Do it yourself for a few lines, one file, or work needing server, secrets or chat history. Never both.
+- Default for repo-bound TravelAgency work: code, tests, analysis, architecture/wiki draft text, CI/Docker file edits, deep PR review. Goal: keep the lead chat thin (full brief in, PR or short report out). Do it yourself for work needing server, secrets, chat history, live owner talk, merge, board, or wiki publish. Never both.
 - Launch: check no branch/PR/agent exists for the issue; one issue, one agent; branch `type/NN-short-english-slug` via `gh issue develop <NN> --name type/NN-short-english-slug --base main` when the branch does not exist yet (`linkedBranches` only, no closedBy); attach this repo's rules (they are in `.cursor/`, the agent reads them). Prompt in English with the brief below. Keep it short (about 10-20 lines) and include every item.
-- Prefer the cheaper pool for routine code and repo-reading analysis/review; follow the current usage mode if the project sets one.
+- No usage-mode matrix and no scheduled limits refresh (unified Cursor subscription, Oct 28, 2026). Prefer cloud whenever a brief covers the task and the result should not live in lead memory.
 - Model: default Grok, medium effort (low mechanical, high multi-file/auth/security, xhigh hard). Opus only if Grok xhigh failed or the task is big and critical; state why.
 - Cloud agent rules: regular PR into `main`, never push to `main`, never merge, never edit wiki/board, no secrets or server access. In the PR «Задача» section link `#NN` only; never write `closes`/`fix`/`fixes`; do not call `addCloseIssueReferences`. Link the issue to the branch with `gh issue develop` when creating the branch (`project-github-formats.mdc`). Do not move Projects columns. Mark PR ready when CI is green. Final report (English): PR URL, head sha, what changed, tests added, open doubts.
 - Acceptance: the launcher owns the result. Strip Cursor PR-body markers and the «Open in Cursor» footer (`gh pr edit --body-file`). Fixes via reply to the same agent. Then merge gates: CI and Cursor Automations have finished, every open finding has a finished reply, and step 6 escalation is done when it triggers (`project-cursor-automations.mdc`, `playbook-step-06-review.mdc`).
+
+## Orchestrator loop (lead; do not skip)
+The lead stays the controller after every cloud agent. Cloud agents do not self-merge, self-accept on dev, or talk to the owner.
+
+1. **Pick and arm:** take next Очередь item (`project-github-formats.mdc` «Queue priority»); set `статус: в работе`; record `Waiting on` / `Next` in `pipeline.md` when the task waits on CI, Deploy, or a cloud agent.
+2. **Brief and launch:** one issue, one agent, full brief (`## Brief` below). For wiki/analysis steps: agent returns ready Russian text; lead reviews then publishes. For code: agent opens the PR.
+3. **On result (review, do not redo):** strip Cursor PR markers/footer; check diff vs acceptance criteria and issue scope (no drive-by); formats and secrets (`playbook-git-pr.mdc`, `00-core.mdc`); open doubts from the agent report. Never re-implement the same work in chat.
+4. **Steer:** gaps or CI/automation findings → `reply` to the **same** agent with a concrete fix ask; wait for the new head. Wrong agent or obsolete run → cancel/archive; do not leave orphan PRs or agents without an owner and a next step.
+5. **Coordinate:** parallel streams only per `project-travelagency.mdc` «Parallel work»; pipeline.md is the single in-flight map. One owner per task; do not hand the same issue to two agents.
+6. **Gates then merge:** step 6 (`playbook-step-06-review.mdc`) then merge order; notify the owner after merge.
+7. **Live acceptance and docs:** step 7 on dev (lead); step 8 Doc-/ADR (cloud draft OK, lead publishes); then `статус: готово` and close. Doc- automation gaps stay with the lead.
+
 
 ## Brief (required)
 The launch prompt includes all of the following. Do not paste this file or unrelated project guides.

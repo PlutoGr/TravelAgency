@@ -24,7 +24,7 @@ alwaysApply: false
 | 2 | `playbook-step-02-architecture.mdc` | Архитектура + Разбиение | lead via cloud agent |
 | 3 | `playbook-step-03-decisions.mdc` | Решения | lead (cloud if heavy) -> owner when needed |
 | 4 | `playbook-step-04-test-cases.mdc` | Тест-кейсы, BEFORE code | lead via cloud agent |
-| 5 | `playbook-step-05-development.mdc` | code | cloud agent (PR); lead accepts |
+| 5 | `playbook-step-05-development.mdc` | code | cloud agent (PR); lead owns result via Orchestrator loop |
 | 6 | `playbook-step-06-review.mdc` | review + security | automations first; lead escalates via cloud agent; lead merges |
 | 7 | `playbook-step-07-acceptance.mdc` | acceptance on dev | lead (dev access) or designated tester |
 | 8 | `playbook-step-08-docs.mdc` | Doc-/ADR after merge | lead via cloud agent; check Doc- automation gap |

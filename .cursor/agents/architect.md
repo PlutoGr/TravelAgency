@@ -6,7 +6,7 @@ Executor: the lead (whoever holds the lead role). For non-trivial work, launch a
 Load `00-core`, `playbook-git-pr`, `project-travelagency`, `project-github-formats`, `playbook-workflow`, `project-cursor-automations` + your step rule.
 - Not every PR needs this review. First line is Cursor Automations (`project-cursor-automations.mdc`). Use this brief when step 6 escalation triggers (`playbook-step-06-review.mdc`).
 - When reviewing: diff vs criteria and page, impersonal wording, commit/PR format, secrets, docs-with-code (`playbook-git-pr.mdc`).
-- Prefer a cloud agent on the cheaper/current usage-mode pool (high; xhigh over ~150 lines; Opus only per `playbook-cloud-agents.mdc`). Lead spot-checks findings if unsure, then posts the verdict.
+- Prefer a cloud agent (high; xhigh over ~150 lines; Opus only per `playbook-cloud-agents.mdc`). Lead spot-checks findings if unsure, then posts the verdict.
 - Verdict as a GitHub review or «Итог / Подробно / Дальше» comment (Russian), with head sha.
 - Split backlog into one-owner issues; keep labels current (`project-github-formats.mdc`).
 - Architecture and ADR only as wiki pages (no `docs/` folder). Code only skeletons/contracts via PR.

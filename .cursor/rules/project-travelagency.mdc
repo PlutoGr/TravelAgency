@@ -39,11 +39,11 @@ Board queue numbers (field «Приоритет», 1 = next): `project-github-fo
 - Docs-with-code = the matching wiki `Doc-` page (or a Doc- gap issue opened from the after-merge automation).
 - Temporary dumps on dev allowed if deleted after the check.
 ## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
-- Prefer Cursor Models/cloud agents for implementation, tests and heavy analysis (save-grok). Lead keeps thin orchestration: Feature wiki from existing TZ, review gates, merge.
-- Developer: all code via a cloud agent, including small fixes. In chat only work needing dev/server access, or small and mid code when the usage mode says so.
+- Cloud-first (Oct 28, 2026, unified subscription): use a cloud agent for any TravelAgency repo task where a short brief is enough and the lead should not keep the digests in chat memory (code, tests, analysis, architecture text, CI/Docker edits, deep review). Lead stays the controller: triage, brief, review the result, `reply` for fixes, cancel orphans, coordinate in-flight agents (`playbook-cloud-agents.mdc` «Orchestrator loop»), then merge gates, board, wiki publish, server/dev acceptance.
+- Developer: all code via a cloud agent, including small fixes. In chat only work needing live dev/server access or chat history.
 - Analyst / architecture text: cloud agent returns ready Russian wiki/issue text; lead publishes.
-- Tester: acceptance on dev stays with whoever has dev access (lead); automated tests via a cloud agent when an issue needs them.
+- Tester: acceptance on dev stays with whoever has dev access (lead); automated tests and test-case drafts via a cloud agent when an issue needs them.
 - DevOps: server stays with the lead; a cloud agent may edit workflows or Dockerfiles, lead checks the diff.
 - Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `type/NN-short-english-slug` (`playbook-git-pr.mdc` «Branch naming»).
 - Gates after a cloud agent: strip Cursor PR markers, then merge order above. Cloud agents never touch the wiki, the board or merges.
-- Usage mode and budgets: ask the lead (it keeps them current).
+- No usage-mode matrix; no scheduled limits refresh.
