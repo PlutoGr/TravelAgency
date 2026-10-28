@@ -72,6 +72,12 @@ export default function ChatWindow({
     if (cached) return cached;
     const pending = getManagerCard(id);
     cards.current.set(id, pending);
+    // Отклонённый промис из кэша убирается, чтобы следующее открытие повторило запрос.
+    pending.catch(() => {
+      if (cards.current.get(id) === pending) {
+        cards.current.delete(id);
+      }
+    });
     return pending;
   }, []);
 

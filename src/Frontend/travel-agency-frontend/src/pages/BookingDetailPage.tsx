@@ -170,6 +170,12 @@ export default function BookingDetailPage() {
     if (cached) return cached;
     const pending = getManagerCard(managerId);
     managerCards.current.set(managerId, pending);
+    // Отклонённый промис из кэша убирается, чтобы следующее открытие повторило запрос.
+    pending.catch(() => {
+      if (managerCards.current.get(managerId) === pending) {
+        managerCards.current.delete(managerId);
+      }
+    });
     return pending;
   }, []);
 

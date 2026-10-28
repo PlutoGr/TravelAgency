@@ -146,4 +146,41 @@ describe('ChatWindow manager card', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(path);
     expect(screen.getByTestId('location').textContent).not.toContain(MARINA);
   });
+
+  it('после ошибки повторное открытие снова запрашивает карточку', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getManagerCard)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue({
+        id: MARINA,
+        displayName: 'Марина Иванова',
+        avatarUrl: '/api/v1/media/files/file-1/a256',
+        about: 'О себе',
+      });
+    renderChat('client', '/dashboard/bookings/booking-1');
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Карточка менеджера, Марина Иванова' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось открыть карточку.');
+    expect(getManagerCard).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
+    expect(within(dialog).getByText('Марина Иванова')).toBeInTheDocument();
+    expect(getManagerCard).toHaveBeenCalledTimes(2);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Закрыть' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    expect(await screen.findByRole('dialog', { name: 'Карточка менеджера' })).toBeInTheDocument();
+    expect(getManagerCard).toHaveBeenCalledTimes(2);
+  });
 });

@@ -159,8 +159,41 @@ describe('manager row on booking pages', () => {
     await waitFor(() => expect(getManagerCard).toHaveBeenCalledTimes(1));
     await user.click(row);
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось открыть карточку.');
-    expect(getManagerCard).toHaveBeenCalledTimes(1);
+    expect(getManagerCard).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('heading', { name: /Заявка #/ })).toBeInTheDocument();
+  });
+
+  it('после ошибки предварительного запроса следующее открытие повторяет GET', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getManagerCard)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue({
+        id: MANAGER_ID,
+        displayName: 'Марина Иванова',
+        avatarUrl: '/api/v1/media/files/file-1/a256',
+      });
+    installBooking({
+      ...booking,
+      assignedManagerId: MANAGER_ID,
+      assignedManagerName: 'Марина Иванова',
+    });
+    renderAt(
+      `/dashboard/bookings/${booking.id}`,
+      '/dashboard/bookings/:id',
+      <BookingDetailPage />,
+    );
+
+    const row = await screen.findByRole('button', { name: /Менеджер/ });
+    await waitFor(() => expect(getManagerCard).toHaveBeenCalledTimes(1));
+    await user.click(row);
+    const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
+    expect(within(dialog).getByText('Марина Иванова')).toBeInTheDocument();
+    expect(getManagerCard).toHaveBeenCalledTimes(2);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Закрыть' }));
+    await user.click(row);
+    expect(await screen.findByRole('dialog', { name: 'Карточка менеджера' })).toBeInTheDocument();
+    expect(getManagerCard).toHaveBeenCalledTimes(2);
   });
 
   it('в списке и на заявке менеджера отдельной строки нет', async () => {
