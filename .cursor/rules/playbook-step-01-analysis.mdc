@@ -27,3 +27,4 @@ No services, API paths, storage, migrations, or contracts here (step 2). Depth b
 ## Done when
 - Feature: a developer cannot invent a field or block this section did not justify, and an architect can map the product intent without guessing the goal.
 - Epic: the business arc and the feature split are clear, and the page contains no screen TZ.
+- Feature step 1 is incomplete. Do not start step 2 when block 4 names no product or pattern; when any proposed field or control lacks who fills it, who reads it, why it exists, its lifecycle (create, edit, empty, error), how it looks, or how it interacts; when a proposed screen lacks layout (block 7); or when the section is only a field name list.

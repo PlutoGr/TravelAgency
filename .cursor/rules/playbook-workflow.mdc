@@ -19,7 +19,7 @@ alwaysApply: false
 | Level | Analysis before code |
 |---|---|
 | Epic | Upper-level product analytics on `Epic-<Name>`: intent, actors, current state, named external evidence, end-to-end scenarios, constraints, open questions. Then light architecture and split, decisions, and end-to-end test cases. No field catalog, no per-control UI, no screen layout. Enough to split features. Not a screen TZ. |
-| Feature | Full product TZ on `Feature-<Name>`: every applicable step-1 block (information needs, layout when a screen is proposed, Given/When/Then), then full architecture, split, decisions, and test cases. Inherits epic intent; re-open the epic goal only when it changes. Code waits for steps 1-4 on this page. |
+| Feature | Full product TZ on `Feature-<Name>`: every applicable step-1 block (named external evidence, information needs, layout when a screen is proposed, Given/When/Then), then full architecture, split, decisions, and test cases. Inherits epic intent; re-open the epic goal only when it changes. Code waits for steps 1-4 on this page. |
 | Subtask | No wiki analysis page. Issue links `Feature-<Name>#<anchor>`; criteria stay on the issue. Needs its own analysis: promote to feature. Does not invent step-2 fields. |
 | Bug / small fix | Skip wiki steps 1-4. Criteria on the issue, then steps 5-7. Does not invent fields. |
 
@@ -43,6 +43,7 @@ alwaysApply: false
 - Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
 - Fill only your section. Disagreement -> step 3.
 - «Полное ТЗ» before code = steps 1-4 on the Feature page (table «Analysis depth»), not step 1 alone and not the epic page.
+- Refuse feature architecture until that feature's step 1 meets the refuse bar in `playbook-step-01-analysis.mdc`. Epic «Бизнес и сценарии» alone never unlocks feature code.
 - Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 

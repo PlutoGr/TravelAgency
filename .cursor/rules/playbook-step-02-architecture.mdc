@@ -5,6 +5,8 @@ alwaysApply: false
 # Step 2: Architecture + split («Архитектура», «Разбиение»)
 Map only intents that step 1 justified. Add no field, screen, or block that step 1 omitted. Do not redesign product layout. Send an unresolved how to step 3.
 
+Refuse feature «Архитектура» until that feature's step 1 meets the refuse bar in `playbook-step-01-analysis.mdc`. Epic «Бизнес и сценарии» alone never unlocks feature code.
+
 - Epic: light scheme (services, links, options and why chosen) and the split into features (page + issue). No field catalog and no screen layout. Outcome stays enough to split features, not a buildable screen TZ.
 - Feature: map each justified information need and layout choice to model fields, API (method, path, access, body, response, errors), contracts, migrations, and impact. Then split into subtasks (issue linking `Feature-<Name>#<anchor>`). Use GitHub sub-issues.
 - Subtask and bug: no architecture section and no new fields. They implement the parent feature mapping or the issue criteria (`playbook-step-05-development.mdc`).
