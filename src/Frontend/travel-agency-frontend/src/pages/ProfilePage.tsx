@@ -42,6 +42,19 @@ function formFrom(person: User | null) {
   };
 }
 
+function cardSnapshot(person: User | null): string | null {
+  if (!person) return null;
+  return [
+    person.id,
+    person.firstName,
+    person.lastName,
+    person.phone,
+    person.email,
+    person.passport ?? '',
+    person.city,
+  ].join('\u0000');
+}
+
 export default function ProfilePage() {
   const storeUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -56,10 +69,13 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  // Поколение запросов аватара: ответ сохранения не подменяет более новое фото.
+  const avatarRevision = useRef(0);
 
   if (storeUser !== formSource) {
+    const cardChanged = cardSnapshot(storeUser) !== cardSnapshot(formSource);
     setFormSource(storeUser);
-    setForm(formFrom(storeUser));
+    if (cardChanged) setForm(formFrom(storeUser));
   }
 
   function selectTab(id: string) {
@@ -78,9 +94,12 @@ export default function ProfilePage() {
     if (!payload) return;
 
     setIsSaving(true);
+    const revisionAtSave = avatarRevision.current;
     try {
       const updated = await updateProfile(payload);
-      setUser(updated);
+      const current = useAuthStore.getState().user;
+      const avatarChanged = revisionAtSave !== avatarRevision.current;
+      setUser(current && avatarChanged ? { ...updated, avatar: current.avatar } : updated);
       toast.success('Профиль успешно обновлён');
     } catch (err) {
       const serverFields = profileProblemFields(err);
@@ -103,6 +122,12 @@ export default function ProfilePage() {
     fileInputRef.current?.click();
   }
 
+  function applyAvatar(updated: User, revision: number) {
+    if (revision !== avatarRevision.current) return;
+    const current = useAuthStore.getState().user;
+    setUser(current ? { ...current, avatar: updated.avatar } : updated);
+  }
+
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -116,9 +141,10 @@ export default function ProfilePage() {
 
     setAvatarError(undefined);
     setAvatarBusy(true);
+    const revision = ++avatarRevision.current;
     try {
       const updated = await uploadAvatar(file);
-      setUser(updated);
+      applyAvatar(updated, revision);
     } catch (err) {
       setAvatarError(profileProblemFields(err).file ?? AVATAR_UPLOAD_ERROR);
     } finally {
@@ -129,9 +155,10 @@ export default function ProfilePage() {
   async function handleDeleteAvatar() {
     setAvatarError(undefined);
     setAvatarBusy(true);
+    const revision = ++avatarRevision.current;
     try {
       const updated = await deleteAvatar();
-      setUser(updated);
+      applyAvatar(updated, revision);
     } catch (err) {
       setAvatarError(authFormError(err, 'profile').text);
     } finally {
