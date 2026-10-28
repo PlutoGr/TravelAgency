@@ -39,7 +39,7 @@ Board queue numbers (field «Приоритет», 1 = next): `project-github-fo
 - Docs-with-code = the matching wiki `Doc-` page (or a Doc- gap issue opened from the after-merge automation).
 - Temporary dumps on dev allowed if deleted after the check.
 ## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
-- Cloud-first (Oct 28, 2026, unified subscription): use a cloud agent for any TravelAgency repo task where a short brief is enough and the lead should not keep the digests in chat memory (code, tests, analysis, architecture text, CI/Docker edits, deep review). Lead stays thin: triage, brief, review gates, merge, board, wiki publish, server/dev acceptance.
+- Cloud-first (Oct 28, 2026, unified subscription): use a cloud agent for any TravelAgency repo task where a short brief is enough and the lead should not keep the digests in chat memory (code, tests, analysis, architecture text, CI/Docker edits, deep review). Lead stays the controller: triage, brief, review the result, `reply` for fixes, cancel orphans, coordinate in-flight agents (`playbook-cloud-agents.mdc` «Orchestrator loop»), then merge gates, board, wiki publish, server/dev acceptance.
 - Developer: all code via a cloud agent, including small fixes. In chat only work needing live dev/server access or chat history.
 - Analyst / architecture text: cloud agent returns ready Russian wiki/issue text; lead publishes.
 - Tester: acceptance on dev stays with whoever has dev access (lead); automated tests and test-case drafts via a cloud agent when an issue needs them.
