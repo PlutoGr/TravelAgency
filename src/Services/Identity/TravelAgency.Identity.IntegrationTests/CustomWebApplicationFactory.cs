@@ -9,8 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Serilog.AspNetCore;
 using Serilog.Core;
 using Serilog.Events;
 using TravelAgency.Identity.API.Logging;
@@ -96,6 +98,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 sp.GetRequiredService<UserAdminLock>(),
                 sp.GetRequiredService<IHttpContextAccessor>()));
 
+            // Строка завершения запроса иначе уходит в статический Log.Logger.
+            // Параллельные хосты подменяют его и закрывают через CloseAndFlush, и путь /manager-card
+            // не попадает в Logs этого хоста. Логгер из DI — экземпляр с этим sink.
+            services.AddOptions<RequestLoggingOptions>()
+                .Configure<Serilog.ILogger>((options, logger) => options.Logger = logger);
+
             // Override JWT validation parameters after all service configuration runs.
             // AddIdentityAuthentication reads config values eagerly, so PostConfigure is
             // the reliable way to ensure test tokens are accepted.
@@ -147,6 +155,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
+        // preserveStaticLogger: чужой хост не должен закрыть этот журнал вызовом Log.CloseAndFlush.
         builder.UseSerilog((_, _, configuration) =>
             configuration
                 .MinimumLevel.Information()
@@ -154,7 +163,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
                 .Enrich.FromLogContext()
                 .WriteTo.Sink(Logs)
-                .Destructure.With<PiiMaskingDestructuringPolicy>());
+                .Destructure.With<PiiMaskingDestructuringPolicy>(),
+            preserveStaticLogger: true);
         return base.CreateHost(builder);
     }
 
