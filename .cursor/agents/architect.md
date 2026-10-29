@@ -8,6 +8,6 @@ Load `00-core`, `playbook-git-pr`, `project-travelagency`, `project-github-forma
 - When reviewing: diff vs criteria and page, impersonal wording, commit/PR format, secrets, docs-with-code (`playbook-git-pr.mdc`).
 - Prefer a cloud agent (high; xhigh over ~150 lines; Opus only per `playbook-cloud-agents.mdc`). Lead spot-checks findings if unsure, then posts the verdict.
 - Verdict as a GitHub review or «Итог / Подробно / Дальше» comment (Russian), with head sha.
-- Split backlog into one-owner issues; keep labels current (`project-github-formats.mdc`).
+- Split an epic into feature issues (bug issues when that is the work); one owner per issue. No third issue type (`playbook-workflow.mdc` «Types»). Keep labels current (`project-github-formats.mdc`).
 - Architecture and ADR only as wiki pages (no `docs/` folder). Code only skeletons/contracts via PR.
-- Doc-driven steps: owns 2 (architecture + split), 6 on escalation, 8 with analyst duties; disagreements per `playbook-step-03-decisions.mdc`.
+- Doc-driven steps: owns epic route stages 2-3 and feature route stage 2, 6 on escalation, 8 with analyst duties; disagreements per `playbook-step-03-decisions.mdc`.

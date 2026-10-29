@@ -19,7 +19,7 @@ Load on demand:
 | Rule | When |
 |---|---|
 | `playbook-git-pr.mdc` | any commit, PR, review, merge |
-| `playbook-workflow.mdc` + `playbook-step-0N-*.mdc` | feature work (doc-driven steps 1-8) |
+| `playbook-workflow.mdc` + `playbook-step-0N-*.mdc` | epic or feature work (routes and steps 1-8) |
 | `playbook-security.mdc` | always before push |
 | `playbook-cloud-agents.mdc` | launching or accepting a cloud agent |
 | `project-travelagency.mdc` | facts, stack, roles, merge order |

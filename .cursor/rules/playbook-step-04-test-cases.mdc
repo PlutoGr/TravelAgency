@@ -5,6 +5,6 @@ alwaysApply: false
 # Step 4: Test cases («Тест-кейсы»), BEFORE development
 Derive every case from step-1 criteria and from step-2 API and error paths. Cover every criterion. Mark which cases become automated. Send a gap to step 3; do not close it in silence.
 
-- Epic: end-to-end cases only.
-- Feature: id (`ТК-1`), precondition, steps, expected, level (unit / integration / e2e / ручная на dev). Step 5 starts only after steps 1-4 are on this page («полное ТЗ», `playbook-workflow.mdc`).
-- Subtask: no «Тест-кейсы» section. Automate the feature cases the issue names. Bug or small fix: criteria on the issue, skip this section, then steps 5-7.
+- Epic: no «Тест-кейсы» section. End-to-end scenarios stay in step 1 and are the epic acceptance checklist. An older epic page that already has «Тест-кейсы» stays as it is; do not treat that section as a screen TZ or as another task type.
+- Feature (route stage 3): id (`ТК-1`), precondition, steps, expected, level (unit / integration / e2e / ручная на dev). Step 5 starts only after steps 1-4 are on this page («полное ТЗ», `playbook-workflow.mdc`).
+- Bug or tiny fix: no «Тест-кейсы» section. Criteria on the issue, skip this section, then steps 5-7.

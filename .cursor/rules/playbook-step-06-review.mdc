@@ -26,7 +26,7 @@ Lead runs a dedicated review (itself for trivial diffs, else cloud agent briefed
 - the Feature/Epic page changed in «Архитектура» or «Решения» for this work;
 - the lead or owner asks for a human/architect pass.
 
-Otherwise, when every finding reply is finished and no ask-before-merge case in `00-core.mdc` applies, the lead merges on automations + green CI (bugs, small fixes, routine cloud-agent PRs) and notifies the owner after merge.
+Otherwise, when every finding reply is finished and no ask-before-merge case in `00-core.mdc` applies, the lead merges on automations + green CI (bugs, tiny fixes, routine cloud-agent PRs) and notifies the owner after merge.
 
 ## Verdict
 - Page mismatch: changes requested, or a «Решения» row if the page is wrong.

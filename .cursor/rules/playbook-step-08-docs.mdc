@@ -4,6 +4,6 @@ alwaysApply: false
 ---
 # Step 8: Docs after merge
 - What works in `main` -> `Doc-` pages; decisions -> `Doc-ADR-NNN-<Name>` (next free number).
-- Feature page: «сделано» + links (Doc-, ADR, PRs), content kept. Epic: «сделано» only after owner epic acceptance (all features done is necessary but not sufficient; see `playbook-step-07-acceptance.mdc`).
+- Feature page: «сделано» + links (Doc-, ADR, PRs), content kept. Epic: «сделано» only after owner epic acceptance (every child feature and bug closed is necessary but not sufficient; see `playbook-step-07-acceptance.mdc`).
 - Wiki push checks: `project-wiki.mdc`.
 - After merge, read `TA: Doc- after merge` (`project-cursor-automations.mdc`). A gap comment is a checklist item, not the Doc- text itself: fix the wiki or open a docs issue, then close the gap. Do not skip step 8 because the automation was silent, and do not duplicate a Doc- edit the PR already merged.

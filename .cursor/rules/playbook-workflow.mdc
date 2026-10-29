@@ -1,49 +1,68 @@
 ---
-description: Doc-driven workflow (epic/feature/subtask, steps 1-8); index of step rules
+description: Doc-driven workflow (epic and feature routes, steps 1-8); index of step rules
 alwaysApply: false
 ---
 # Doc-driven workflow
-## Hierarchy
-| Level | What | Artifact |
+## Types
+Two artifact types. A route is not a type. There is no third analysis level and no mini-feature type.
+
+| Type | What | Artifact |
 |---|---|---|
-| Epic | big business goal | wiki `Epic-<Name>` + parent issue |
-| Feature | demonstrable, checkable result | wiki `Feature-<Name>` + issue; links its epic |
-| Subtask | small work item | issue only; links `Feature-<Name>#<anchor>` |
-- Page sections: «Бизнес и сценарии», «Архитектура», «Решения», «Разбиение», «Тест-кейсы». Templates: wiki `Epic-Template`, `Feature-Template`.
+| Epic | business goal, including a formal backlog or bugs epic | wiki `Epic-<Name>` + parent issue (`тип: родительская`) |
+| Feature | demonstrable, checkable result, including a small feature | wiki `Feature-<Name>` + issue; links its epic |
+
+- Roadmap (wiki `Plan-`) orders epics. It is not a task type.
+- Work that needs its own product analysis is a Feature under the epic, including when the slice is small. Features under one epic may run in parallel (`project-travelagency.mdc` «Parallel work»).
+- Bug or tiny fix: an issue with acceptance criteria, no wiki analysis page, then steps 5-7. Not a third type. It may be a child of an epic so the board stays epic-aware.
+- GitHub parent/child issues stay for board control. Children of an epic are Features or bugs. Do not name another child type.
+- Every epic uses the epic route below, including a backlog or bugs epic. The framing may be short. It still says why, for whom, which classes of problems, and the high-level contour.
 - `<Name>`: Latin, English, Title-Case-With-Hyphens; not renamed casually.
 - Closed work: no new docs.
+- Progress is the route stage on an Epic or a Feature: which wiki sections are filled, plus the shared board `статус:*`. Those labels do not introduce another task type (`project-github-formats.mdc`).
 
-## Analysis depth
-«Полное ТЗ» before code = steps 1-4 filled on the Feature page. The epic page is the business arc, not that TZ. Step 1 blocks: `playbook-step-01-analysis.mdc`.
+## Routes
+A route is the stage sequence on a type.
 
-| Level | Analysis before code |
-|---|---|
-| Epic | Upper-level product analytics on `Epic-<Name>`: intent, actors, current state, named external evidence, end-to-end scenarios, constraints, open questions. Then light architecture and split, decisions, and end-to-end test cases. No field catalog, no per-control UI, no screen layout. Enough to split features. Not a screen TZ. |
-| Feature | Full product TZ on `Feature-<Name>`: every applicable step-1 block (named external evidence, information needs, layout when a screen is proposed, Given/When/Then), then full architecture, split, decisions, and test cases. Inherits epic intent; re-open the epic goal only when it changes. Code waits for steps 1-4 on this page. |
-| Subtask | No wiki analysis page. Issue links `Feature-<Name>#<anchor>`; criteria stay on the issue. Needs its own analysis: promote to feature. Does not invent step-2 fields. |
-| Bug / small fix | Skip wiki steps 1-4. Criteria on the issue, then steps 5-7. Does not invent fields. |
+### Epic route
+1. Business analytics («Бизнес и сценарии», step 1): why, for whom, named analogues, end-to-end scenarios and user stories, high-level feel. No field catalog, no per-control UI, no screen layout.
+2. Epic architecture (step 2): services, boundaries, integration options, and why the option was chosen.
+3. Split («Разбиение», step 2): into Features (wiki page + issue). Open questions go to «Решения» (step 3).
+
+The epic page is not a screen TZ. Epic «Бизнес и сценарии» alone never unlocks feature code. The epic has no «Тест-кейсы» section and no code step. End-to-end scenarios from step 1 are the checklist for owner epic acceptance.
+
+### Feature route
+1. Product analytics («Бизнес и сценарии», step 1): justify every field or block, on a screen or only in the backend. Layout and behavior when a screen is proposed. User stories. Prefer omit over a weak justification. Inherit the epic intent; re-open the epic goal only when it changes.
+2. Feature architecture (step 2): map only what step 1 justified. Refuse until that feature's step 1 meets the refuse bar in `playbook-step-01-analysis.mdc`.
+3. Test cases (step 4), before code. «Решения» (step 3) logs open questions; a silent gap is forbidden.
+4. Code, review, acceptance, Doc- (steps 5-8).
+
+«Полное ТЗ» before code = steps 1-4 on the Feature page (product analytics, architecture, decisions, test cases). Not step 1 alone and not the epic page.
+
+### Bug or tiny fix
+Criteria on the issue. No wiki analysis page. Steps 5-7. Does not invent fields. A product change found here is recorded on the feature page or the issue.
 
 ## Delivery model
 - Persistent team chats are not used for new work. Single orchestrator: the lead + Cursor cloud agents. Architect duties = the lead via cloud agent on escalation; do not route through another teammate chat. See `project-travelagency.mdc` roles.
 - Cursor Automations (PR review, vulns, Bugbot, CI triage, Doc- after merge) are gates on steps 6 and 8, not a second documentation track. Details: `project-cursor-automations.mdc`.
 
-## Steps (one step = one owner; a step starts only when the previous one is on the page)
-| # | Rule | Step | Owner (who executes) |
-|---|---|---|---|
-| 1 | `playbook-step-01-analysis.mdc` | Бизнес и сценарии | lead via cloud agent (or short text in chat) |
-| 2 | `playbook-step-02-architecture.mdc` | Архитектура + Разбиение | lead via cloud agent |
-| 3 | `playbook-step-03-decisions.mdc` | Решения | lead (cloud if heavy) -> owner when needed |
-| 4 | `playbook-step-04-test-cases.mdc` | Тест-кейсы, BEFORE code | lead via cloud agent |
-| 5 | `playbook-step-05-development.mdc` | code | cloud agent (PR); lead owns result via Orchestrator loop |
-| 6 | `playbook-step-06-review.mdc` | review + security | automations first; lead escalates via cloud agent; lead merges |
-| 7 | `playbook-step-07-acceptance.mdc` | acceptance on dev | lead (dev access) or designated tester |
-| 8 | `playbook-step-08-docs.mdc` | Doc-/ADR after merge | lead via cloud agent; check Doc- automation gap |
+## Steps (one step = one owner; a step starts only when the previous one on that route is on the page)
+| # | Rule | Step | Route | Owner (who executes) |
+|---|---|---|---|---|
+| 1 | `playbook-step-01-analysis.mdc` | Бизнес и сценарии | Epic 1; Feature 1 | lead via cloud agent (or short text in chat) |
+| 2 | `playbook-step-02-architecture.mdc` | Архитектура; epic also «Разбиение» | Epic 2-3; Feature 2 | lead via cloud agent |
+| 3 | `playbook-step-03-decisions.mdc` | Решения | log on either route; part of the feature «полное ТЗ» | lead (cloud if heavy) -> owner when needed |
+| 4 | `playbook-step-04-test-cases.mdc` | Тест-кейсы, BEFORE code | Feature 3 | lead via cloud agent |
+| 5 | `playbook-step-05-development.mdc` | code | Feature 4; bug or tiny fix | cloud agent (PR); lead owns result via Orchestrator loop |
+| 6 | `playbook-step-06-review.mdc` | review + security | Feature 4; bug or tiny fix | automations first; lead escalates via cloud agent; lead merges |
+| 7 | `playbook-step-07-acceptance.mdc` | acceptance on dev | Feature 4; bug or tiny fix; then owner epic acceptance | lead (dev access) or designated tester |
+| 8 | `playbook-step-08-docs.mdc` | Doc-/ADR after merge | Feature 4 when Doc- is required; bug when behavior changed | lead via cloud agent; check Doc- automation gap |
 
 ## Common
 - Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
 - Fill only your section. Disagreement -> step 3.
-- «Полное ТЗ» before code = steps 1-4 on the Feature page (table «Analysis depth»), not step 1 alone and not the epic page.
+- «Полное ТЗ» before code = steps 1-4 on the Feature page («Routes»), not step 1 alone and not the epic page.
 - Refuse feature architecture until that feature's step 1 meets the refuse bar in `playbook-step-01-analysis.mdc`. Epic «Бизнес и сценарии» alone never unlocks feature code.
+- Page sections follow the route. Epic: «Бизнес и сценарии», «Архитектура», «Решения» when a question is open, «Разбиение». Feature: «Бизнес и сценарии», «Архитектура», «Решения» when a question is open, «Тест-кейсы». No child analysis page. Templates: wiki `Epic-Template`, `Feature-Template`.
 - Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
 
 
@@ -54,11 +73,11 @@ Canonical priority method: `project-github-formats.mdc` «Queue priority».
 - Those links must also be written on the wiki `Epic-` pages (see `Epic-Template`).
 - When proposing the next epic, re-read that Epic's «Архитектура» and related `Doc-` / neighbouring Epic links so the pick (and any parallel set) keeps the global scheme coherent. Consistency check, not a full rewrite.
 - After the owner confirms: set epic «Приоритет» to match the agreed sequence; raise that epic's (or those epics') open Очередь children with contiguous low numbers; take the top task as usual.
-- Work outside any epic (bugs, Dependabot, infra, docs meta) still follows board «Приоритет» without an epic-pick ask; substantial out-of-epic work pulled ahead should attach to (or activate) a backlog/bugs epic when that keeps the board epic-aware.
+- Work outside any epic (bugs, Dependabot, infra, docs meta) still follows board «Приоритет» without an epic-pick ask; substantial out-of-epic work pulled ahead should attach to (or activate) a backlog/bugs epic when that keeps the board epic-aware. That epic uses the same epic route, including business framing.
 
 ## End-to-end checklist (no silent hangs)
 1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment; if the issue is a GitHub sub-issue of an epic (`тип: родительская`), set that epic to `статус: в работе` in the same moment (`project-github-formats.mdc`).
-2. Feature: «полное ТЗ» (steps 1-4) on the Feature page before code. Epic: upper-level sections only («Analysis depth»), not a screen TZ. Subtask: no own analysis page. Bug or small fix: criteria on the issue, skip wiki steps 1-4, then steps 5-7.
+2. Feature route: «полное ТЗ» (steps 1-4) on the Feature page before code. Epic route: business analytics, architecture, and split only; the epic page is not a screen TZ and does not unlock feature code. Bug or tiny fix: criteria on the issue, skip wiki steps 1-4, then steps 5-7.
 3. Step 5: one cloud agent, one PR; branch `type/NN-short-english-slug`; `## Задача` `#NN` without `closes`; link the issue to the branch only (`gh issue develop` / `linkedBranches`). Do not call `addCloseIssueReferences` and do not set closedBy before acceptance.
 4. Step 6: wait until automation comments and CI have finished; reply to every open finding (`playbook-step-06-review.mdc`); escalate per step 6; lead checks the branch link and `#NN`, not a closedBy chip. Authorized in-scope work merges without a separate yes, then the owner is notified (one PR at a time; next after Deploy green).
 5. Step 7: acceptance on dev; comment; keep issue open until pass.

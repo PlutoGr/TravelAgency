@@ -3,7 +3,7 @@ description: Step 3 decisions log and disagreement path
 alwaysApply: false
 ---
 # Step 3: Decisions («Решения»)
-Log every open question from steps 1 and 2, and every disagreement, in the table below. A silent gap is forbidden on a feature «полное ТЗ» (steps 1-4 on the feature page, `playbook-workflow.mdc`). On an epic, log what blocks the business arc or the feature split. Subtask and bug do not open a decisions page; record a product change on the feature page or the issue.
+Log every open question from steps 1 and 2, and every disagreement, in the table below. A silent gap is forbidden on a feature «полное ТЗ» (steps 1-4 on the feature page, `playbook-workflow.mdc`). On an epic, log what blocks the business arc, the architecture, or the feature split. A bug does not open a decisions page; record a product change on the feature page or the issue. «Решения» is a log on the route, not a task type.
 
 Row: Вопрос | Варианты | Выбрано | Почему | Дата (`2026-10-21`). Append only; a changed decision is a new row referencing the old.
 - Disagreeing side writes options (Выбрано empty) and hands back.
