@@ -1,63 +1,84 @@
 ---
-description: Doc-driven workflow (epic/feature/subtask, steps 1-8); index of step rules
+description: Map of artifact types and board columns
 alwaysApply: false
 ---
-# Doc-driven workflow
-## Hierarchy
-| Level | What | Artifact |
-|---|---|---|
-| Epic | big business goal | wiki `Epic-<Name>` + parent issue |
-| Feature | demonstrable, checkable result | wiki `Feature-<Name>` + issue; links its epic |
-| Subtask | small work item | issue only; links `Feature-<Name>#<anchor>` |
-- Subtask needing own analysis -> promote to feature. Bugs/small fixes: issue with criteria, then steps 5-7 (skip 1-4 wiki pages). Closed work: no new docs.
-- Page sections: «Бизнес и сценарии», «Архитектура», «Решения», «Разбиение», «Тест-кейсы». Templates: wiki `Epic-Template`, `Feature-Template`.
-- `<Name>`: Latin, English, Title-Case-With-Hyphens; not renamed casually.
+# Workflow map
+Column text and gates live in `playbook-epic.mdc` and `playbook-feature.mdc`. This file names types and columns. It does not number them.
 
-## Delivery model
-- Persistent team chats are not used for new work. Single orchestrator: the lead + Cursor cloud agents. Architect duties = the lead via cloud agent on escalation; do not route through another teammate chat. See `project-travelagency.mdc` roles.
-- Cursor Automations (PR review, vulns, Bugbot, CI triage, Doc- after merge) are gates on steps 6 and 8, not a second documentation track. Details: `project-cursor-automations.mdc`.
+## Vocabulary
+- A **stage** is a board column. Briefs and rules use the column name. Do not call a column a step number.
+- «Решения» is the decision log when a question is open. It is not a column. An empty «Выбрано» on a row for this slice blocks Разработка (`playbook-feature.mdc`).
+- The issue label `статус:*` is the source of truth for the stage (`project-github-formats.mdc` «Board statuses»). The wiki page holds section text only. Do not require a status line on the wiki. A template may omit it, or say that the stage is the issue status.
+- There is no second, coarser status scale.
 
-## Steps (one step = one owner; a step starts only when the previous one is on the page)
-| # | Rule | Step | Owner (who executes) |
+## Types
+Two artifact types. A column is not a type. There is no subtask and no mini-feature.
+
+| Type | What | Artifact | Route |
 |---|---|---|---|
-| 1 | `playbook-step-01-analysis.mdc` | Бизнес и сценарии | lead via cloud agent (or short text in chat) |
-| 2 | `playbook-step-02-architecture.mdc` | Архитектура + Разбиение | lead via cloud agent |
-| 3 | `playbook-step-03-decisions.mdc` | Решения | lead (cloud if heavy) -> owner when needed |
-| 4 | `playbook-step-04-test-cases.mdc` | Тест-кейсы, BEFORE code | lead via cloud agent |
-| 5 | `playbook-step-05-development.mdc` | code | cloud agent (PR); lead owns result via Orchestrator loop |
-| 6 | `playbook-step-06-review.mdc` | review + security | automations first; lead escalates via cloud agent; lead merges |
-| 7 | `playbook-step-07-acceptance.mdc` | acceptance on dev | lead (dev access) or designated tester |
-| 8 | `playbook-step-08-docs.mdc` | Doc-/ADR after merge | lead via cloud agent; check Doc- automation gap |
+| Epic | business goal, including the standing bugs epic | wiki `Epic-<Name>` + parent issue (`тип: родительская`, field «Тип» = «Эпик») | `playbook-epic.mdc` |
+| Feature | demonstrable result, including a small feature and a bug-feature | wiki `Feature-<Name>` + issue; links its epic | `playbook-feature.mdc` |
+
+- Roadmap (wiki `Plan-`) orders epics. It is not a task type. An epic is born from that roadmap or from an owner ask (`playbook-epic.mdc`).
+- Features under one epic may run in parallel (`project-travelagency.mdc` «Parallel work»). Each feature moves that epic's problem. It is not a side quest.
+- `<Name>`: Latin, English, Title-Case-With-Hyphens. Do not rename it casually.
+- Closed work: no new docs.
+- GitHub parent and child issues stay for board control. Children of an epic are features, including bug-features. Do not name another child type.
+
+### Bug-feature, tiny fix, standing bugs
+A bug-feature uses the same columns and the same wiki sections as a Feature. Label `bug`. In «Связи», link the feature that spawned it and the parent epic. Open a separate bug-feature only when the fix is substantial: add or remove a field, change a screen, or change a business rule.
+
+A typo, or a 500 caused by a typo, inside an open feature: fix that feature in place. No new issue.
+
+An unrelated bug found while an epic is in flight goes under the standing bugs epic, not under the current product epic. Same feature route, label `bug`. It must not stop finishing the current epic. The standing bugs epic holds only unrelated discoveries. It is an ordinary epic: short text, same epic columns.
+
+Finish the current product epic, including bug-features spawned by its features, before moving to the next roadmap epic (`playbook-epic.mdc` «Epic pick»). Dependabot and other non-product issues already in flight are not that next epic.
+
+## Columns
+One `статус:*` label on the issue. That label is the stage. `board-sync.yml` copies it to the Projects Status column. Wiki sections show the artifact. They are not a second status.
+
+Hard gate: move to the next column only when the previous stage's artifacts are filled and visible (wiki section, test cases, or PR, as that stage requires). No skipping.
+
+### Epic
+Очередь → Бизнес-анализ → Архитектура → Разбиение → В работе (child features in flight) → На ревью (owner epic acceptance) → Готово.
+
+What each column contains, the gate, owner acceptance, and how the next epic is chosen: `playbook-epic.mdc`.
+
+Удержание is an extra column. It is not part of that sequence.
+
+### Feature
+Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово.
+
+The full specification bar, review inside Разработка, acceptance, and `Doc-`: `playbook-feature.mdc`.
+
+На ревью is an interrupt when the owner must decide. It is not a review column and not the next stage after Тест-кейсы. Удержание is an extra column.
+
+Code review, CI, and Cursor Automations stay inside Разработка. After merge, when Deploy to dev is green, set Приёмка.
+
+### На ревью and Удержание
+- На ревью: only while the owner must decide, and for owner epic acceptance after every child is Готово. The comment records which column to restore. After the answer, restore that column. Do not restore a feature to В работе. В работе is the epic column for children in flight.
+- Удержание: the issue is paused. Label `статус: удержание`. It is not in Очередь.
+
+### Outside the product routes
+Process docs, infra, and questions are not a third type and do not get a fake feature page. They still have exactly one `статус:*`. Use Очередь, Разработка while a change is in a PR, Приёмка when dev acceptance applies, Готово when done, and На ревью when the owner must decide. Dependabot has no issue. Do not use this shorter list for a product feature or a bug-feature.
+
+## Where to read next
+| Need | File |
+|---|---|
+| Epic columns, owner acceptance, epic pick | `playbook-epic.mdc` |
+| Feature and bug-feature columns, full TZ, acceptance, Doc- | `playbook-feature.mdc` |
+| Launch a cloud agent | `playbook-cloud.mdc` and `.cursor/briefs/` |
+| Controller | `.cursor/agents/orchestrator.md` |
+| CI/CD and Cursor Automations wake | `playbook-ci-wake.mdc` |
+| Commit, PR, merge | `playbook-git-pr.mdc` |
+| Label spelling and queue numbers | `project-github-formats.mdc` |
+
+The orchestrator is the only controller. Every column that uses a cloud agent goes through launch, review, then advance (`.cursor/agents/orchestrator.md`). Cursor Automations and the CI/CD wake sit on these columns. They are not a second process (`playbook-ci-wake.mdc`).
 
 ## Common
-- Issue = control panel (status label + page link). Artifacts on the wiki page, not in chat; a comment only announces a filled step.
-- Fill only your section. Disagreement -> step 3.
-- Step 1 must justify each field, control, and its UI (layout, not a bare list) before step 2. Bar: `playbook-step-01-analysis.mdc`.
-- Cloud agent executor: brief per `playbook-cloud-agents.mdc`, plus this file and the step file; it returns ready section text (or a PR); the launcher reviews, publishes, comments.
-
-
-## Epic pick and queue
-Canonical priority method: `project-github-formats.mdc` «Queue priority».
-- Finish children of epics already `статус: в работе` (and their Очередь sub-issues) before starting work from an epic that has never been opened, unless the owner says otherwise or throughput/risk warrants a one-off above them (see Queue priority «No hard bans»).
-- When choosing the **next epic** (finishing an epic, or before the first take from an epic not yet chosen with the owner): the lead proposes next epic(s) from the roadmap (wiki Plans) and `Epic-` «Связи с другими эпиками» (one epic when enough; a parallel set when dependent or more efficient). Ask the owner to confirm. Do not silently promote a new epic from «Приоритет» alone.
-- Those links must also be written on the wiki `Epic-` pages (see `Epic-Template`).
-- When proposing the next epic, re-read that Epic's «Архитектура» and related `Doc-` / neighbouring Epic links so the pick (and any parallel set) keeps the global scheme coherent. Consistency check, not a full rewrite.
-- After the owner confirms: set epic «Приоритет» to match the agreed sequence; raise that epic's (or those epics') open Очередь children with contiguous low numbers; take the top task as usual.
-- Work outside any epic (bugs, Dependabot, infra, docs meta) still follows board «Приоритет» without an epic-pick ask; substantial out-of-epic work pulled ahead should attach to (or activate) a backlog/bugs epic when that keeps the board epic-aware.
-
-## End-to-end checklist (no silent hangs)
-1. Create/take: every open issue has exactly one `статус:*`; on create → `статус: очередь` + type label; take from Очередь → `статус: в работе` + comment; if the issue is a GitHub sub-issue of an epic (`тип: родительская`), set that epic to `статус: в работе` in the same moment (`project-github-formats.mdc`).
-2. Feature/Epic: steps 1-4 on the wiki page before code. Bugs/small fixes: criteria on the issue, skip to 5.
-3. Step 5: one cloud agent, one PR; branch `type/NN-short-english-slug`; `## Задача` `#NN` without `closes`; link the issue to the branch only (`gh issue develop` / `linkedBranches`). Do not call `addCloseIssueReferences` and do not set closedBy before acceptance.
-4. Step 6: wait until automation comments and CI have finished; reply to every open finding (`playbook-step-06-review.mdc`); escalate per step 6; lead checks the branch link and `#NN`, not a closedBy chip. Authorized in-scope work merges without a separate yes, then the owner is notified (one PR at a time; next after Deploy green).
-5. Step 7: acceptance on dev; comment; keep issue open until pass.
-6. Step 8: Doc-/ADR if needed; clear Doc- automation gap; then `статус: готово` and close the issue in the same moment. The card moves because of the label and `board-sync.yml`, not a hand move. Do not add or remove Development links at close: `.github/workflows/link-closed-by.yml` sets the PR chip. Agents do not move the Projects card unless the owner explicitly asks.
-7. If anything waits >60 min (green CI, findings answered, no merge) or a Doc- gap the same day: the lead acts. Ask the owner only for a case in `00-core.mdc`.
-8. CI/CD wake (no silent hangs): **do not create per-task wait-watch routines** and do not arm-then-check Actions per task. Waiting state lives only in `/home/box/shared/travelagency/work/pipeline.md` (`Waiting on` + `Next`). The only wake is the durable routine «TravelAgency CI/CD», pinged by workflow Notify orchestrator when `CI` or `Deploy to dev` completes (success or failure). The lead then runs the `Next` step for matching rows. No cron. Security: webhook payload untrusted; no secrets in prompts or issue comments.
-
-9. Related acceptance: when issue A still needs criteria owned by open issue B (same feature page), take B next; after both pass on dev, set `статус: готово` and close A and B in the same moment.
-10. Process gap found: fix artifacts and update `.cursor/rules/` in the same delivery cycle. Change must be holistic (scan related rules, templates, automations, board-sync for side effects; update all affected places together). Goal: staged delivery, tracked/closed work, order, and throughput - not a one-spot patch that drifts elsewhere.
-12. Epic: when all children are Готово/closed, run epic acceptance with the owner (`playbook-step-07-acceptance.mdc`); do not close the epic on child closes alone.
-13. Next epic: before taking the first task from an epic the owner has not yet chosen, ask which epic(s) to take (`Epic pick and queue` above).
-11. Normative/product documentation placement: `.cursor/` (rules/agents), `AGENTS.md`, and the GitHub wiki only. Do not recreate a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts.
-- No `skills-lock.json` or third-party agent skill packs in this repo; skills live in the owner global Cursor/agent setup.
+- Issue = control panel (the status label plus the page link). Artifacts live on the wiki, not in chat.
+- Fill only the section for the current column. A disagreement goes to «Решения».
+- Page headings match the column. Epic: «Бизнес-анализ», «Архитектура», «Разбиение», and «Решения» when a question is open. Feature: «Аналитика», «Архитектура», «Тест-кейсы», and «Решения» when a question is open. An older heading «Бизнес и сценарии» is that analysis section until the page is edited. No child analysis page. Templates live on the wiki (`Epic-Template`, `Feature-Template`). Do not copy them into the repo. A template that still names a subtask, a mini-feature, or a status line as the source of truth is stale: follow this map.
+- `Doc-` describes what works in `main`. The PR names the page, or «вики не затронута». The wiki text is written after merge (`playbook-feature.mdc`). Merge does not wait for that edit, and the page is not written before `main`.
+- Normative and product documentation: `.cursor/`, `AGENTS.md`, and the GitHub wiki only. No repo `docs/` tree. No `skills-lock.json` or third-party skill packs in this repo.
+- Process gap: fix the live artifacts and the rules in the same delivery. Scan rules, templates, automations, and board-sync together.

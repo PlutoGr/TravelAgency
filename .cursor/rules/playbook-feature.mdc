@@ -1,0 +1,162 @@
+---
+description: Feature and bug-feature route, full specification bar, acceptance, and Doc-
+alwaysApply: false
+---
+# Feature route
+Types and column names: `playbook-workflow.mdc`. A bug-feature is this same route with label `bug`. A small feature is this same route. There is no shorter product route.
+
+The epic page is not this specification. Epic Бизнес-анализ alone never unlocks feature code.
+
+## Open
+- A line in the parent epic's «Разбиение» becomes a wiki page `Feature-<Name>` and a child issue. On create: `статус: очередь` plus `enhancement`, or `bug` for a bug-feature. In «Связи», link the parent epic. A bug-feature also links the feature that spawned it.
+- Open a bug-feature only when the change is substantial: add or remove a field, change a screen, or change a business rule.
+- A typo, or a 500 caused by a typo, inside an open feature: fix that feature in place. No new issue and no new page. Extend the open feature's test cases when the fix needs a regression check.
+- An unrelated discovery goes to the standing bugs epic (`playbook-epic.mdc`). It uses this route and does not stop the current product epic.
+
+Take sets the first column, Аналитика, and a comment. When that child leaves Очередь, set the parent epic to `статус: в работе`.
+
+## Columns
+Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово.
+
+На ревью only while the owner must decide. The comment names the column to restore. After the answer, restore that column. Do not set a feature to `статус: в работе`. Удержание means paused.
+
+Hard gate: the next column only when the previous artifacts are visible and the orchestrator has accepted them. The cloud agent does not change `статус:*`.
+
+## Full specification
+«Полное ТЗ» before Разработка means the feature page shows Аналитика, Архитектура, and Тест-кейсы, and no «Решения» row for this slice has an empty «Выбрано». Do not enter Разработка, and do not keep coding, while that bar fails.
+
+## Аналитика
+Product WHY and WHAT. Inherit the epic's chosen user story. Re-open the epic goal only when this feature changes it. No services, API paths, storage, migrations, or contracts in this section. No solution design here.
+
+Blocks:
+
+1. Inherit the epic. Restate the epic goal only when this feature changes it.
+2. Every proposed field, control, or block, on a screen or only in the backend: who fills or supplies it, who reads it, why it exists, lifecycle (create, edit, empty, error), and how it looks and behaves. A passport field the service accepts or stores is a product decision. Prefer omit: if the item does not earn its place, leave it out.
+3. Layout, when a screen is proposed: grouping, primary action, and behavior. A pixel mock only when the behavior stays unclear without it.
+4. Given/When/Then for the behavior this feature must show.
+5. Open questions, if any, unanswered in «Решения». Do not invent a column for them.
+
+A bug-feature covers that product change. It does not add unrelated fields.
+
+Done when a developer cannot invent a field or block this section did not justify. Every proposed field or block has who fills it, who reads it, why, lifecycle, and look and behavior. A proposed screen has layout. Given/When/Then are present. A name-only field list is not done. Do not open Архитектура while this bar fails.
+
+Paste `.cursor/briefs/analyst.md`.
+
+## Архитектура
+Refuse this column until Аналитика meets the bar above.
+
+Model, API (method, path, access, body, response, errors), contracts, and migrations only for items Аналитика justified. Add no field, screen, or block that section omitted. Do not redesign product layout. A slice that needs its own product analysis is another Feature under the same epic. A typo fix inside an open feature does not add an architecture section and does not add fields.
+
+Business part unclear: do not rewrite it. Options go to «Решения». Every important choice is one «Решения» row. An impactful how that is not already authorized goes to the owner via the orchestrator. Once that row has «Выбрано», or the owner already put this task in work, a matching PR does not need a second yes at merge (`00-core.mdc`).
+
+Paste `.cursor/briefs/architect.md`.
+
+## «Решения»
+A log, not a column and not a task type.
+
+Log every open question from analysis or architecture, and every disagreement, in the table below. A silent gap is forbidden before Разработка. On an epic, the same table logs what blocks Бизнес-анализ, Архитектура, or Разбиение (`playbook-epic.mdc`). A product change is recorded on the feature page. It is not a separate escape from this route.
+
+Row: Вопрос | Варианты | Выбрано | Почему | Дата (`2026-10-21`). Append only. A changed decision is a new row that references the old one.
+
+- Empty «Выбрано» on a row for this slice blocks Разработка. Do not enter that column, and do not keep coding, while such a row is open.
+- The disagreeing side writes options («Выбрано» empty) and hands the row back.
+- No agreement: the orchestrator decides by the rules. Otherwise one owner question with options and a recommendation (issue comment, `статус: на ревью`). The comment names the column to restore.
+- Owner answer: recorded impersonally in the row and on the issue («**Итог:** решено: ...»). Restore the recorded column. Do not set a feature to `статус: в работе`. Restore Разработка only after «Выбрано» is filled.
+- A cloud agent without wiki publish or owner access returns the options table. It never decides an approval item.
+
+## Тест-кейсы
+Before Разработка. Derive every case from the feature Given/When/Then and from the architecture API and error paths. Cover every criterion. Mark which cases become automated. A gap goes to «Решения». Do not close it in silence.
+
+Each case: id (`ТК-1`), precondition, steps, expected result, level (unit / integration / e2e / ручная на dev).
+
+An epic has no «Тест-кейсы» section. Owner epic acceptance uses «Бизнес-анализ» (`playbook-epic.mdc`).
+
+A typo fix inside an open feature does not add a new test-case section. Extend the open feature's cases when the fix needs a regression check.
+
+Paste `.cursor/briefs/tester.md` when a cloud agent drafts the cases.
+
+## Разработка
+Input: the feature page with Аналитика, Архитектура, and Тест-кейсы filled, and no empty «Выбрано» for this slice. Output: a PR. The column stays Разработка through review, merge, and the wait for Deploy. Приёмка is the next column, and only after Deploy to dev is green.
+
+- Write the marked automated tests first, or in the same TDD cycle, then the code. Implement «Архитектура». Do not add a field, control, or block that Аналитика did not justify.
+- A typo, or a 500 caused by a typo, is fixed in this feature. No new issue.
+- Deviation needed: stop. Propose a «Решения» row. Do not code around the page.
+- PR: branch `type/NN-short-english-slug`, created with `gh issue develop` when the branch does not exist yet. Section «Задача» is `#NN` without `closes`. Do not set closedBy before acceptance. Name the `Doc-` page to write after merge, or «вики не затронута». The wiki text waits until `main` («Doc-» below). Formats: `project-github-formats.mdc`.
+- Launch: `playbook-cloud.mdc` with `.cursor/briefs/developer.md` for application code, or `.cursor/briefs/devops.md` for workflow and Docker files. The agent does not change `статус:*`.
+
+### Review (still Разработка)
+Code review is not column На ревью. На ревью is only an owner decision.
+
+The orchestrator reviews the cloud agent's PR, then applies this gate. Do not merge because the agent finished. Do not move the issue to Приёмка before Deploy to dev is green.
+
+First line, every PR:
+
+- Wait until CI and Cursor Automations have finished. Do not treat an in-progress run as the review (`playbook-ci-wake.mdc`, `project-cursor-automations.mdc`).
+- Then read every finding (PR review, Find vulnerabilities, Bugbot, CI triage if CI was red), including medium and lower.
+- Green CI (build, tests, gitleaks). Red CI: ask the owner before merge (`00-core.mdc`). Formats and impersonal wording: `playbook-git-pr.mdc` and `00-core.mdc`.
+- The PR names the `Doc-` page to write after merge, or «вики не затронута». A missing line blocks merge. The wiki edit is not required in the same PR.
+
+Findings, reply before merge:
+
+- After the checks have finished, every open finding gets a reply on its thread before merge. Impersonal Russian. Cursor Automations may be named when the sentence needs it. Do not name a role or another agent as the actor.
+- If a newer commit already fixed the finding, do not re-open it. Reply «исправлено» (or the same meaning) with the head sha.
+- Otherwise the reply is one of: «неактуально: <причина>»; «принято, будет исправлено»; «исправлено в `<sha>`»; «нужно решение владельца: <вопрос>».
+- «Будет исправлено» is not a finished state. Fix, push, then reply «исправлено» with the head sha. Do not claim fixed before that push.
+- Do not squash-merge while any finding has no reply, or while a reply only promises a fix. «Нужно решение владельца» also blocks merge until the owner decides. That wait is `статус: на ревью`, and the comment names Разработка as the column to restore.
+- Leave the thread clearly finished. The closing reply states the outcome, and the review conversation is marked resolved when the UI allows.
+- On a review thread a short reply is enough. Use «Итог / Подробно / Дальше» when the reply is a new PR or issue comment.
+
+Escalation: the orchestrator runs a dedicated review (in chat for a trivial diff, otherwise a cloud agent with `.cursor/briefs/architect.md`) when any of these hold:
+
+- an automation left a blocker or a validated finding;
+- the PR is risky (auth, secrets, payments, infra, migrations, public API contracts);
+- the diff is large or crosses services;
+- the Feature or Epic page changed in «Архитектура» or «Решения» for this work;
+- the orchestrator or the owner asks for an architect pass.
+
+Otherwise, when every finding reply is finished and no ask-before-merge case in `00-core.mdc` applies, merge on automations plus green CI and notify the owner after merge. Do not require this pass on every small or routine PR when automations are clean.
+
+Verdict:
+
+- Page mismatch: changes requested, or a «Решения» row if the page is wrong.
+- The orchestrator posts a Russian GitHub review or comment. Server-side security for risky infra still needs the orchestrator (server access), not only automation comments.
+- After merge, the issue stays Разработка until Deploy to dev is green, then Приёмка (`playbook-ci-wake.mdc`).
+
+Before merge also confirm: the branch is linked or the close workflow can match the PR, and «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is still open. Do not call `addCloseIssueReferences`.
+
+Authorized in-scope work merges without a separate yes, then the owner is notified. One PR at a time. The next merge waits until the previous Deploy to dev is green (`playbook-git-pr.mdc`, `project-travelagency.mdc`).
+
+## Приёмка
+Enter only after merge and a green Deploy to dev. The wake that sets this column is `playbook-ci-wake.mdc`. Do not create a per-task wait-watch.
+
+Run the manual and e2e cases (for a bug-feature, those cases) plus a short smoke. One issue comment lists cases passed or failed by id. Check by API or curl first. Use a browser only for what must be seen.
+
+- Tiny miss (typo, or a 500 caused by a typo): fix it in this feature. No new issue. Stay in Приёмка until the redeploy passes.
+- Substantial miss (add or remove a field, change a screen, change a business rule): open a bug-feature linked to this feature. This issue stays in Приёмка. Do not close it.
+- Pass, and the `Doc-` page named in the PR is written when one was named: set `статус: готово` and close the issue in the same moment. `board-sync` moves the card to Готово. Do not move the Projects card by hand. A follow-up comment may note the merged PR. Do not add `closes`, `fix`, or `fixes`. Do not call `addCloseIssueReferences`. After close, `.github/workflows/link-closed-by.yml` sets the PR chip. A hand move or a manual Development link only when the owner explicitly asks.
+- The owner may spot-check a major feature. The orchestrator still owns the acceptance comment and the close.
+- When this issue's remaining criteria live on an open sibling (same feature), take the sibling next. Keep both open until joint acceptance. Close them together only when both pass.
+
+## Doc-
+Not a column. `Doc-` describes what works in `main`.
+
+The PR names the page, or says «вики не затронута», before merge. The wiki text is written after merge. Merge does not contain the wiki edit, and the wiki edit does not land before `main`. Do not treat a missing wiki edit as a reason to skip naming the page in the PR.
+
+- What works in `main` → `Doc-` pages. Decisions → `Doc-ADR-NNN-<Name>` (next free number).
+- When the PR names a page: write that page before `статус: готово`. When the PR says «вики не затронута»: do not invent a page.
+- Feature page: content mark «сделано» plus links (`Doc-`, ADR, PRs). The issue label remains the status. The epic page is marked «сделано» only after owner acceptance (`playbook-epic.mdc`).
+- Wiki push checks: `project-wiki.mdc`.
+- After merge, read `TA: Doc- after merge` (`playbook-ci-wake.mdc`, `project-cursor-automations.mdc`). A gap comment is a checklist item, not the page text. Write the wiki page or fix the gap, then close the gap. Do not skip this because the automation was silent, and do not duplicate a page that is already on the wiki.
+
+Paste `.cursor/briefs/analyst.md` when a cloud agent drafts `Doc-` text. The orchestrator publishes it after `main`.
+
+## Готово
+Only after Приёмка passes and the named `Doc-` page is written, or when the issue is closed as not planned. Set `статус: готово` and close in the same moment.
+
+## Checklist
+1. Create with exactly one `статус:*`. Take sets Аналитика.
+2. Code starts only from Разработка, after the full specification above. A tiny fix stays inside the open feature.
+3. Разработка is one cloud agent and one PR. The PR names the `Doc-` page or «вики не затронута».
+4. Still Разработка: wait until Cursor Automations and CI have finished, reply to every open finding, then merge when the gates hold. Notify the owner after merge.
+5. After Deploy is green: `статус: приёмка`. Keep the issue open until pass.
+6. Write `Doc-` or ADR when the PR named a page. Clear a Doc- automation gap. Then `статус: готово` and close together. Do not add or remove Development links at close.

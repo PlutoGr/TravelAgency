@@ -1,0 +1,58 @@
+---
+description: How to launch a Cursor cloud agent and what that agent must not do
+alwaysApply: false
+---
+# Cloud agents
+Default for repo-bound work: code, tests, analysis text, architecture text, CI and Docker file edits, deep PR review. The orchestrator chat stays thin (full brief in, PR or short report out). The orchestrator does the work that needs the server, secrets, chat history, live owner talk, merge, board labels, or wiki publish. Never both on the same artifact.
+
+The orchestrator owns launch, review, and advance (`.cursor/agents/orchestrator.md`). This file is the launch contract. It does not replace columns in `playbook-workflow.mdc`.
+
+No usage-mode matrix and no scheduled limits refresh (unified Cursor subscription, 2026-10-28). Prefer cloud whenever a brief covers the task and the result should not live in the orchestrator chat.
+
+## Launch
+- Check that no branch, PR, or agent already exists for the issue. One issue, one agent.
+- Branch `type/NN-short-english-slug` via `gh issue develop <NN> --name type/NN-short-english-slug --base main` when the branch does not exist yet (`linkedBranches` only, no closedBy). Repo URL and title: `project-travelagency.mdc`.
+- The agent reads this repo's `.cursor/` rules.
+- Prompt in English. About 10 to 20 lines. Include every item in «Brief» below. Paste the one matching file from `.cursor/briefs/`. Do not paste this playbook or an unrelated guide.
+- Name the type and the column (`playbook-workflow.mdc`).
+
+Which brief to paste:
+
+| Column or job | Brief |
+|---|---|
+| Epic Бизнес-анализ, feature Аналитика, `Doc-` text after `main` | `.cursor/briefs/analyst.md` |
+| Epic Архитектура, epic Разбиение, feature Архитектура, escalated review | `.cursor/briefs/architect.md` |
+| Application code and its tests | `.cursor/briefs/developer.md` |
+| Тест-кейсы, automated tests, bug-feature reproduction | `.cursor/briefs/tester.md` |
+| Workflows, Docker, nginx, deploy files | `.cursor/briefs/devops.md` |
+
+Acceptance on dev is not a cloud launch. The orchestrator has dev access (`playbook-feature.mdc`).
+
+## Models
+- Default Grok, medium effort. Low for mechanical edits. High for multi-file work, auth, or security. Extra-high for hard work, including a review diff of about 150 lines or more.
+- Opus only if Grok at extra-high failed, or the task is large and critical. State why.
+
+## Brief
+The launch prompt includes all of the following.
+
+- Goal and acceptance: what must be true when the work stops. Name the type and the column. Analysis is product WHY and WHAT only (`playbook-epic.mdc`, `playbook-feature.mdc`). Feature code waits for Аналитика, Архитектура, and Тест-кейсы on the Feature page, and for a filled «Выбрано» on every decision row for this slice. Epic business analysis alone does not start that code.
+- The pasted brief (the table above).
+- Links: issue `#NN`, wiki Epic and/or Feature page (section anchor), related `Doc-` pages for current behavior this task touches, and any comment that already decided the approach.
+- Architecture context: for feature or code work, name the parent epic's architecture choices and the applicable project-wide constraints (services, contracts, auth).
+- Minimal environment context: only the stack touchpoints this task hits. Those touchpoints do not replace the Epic, Feature, and `Doc-` links.
+- Hard boundaries: the forbidden list below.
+- Where results go: PR sections from `project-github-formats.mdc` («Что сделано», «Зачем», «Как это работает», «Как проверить», «Документация» with the `Doc-` page name or «вики не затронута», «Задача» with `#NN` only). No «Учебный кейс». No `closes`, `fix`, or `fixes`. An issue comment, if one is needed, uses «Итог / Подробно / Дальше» (`.cursor/templates/issue-comment.md`). Public text follows `00-core.mdc`. For analysis, architecture, split, or test cases: ready Russian section text, not a wiki push.
+- Token thrift: minimal diff, no drive-by refactor, stop when the acceptance criteria hold.
+
+## Forbidden for the agent
+- Push to `main`, merge, or self-accept on dev.
+- Edit the wiki, the board, or a `статус:*` label.
+- Secrets or server access.
+- `closes`, `fix`, or `fixes` in the PR or commits. Do not call `addCloseIssueReferences`. Do not attach closedBy.
+- Leave the issue scope or the epic's problem.
+- Talk to the owner.
+- Open anything other than a regular PR into `main` when the result is code.
+
+Mark the PR ready when CI is green. Final report, in English: PR URL, head sha, what changed, tests added, open doubts.
+
+The orchestrator accepts the result: strip Cursor PR-body markers and the footer, steer with `reply` on the same agent, then the merge gate in `playbook-feature.mdc`. Do not advance the column until that review accepts the stage.
