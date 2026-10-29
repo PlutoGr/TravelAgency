@@ -6,7 +6,7 @@ alwaysApply: false
 Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forever.
 ## Facts
 - Repo `PlutoGr/TravelAgency`; wiki = separate repo `TravelAgency.wiki.git`, branch `master`, push = publish.
-- Board: GitHub Project (private) «PlutoGr/projects/2». Columns Очередь, В работе, На ревью, Готово.
+- Board: GitHub Project (private) «PlutoGr/projects/2». One Status field. Columns are the stage labels in `project-github-formats.mdc` «Board statuses» (epic sequence and feature sequence, plus На ревью and Удержание). `board-sync.yml` copies the label to the column.
 - Stack: .NET 10 microservices (`src/Services`), gateway, React/TS frontend (`src/Frontend/travel-agency-frontend`, vitest). Tests: `*.UnitTests`, `*.IntegrationTests` (Testcontainers). Follow neighbouring code.
 - Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo; dev access and server facts come from the lead. Smoke on dev = login, catalog, booking.
 - Merge to `main` = automatic deploy to dev («Deploy to dev»). Green CI = `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `gitleaks`.
@@ -17,7 +17,7 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 | Role | Who | Zone |
 |---|---|---|
 | Lead | whoever holds the lead role (orchestrator) | Owner channel, triage, board, merges, cloud launches, server, audit, Doc- gaps; also executes architect duties below |
-| Architect / escalated review | lead via cloud agent (brief `.cursor/agents/architect.md`) | Architecture, ADR, labels, task split; review only on step-6 escalation |
+| Architect / escalated review | lead via cloud agent (brief `.cursor/agents/architect.md`) | Architecture, ADR, labels, feature split; review only when `playbook-step-06-review.mdc` escalates (still column Разработка) |
 | Developer | cloud agent | App code + tests via PR (`playbook-cloud-agents.mdc`) |
 | Tester | lead or cloud agent | Test cases / automated tests via cloud; acceptance on dev = lead (dev access) |
 | DevOps | lead (+ cloud for CI/Docker files) | CI, Docker, nginx, deploy, server; PR security comments = automations |
@@ -33,14 +33,14 @@ Board queue numbers (field «Приоритет», 1 = next): `project-github-fo
 - Any doubt about overlap: wait or escalate to the architect. After the previous merge, update the branch before review.
 - Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work.
 ## Merge order
-- Merger: the lead. Before merge: green CI, Cursor Automations finished (`project-cursor-automations.mdc`), a finished reply on every open finding (`playbook-step-06-review.mdc`), and step 6 escalation when it triggers. If the owner already put the task in work or explicitly authorized that work and the PR matches that scope, merge without a separate yes and notify after merge. Ask before merge only for the cases in `00-core.mdc`. Next merge only after «Deploy to dev» is green.
-- Do not require a separate architect pass on every small/routine PR when automations are clean; when step 6 escalation triggers, the lead launches a cloud agent with `.cursor/agents/architect.md` (or reviews trivial diffs itself) and posts the verdict.
+- Merger: the lead. Before merge: green CI, Cursor Automations finished (`project-cursor-automations.mdc`), a finished reply on every open finding (`playbook-step-06-review.mdc`), and architect escalation when that file triggers it. The lead accepts or steers the cloud agent's result before advancing the column. If the owner already put the task in work or explicitly authorized that work and the PR matches that scope, merge without a separate yes and notify after merge. Ask before merge only for the cases in `00-core.mdc`. Next merge only after «Deploy to dev» is green. After that green deploy, the feature moves to Приёмка.
+- Do not require a separate architect pass on every small/routine PR when automations are clean; when review escalation triggers, the lead launches a cloud agent with `.cursor/agents/architect.md` (or reviews trivial diffs itself) and posts the verdict.
 - Dependabot npm and NuGet (minor, patch, and major, including vitest, eslint, jsdom, node): automations plus the dependency rule in `playbook-git-pr.mdc` (green CI and no owner clarification, then notify what was merged; otherwise do not merge). docker and github-actions (including grouped updates that may contain majors): owner «да» before merge, because merge deploys to dev with SSH secrets and CI does not validate image or action supply chain the way app build and tests do.
-- Docs-with-code = the matching wiki `Doc-` page (or a Doc- gap issue opened from the after-merge automation).
+- Docs-with-code: the PR names the matching wiki `Doc-` page, or «вики не затронута». The page text is written after merge (`playbook-step-08-docs.mdc`). A Doc- gap from the after-merge automation is closed by that write, not by a second status.
 - Temporary dumps on dev allowed if deleted after the check.
 ## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
 - Cloud-first (Oct 28, 2026, unified subscription): use a cloud agent for any TravelAgency repo task where a short brief is enough and the lead should not keep the digests in chat memory (code, tests, analysis, architecture text, CI/Docker edits, deep review). Lead stays the controller: triage, brief, review the result, `reply` for fixes, cancel orphans, coordinate in-flight agents (`playbook-cloud-agents.mdc` «Orchestrator loop»), then merge gates, board, wiki publish, server/dev acceptance.
-- Developer: all code via a cloud agent, including bugs and tiny fixes. In chat only work needing live dev/server access or chat history.
+- Developer: all code via a cloud agent, including a bug-feature and a typo fix inside an open feature. In chat only work needing live dev/server access or chat history.
 - Analyst / architecture text: cloud agent returns ready Russian wiki/issue text; lead publishes.
 - Tester: acceptance on dev stays with whoever has dev access (lead); automated tests and test-case drafts via a cloud agent when an issue needs them.
 - DevOps: server stays with the lead; a cloud agent may edit workflows or Dockerfiles, lead checks the diff.

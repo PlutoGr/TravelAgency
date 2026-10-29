@@ -1,12 +1,16 @@
 ---
-description: Step 3 decisions log and disagreement path
+description: Decision log «Решения»; not a board column
 alwaysApply: false
 ---
-# Step 3: Decisions («Решения»)
-Log every open question from steps 1 and 2, and every disagreement, in the table below. A silent gap is forbidden on a feature «полное ТЗ» (steps 1-4 on the feature page, `playbook-workflow.mdc`). On an epic, log what blocks the business arc, the architecture, or the feature split. A bug does not open a decisions page; record a product change on the feature page or the issue. «Решения» is a log on the route, not a task type.
+# Decisions («Решения»)
+File id only: `playbook-step-03-decisions.mdc`. «Решения» is a log, not a column and not a task type.
+
+Log every open question from analysis or architecture, and every disagreement, in the table below. A silent gap is forbidden before Разработка. On an epic, log what blocks Бизнес-анализ, Архитектура, or Разбиение. A product change is recorded on the feature page, not invented as a separate escape from the feature route.
 
 Row: Вопрос | Варианты | Выбрано | Почему | Дата (`2026-10-21`). Append only; a changed decision is a new row referencing the old.
-- Disagreeing side writes options (Выбрано empty) and hands back.
-- No agreement: lead decides by the rules; else ONE owner question with options + recommendation (issue comment, status На ревью).
-- Owner answer: recorded impersonally in the row and on the issue («**Итог:** решено: ...»), status back to В работе.
-- Executor without wiki/owner access: return the options table; never decide approval items.
+
+- Empty «Выбрано» on a row for this slice blocks Разработка. Do not enter that column, and do not keep coding, while such a row is open.
+- Disagreeing side writes options («Выбрано» empty) and hands back.
+- No agreement: the lead decides by the rules; otherwise ONE owner question with options and a recommendation (issue comment, `статус: на ревью`). The comment names the column to restore.
+- Owner answer: recorded impersonally in the row and on the issue («**Итог:** решено: ...»). Restore the recorded column. Do not set a feature to `статус: в работе` (that label is the epic column for children in flight). Restore Разработка only after «Выбрано» is filled.
+- Executor without wiki or owner access: return the options table; never decide approval items.

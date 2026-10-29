@@ -1,21 +1,25 @@
 ---
-description: Step 7 acceptance on dev by test cases
+description: Feature Приёмка on dev; epic owner acceptance on На ревью
 alwaysApply: false
 ---
-# Step 7: Acceptance on dev
-- After merge + green deploy: run the page's manual/e2e cases (bugs: the issue criteria) + short smoke. One issue comment listing cases passed/failed by id.
-- Failure: bug issue linking the case id; parent stays open / В работе. Do not close the parent issue.
-- Passed: run step 8 if Doc- is required (read `TA: Doc- after merge`); then set `статус: готово` and close the issue in the same moment (board-sync moves the card to Готово; never leave a closed issue with another status label). Do not move the Projects card by hand. A follow-up comment may note the merged PR; do not add `closes`/`fix`/`fixes` and do not call `addCloseIssueReferences` or add/remove Development links. After close, `.github/workflows/link-closed-by.yml` sets the PR chip. Carve-out for a hand move or a manual Development link: the owner explicitly asks.
-- The owner may spot-check major features; lead still owns the acceptance comment and the close.
+# Acceptance
+File id only: `playbook-step-07-acceptance.mdc`.
 
-## Epic acceptance (before epic Готово)
-- When every child of an epic (`тип: родительская`) is Готово/closed, do **not** close the epic yet. Set the epic to `статус: на ревью`, summarize what shipped (features, Doc-/wiki links, how to check on dev), and ask the owner in chat to accept the epic as a whole.
-- Owner pass: set `статус: готово`, close the epic, mark the wiki `Epic-` page «сделано» (step 8).
-- Owner finds gaps: keep the epic `статус: в работе`; open new feature or bug issues under this epic and/or a new epic as the owner directs; put them in Очередь and continue by Priority. Do not mark the epic Готово until a later owner pass.
-- End-to-end scenarios in the epic «Бизнес и сценарии» are the checklist for this conversation; child issue acceptance alone is not enough.
-- After epic acceptance (or when the next Очередь item belongs to an epic not yet chosen): run epic pick with the owner (`playbook-workflow.mdc` «Epic pick and queue»; method in `project-github-formats.mdc` «Queue priority»). Propose the next epic or parallel set from the roadmap and wiki links; after confirm, set epic and child «Приоритет» accordingly.
+## Feature column Приёмка
+- Enter Приёмка only after merge and green Deploy to dev. Run the manual and e2e cases (bug-feature: those cases) plus a short smoke. One issue comment listing cases passed or failed by id.
+- Tiny miss (typo, or a 500 caused by a typo): fix it in this feature. No new issue. Stay in Приёмка until the redeploy passes.
+- Substantial miss (add or remove a field, change a screen, change a business rule): open a bug-feature linked to this feature. This issue stays in Приёмка. Do not close it.
+- Pass, and the Doc- page named in the PR is written when one was named (`playbook-step-08-docs.mdc`): set `статус: готово` and close the issue in the same moment (`board-sync` moves the card to Готово). Do not move the Projects card by hand. A follow-up comment may note the merged PR. Do not add `closes`/`fix`/`fixes` and do not call `addCloseIssueReferences`. After close, `.github/workflows/link-closed-by.yml` sets the PR chip. Carve-out for a hand move or a manual Development link: the owner explicitly asks.
+- The owner may spot-check major features. The lead still owns the acceptance comment and the close.
+
+## Epic column На ревью (owner acceptance)
+- When every child is Готово (closed), do not close the epic yet. Set `статус: на ревью`. Summarize what shipped (features, Doc- and wiki links, how to check on dev) and ask the owner to accept the epic.
+- The checklist is the problem, the chosen user story, and the non-goals in «Бизнес-анализ». Closed children are not enough.
+- Owner pass: set `статус: готово`, close the epic, mark the wiki `Epic-` page «сделано» (content mark, not a second status).
+- Owner finds gaps: set the epic back to `статус: в работе`. Related gaps become features or bug-features under this epic. Unrelated discoveries go to the standing bugs epic and do not stop this epic. Do not mark the epic Готово until a later owner pass.
+- After epic acceptance: epic pick (`playbook-workflow.mdc` «Epic pick and queue»). Do not start the next roadmap epic until this one is Готово, unless the owner has already confirmed a parallel set.
 
 ## CI/CD wake
-- After merge, set `Waiting on` = Deploy in the lead pipeline note (`/home/box/shared/travelagency/work/pipeline.md`). Do not create a per-task wait-watch routine and do not arm-then-check Actions for this task.
-- When the durable routine «TravelAgency CI/CD» wakes on successful `Deploy to dev` for a sha that includes the merge, run this step.
-- When this issue's remaining criteria live on a sibling issue, keep both open until joint acceptance; close them together (`playbook-workflow.mdc` related acceptance).
+- After merge, set `Waiting on` = Deploy in the lead pipeline note (`/home/box/shared/travelagency/work/pipeline.md`). Do not create a per-task wait-watch routine.
+- When «TravelAgency CI/CD» wakes on successful Deploy to dev for a sha that includes the merge, set Приёмка if the label is still Разработка, then run acceptance.
+- When this issue's remaining criteria live on a sibling issue, keep both open until joint acceptance; close them together (`playbook-workflow.mdc`).

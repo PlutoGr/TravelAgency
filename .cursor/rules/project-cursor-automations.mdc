@@ -3,7 +3,7 @@ description: Cursor Automations comments are a merge and post-merge gate for Tra
 alwaysApply: false
 ---
 # Cursor Automations (TravelAgency)
-Active project automations post GitHub comments as `cursor`. They do not notify the lead chat. They are the first-line review for routine PRs; they do not replace the Epic/Feature wiki workflow or Doc- authorship.
+Active project automations post GitHub comments as `cursor`. They do not notify the lead chat. They are the first-line review for routine PRs while the issue stays in Разработка. They compose with the board columns (`playbook-workflow.mdc`). They do not replace those columns, wiki authorship, or the lead's accept-or-rewrite gate.
 
 ## Inventory (keep Active)
 | Automation | When | Gate |
@@ -30,7 +30,7 @@ Private URLs and dashboard notes: box-only ops file (not in git).
 
 ## After merge
 1. Read `TA: Doc- after merge` on recently merged PRs that changed behavior, API, contracts, config or infra.
-2. If it reports a Doc- gap, open or update a documentation issue (or fix the wiki) before calling the task done. Step 8 (`playbook-step-08-docs.mdc`) still owns the actual Doc-/ADR text.
+2. If it reports a Doc- gap, write the wiki page named in the PR (or fix that page) before Готово. `playbook-step-08-docs.mdc` owns the Doc-/ADR text. The text is written after merge, because `Doc-` describes `main`.
 3. When merging a batch the same day, scan those merged PRs for Doc- gap comments before leaving the queue.
 
 ## Weekly audit (lead)
@@ -40,4 +40,4 @@ Private URLs and dashboard notes: box-only ops file (not in git).
 
 ## Scope
 - Automations are second reviewers, not mergers. They must not approve or merge.
-- They do not write wiki pages, move board columns, or replace steps 1-4 / 7-8.
+- They do not write wiki pages, move board columns, change `статус:*`, or replace the column sequence, Приёмка, or the post-merge Doc- procedure.

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Порядок карточек на доске TravelAgency (GitHub Projects v2, PlutoGr, проект 2).
 
+Метка «статус: …» равна колонке Status. Имена колонок читаются с доски, идентификаторы
+вариантов в коде не зашиты. Пока варианта нет, карточка в эту колонку не переносится,
+а процесс завершается с кодом 2 после остальной синхронизации.
+
 Что делает за один запуск:
   1. Добавляет на доску открытые issues репозитория, которых там нет
      (возвращает из архива, если карточка была заархивирована).
@@ -8,22 +12,23 @@
        закрытая → «статус: готово», остальные «статус: …» снимаются;
        открытая без статуса → «статус: очередь» (или «статус: удержание» при hold);
        открытая с «статус: готово» → замена на «статус: очередь»;
-       «статус: в работе» / «на ревью» / «очередь» / «удержание» на открытых не трогаются.
-  3. Сверяет колонку Status с состоянием issue: закрытая задача идёт в «Готово»,
-     задача на удержании в «Очередь», остальные по метке «статус: …».
+       прочие одиночные метки «статус: …» на открытых не трогаются.
+  3. Сверяет колонку Status с меткой: закрытая задача идёт в «Готово»,
+     удержание в «Удержание», остальные по метке «статус: …».
      После выравнивания меток открытая без статуса не должна оставаться
      (новая карточка без колонки попадает в «Очередь»).
   4. Очищает поле «Приоритет» у карточек, которые ушли из «Очереди».
   5. Архивирует карточки задач, закрытых 30 и более дней назад (--no-archive отключает).
   6. Расставляет порядок внутри колонок:
-       Готово             сначала недавно закрытые;
-       Очередь            по полю «Приоритет» (1 сверху), затем открытые баги по номеру,
-                          затем остальные по номеру, задачи на удержании в самом низу;
-       В работе, На ревью по номеру.
+       Готово     сначала недавно закрытые;
+       Очередь    по полю «Приоритет» (1 сверху), затем остальные по номеру;
+                  карточка удержания, ещё оставшаяся в Очереди, в самом низу;
+       прочие колонки по номеру.
      Двигаются только карточки не на своём месте (наибольшая возрастающая
      подпоследовательность остаётся на месте).
   7. Печатает итог (включая план смены меток) и после реального запуска
      перечитывает доску и сверяет порядок.
+  8. Если в поле Status нет хотя бы одной требуемой колонки, код выхода 2.
 
 PR, черновики и архивные карточки не двигаются. Виды доски не меняются.
 Меняются только метки «статус: …» по правилам выше (через gh issue edit).
@@ -50,12 +55,28 @@ from datetime import datetime, timedelta, timezone
 GH = os.environ.get("GH_BIN", "gh")
 OWNER, REPO = "PlutoGr", "TravelAgency"
 PROJECT_ID = "PVT_kwHOAwCr0M4BlcPE"
-STATUS_FIELD = "PVTSSF_lAHOAwCr0M4BlcPEzhkJHcE"
+STATUS_FIELD = "PVTSSF_lAHOAwCr0M4BlcPEzhkJHcE"  # запасной id; живой id читается с доски
 PRIORITY_NAME = "Приоритет"
-OPTIONS = {"Очередь": "f75ad846", "В работе": "47fc9ee4", "На ревью": "87d44386", "Готово": "98236657"}
-LABEL_TO_COL = {"статус: очередь": "Очередь", "статус: в работе": "В работе",
-                "статус: на ревью": "На ревью", "статус: готово": "Готово",
-                "статус: удержание": "Очередь"}
+REQUIRED_COLUMNS = (
+    "Очередь", "Бизнес-анализ", "Аналитика", "Архитектура", "Разбиение",
+    "Тест-кейсы", "В работе", "Разработка", "Приёмка", "На ревью", "Готово", "Удержание",
+)
+# Заполняется в main() именами колонок, которые уже есть в поле Status.
+OPTIONS = {}
+LABEL_TO_COL = {
+    "статус: очередь": "Очередь",
+    "статус: бизнес-анализ": "Бизнес-анализ",
+    "статус: аналитика": "Аналитика",
+    "статус: архитектура": "Архитектура",
+    "статус: разбиение": "Разбиение",
+    "статус: тест-кейсы": "Тест-кейсы",
+    "статус: в работе": "В работе",
+    "статус: разработка": "Разработка",
+    "статус: приёмка": "Приёмка",
+    "статус: на ревью": "На ревью",
+    "статус: готово": "Готово",
+    "статус: удержание": "Удержание",
+}
 HOLD_LABEL = "статус: удержание"
 HOLD_PREFIX = "⏸ На удержании"
 STATUS_LABELS = tuple(LABEL_TO_COL)
@@ -80,7 +101,10 @@ OPEN_ISSUES_Q = """query($owner:String!,$repo:String!,$after:String){ repository
   projectItems(first:20, includeArchived:true){ nodes{ id isArchived project{ id } } } } } } }"""
 
 FIELDS_Q = """query($id:ID!){ node(id:$id){ ... on ProjectV2 {
- fields(first:50){ nodes{ ... on ProjectV2FieldCommon { id name dataType } } } } } }"""
+ fields(first:50){ nodes{
+  ... on ProjectV2FieldCommon { id name dataType }
+  ... on ProjectV2SingleSelectField { options { id name } }
+ } } } } }"""
 
 
 def token():
@@ -124,12 +148,30 @@ def paginate(query, variables, path):
         after = conn["pageInfo"]["endCursor"]
 
 
-def priority_field_id():
+def load_board_fields():
+    """Числовое поле «Приоритет», id поля Status и словарь имя колонки → id варианта."""
+    global STATUS_FIELD
     nodes = gql(FIELDS_Q, {"id": PROJECT_ID})["node"]["fields"]["nodes"]
+    prio_id, status_id, options = None, None, {}
     for f in nodes:
+        if not f:
+            continue
         if f.get("name") == PRIORITY_NAME and f.get("dataType") == "NUMBER":
-            return f["id"]
-    raise RuntimeError(f"на доске нет числового поля «{PRIORITY_NAME}»")
+            prio_id = f["id"]
+        if f.get("name") == "Status" and f.get("options") is not None:
+            status_id = f["id"]
+            options = {o["name"]: o["id"] for o in f["options"]}
+    if not prio_id:
+        raise RuntimeError(f"на доске нет числового поля «{PRIORITY_NAME}»")
+    if not status_id:
+        raise RuntimeError("на доске нет поля Status")
+    STATUS_FIELD = status_id
+    missing = [c for c in REQUIRED_COLUMNS if c not in options]
+    return prio_id, options, missing
+
+
+def column_names():
+    return [c for c in REQUIRED_COLUMNS if c in OPTIONS]
 
 
 def norm_issue(c):
@@ -232,7 +274,7 @@ def wanted_status(it, notes):
     if it["state"] == "CLOSED":
         return "Готово"
     if is_hold(it):
-        return "Очередь"
+        return "Удержание"
     cols = {LABEL_TO_COL[l] for l in it["labels"] if l in LABEL_TO_COL}
     if len(cols) > 1:
         notes.append(f"#{it['number']}: противоречивые метки статуса {sorted(cols)}, колонка «{it['status']}» не меняется")
@@ -265,12 +307,10 @@ def missing_issues(items):
 
 def queue_key(i):
     if is_hold(i):
-        return (3, 0, i["number"])
+        return (2, 0, i["number"])
     if i["prio"] is not None:
         return (0, i["prio"], i["number"])
-    if i["state"] == "OPEN" and "bug" in i["labels"]:
-        return (1, 0, i["number"])
-    return (2, 0, i["number"])
+    return (1, 0, i["number"])
 
 
 def desired_order(col, its, notes):
@@ -311,6 +351,9 @@ def plan(items, archive):
             it["new_status"] = it["status"]
             continue
         w = wanted_status(it, notes)
+        if w and w not in OPTIONS:
+            notes.append(f"#{it['number']}: нет колонки «{w}» в поле Status, карточка не переносится")
+            w = None
         it["new_status"] = w if w else it["status"]
         if w and w != it["status"]:
             fixes.append((it, it["status"], w))
@@ -319,7 +362,7 @@ def plan(items, archive):
         if archive and it["state"] == "CLOSED" and it["closedAt"] and it["closedAt"] <= cutoff:
             archives.append(it)
     archived_ids = {i["id"] for i in archives}
-    for col in OPTIONS:
+    for col in column_names():
         cur = [i for i in items if managed(i) and i["new_status"] == col and i["id"] not in archived_ids]
         d = desired_order(col, cur, notes)
         desired[col] = d
@@ -347,7 +390,10 @@ def main():
     ap.add_argument("--no-archive", action="store_true", help=f"не архивировать задачи, закрытые {ARCHIVE_DAYS}+ дней назад")
     a = ap.parse_args()
     tag = "[dry-run] " if a.dry_run else ""
-    prio_field = priority_field_id()
+    global OPTIONS
+    prio_field, OPTIONS, missing_columns = load_board_fields()
+    if missing_columns:
+        print("нет колонок Status: " + ", ".join(f"«{c}»" for c in missing_columns))
 
     items = read_items()
     missing = missing_issues(items)
@@ -377,10 +423,11 @@ def main():
     if label_fixes and not a.dry_run:
         apply_status_labels(label_fixes)
 
-    before = {c: sum(1 for i in items if managed(i) and i["status"] == c) for c in OPTIONS}
+    cols = column_names()
+    before = {c: sum(1 for i in items if managed(i) and i["status"] == c) for c in cols}
     fixes, clears, archives, moves, desired, notes = plan(items, not a.no_archive)
     notes = label_notes + notes
-    after = {c: len(desired[c]) for c in OPTIONS}
+    after = {c: len(desired[c]) for c in cols}
     other = sum(1 for i in items if not managed(i))
 
     print(f"{tag}карточек на доске: {len(items)} (не трогаются PR, черновики, архив: {other})")
@@ -416,7 +463,7 @@ def main():
         def check():
             items2 = read_items()
             good = len(items2) == len(items) - len(archives)
-            bad_cols = [col for col in OPTIONS
+            bad_cols = [col for col in cols
                         if [i["id"] for i in items2 if managed(i) and i["status"] == col]
                         != [i["id"] for i in desired[col]]]
             return good and not bad_cols, bad_cols
@@ -434,13 +481,17 @@ def main():
         if not ok:
             sys.exit(2)
 
-    print("\nОчередь, первые 10:")
-    for i in desired["Очередь"][:10]:
-        p = f"[{i['prio']:g}] " if i["prio"] is not None else ""
-        print("  " + p + label(i) + ("  (удержание)" if is_hold(i) else ""))
-    print("Готово, первые 5:")
-    for i in desired["Готово"][:5]:
-        print(f"  {label(i)}  (закрыта {i['closedAt']})")
+    if "Очередь" in desired:
+        print("\nОчередь, первые 10:")
+        for i in desired["Очередь"][:10]:
+            p = f"[{i['prio']:g}] " if i["prio"] is not None else ""
+            print("  " + p + label(i) + ("  (удержание)" if is_hold(i) else ""))
+    if "Готово" in desired:
+        print("Готово, первые 5:")
+        for i in desired["Готово"][:5]:
+            print(f"  {label(i)}  (закрыта {i['closedAt']})")
+    if missing_columns:
+        sys.exit(2)
 
 
 if __name__ == "__main__":

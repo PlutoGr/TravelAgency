@@ -1,30 +1,43 @@
 ---
-description: Step 1 analysis: Бизнес и сценарии
+description: Procedure for epic Бизнес-анализ and feature Аналитика
 alwaysApply: false
 ---
-# Step 1: Analysis («Бизнес и сценарии»)
-Input: the issue and, for a feature, the parent epic page. Output: «Бизнес и сценарии» on that epic or feature page. Product WHY and WHAT only. Finish this section before any architecture text.
+# Analysis (epic «Бизнес-анализ», feature «Аналитика»)
+File id only: this is `playbook-step-01-analysis.mdc`, not a column number.
 
-No services, API paths, storage, migrations, or contracts here (step 2). Which blocks apply follows the route in `playbook-workflow.mdc` «Routes».
+Input: the issue and, for a feature, the parent epic page. Output: the analysis section on that page. Product WHY and WHAT only. Finish it before any architecture text.
+
+No services, API paths, storage, migrations, or contracts in this section (those belong in Архитектура). Which blocks apply follows `playbook-workflow.mdc`.
+
+The wiki section is text. Do not put a status line on the page. The stage is the issue label.
 
 ## Which blocks apply
-- Epic (route stage 1): blocks 1, 2, 3, 4, 5 (end-to-end and user stories only), 8, 9. Why, for whom, named analogues, high-level feel. No field catalog, no per-control UI, no screen layout. Outcome: enough to choose architecture and split features. Not a buildable screen TZ. Does not unlock feature code.
-- Every epic uses those blocks, including a formal backlog or bugs epic. State why this class of work exists, for whom, the problem classes, and the contour. The text may be short. The structure is the same.
-- Feature (route stage 1): every block that applies, for UI and for backend. Inherit the epic intent. Re-open the epic goal only when it changes. This section plus steps 2-4 on the feature page is the «полное ТЗ» before code.
-- Bug or tiny fix: no step 1 page. Criteria on the issue, then steps 5-7. Work that needs its own product analysis is a feature under the epic.
+- Epic column Бизнес-анализ: the epic blocks below. Outcome: enough to choose architecture and to split features. Not a screen specification. Does not unlock feature code.
+- The standing bugs epic uses the same blocks. The text may be short. It still says why this class of work exists.
+- Feature column Аналитика, including a bug-feature: the feature blocks below. Inherit the epic's chosen user story. Re-open the epic goal only when it changes.
+- A typo, or a 500 caused by a typo, inside an open feature: no new page and no new issue. Fix that feature.
+- A substantial product change (add or remove a field, change a screen, change a business rule) is a bug-feature and uses this section.
 
-## Blocks
-1. Intent. Problem, goal, what success looks like, and explicit non-goals.
-2. Actors and contexts. Roles, when they care, and who may see or change what at business level. Not tokens or JWT.
-3. Current state. What already works (name the `Doc-` pages), what hurts, and what must not break.
-4. External evidence. Name each comparable product or pattern, what it does, and why it fits or does not fit. "Like other sites" with no name is not evidence.
-5. Jobs and scenarios. Happy path and failures the user can see. Feature: user stories and Given/When/Then product criteria. Epic: end-to-end and user stories only, no field catalog.
-6. Information needs (feature only). For every proposed field, control, or block, on a screen or only in the backend: who fills or supplies it, who reads it, why it exists, lifecycle (create, edit, empty, error), and how it interacts. When it is shown, how it looks. A passport field accepted or stored by the service is a product decision. Prefer omit over a weak justification: if the item does not earn its place for the user, leave it out.
-7. Experience and layout (feature only, when a screen is proposed). Flow structure, grouping, primary action, behavior, and use of space. Add a pixel mock only when the behaviour stays unclear without it. Epic: skip.
-8. Constraints. Privacy and security at business level, volume and speed, compliance, and dependencies.
-9. Open questions. List them unanswered and send them to step 3.
+## Epic blocks (Бизнес-анализ)
+1. Problem now. What hurts, what already works (name the `Doc-` pages), and what must not break.
+2. Actors. Roles and when they care. Not tokens or JWT.
+3. Named analogues. Name each comparable product or pattern, what it does, and why it fits or does not fit. "Like other sites" with no name is not evidence.
+4. Several solution options on a continuum. More than one option, ordered along one axis (for example smaller change to larger change).
+5. Chosen user story, and why it is the best fit for us.
+6. Non-goals.
+
+No field catalog. No services. No screen layout.
+
+## Feature blocks (Аналитика)
+1. Inherit the epic. Restate the epic goal only when this feature changes it.
+2. Every proposed field, control, or block, on a screen or only in the backend: who fills or supplies it, who reads it, why it exists, lifecycle (create, edit, empty, error), and how it looks and behaves. A passport field the service accepts or stores is a product decision. Prefer omit: if the item does not earn its place, leave it out.
+3. Layout, when a screen is proposed: grouping, primary action, and behavior. A pixel mock only when the behavior stays unclear without it.
+4. Given/When/Then for the behavior this feature must show.
+5. Open questions, if any. List them unanswered in «Решения» (`playbook-step-03-decisions.mdc`). Do not invent a column for them.
+
+A bug-feature covers the product change (the field, the screen, or the rule). It does not add unrelated fields.
 
 ## Done when
-- Feature: a developer cannot invent a field or block this section did not justify, and an architect can map the product intent without guessing the goal.
-- Epic: the business arc and the feature split are clear, and the page contains no screen TZ.
-- Feature step 1 is incomplete. Do not start step 2 when block 4 names no product or pattern; when any proposed field, control, or block (on a screen or only in the backend) lacks who fills or supplies it, who reads it, why it exists, its lifecycle (create, edit, empty, error), or how it interacts; when a shown field lacks how it looks; when a proposed screen lacks layout (block 7); or when the section is only a field name list.
+- Epic: all six epic blocks are visible, analogues are named, there is more than one option on a continuum, the chosen user story says why it is best for us, and the page has no field catalog and no services.
+- Feature: a developer cannot invent a field or block this section did not justify. Every proposed field or block has who fills it, who reads it, why, lifecycle, and look/behavior. A proposed screen has layout. Given/When/Then are present. A name-only field list is not done.
+- Do not open Архитектура while this bar fails.

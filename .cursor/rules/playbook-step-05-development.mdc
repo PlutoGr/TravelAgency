@@ -1,10 +1,14 @@
 ---
-description: Step 5 development from the feature page
+description: Procedure for column Разработка
 alwaysApply: false
 ---
-# Step 5: Development
-Input: the feature page with steps 1-4 («полное ТЗ», `playbook-workflow.mdc` «Routes»), or a bug or tiny-fix issue with criteria and no wiki analysis page. Output: PR.
-- Implement the feature page «Архитектура», or the bug criteria. Automate the marked test cases. Do not add a field, control, or block that feature step 1 did not justify. A bug or tiny fix stays inside the issue criteria and does not invent fields. The work item is that feature issue or that bug issue.
-- Deviation needed: stop, propose a «Решения» row via the issue; do not code around the page.
-- PR: branch includes the issue number as its own segment (`type/NN-short-english-slug`), created with `gh issue develop` when the branch does not exist yet; `## Задача` `#NN` without `closes`; do not call `addCloseIssueReferences` or set closedBy before acceptance. Name the page section implemented. Formats: `project-github-formats.mdc`.
-- Cloud agent launch uses the brief in `playbook-cloud-agents.mdc`: goal and acceptance, issue and wiki links, stack touchpoints, hard boundaries, where the PR or issue text goes, minimal diff. Stop at the acceptance criteria.
+# Development («Разработка»)
+File id only: `playbook-step-05-development.mdc`.
+
+Input: the feature page with Аналитика, Архитектура, and Тест-кейсы filled, and no empty «Выбрано» for this slice. Output: PR. The column stays Разработка through review and merge. Acceptance is the next column, Приёмка, and only after Deploy to dev is green.
+
+- Write the marked automated tests first, or in the same TDD cycle, then the code. Implement «Архитектура». Do not add a field, control, or block that Аналитика did not justify. The work item is this feature issue, including when the label is `bug`.
+- A typo, or a 500 caused by a typo, is fixed in the open feature. No new issue.
+- Deviation needed: stop. Propose a «Решения» row. Do not code around the page. Empty «Выбрано» stops coding.
+- PR: branch `type/NN-short-english-slug`, created with `gh issue develop` when the branch does not exist yet; `## Задача` `#NN` without `closes`; do not set closedBy before acceptance. Name the `Doc-` page to write after merge, or «вики не затронута». The wiki text itself waits until `main` (`playbook-step-08-docs.mdc`). Formats: `project-github-formats.mdc`.
+- Cloud agent launch uses the brief in `playbook-cloud-agents.mdc`. The agent does not change `статус:*`. The lead advances the label only after accepting the result.
