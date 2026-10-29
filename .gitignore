@@ -131,6 +131,7 @@ riderModule.iml
 .cursor/*
 !.cursor/rules/
 !.cursor/agents/
+!.cursor/briefs/
 !.cursor/skills/
 !.cursor/templates/
 !.cursor/README.md

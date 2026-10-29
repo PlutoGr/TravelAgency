@@ -8,42 +8,44 @@ Personal pet project. Repo and wiki are PUBLIC: anything pushed is visible forev
 - Repo `PlutoGr/TravelAgency`; wiki = separate repo `TravelAgency.wiki.git`, branch `master`, push = publish.
 - Board: GitHub Project (private) «PlutoGr/projects/2». One Status field. Columns are the stage labels in `project-github-formats.mdc` «Board statuses» (epic sequence and feature sequence, plus На ревью and Удержание). `board-sync.yml` copies the label to the column.
 - Stack: .NET 10 microservices (`src/Services`), gateway, React/TS frontend (`src/Frontend/travel-agency-frontend`, vitest). Tests: `*.UnitTests`, `*.IntegrationTests` (Testcontainers). Follow neighbouring code.
-- Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo; dev access and server facts come from the lead. Smoke on dev = login, catalog, booking.
+- Single environment: dev (Staging), behind basic auth, self-signed cert. Address and credentials: not in the repo; dev access and server facts come from the orchestrator. Smoke on dev = login, catalog, booking.
 - Merge to `main` = automatic deploy to dev («Deploy to dev»). Green CI = `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `gitleaks`.
 - Secret values live only on the server `.env`, GitHub Secrets (env `dev`), local `dotnet user-secrets`. Never in the repo.
 - Repo wins over any doc; `.cursor/rules/project-github-formats.mdc` and `.github/pull_request_template.md` win on format conflicts.
-- Normative and product documentation lives only in `.cursor/` (rules/agents), `AGENTS.md`, and the GitHub wiki (`Home`, `Doc-`, `Plan-`, `Epic-`, `Feature-`). Do not keep a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts. Do not commit agent skill manifests (`skills-lock.json`, cloned skill packs, Refero/design skill locks): those belong in the owner global Cursor/agent setup, not this project repo.
-## Roles (overrides playbook role names)
-| Role | Who | Zone |
+- Normative and product documentation lives only in `.cursor/` (rules, `agents/orchestrator.md`, `briefs/`), `AGENTS.md`, and the GitHub wiki (`Home`, `Doc-`, `Plan-`, `Epic-`, `Feature-`). Do not keep a repo `docs/` (or similar) tree for conventions, product TZ, or one-off artifacts. Do not commit agent skill manifests (`skills-lock.json`, cloned skill packs, Refero/design skill locks): those belong in the owner global Cursor/agent setup, not this project repo.
+## Controller
+One orchestrator (`.cursor/agents/orchestrator.md`). It talks to the owner, triages, owns the board and merges, launches cloud agents, holds dev and server access, publishes the wiki, and closes Doc- gaps. Do not hand that work to another chat. Persistent team chats are retired.
+
+Cloud work is one agent per issue. Paste the matching file from `.cursor/briefs/`. Those files are not separate bots (`playbook-cloud.mdc`).
+
+| Brief | Paste when | Zone |
 |---|---|---|
-| Lead | whoever holds the lead role (orchestrator) | Owner channel, triage, board, merges, cloud launches, server, audit, Doc- gaps; also executes architect duties below |
-| Architect / escalated review | lead via cloud agent (brief `.cursor/agents/architect.md`) | Architecture, ADR, labels, feature split; review only when `playbook-step-06-review.mdc` escalates (still column Разработка) |
-| Developer | cloud agent | App code + tests via PR (`playbook-cloud-agents.mdc`) |
-| Tester | lead or cloud agent | Test cases / automated tests via cloud; acceptance on dev = lead (dev access) |
-| DevOps | lead (+ cloud for CI/Docker files) | CI, Docker, nginx, deploy, server; PR security comments = automations |
-| Analyst | lead via cloud agent | Wiki Epic/Feature sections, requirements, acceptance criteria |
-- Single orchestrator: the lead. Do not hand project work to another teammate chat (handoff risk).
-- Persistent TA chat bots are retired; do not route new work through team group chats.
+| `briefs/analyst.md` | Бизнес-анализ, Аналитика, `Doc-` text after `main` | section text; the orchestrator publishes |
+| `briefs/architect.md` | epic Архитектура and Разбиение, feature Архитектура, escalated review | architecture, ADR, feature split; review only when `playbook-feature.mdc` escalates (still column Разработка) |
+| `briefs/developer.md` | application code and its tests | PR into `main` |
+| `briefs/tester.md` | Тест-кейсы, automated tests, a bug-feature reproduction | cases and tests; acceptance on dev stays with the orchestrator |
+| `briefs/devops.md` | CI, Docker, nginx, deploy files | those files via PR; the server stays with the orchestrator |
+
 ## Priorities
-Product themes (coarse product focus; not the Очередь number field): 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. Lead orders within this; theme-order changes need the owner.
-Board queue numbers (field «Приоритет», 1 = next): `project-github-formats.mdc` «Queue priority» (Roadmap → epic sequence/parallel sets → task priorities; lead sets the field; refresh on demand, weekly audit, and each new issue).
+Product themes (coarse product focus; not the Очередь number field): 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. The orchestrator orders within this; theme-order changes need the owner.
+Board queue numbers (field «Приоритет», 1 = next): `project-github-formats.mdc` «Queue priority» (Roadmap → epic sequence or parallel sets → task priorities; the orchestrator sets the field; refresh on demand, weekly audit, and each new issue).
 ## Parallel work
 - Features under one epic may run in parallel. Merge one PR at a time; work may continue: per stream 1 active item + at most 1 waiting.
 - Next issue only if it touches no files/endpoints/migrations of an open PR, does not depend on an unmerged PR, and its criteria are final. Branch from fresh `main`.
-- Any doubt about overlap: wait or escalate to the architect. After the previous merge, update the branch before review.
+- Any doubt about overlap: wait, or launch a review with `.cursor/briefs/architect.md`. After the previous merge, update the branch before review.
 - Returns first (acceptance bug, review changes, new analysis for an item in flight) over new work.
 ## Merge order
-- Merger: the lead. Before merge: green CI, Cursor Automations finished (`project-cursor-automations.mdc`), a finished reply on every open finding (`playbook-step-06-review.mdc`), and architect escalation when that file triggers it. The lead accepts or steers the cloud agent's result before advancing the column. If the owner already put the task in work or explicitly authorized that work and the PR matches that scope, merge without a separate yes and notify after merge. Ask before merge only for the cases in `00-core.mdc`. Next merge only after «Deploy to dev» is green. After that green deploy, the feature moves to Приёмка.
-- Do not require a separate architect pass on every small/routine PR when automations are clean; when review escalation triggers, the lead launches a cloud agent with `.cursor/agents/architect.md` (or reviews trivial diffs itself) and posts the verdict.
+- Merger: the orchestrator. Before merge: green CI, Cursor Automations finished (`project-cursor-automations.mdc`), a finished reply on every open finding (`playbook-feature.mdc`), and architect escalation when that file triggers it. Accept or steer the cloud agent's result before advancing the column. If the owner already put the task in work or explicitly authorized that work and the PR matches that scope, merge without a separate yes and notify after merge. Ask before merge only for the cases in `00-core.mdc`. Next merge only after «Deploy to dev» is green. After that green deploy, the feature moves to Приёмка (`playbook-ci-wake.mdc`).
+- Do not require a separate architect pass on every small or routine PR when automations are clean. When review escalation triggers, launch a cloud agent with `.cursor/briefs/architect.md` (or review a trivial diff in the orchestrator chat) and post the verdict.
 - Dependabot npm and NuGet (minor, patch, and major, including vitest, eslint, jsdom, node): automations plus the dependency rule in `playbook-git-pr.mdc` (green CI and no owner clarification, then notify what was merged; otherwise do not merge). docker and github-actions (including grouped updates that may contain majors): owner «да» before merge, because merge deploys to dev with SSH secrets and CI does not validate image or action supply chain the way app build and tests do.
-- Docs-with-code: the PR names the matching wiki `Doc-` page, or «вики не затронута». The page text is written after merge (`playbook-step-08-docs.mdc`). A Doc- gap from the after-merge automation is closed by that write, not by a second status.
+- Docs-with-code: the PR names the matching wiki `Doc-` page, or «вики не затронута». The page text is written after merge (`playbook-feature.mdc` «Doc-»). A Doc- gap from the after-merge automation is closed by that write, not by a second status.
 - Temporary dumps on dev allowed if deleted after the check.
-## Cloud agents (project specifics; method in `playbook-cloud-agents.mdc`)
-- Cloud-first (Oct 28, 2026, unified subscription): use a cloud agent for any TravelAgency repo task where a short brief is enough and the lead should not keep the digests in chat memory (code, tests, analysis, architecture text, CI/Docker edits, deep review). Lead stays the controller: triage, brief, review the result, `reply` for fixes, cancel orphans, coordinate in-flight agents (`playbook-cloud-agents.mdc` «Orchestrator loop»), then merge gates, board, wiki publish, server/dev acceptance.
-- Developer: all code via a cloud agent, including a bug-feature and a typo fix inside an open feature. In chat only work needing live dev/server access or chat history.
-- Analyst / architecture text: cloud agent returns ready Russian wiki/issue text; lead publishes.
-- Tester: acceptance on dev stays with whoever has dev access (lead); automated tests and test-case drafts via a cloud agent when an issue needs them.
-- DevOps: server stays with the lead; a cloud agent may edit workflows or Dockerfiles, lead checks the diff.
-- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `type/NN-short-english-slug` (`playbook-git-pr.mdc` «Branch naming»).
-- Gates after a cloud agent: strip Cursor PR markers, then merge order above. Cloud agents never touch the wiki, the board or merges.
-- No usage-mode matrix; no scheduled limits refresh.
+## Cloud agents (project specifics; method in `playbook-cloud.mdc`)
+- Cloud-first (2026-10-28, unified subscription): use a cloud agent for any TravelAgency repo task where a short brief is enough and the digests should not stay in the orchestrator chat (code, tests, analysis, architecture text, CI and Docker edits, deep review). The orchestrator stays the controller: triage, brief, review the result, `reply` for fixes, cancel orphans, coordinate in-flight agents (`.cursor/agents/orchestrator.md`), then merge gates, board, wiki publish, and server or dev acceptance.
+- Application code, including a bug-feature and a typo fix inside an open feature, goes through a cloud agent with `briefs/developer.md`. In chat, only work that needs live dev or server access, or chat history.
+- Analysis and architecture text: the cloud agent returns ready Russian wiki or issue text. The orchestrator publishes it.
+- Acceptance on dev stays with the orchestrator. Automated tests and test-case drafts go through a cloud agent with `briefs/tester.md` when an issue needs them.
+- The server stays with the orchestrator. A cloud agent with `briefs/devops.md` may edit workflows or Dockerfiles. The orchestrator checks the diff.
+- Launch: repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number, branch `type/NN-short-english-slug` (`playbook-git-pr.mdc` «Branch naming»). Paste the matching brief (`playbook-cloud.mdc`).
+- Gates after a cloud agent: strip Cursor PR markers, then the merge order above. Cloud agents never touch the wiki, the board, or merges.
+- No usage-mode matrix. No scheduled limits refresh.

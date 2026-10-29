@@ -3,7 +3,7 @@ description: Cursor Automations comments are a merge and post-merge gate for Tra
 alwaysApply: false
 ---
 # Cursor Automations (TravelAgency)
-Active project automations post GitHub comments as `cursor`. They do not notify the lead chat. They are the first-line review for routine PRs while the issue stays in Разработка. They compose with the board columns (`playbook-workflow.mdc`). They do not replace those columns, wiki authorship, or the lead's accept-or-rewrite gate.
+Active project automations post GitHub comments as `cursor`. They do not notify the orchestrator chat. They are the first-line review for routine PRs while the issue stays in Разработка. They compose with the board columns (`playbook-workflow.mdc`). They do not replace those columns, wiki authorship, or the accept-or-rewrite gate (`.cursor/agents/orchestrator.md`). What to do on each event: `playbook-ci-wake.mdc`.
 
 ## Inventory (keep Active)
 | Automation | When | Gate |
@@ -17,23 +17,23 @@ Active project automations post GitHub comments as `cursor`. They do not notify 
 
 Private URLs and dashboard notes: box-only ops file (not in git).
 
-## Before merge (lead / designated merger)
+## Before merge (orchestrator)
 1. Wait until CI and the automations have finished. Do not merge, and do not treat comments as final, while a run is still in progress.
 2. Open the PR conversation and read every finding from `TA: PR review`, `TA: Find vulnerabilities`, Bugbot, and any other Cursor-managed reviewers present, including medium and lower.
-3. If `TA: CI failed triage` left a failure note, confirm CI is green again. Red CI is an ask-before-merge case (`00-core.mdc`), not a note the lead accepts alone.
-4. Reply on each open finding's thread before merge (`playbook-step-06-review.mdc`). Impersonal Russian. Cursor Automations may be named when the sentence needs it. Do not name a role or another agent as the actor. One of: «неактуально: <причина>»; «принято, будет исправлено»; «исправлено в `<sha>`»; «нужно решение владельца: <вопрос>». A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
+3. If `TA: CI failed triage` left a failure note, confirm CI is green again. Red CI is an ask-before-merge case (`00-core.mdc`), not a note to accept alone.
+4. Reply on each open finding's thread before merge (`playbook-feature.mdc`, `playbook-ci-wake.mdc`). Impersonal Russian. Cursor Automations may be named when the sentence needs it. Do not name a role or another agent as the actor. One of: «неактуально: <причина>»; «принято, будет исправлено»; «исправлено в `<sha>`»; «нужно решение владельца: <вопрос>». A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
 5. Do not squash-merge while a finding has no reply. «Будет исправлено» is not finished: fix, push, then reply «исправлено» with the head sha. Leave the thread clearly finished (mark the review conversation resolved when the UI allows).
 6. «Нужно решение владельца» blocks merge until the owner decides. Other ask-before-merge cases: `00-core.mdc`. If the owner already authorized this scope and the PR matches it, merge without a separate yes and notify after merge.
 7. Do not merge while a blocker from those comments is still open (format, Doc- required, red CI, validated security or bug finding without a finished reply).
 8. Missing automation comments on a non-draft PR is a soft signal: wait briefly or re-run; do not skip the checklist because the run was silent. Do not answer a run that has not finished.
-9. Do not re-do the same checklist in a second human review when automations already covered it. Escalate to architect review only per `playbook-step-06-review.mdc`.
+9. Do not re-do the same checklist in a second pass when automations already covered it. Escalate to architect review only per `playbook-feature.mdc` (paste `.cursor/briefs/architect.md`).
 
 ## After merge
 1. Read `TA: Doc- after merge` on recently merged PRs that changed behavior, API, contracts, config or infra.
-2. If it reports a Doc- gap, write the wiki page named in the PR (or fix that page) before Готово. `playbook-step-08-docs.mdc` owns the Doc-/ADR text. The text is written after merge, because `Doc-` describes `main`.
+2. If it reports a Doc- gap, write the wiki page named in the PR (or fix that page) before Готово. `playbook-feature.mdc` «Doc-» owns the Doc-/ADR text. The text is written after merge, because `Doc-` describes `main`. The wake is `playbook-ci-wake.mdc`.
 3. When merging a batch the same day, scan those merged PRs for Doc- gap comments before leaving the queue.
 
-## Weekly audit (lead)
+## Weekly audit (orchestrator)
 - Confirm all inventory rows above are still Active for `PlutoGr/TravelAgency` (including Bugbot scope = this repo only).
 - Spot-check 1-2 recent PRs: expected automation comments appeared; each finding had a finished reply before merge; Doc- gaps were not left unanswered.
 - Spot-check the latest weekly vuln scan run history.
