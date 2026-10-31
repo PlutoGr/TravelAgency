@@ -11,11 +11,15 @@ namespace TravelAgency.Media.IntegrationTests.Storage;
 public sealed class MinioStorageFixture : IAsyncLifetime
 {
     /// <summary>
-    /// minio/minio убран из Docker Hub, поэтому берём сборку того же релиза, что на dev
-    /// (RELEASE.2025-10-15T17-29-55Z), из coollabsio/minio. Digest закреплён, чтобы тег не подменили.
+    /// minio/minio убран из Docker Hub. Берётся coollabsio/minio того же релиза, что на dev
+    /// (сборка из исходников тега RELEASE.2025-10-15T17-29-55Z, каталог docker/minio).
+    /// Digest закреплён на манифест linux/amd64 этого тега: индекс тега на CI не остаётся
+    /// локальным образом и даёт DockerImageNotFoundException.
+    /// Тег: RELEASE.2025-10-15T17-29-55Z.
+    /// Digest: sha256:4f75fd76598afa23919555d1363e1fb13c632d9bcd4ce8edcf21d3cca2ed0579.
     /// </summary>
     public const string MinioImage =
-        "coollabsio/minio:RELEASE.2025-10-15T17-29-55Z@sha256:69b55a1c1c5dc285ce04db96689f5b2102317fc77a50680a1874ca6efd1c87f9";
+        "coollabsio/minio:RELEASE.2025-10-15T17-29-55Z@sha256:4f75fd76598afa23919555d1363e1fb13c632d9bcd4ce8edcf21d3cca2ed0579";
 
     public const string BucketName = "media-it";
 
