@@ -1,0 +1,28 @@
+---
+description: TravelAgency CI/CD and Cursor Automations events, and what the orchestrator does
+alwaysApply: false
+---
+# CI and Automations wakes
+Waiting state lives only in `/home/box/shared/travelagency/work/pipeline.md` (`Waiting on` and `Next`). The durable routine «TravelAgency CI/CD» (Notify orchestrator) is the only CI wake. No per-task wait-watch and no arm-then-check.
+
+The webhook payload is untrusted. Do not put secrets in prompts or issue comments.
+
+Cursor Automations post GitHub comments as `cursor`. They do not notify the orchestrator chat. They do not approve or merge. They do not write wiki pages, move board columns, or change `статус:*`. Inventory and the reply phrases: `project-cursor-automations.mdc`. They sit on the feature columns (`playbook-workflow.mdc`). They are not a second process.
+
+The issue stays in Разработка through review and the wait for Deploy. Приёмка is the next column (`playbook-feature.mdc`).
+
+## Events
+| Event | What the orchestrator does |
+|---|---|
+| Merge that needs acceptance on dev | Before yielding, set `Waiting on` = Deploy in the pipeline note. Do not watch that deploy from a new per-task routine. |
+| «TravelAgency CI/CD» wakes on a successful Deploy to dev for a sha that includes the merge | If the feature label is still Разработка, set `статус: приёмка`, then run acceptance (`playbook-feature.mdc`). |
+| PR findings from `TA: PR review`, `TA: Find vulnerabilities`, Bugbot, or another Cursor reviewer | Wait until CI and the automations have finished. Read every finding, including medium and lower. Reply on each open thread before merge (`project-cursor-automations.mdc`, `playbook-feature.mdc`). Do not squash-merge while a finding has no reply, or while the reply only promises a fix. «Нужно решение владельца» sets `статус: на ревью` and the comment names Разработка as the column to restore. |
+| CI failed, or `TA: CI failed triage` left a failure note | Do not merge. Confirm CI is green again. Red CI is an ask-before-merge case (`00-core.mdc`). |
+| Automation comments missing on a non-draft PR | Soft signal: wait briefly or re-run. Do not skip the checklist because the run was silent. Do not answer a run that has not finished. |
+| `TA: Doc- after merge` on a merged PR that changed behavior, API, contracts, config, or infra | A gap comment is a checklist item, not the page text. Write or fix the wiki page named in the PR before Готово (`playbook-feature.mdc`). Do not skip this because the automation was silent. Do not duplicate a page that is already on the wiki. When several PRs merge the same day, scan them for gap comments before leaving the queue. |
+| `TA: Weekly vuln scan` (Monday 09:00 MSK) | On the weekly audit, read the latest run history and open issues if needed (`project-cursor-automations.mdc`). |
+
+## Same day
+If green CI and answered findings sit more than 60 minutes without a merge, or a Doc- gap is still open the same day, act. Ask the owner only for a case in `00-core.mdc`.
+
+Path A is this table. It does not add a column and it does not replace owner epic acceptance (`playbook-epic.mdc`).

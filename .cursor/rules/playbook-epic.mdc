@@ -1,0 +1,107 @@
+---
+description: Epic route from Plan- or an owner ask through owner acceptance
+alwaysApply: false
+---
+# Epic route
+Types and column names: `playbook-workflow.mdc`. This file is what to write in each epic column, the gate, owner acceptance, and how the next epic is chosen.
+
+An epic is a business goal. The standing bugs epic is an ordinary epic. Children are features or bug-features. There is no other child type.
+
+## How an epic is born
+- The roadmap (wiki `Plan-` / Plans) or an owner ask names the goal. The roadmap orders epics. It is not itself a task.
+- Open a parent issue with `тип: родительская` and field «Тип» = «Эпик», plus a wiki page `Epic-<Name>`. On create, set exactly one label: `статус: очередь`.
+- `<Name>`: Latin, English, Title-Case-With-Hyphens. Do not rename it casually.
+- The standing bugs epic uses the same columns. The text may be short. It still says why this class of work exists. It holds only unrelated discoveries. It is not a second route.
+- Do not open the next roadmap epic until the current product epic is Готово, unless the owner has already confirmed a parallel set («Epic pick» below).
+
+## Columns
+Очередь → Бизнес-анализ → Архитектура → Разбиение → В работе → На ревью → Готово.
+
+Удержание is extra: the epic is paused (`статус: удержание`), not sitting in Очередь.
+
+Move forward only when the previous column's text is visible and the orchestrator has accepted it (`.cursor/agents/orchestrator.md`). A cloud agent returns text. It does not change `статус:*`, the board, or the wiki.
+
+### Очередь
+Nobody is on it. Field «Приоритет» ranks it (`project-github-formats.mdc` «Queue priority»). Take sets `статус: бизнес-анализ` and a comment. Do not leave the epic in a generic in-progress label for this column.
+
+### Бизнес-анализ
+Product WHY and WHAT. Enough to choose architecture and to split features. Not a screen specification. This section does not unlock feature code.
+
+No services, API paths, storage, migrations, contracts, field catalog, or screen layout.
+
+Blocks, all of them visible:
+
+1. Problem now. What hurts, what already works (name the `Doc-` pages), and what must not break.
+2. Actors. Roles and when they care. Not tokens or JWT.
+3. Named analogues. Name each comparable product or pattern, what it does, and why it fits or does not fit. "Like other sites" with no name is not evidence.
+4. Several solution options on a continuum. More than one option, ordered along one axis (for example a smaller change to a larger change).
+5. Chosen user story, and why it is the best fit for us.
+6. Non-goals.
+
+Done when all six blocks are visible, analogues are named, there is more than one option on a continuum, the chosen user story says why it is best for us, and the page has no field catalog and no services. Do not open Архитектура while that bar fails.
+
+Paste `.cursor/briefs/analyst.md` when a cloud agent writes this section.
+
+### Архитектура
+Only after Бизнес-анализ meets the bar above. Services, boundaries, and integration options, and why the option was chosen. No field catalog and no screen layout.
+
+Map only what Бизнес-анализ justified. Add no field, screen, or block that section omitted. Do not redesign product layout. An unresolved how goes to «Решения», not to a new column. If the business part is unclear, do not rewrite it. Options go to «Решения».
+
+Paste `.cursor/briefs/architect.md`.
+
+### Разбиение
+Only after the architecture text is visible. A feature list: one line for why each feature exists. Each line becomes a Feature wiki page and a child issue (`playbook-feature.mdc`). Children are features or bug-features. No other child type.
+
+One owner per child issue. Keep labels current in the returned text. The orchestrator sets the labels.
+
+Paste `.cursor/briefs/architect.md`.
+
+### В работе
+When the first child leaves Очередь, set the epic to `статус: в работе` and drop `статус: очередь`. The child takes its own column, such as Аналитика. Do not put `статус: в работе` on a feature. Keep the epic in В работе while any child is open. `board-sync` does not infer the epic label from children. The orchestrator owns this sync on take and close of a child.
+
+### На ревью
+Two uses. Do not mix them.
+
+- Owner epic acceptance: when every child is Готово (closed). Do not close the epic on child closes alone. Set `статус: на ревью`. Summarize what shipped (features, `Doc-` and wiki links, how to check on dev) and ask the owner to accept the epic. The checklist is the problem, the chosen user story, and the non-goals in «Бизнес-анализ». Closed children are not enough. There is no epic «Тест-кейсы» section. An older epic page that already has «Тест-кейсы» stays as it is. That section is not a screen specification and not another task type.
+- Any other owner decision on the epic itself. The comment names the column to restore.
+
+Owner pass: set `статус: готово`, close the epic, and mark the wiki `Epic-` page «сделано» (a content mark, not a second status).
+
+Owner finds gaps: set the epic back to `статус: в работе`. Related gaps become features or bug-features under this epic. Unrelated discoveries go to the standing bugs epic and do not stop this epic. Do not mark the epic Готово until a later owner pass.
+
+### Готово
+Only after the owner accepts, or when the epic is closed as not planned. Set `статус: готово` and close in the same moment. `board-sync` moves the card. Do not move the Projects card by hand.
+
+### Удержание
+Paused. Not part of the sequence above.
+
+## «Решения»
+Not a column. Log what blocks Бизнес-анализ, Архитектура, or Разбиение. The row format and the rule that an empty «Выбрано» blocks feature Разработка are canonical in `playbook-feature.mdc` «Решения».
+
+On an epic, an empty «Выбрано» also blocks the epic column that question belongs to. A child feature does not enter Разработка for that slice while the row is empty.
+
+Every important architecture choice is one row. An impactful how that is not already authorized goes to the owner via the orchestrator. Once that row has «Выбрано», or the owner already put this task in work, a matching PR does not need a second yes at merge (`00-core.mdc`).
+
+No agreement: the orchestrator decides by the rules, otherwise one owner question with options and a recommendation (`статус: на ревью`, and the comment names the column to restore). The owner answer is recorded impersonally in the row and on the issue («**Итог:** решено: ...»). Restore the recorded column.
+
+A cloud agent without wiki publish or owner access returns the options table. It does not decide approval items and it does not publish the page.
+
+## Gate
+The orchestrator sets the label to the column being started, launches one agent when the column needs one, reviews the result, accepts it or steers a rewrite, and only then sets the next column. Epic Бизнес-анализ alone never unlocks feature code. The epic page is not the feature specification.
+
+## Epic pick
+Canonical numbers: `project-github-formats.mdc` «Queue priority».
+
+- The current product epic is the one whose label is a column other than Очередь, Готово, or Удержание. Finish it, including bug-features spawned by its features, before taking the next roadmap epic. Unrelated bugs stay on the standing bugs epic and do not jump ahead.
+- A parallel set runs only after the owner has confirmed it. Do not open the next roadmap epic from «Приоритет» alone.
+- When this epic is accepted (or before the first take from an epic the owner has not chosen yet): propose the next epic or a parallel set from the roadmap (wiki Plans) and `Epic-` «Связи с другими эпиками». One epic when that is enough. A parallel set when dependency or efficiency warrants it. Ask the owner to confirm. Those links are written on the wiki `Epic-` pages.
+- When proposing the next epic, re-read that epic's «Архитектура» and related `Doc-` pages and neighbouring epic links so the set stays coherent. This is a consistency check, not a full rewrite.
+- After the owner confirms: set epic «Приоритет» to the agreed sequence, raise that epic's open Очередь children with contiguous low numbers, and take the top task. If a parallel set was confirmed, interleave those children the same way, still ahead of the standing bugs epic and the rest of the backlog.
+- The owner may override any order with an explicit instruction. That instruction is not a standing rule that the bugs epic outranks the current epic. Dependabot and non-product issues already in flight are not the next roadmap epic.
+
+## Checklist
+1. Create with exactly one `статус:*` (`статус: очередь` plus `тип: родительская`). Take moves the epic to Бизнес-анализ.
+2. Advance only when that column's text is visible and accepted.
+3. When the first child leaves Очередь, set the epic to `статус: в работе`.
+4. When every child is Готово, set На ревью and run owner acceptance. Do not close the epic on child closes alone.
+5. After Готово, epic pick. Do not start the next roadmap epic until this one is Готово, unless the owner has already confirmed a parallel set.
