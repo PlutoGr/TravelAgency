@@ -93,7 +93,6 @@ function person(role: User['role']): User {
     firstName: 'Тест',
     lastName: 'Пользователь',
     phone: '',
-    city: '',
     role,
     createdAt: '2025-01-01T00:00:00Z',
   };

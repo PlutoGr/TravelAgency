@@ -267,6 +267,52 @@ public class AdminUsersControllerIntegrationTests : IClassFixture<CustomWebAppli
         }
     }
 
+    [Fact]
+    public async Task Search_ByNameEmailAndPhone_DoesNotReplaceSiteContacts()
+    {
+        const string sitePhone = "+74951234567";
+        const string siteEmail = "office@example.com";
+        var admin = await SeedAsync("admin-search@example.com", UserRole.Admin, firstName: "Админ", lastName: "Поиска");
+        var manager = await SeedAsync(
+            "marina.search@example.com",
+            UserRole.Manager,
+            firstName: "Марина",
+            lastName: "Иванова",
+            phone: "+79991234567");
+        await SetSiteContactsAsync(sitePhone, siteEmail);
+
+        foreach (var query in new[] { "Марина", "marina.search@example.com", "+79991234567" })
+        {
+            var found = await SendAsync(
+                HttpMethod.Get,
+                "/identity/admin/users?q=" + Uri.EscapeDataString(query),
+                admin.Id,
+                AppRoles.Admin);
+            found.StatusCode.Should().Be(HttpStatusCode.OK);
+            var body = await found.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var item = doc.RootElement.GetProperty("items").EnumerateArray().Single();
+            item.GetProperty("id").GetGuid().Should().Be(manager.Id);
+            foreach (var key in new[] { "city", "about", "tourismSince", "languages", "specialization" })
+                item.TryGetProperty(key, out _).Should().BeFalse();
+        }
+
+        var patched = await SendAsync(
+            HttpMethod.Patch,
+            "/identity/me",
+            manager.Id,
+            AppRoles.Manager,
+            new { phone = "+79990000099" });
+        patched.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+        settings.SupportPhone.Should().Be(sitePhone);
+        settings.ContactEmail.Should().Be(siteEmail);
+        (await db.Users.AsNoTracking().SingleAsync(user => user.Id == manager.Id)).Phone.Should().Be("+79990000099");
+    }
+
     private static async Task<string> DetailAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadAsStringAsync();
@@ -339,12 +385,16 @@ public class AdminUsersControllerIntegrationTests : IClassFixture<CustomWebAppli
         return user;
     }
 
-    private async Task SetSupportPhoneAsync(string phone)
+    private async Task SetSupportPhoneAsync(string phone) =>
+        await SetSiteContactsAsync(phone, null);
+
+    private async Task SetSiteContactsAsync(string? phone, string? email)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         var row = await db.SiteSettings.SingleAsync();
         row.SupportPhone = phone;
+        row.ContactEmail = email;
         await db.SaveChangesAsync();
     }
 

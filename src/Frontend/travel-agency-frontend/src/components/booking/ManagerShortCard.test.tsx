@@ -33,19 +33,13 @@ const fullCard: ManagerPublicCard = {
   id: 'manager-1',
   displayName: 'Марина Иванова',
   avatarUrl: '/api/v1/media/files/file-1/a256',
-  about: 'Первая строка\n<b>жирный</b>',
-  tourismSince: new Date().getUTCFullYear() - 8,
-  languages: ['ru', 'en'],
 };
 
 describe('ManagerShortCard', () => {
-  it('показывает полную карточку, только имя и один язык', async () => {
-    const year = new Date().getUTCFullYear();
+  it('показывает фото и имя, без снятых строк', async () => {
     const cases: ManagerPublicCard[] = [
       fullCard,
       { id: 'manager-1', displayName: 'Марина Иванова' },
-      { id: 'manager-1', displayName: '', tourismSince: year },
-      { id: 'manager-1', displayName: 'Марина Иванова', languages: ['ru'] },
     ];
 
     for (const card of cases) {
@@ -57,37 +51,16 @@ describe('ManagerShortCard', () => {
         );
         expect(document.body.innerHTML).not.toMatch(/minio|amazonaws|blob\.core/i);
       }
-      if (card === fullCard) {
-        expect(screen.getByTestId('manager-card-name')).toHaveTextContent('Марина Иванова');
-        expect(screen.getByRole('heading', { name: 'О себе' })).toBeInTheDocument();
-        expect(document.body.textContent).toContain('Первая строка\n<b>жирный</b>');
-        expect(document.querySelector('b')).toBeNull();
-        expect(screen.getByText('В туризме 8 лет')).toBeInTheDocument();
-        expect(screen.getByText('Языки: ru, en')).toBeInTheDocument();
-        expect(screen.queryByText('В туризме с')).not.toBeInTheDocument();
-      }
-      if (!card.about && !card.avatarUrl && card.displayName === 'Марина Иванова' && !card.languages) {
-        expect(await screen.findByTestId('manager-card-name')).toHaveTextContent('Марина Иванова');
-        expect(screen.getByText('МИ')).toBeInTheDocument();
-        expect(screen.queryByRole('heading', { name: 'О себе' })).not.toBeInTheDocument();
-        expect(screen.queryByText(/В туризме/)).not.toBeInTheDocument();
-        expect(screen.queryByText(/Языки/)).not.toBeInTheDocument();
-        expect(screen.queryByText('не указано')).not.toBeInTheDocument();
-      }
-      if (card.displayName === '') {
-        expect(await screen.findByText('В туризме меньше года')).toBeInTheDocument();
-        expect(screen.getByTestId('manager-card-name')).toHaveTextContent('');
-        expect(screen.getByTestId('manager-card-name')).not.toHaveTextContent('Менеджер');
-      }
-      if (card.languages?.length === 1) {
-        expect(await screen.findByText('Языки: ru')).toBeInTheDocument();
-        expect(screen.queryByText('Языки: ru,')).not.toBeInTheDocument();
-        expect(screen.queryByText('русский')).not.toBeInTheDocument();
-      }
+      expect(await screen.findByTestId('manager-card-name')).toHaveTextContent('Марина Иванова');
+      expect(screen.queryByRole('heading', { name: 'О себе' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/В туризме/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Языки/)).not.toBeInTheDocument();
+      expect(screen.queryByText('не указано')).not.toBeInTheDocument();
+      expect(screen.queryByText('Появится позже')).not.toBeInTheDocument();
+      expect(screen.getByTestId('manager-card-name')).not.toHaveTextContent('Менеджер');
+      if (!card.avatarUrl) expect(screen.getByText('МИ')).toBeInTheDocument();
       expect(screen.queryByText('secret@example.com')).not.toBeInTheDocument();
       expect(screen.queryByText('+79990000000')).not.toBeInTheDocument();
-      expect(screen.queryByText('Сочи')).not.toBeInTheDocument();
-      expect(screen.queryByText('Море')).not.toBeInTheDocument();
       view.unmount();
     }
   });

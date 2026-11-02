@@ -101,7 +101,6 @@ describe('ChatWindow manager card', () => {
       id: MARINA,
       displayName: 'Марина Иванова',
       avatarUrl: '/api/v1/media/files/file-1/a256',
-      about: 'О себе',
     });
   });
 
@@ -155,7 +154,6 @@ describe('ChatWindow manager card', () => {
         id: MARINA,
         displayName: 'Марина Иванова',
         avatarUrl: '/api/v1/media/files/file-1/a256',
-        about: 'О себе',
       });
     renderChat('client', '/dashboard/bookings/booking-1');
 

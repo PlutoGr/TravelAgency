@@ -17,18 +17,15 @@ namespace TravelAgency.Identity.IntegrationTests.API;
 public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFactory>, IAsyncLifetime
 {
     private const string SigningKey = "TestSigningKeyWithAtLeast32CharactersForHMAC";
-    private const string AboutText = "  Первая строка\nвторая  ";
-    private const string AboutTrimmed = "Первая строка\nвторая";
     private const string TargetEmail = "marina.private@example.com";
     private const string TargetPhone = "+79995550001";
-    private const string TargetCity = "Сочи";
-    private const string TargetSpecialization = "Море-104";
     private const string BlockReason = "Секретная причина блокировки 104";
 
     private static readonly string[] ForbiddenKeys =
     [
-        "email", "phone", "city", "specialization", "role", "firstName", "lastName",
-        "createdAt", "notes", "blockedAt", "blockReason", "blockedByUserId", "isBlocked"
+        "email", "phone", "city", "about", "tourismSince", "languages", "specialization",
+        "role", "firstName", "lastName", "createdAt", "notes",
+        "blockedAt", "blockReason", "blockedByUserId", "isBlocked"
     ];
 
     private readonly CustomWebApplicationFactory _factory;
@@ -61,40 +58,50 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         var body = await response.Content.ReadAsStringAsync();
         body.Should().NotContain("displayName");
-        body.Should().NotContain(AboutTrimmed);
         body.Should().NotContain(TargetEmail);
+        body.Should().NotContain(TargetPhone);
     }
 
     [Fact]
     public async Task Get_ForManagerAndAdmin_ReturnsSamePublicCard()
     {
         var manager = await SeedStaffAsync(UserRole.Manager, TargetEmail, FillFullCard);
-        var admin = await SeedStaffAsync(UserRole.Admin, "admin.private@example.com", FillFullCard);
+        var admin = await SeedStaffAsync(UserRole.Admin, "admin.private@example.com", user =>
+            user.UpdateProfile("Марина", "Иванова", TargetPhone));
         var viewers = new[] { "Client", "Manager", "Admin" };
 
         foreach (var target in new[] { manager, admin })
         {
             string? sameViewerBody = null;
-            foreach (var role in viewers)
+            var viewersForTarget = target.Role == UserRole.Manager
+                ? viewers.Append("own").ToArray()
+                : viewers;
+            foreach (var role in viewersForTarget)
             {
-                var response = await ClientFor(Guid.NewGuid(), role).GetAsync(Path(target.Id));
+                var viewerId = role == "own" ? target.Id : Guid.NewGuid();
+                var viewerRole = role == "own"
+                    ? (target.Role == UserRole.Admin ? "Admin" : "Manager")
+                    : role;
+                var response = await ClientFor(viewerId, viewerRole).GetAsync(Path(target.Id));
 
                 response.StatusCode.Should().Be(HttpStatusCode.OK);
                 HeaderValue(response, "Cache-Control").Should().Contain("no-store");
 
                 var json = await response.Content.ReadAsStringAsync();
-                sameViewerBody ??= json;
-                json.Should().Be(sameViewerBody);
+                if (role != "own")
+                {
+                    sameViewerBody ??= json;
+                    json.Should().Be(sameViewerBody);
+                }
 
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 root.GetProperty("id").GetGuid().Should().Be(target.Id);
                 root.GetProperty("displayName").GetString().Should().Be("Марина Иванова");
-                root.GetProperty("avatarUrl").GetString().Should().Be(ProfileMapper.BuildAvatarUrl(_avatarId));
-                root.GetProperty("about").GetString().Should().Be(AboutTrimmed);
-                root.GetProperty("tourismSince").GetInt32().Should().Be(2018);
-                var languages = root.GetProperty("languages").EnumerateArray().Select(item => item.GetString()).ToArray();
-                languages.Should().Equal("ru", "en");
+                if (target.AvatarMediaFileId is null)
+                    root.TryGetProperty("avatarUrl", out _).Should().BeFalse();
+                else
+                    root.GetProperty("avatarUrl").GetString().Should().Be(ProfileMapper.BuildAvatarUrl(_avatarId));
 
                 foreach (var key in ForbiddenKeys)
                     root.TryGetProperty(key, out _).Should().BeFalse();
@@ -102,8 +109,7 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
                 json.Should().NotContain(TargetEmail);
                 json.Should().NotContain("admin.private@example.com");
                 json.Should().NotContain(TargetPhone);
-                json.Should().NotContain(TargetCity);
-                json.Should().NotContain(TargetSpecialization);
+                json.Should().NotContain(BlockReason);
             }
         }
     }
@@ -111,41 +117,25 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
     [Fact]
     public async Task Get_OmitsEmptyOptionalFields()
     {
-        var whitespace = await SeedStaffAsync(UserRole.Manager, "blank.ws@example.com", user =>
-        {
-            user.UpdateProfile("Марина", "Иванова", null, null);
-            user.UpdateManagerProfile("  \n  ", null, [], null);
-        });
-        var nulls = await SeedStaffAsync(UserRole.Manager, "blank.null@example.com", user =>
-        {
-            user.UpdateProfile("Марина", "Иванова", null, null);
-            user.UpdateManagerProfile(null, null, null, null);
-        });
-        var emptyAbout = await SeedStaffAsync(UserRole.Manager, "blank.empty@example.com", user =>
-        {
-            user.UpdateProfile("Марина", "Иванова", null, null);
-            user.UpdateManagerProfile("", null, null, null);
-        });
+        var withoutPhoto = await SeedStaffAsync(UserRole.Manager, "blank.photo@example.com", user =>
+            user.UpdateProfile("Марина", "Иванова", null));
 
-        foreach (var user in new[] { whitespace, nulls, emptyAbout })
-        {
-            var response = await ClientFor(Guid.NewGuid(), "Client").GetAsync(Path(user.Id));
+        var response = await ClientFor(Guid.NewGuid(), "Client").GetAsync(Path(withoutPhoto.Id));
 
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var root = doc.RootElement;
-            root.GetProperty("id").GetGuid().Should().Be(user.Id);
-            root.GetProperty("displayName").GetString().Should().Be("Марина Иванова");
-            foreach (var key in new[] { "about", "tourismSince", "languages", "avatarUrl" })
-                root.TryGetProperty(key, out _).Should().BeFalse();
-        }
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+        root.GetProperty("id").GetGuid().Should().Be(withoutPhoto.Id);
+        root.GetProperty("displayName").GetString().Should().Be("Марина Иванова");
+        foreach (var key in ForbiddenKeys.Append("avatarUrl"))
+            root.TryGetProperty(key, out _).Should().BeFalse();
     }
 
     [Fact]
     public async Task Get_UnknownAndClient_ReturnSameNotFound_OwnStaffReturnsCard()
     {
         var client = await SeedStaffAsync(UserRole.Client, "client.secret@example.com", user =>
-            user.UpdateProfile("Клиент", "Скрытый", "+79990000002", "Казань"));
+            user.UpdateProfile("Клиент", "Скрытый", "+79990000002"));
         var manager = await SeedStaffAsync(UserRole.Manager, "own.manager@example.com", FillFullCard);
         var admin = await SeedStaffAsync(UserRole.Admin, "own.admin@example.com", FillFullCard);
         var missingId = Guid.NewGuid();
@@ -200,7 +190,7 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
-            doc.RootElement.GetProperty("about").GetString().Should().Be(AboutTrimmed);
+            doc.RootElement.GetProperty("displayName").GetString().Should().Be("Марина Иванова");
             json.Should().NotContain(BlockReason);
             foreach (var key in new[] { "blockedAt", "blockReason", "blockedByUserId", "isBlocked" })
                 doc.RootElement.TryGetProperty(key, out _).Should().BeFalse();
@@ -225,10 +215,10 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
 
         var log = string.Join('\n', _factory.Logs.Lines);
         log.Should().Contain("manager-card");
-        log.Should().NotContain(AboutTrimmed);
-        log.Should().NotContain("Первая строка");
+        log.Should().NotContain("Марина Иванова");
         log.Should().NotContain(TargetEmail);
         log.Should().NotContain(TargetPhone);
+        log.Should().NotContain(_avatarId.ToString());
     }
 
     private async Task<string> ReadNotFoundAsync(Guid targetId, Guid viewerId)
@@ -238,7 +228,7 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
         var json = await response.Content.ReadAsStringAsync();
         json.Should().NotContain("client.secret@example.com");
         json.Should().NotContain("+79990000002");
-        json.Should().NotContain("Казань");
+        json.Should().NotContain("Клиент");
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.TryGetProperty("email", out _).Should().BeFalse();
         doc.RootElement.TryGetProperty("phone", out _).Should().BeFalse();
@@ -248,8 +238,7 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
 
     private void FillFullCard(User user)
     {
-        user.UpdateProfile("Марина", "Иванова", TargetPhone, TargetCity);
-        user.UpdateManagerProfile(AboutText, 2018, ["ru", "en"], TargetSpecialization);
+        user.UpdateProfile("Марина", "Иванова", TargetPhone);
         user.SetAvatar(_avatarId);
     }
 

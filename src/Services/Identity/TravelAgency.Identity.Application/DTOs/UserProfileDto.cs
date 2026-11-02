@@ -8,9 +8,4 @@ public sealed record UserProfileDto(
     string? Phone,
     string Role,
     DateTime CreatedAt,
-    string? City = null,
-    string? AvatarUrl = null,
-    string? About = null,
-    int? TourismSince = null,
-    IReadOnlyList<string>? Languages = null,
-    string? Specialization = null);
+    string? AvatarUrl = null);

@@ -21,7 +21,6 @@ public class IdentityGrpcServiceTests
             "Иванова",
             "+79995550001",
             UserRole.Manager);
-        user.UpdateManagerProfile("  Первая строка\nвторая  ", 2018, ["ru", "en"], "Море-104");
         user.SetAvatar(avatarId);
 
         var repository = new Mock<IUserRepository>();
@@ -45,10 +44,9 @@ public class IdentityGrpcServiceTests
         response.Role.Should().Be("Manager");
         response.AvatarUrl.Should().Be(ProfileMapper.BuildAvatarUrl(avatarId));
         response.DisplayName.Should().Be("Марина Иванова");
-        response.ToString().Should().NotContain("Первая строка");
-        response.ToString().Should().NotContain("2018");
-        response.ToString().Should().NotContain("Море-104");
-        response.ToString().Should().NotContain("ru");
+        response.ToString().Should().NotContain("+79995550001");
+        response.ToString().Should().NotContain("city");
+        response.ToString().Should().NotContain("about");
     }
 
     private sealed class TestServerCallContext : ServerCallContext

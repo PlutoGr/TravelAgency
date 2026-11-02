@@ -75,39 +75,22 @@ public class UpdateProfileCommandValidatorTests
     }
 
     [Fact]
-    public void Validate_TourismSinceInFuture_HasError()
+    public void Validate_WhitespacePhone_HasError()
     {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(TourismSince: DateTime.UtcNow.Year + 1));
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(null, null, "   "));
         var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor("tourismSince")
-            .WithErrorMessage("Укажите год не позже текущего.");
+        result.ShouldHaveValidationErrorFor("phone")
+            .WithErrorMessage("Телефон должен быть в формате E.164, например +79991234567, или пустым.");
     }
 
-    [Fact]
-    public void Validate_UnknownLanguage_HasError()
+    [Theory]
+    [InlineData("+12")]
+    [InlineData("+79991234567")]
+    [InlineData(" +79991234567 ")]
+    public void Validate_E164Boundaries_AreValid(string phone)
     {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(Languages: ["xx"]));
-        var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor("languages");
-    }
-
-    [Fact]
-    public void Validate_ManagerFields_AreValid()
-    {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(
-            About: "Опыт",
-            TourismSince: 2010,
-            Languages: ["ru", "en"],
-            Specialization: "Европа"));
+        var command = new UpdateProfileCommand(new UpdateProfileRequest(" А ", " Б ", phone));
         var result = _validator.TestValidate(command);
         result.ShouldNotHaveAnyValidationErrors();
-    }
-
-    [Fact]
-    public void Validate_CityTooLong_HasError()
-    {
-        var command = new UpdateProfileCommand(new UpdateProfileRequest(City: new string('c', 101)));
-        var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor("city");
     }
 }

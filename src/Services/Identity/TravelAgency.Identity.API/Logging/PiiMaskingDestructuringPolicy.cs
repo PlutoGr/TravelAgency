@@ -102,12 +102,7 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
         {
             new("FirstName", new ScalarValue(MaskName(request.FirstName))),
             new("LastName", new ScalarValue(MaskName(request.LastName))),
-            new("Phone", new ScalarValue(MaskPhone(request.Phone))),
-            new("City", new ScalarValue(MaskName(request.City))),
-            new("About", new ScalarValue(request.About is null ? "***" : "[REDACTED]")),
-            new("TourismSince", new ScalarValue(request.TourismSince)),
-            new("Specialization", new ScalarValue(request.Specialization is null ? "***" : "[REDACTED]")),
-            new("Languages", new ScalarValue(request.Languages is null ? "***" : string.Join(',', request.Languages)))
+            new("Phone", new ScalarValue(MaskPhone(request.Phone)))
         };
         return new StructureValue(props);
     }

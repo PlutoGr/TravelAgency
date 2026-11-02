@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
@@ -29,7 +26,6 @@ const user: User = {
   firstName: 'Анна',
   lastName: 'Смирнова',
   phone: '+79990001122',
-  city: '',
   role: 'client',
   createdAt: '2026-01-01T00:00:00Z',
 };
@@ -38,50 +34,14 @@ const MEDIA = '/api/v1/media/files/11111111-1111-1111-1111-111111111111/a256';
 
 const PHONE_E164_ERROR =
   'Телефон должен быть в формате E.164, например +79991234567, или пустым.';
-const ABOUT_LIMIT_ERROR = 'Текст «О себе» не длиннее 1000 символов.';
-const YEAR_ERROR = 'Укажите год не позже текущего.';
-const SPECIALIZATION_LIMIT_ERROR = 'Специализация не длиннее 300 символов.';
 
 const managerUser: User = {
   ...user,
   role: 'manager',
-  about: 'Гид',
-  tourismSince: 2015,
-  languages: ['ru', 'en'],
-  specialization: 'Азия',
 };
-
-function identityLanguageCodes(): string[] {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const source = readFileSync(
-    resolve(
-      here,
-      '../../../../Services/Identity/TravelAgency.Identity.Application/Features/Profile/AllowedLanguages.cs',
-    ),
-    'utf8',
-  );
-  return [...source.matchAll(/"([a-z]{2})"/g)].map((match) => match[1]);
-}
 
 function signIn(person: User) {
   useAuthStore.setState({ user: person, isAuthenticated: true, isLoading: false });
-}
-
-function languageError(code: string): string {
-  return `Язык «${code}» не из списка ISO 639-1.`;
-}
-
-function selectedLanguageCodes(): string[] {
-  const select = screen.getByLabelText('Языки');
-  if (!(select instanceof HTMLSelectElement)) throw new Error('languages select missing');
-  return Array.from(select.selectedOptions, (option) => option.value);
-}
-
-function patchBody(config: InternalAxiosRequestConfig): Record<string, unknown> {
-  const raw = config.data;
-  if (typeof raw === 'string') return JSON.parse(raw) as Record<string, unknown>;
-  if (typeof raw === 'object' && raw !== null) return raw as Record<string, unknown>;
-  return {};
 }
 
 function LocationProbe() {
@@ -175,7 +135,6 @@ const profileDto = {
   firstName: user.firstName,
   lastName: user.lastName,
   phone: user.phone,
-  city: null as string | null,
   role: 'Client',
   createdAt: user.createdAt,
   avatarUrl: null as string | null,
@@ -188,49 +147,7 @@ describe('ProfilePage', () => {
     useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
   });
 
-  it('ТК-1 shows the shared card for a client', () => {
-    for (const role of ['client'] as const) {
-      useAuthStore.setState({
-        user: { ...user, role, city: '' },
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      const view = renderProfile('/dashboard/profile');
-
-      const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
-      expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
-      expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
-      expect(screen.getByText('АС')).toBeInTheDocument();
-      expect(screen.queryByRole('img', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Загрузить фото' })).toBeEnabled();
-      expect(screen.queryByRole('button', { name: 'Заменить' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument();
-      expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
-      expect(screen.getByLabelText('Фамилия')).toHaveValue('Смирнова');
-      expect(screen.getByLabelText('Телефон')).toHaveValue('+79990001122');
-      expect(screen.getByLabelText('Город')).toHaveValue('');
-
-      const email = screen.getByLabelText('Email');
-      expect(email).toBeDisabled();
-      expect(email).toHaveValue('anna@example.com');
-      expect(email).not.toHaveAccessibleDescription('Появится позже');
-
-      const passport = screen.getByLabelText('Паспорт');
-      expect(passport).toBeDisabled();
-      expect(screen.getByText('Появится позже')).toBeInTheDocument();
-      expect(passport).toHaveAccessibleDescription('Появится позже');
-
-      for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
-        expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
-      }
-      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
-      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
-      expect(screen.queryByRole('button', { name: 'Появится позже' })).not.toBeInTheDocument();
-
-      view.unmount();
-    }
-  });
-
+  
   it('ТК-2 saves trimmed card fields once and updates the session, header and sidebar', async () => {
     const gate = deferred<User>();
     const updateProfile = vi.spyOn(authApi, 'updateProfile').mockReturnValue(gate.promise);
@@ -240,7 +157,6 @@ describe('ProfilePage', () => {
     setField('Имя', '  Мария  ');
     setField('Фамилия', '  Ковалева  ');
     setField('Телефон', '+79991234567');
-    setField('Город', '  Казань  ');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
@@ -249,10 +165,8 @@ describe('ProfilePage', () => {
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991234567',
-      city: 'Казань',
     });
     expect(Object.keys(updateProfile.mock.calls[0][0]).sort()).toEqual([
-      'city',
       'firstName',
       'lastName',
       'phone',
@@ -263,7 +177,6 @@ describe('ProfilePage', () => {
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991234567',
-      city: 'Казань',
     });
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
@@ -271,7 +184,6 @@ describe('ProfilePage', () => {
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
       lastName: 'Ковалева',
-      city: 'Казань',
     });
     expect(screen.getAllByText('Мария Ковалева').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Мария')).toBeInTheDocument();
@@ -282,11 +194,9 @@ describe('ProfilePage', () => {
     const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
       ...user,
       phone: '',
-      city: '',
     });
     renderProfile();
     setField('Телефон', '   ');
-    setField('Город', ' \t ');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
@@ -294,11 +204,10 @@ describe('ProfilePage', () => {
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '',
-      city: '',
     });
     await waitFor(() => {
       expect(screen.getByLabelText('Телефон')).toHaveValue('');
-      expect(screen.getByLabelText('Город')).toHaveValue('');
+      expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     });
   });
 
@@ -344,32 +253,7 @@ describe('ProfilePage', () => {
     }
   });
 
-  it('ТК-6 rejects a city longer than 100 characters and saves a trimmed pair at the limit', async () => {
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
-      ...user,
-      phone: '+79991234567',
-      city: 'Г'.repeat(100),
-    });
-    renderProfile();
-
-    setField('Город', ` ${'Г'.repeat(101)} `);
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    expect(updateProfile).not.toHaveBeenCalled();
-    expect(screen.getByText('Город не длиннее 100 символов.')).toBeInTheDocument();
-
-    setField('Город', ` ${'Г'.repeat(100)} `);
-    setField('Телефон', '  +79991234567  ');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile).toHaveBeenCalledWith({
-      firstName: 'Анна',
-      lastName: 'Смирнова',
-      phone: '+79991234567',
-      city: 'Г'.repeat(100),
-    });
-  });
-
+  
   it('ТК-7 shows Russian field errors and hides the English detail', async () => {
     vi.spyOn(authApi, 'updateProfile').mockRejectedValue({
       response: {
@@ -385,7 +269,6 @@ describe('ProfilePage', () => {
     });
     renderProfile();
     setField('Имя', 'Анна');
-    setField('Город', 'Сочи');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     expect(await screen.findByText('Укажите имя длиной от 1 до 100 символов.')).toBeInTheDocument();
@@ -396,7 +279,7 @@ describe('ProfilePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79990001122');
   });
 
@@ -404,13 +287,12 @@ describe('ProfilePage', () => {
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
     updateProfile.mockRejectedValueOnce(new Error('network'));
     renderProfile();
-    setField('Город', 'Сочи');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Не удалось выполнить запрос. Попробуйте ещё раз.',
     );
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
     expect(toast.success).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
@@ -429,67 +311,13 @@ describe('ProfilePage', () => {
       'Не удалось выполнить запрос. Попробуйте ещё раз.',
     );
     expect(screen.queryByText('Phone number format is invalid.')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
   });
 
-  it('keeps the passport out of save and replaces the inactive camera with photo buttons', async () => {
-    const avatarUrl = 'https://example.com/avatar.png';
-    useAuthStore.setState({
-      user: { ...user, avatar: avatarUrl, passport: '4510 123456', city: 'Казань' },
-      isAuthenticated: true,
-      isLoading: false,
-    });
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
-      ...user,
-      avatar: avatarUrl,
-      passport: '4510 123456',
-      city: 'Казань',
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-    });
-    renderProfile();
-
-    expect(screen.queryByRole('button', { name: 'Появится позже' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Заменить' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Удалить фото' })).toBeEnabled();
-    expect(fileInput()).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp');
-    expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', avatarUrl);
-
-    const passport = screen.getByLabelText('Паспорт');
-    expect(passport).toBeDisabled();
-    expect(passport).toHaveValue('4510 123456');
-    const caption = document.getElementById('profile-passport-later');
-    expect(caption).toHaveTextContent('Появится позже');
-    expect(caption?.closest('button')).toBeNull();
-    await waitFor(() => expect(caption).toBeVisible());
-    expect(passport).toHaveAccessibleDescription('Появится позже');
-    expect(passport).not.toHaveAttribute('placeholder', 'Пока не поддерживается');
-    expect(screen.queryByText('Пока не поддерживается')).not.toBeInTheDocument();
-
-    const email = screen.getByLabelText('Email');
-    expect(email).toBeDisabled();
-    expect(email).not.toHaveAccessibleDescription('Появится позже');
-    expect(email.parentElement?.parentElement).not.toHaveTextContent('Появится позже');
-
-    setField('Имя', 'Мария');
-    setField('Фамилия', 'Ковалева');
-    setField('Телефон', '+79991112233');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile).toHaveBeenCalledWith({
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-      city: 'Казань',
-    });
-    expect(updateProfile.mock.calls[0][0]).not.toHaveProperty('passport');
-  });
-
+  
   it('ТК-9 uploads or replaces a picture and refreshes the session without a second read', async () => {
     const gate = deferred<User>();
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockReturnValue(gate.promise);
@@ -504,7 +332,7 @@ describe('ProfilePage', () => {
     expect(uploadAvatar).toHaveBeenCalledWith(file);
     expect(deleteAvatar).not.toHaveBeenCalled();
 
-    gate.resolve({ ...user, avatar: MEDIA, city: 'Казань' });
+    gate.resolve({ ...user, avatar: MEDIA });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Заменить' })).toBeEnabled());
     expect(screen.getByRole('button', { name: 'Удалить фото' })).toBeEnabled();
@@ -540,14 +368,13 @@ describe('ProfilePage', () => {
 
   it('ТК-10 deletes the photo and shows initials without a second read', async () => {
     useAuthStore.setState({
-      user: { ...user, avatar: MEDIA, city: 'Казань' },
+      user: { ...user, avatar: MEDIA },
       isAuthenticated: true,
       isLoading: false,
     });
     const deleteAvatar = vi.spyOn(authApi, 'deleteAvatar').mockResolvedValue({
       ...user,
       avatar: undefined,
-      city: 'Казань',
     });
     const getMe = vi.spyOn(authApi, 'getMe');
     renderShell();
@@ -574,7 +401,6 @@ describe('ProfilePage', () => {
     setField('Имя', 'Мария');
     setField('Фамилия', 'Ковалева');
     setField('Телефон', '+79991112233');
-    setField('Город', 'Сочи');
     chooseFile(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
@@ -583,7 +409,6 @@ describe('ProfilePage', () => {
       firstName: 'Старое',
       lastName: 'Имя',
       phone: '',
-      city: 'Казань',
       avatar: MEDIA,
     });
 
@@ -591,7 +416,7 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     for (const image of screen.getAllByRole('img', { name: 'Анна Смирнова' })) {
       expect(image).toHaveAttribute('src', MEDIA);
     }
@@ -600,7 +425,6 @@ describe('ProfilePage', () => {
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '+79990001122',
-      city: '',
       avatar: MEDIA,
     });
 
@@ -609,7 +433,6 @@ describe('ProfilePage', () => {
       firstName: 'Старое',
       lastName: 'Имя',
       phone: '+70000000000',
-      city: 'Казань',
       avatar: undefined,
     });
     fireEvent.click(screen.getByRole('button', { name: 'Удалить фото' }));
@@ -620,12 +443,11 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '+79990001122',
-      city: '',
     });
     expect(useAuthStore.getState().user?.avatar).toBeUndefined();
 
@@ -634,7 +456,6 @@ describe('ProfilePage', () => {
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
     });
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
@@ -643,11 +464,10 @@ describe('ProfilePage', () => {
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
     });
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Мария Ковалева' })).toBeInTheDocument());
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
   });
 
   it('keeps the edited card and the newer avatar when save and avatar overlap', async () => {
@@ -660,7 +480,6 @@ describe('ProfilePage', () => {
     setField('Имя', 'Мария');
     setField('Фамилия', 'Ковалева');
     setField('Телефон', '+79991112233');
-    setField('Город', 'Сочи');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
     chooseFile(imageFile('face.jpg', 'image/jpeg'));
 
@@ -672,7 +491,6 @@ describe('ProfilePage', () => {
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '+79990001122',
-      city: '',
       avatar: MEDIA,
     });
     await waitFor(() =>
@@ -681,11 +499,10 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Анна',
       lastName: 'Смирнова',
-      city: '',
       avatar: MEDIA,
     });
 
@@ -694,26 +511,23 @@ describe('ProfilePage', () => {
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
       avatar: undefined,
     });
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', MEDIA);
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
       avatar: MEDIA,
     });
 
     const lateAvatar = deferred<User>();
     uploadAvatar.mockReturnValue(lateAvatar.promise);
-    setField('Город', 'Адлер');
     chooseFile(imageFile('next.png', 'image/png'));
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(2));
     lateAvatar.resolve({
@@ -721,7 +535,6 @@ describe('ProfilePage', () => {
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '',
-      city: 'Казань',
       avatar: `${MEDIA}-2`,
     });
 
@@ -729,12 +542,11 @@ describe('ProfilePage', () => {
       expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', `${MEDIA}-2`),
     );
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Город')).toHaveValue('Адлер');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
       avatar: `${MEDIA}-2`,
     });
   });
@@ -749,7 +561,6 @@ describe('ProfilePage', () => {
     setField('Имя', 'Мария');
     setField('Фамилия', 'Ковалева');
     setField('Телефон', '+79991112233');
-    setField('Город', 'Сочи');
     chooseFile(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
@@ -761,7 +572,6 @@ describe('ProfilePage', () => {
       firstName: 'Старое',
       lastName: 'Имя',
       phone: '',
-      city: 'Казань',
       avatar: MEDIA,
     });
     await waitFor(() =>
@@ -770,12 +580,11 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '+79990001122',
-      city: '',
       avatar: MEDIA,
     });
 
@@ -784,20 +593,18 @@ describe('ProfilePage', () => {
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
       avatar: undefined,
     });
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', MEDIA);
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
       lastName: 'Ковалева',
       phone: '+79991112233',
-      city: 'Сочи',
       avatar: MEDIA,
     });
   });
@@ -865,13 +672,12 @@ describe('ProfilePage', () => {
 
   it('ТК-13 shows the avatar fallback when upload fails without a file error', async () => {
     useAuthStore.setState({
-      user: { ...user, avatar: MEDIA, city: 'Сочи' },
+      user: { ...user, avatar: MEDIA },
       isAuthenticated: true,
       isLoading: false,
     });
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar');
     renderProfile();
-    setField('Город', 'Сочи');
 
     for (const error of [
       new Error('network'),
@@ -886,7 +692,7 @@ describe('ProfilePage', () => {
       expect(screen.queryByText('Upload failed upstream.')).not.toBeInTheDocument();
       expect(screen.queryByText('Forbidden.')).not.toBeInTheDocument();
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
-      expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+      expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Заменить' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Удалить фото' })).toBeEnabled();
     }
@@ -894,13 +700,12 @@ describe('ProfilePage', () => {
 
   it('ТК-14 keeps the photo when delete fails', async () => {
     useAuthStore.setState({
-      user: { ...user, avatar: MEDIA, city: 'Сочи' },
+      user: { ...user, avatar: MEDIA },
       isAuthenticated: true,
       isLoading: false,
     });
     const deleteAvatar = vi.spyOn(authApi, 'deleteAvatar');
     renderProfile();
-    setField('Город', 'Сочи');
 
     for (const error of [
       new Error('network'),
@@ -916,7 +721,7 @@ describe('ProfilePage', () => {
       expect(screen.queryByText('Forbidden.')).not.toBeInTheDocument();
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
       expect(useAuthStore.getState().user?.avatar).toBe(MEDIA);
-      expect(screen.getByLabelText('Город')).toHaveValue('Сочи');
+      expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
       expect(toast.success).not.toHaveBeenCalled();
       expect(screen.getByRole('button', { name: 'Заменить' })).toBeEnabled();
       expect(screen.getByRole('button', { name: 'Удалить фото' })).toBeEnabled();
@@ -936,12 +741,12 @@ describe('ProfilePage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
     });
-    expect(screen.getByLabelText('Город')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
     view.unmount();
 
     renderProfile('/dashboard/profile');
-    expect(screen.getByLabelText('Город')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.queryByLabelText('Текущий пароль')).not.toBeInTheDocument();
     expect(screen.getByTestId('location').textContent).not.toContain(user.id);
   });
@@ -974,403 +779,17 @@ describe('ProfilePage', () => {
     expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeDisabled();
   });
 
-  it('ТК-19 keeps email notifications inactive across a remount', () => {
-    const post = vi.spyOn(apiClient, 'post');
-    const patch = vi.spyOn(apiClient, 'patch');
-    const first = renderProfile('/dashboard/profile?tab=settings');
-    const toggle = screen.getByRole('checkbox', {
-      name: 'Уведомления на email о новых сообщениях',
-    });
-    expect(toggle).toBeDisabled();
-    expect(toggle).not.toBeChecked();
-    expect(screen.getByRole('region', { name: 'Уведомления' })).toHaveTextContent('Появится позже');
-    fireEvent.click(toggle);
-    expect(toggle).not.toBeChecked();
-    expect(post).not.toHaveBeenCalled();
-    expect(patch).not.toHaveBeenCalled();
-    first.unmount();
-
-    renderProfile('/dashboard/profile?tab=settings');
-    const again = screen.getByRole('checkbox', {
-      name: 'Уведомления на email о новых сообщениях',
-    });
-    expect(again).toBeDisabled();
-    expect(again).not.toBeChecked();
-  });
-
-  it('ТК-20 shows a single inactive visibility caption', () => {
-    renderProfile('/dashboard/profile?tab=settings');
-    const visibility = screen.getByRole('region', { name: 'Видимость' });
-    expect(visibility).toHaveAttribute('aria-disabled', 'true');
-    expect(within(visibility).getByText('Появится позже')).toBeInTheDocument();
-    expect(within(visibility).queryByText('Контакты')).not.toBeInTheDocument();
-    expect(within(visibility).queryByText('О себе')).not.toBeInTheDocument();
-    expect(within(visibility).queryByRole('radio')).not.toBeInTheDocument();
-    expect(within(visibility).queryByRole('combobox')).not.toBeInTheDocument();
-    expect(screen.queryByText('Контакты')).not.toBeInTheDocument();
-    expect(screen.queryByText('О себе')).not.toBeInTheDocument();
-  });
-
-  it('профиль менеджера ТК-1: клиент не показывает поля менеджера и не отправляет их', async () => {
-    signIn({
-      ...user,
-      role: 'client',
-      about: 'Гид',
-      tourismSince: 2015,
-      languages: ['ru', 'en'],
-      specialization: 'Азия',
-    });
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
-      ...user,
-      firstName: 'Мария',
-    });
-    renderProfile('/dashboard/profile');
-
-    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
-    expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
-    expect(screen.getByTestId('location').textContent).not.toContain(user.id);
-    for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
-      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
-    }
-    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
-
-    setField('Имя', 'Мария');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    const body = updateProfile.mock.calls[0][0];
-    expect(body).toEqual({
-      firstName: 'Мария',
-      lastName: 'Смирнова',
-      phone: '+79990001122',
-      city: '',
-    });
-    for (const key of [
-      'about',
-      'tourismSince',
-      'languages',
-      'specialization',
-      'email',
-      'role',
-      'passport',
-      'avatarUrl',
-    ]) {
-      expect(body).not.toHaveProperty(key);
-    }
-
-    fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
-    await waitFor(() => {
-      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile?tab=settings');
-    });
-    expect(screen.queryByLabelText('О себе')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
-  });
-
-  it('профиль менеджера ТК-2: менеджер и администратор видят четыре поля и неактивный предпросмотр', async () => {
-    for (const role of ['manager', 'admin'] as const) {
-      signIn({ ...managerUser, role, avatar: undefined });
-      const view = renderShell('/dashboard/profile');
-
-      const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
-      expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
-      expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
-      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
-      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
-
-      expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
-      expect(screen.getByLabelText('Фамилия')).toHaveValue('Смирнова');
-      expect(screen.getByLabelText('Телефон')).toHaveValue('+79990001122');
-      expect(screen.getByLabelText('Город')).toHaveValue('');
-      const email = screen.getByLabelText('Email');
-      expect(email).toBeDisabled();
-      expect(email).toHaveValue('anna@example.com');
-      expect(email).not.toHaveAccessibleDescription('Появится позже');
-      const passport = screen.getByLabelText('Паспорт');
-      expect(passport).toBeDisabled();
-      expect(passport).toHaveAccessibleDescription('Появится позже');
-
-      expect(screen.getByLabelText('О себе')).toHaveValue('Гид');
-      expect(screen.getByText('осталось 997 из 1000')).toBeInTheDocument();
-      expect(screen.getByLabelText('В туризме с')).toHaveValue('2015');
-      expect(selectedLanguageCodes().sort()).toEqual(['en', 'ru']);
-      expect(screen.getByLabelText('Специализация')).toHaveValue('Азия');
-
-      const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
-      expect(preview).toBeEnabled();
-      expect(preview).not.toHaveAccessibleDescription('Появится позже');
-
-      const header = screen.getByRole('banner');
-      expect(within(header).getByText('Анна')).toBeInTheDocument();
-      expect(within(header).getByText('АС')).toBeInTheDocument();
-      expect(within(header).queryByText('Гид')).not.toBeInTheDocument();
-      expect(within(header).queryByText('О себе')).not.toBeInTheDocument();
-      expect(within(header).queryByText('2015')).not.toBeInTheDocument();
-      expect(within(header).queryByText('Азия')).not.toBeInTheDocument();
-      expect(within(header).queryByText('Языки')).not.toBeInTheDocument();
-
-      const sidebar = screen.getByRole('complementary');
-      expect(within(sidebar).getByText('Анна Смирнова')).toBeInTheDocument();
-      expect(within(sidebar).getByText('АС')).toBeInTheDocument();
-      expect(within(sidebar).queryByText('Гид')).not.toBeInTheDocument();
-      expect(within(sidebar).queryByText('О себе')).not.toBeInTheDocument();
-      expect(within(sidebar).queryByText('2015')).not.toBeInTheDocument();
-      expect(within(sidebar).queryByText('Азия')).not.toBeInTheDocument();
-      expect(within(sidebar).queryByText('Специализация')).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
-      await waitFor(() => {
-        expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile?tab=settings');
-      });
-      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
-      for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
-        expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
-      }
-      expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
-
-      view.unmount();
-    }
-  });
-
-  it('профиль менеджера ТК-4: одно сохранение шлёт общие поля и поля менеджера', async () => {
-    signIn(managerUser);
-    const gate = deferred<User>();
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockReturnValue(gate.promise);
-    const getMe = vi.spyOn(authApi, 'getMe');
-    renderShell();
-
-    setField('Имя', '  Мария  ');
-    setField('Фамилия', '  Ковалева  ');
-    setField('Телефон', '  +79991234567  ');
-    setField('Город', '  Казань  ');
-    setField('О себе', '  Гид  ');
-    setField('Специализация', '  Азия  ');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
-    const body = updateProfile.mock.calls[0][0];
-    expect(body).toMatchObject({
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991234567',
-      city: 'Казань',
-      about: 'Гид',
-      tourismSince: 2015,
-      specialization: 'Азия',
-    });
-    expect([...(body.languages ?? [])].sort()).toEqual(['en', 'ru']);
-    for (const key of ['email', 'role', 'passport', 'avatarUrl', 'avatar']) {
-      expect(body).not.toHaveProperty(key);
-    }
-
-    gate.resolve({
-      ...managerUser,
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991234567',
-      city: 'Казань',
-      about: 'Гид',
-      tourismSince: 2015,
-      languages: ['ru', 'en'],
-      specialization: 'Азия',
-    });
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
-    expect(useAuthStore.getState().user).toMatchObject({ firstName: 'Мария', about: 'Гид' });
-    const header = screen.getByRole('banner');
-    expect(within(header).getByText('Мария')).toBeInTheDocument();
-    expect(within(header).queryByText('Гид')).not.toBeInTheDocument();
-    expect(getMe).not.toHaveBeenCalled();
-  });
-
-  it('профиль менеджера ТК-5: пустые текст, языки и специализация уходят, пустой год не ставится', async () => {
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
-      ...managerUser,
-      about: '',
-      languages: [],
-      specialization: '',
-      tourismSince: 2015,
-    });
-    renderProfile();
-
-    setField('О себе', '');
-    setField('Специализация', '');
-    setField('В туризме с', '');
-    const select = screen.getByLabelText('Языки');
-    await userEvent.deselectOptions(select, ['ru', 'en']);
-
-    expect(screen.getByText('осталось 1000 из 1000')).toBeInTheDocument();
-    expect(screen.queryByText(ABOUT_LIMIT_ERROR)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    const body = updateProfile.mock.calls[0][0];
-    expect(body.about).toBe('');
-    expect(body.specialization).toBe('');
-    expect(body.languages).toEqual([]);
-    expect(body).not.toHaveProperty('tourismSince');
-    expect('about' in body).toBe(true);
-    expect('specialization' in body).toBe(true);
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
-    expect(screen.getByLabelText('О себе')).toHaveValue('');
-    expect(screen.getByLabelText('Специализация')).toHaveValue('');
-    expect(selectedLanguageCodes()).toEqual([]);
-    expect(screen.getByLabelText('В туризме с')).toHaveValue('2015');
-  });
-
-  it('профиль менеджера ТК-6: счётчик «О себе» и отказ длиннее 1000', async () => {
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockImplementation(async (payload) => ({
-      ...managerUser,
-      ...payload,
-    }));
-    renderProfile();
-
-    const exactly = 'я'.repeat(1000);
-    setField('О себе', exactly);
-    expect(screen.getByText('осталось 0 из 1000')).toBeInTheDocument();
-    expect(screen.queryByText(ABOUT_LIMIT_ERROR)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile.mock.calls[0][0].about).toBe(exactly);
-
-    setField('О себе', 'я'.repeat(1001));
-    setField('В туризме с', '1949');
-    expect(screen.getByText('осталось 0 из 1000')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    expect(updateProfile).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(ABOUT_LIMIT_ERROR)).toBeInTheDocument();
-    expect(screen.getByText(YEAR_ERROR)).toBeInTheDocument();
-
-    setField('О себе', exactly);
-    setField('В туризме с', '2015');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(2));
-    expect(updateProfile.mock.calls[1][0].about).toBe(exactly);
-  });
-
-  it('профиль менеджера ТК-7: специализация до 300 символов, пробелы уходят пустой строкой', async () => {
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockImplementation(async (payload) => ({
-      ...managerUser,
-      ...payload,
-      tourismSince: payload.tourismSince ?? managerUser.tourismSince,
-    }));
-    renderProfile();
-
-    const fit = 'я'.repeat(300);
-    setField('Специализация', ` ${fit} `);
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile.mock.calls[0][0].specialization).toBe(fit);
-    expect(screen.queryByText(SPECIALIZATION_LIMIT_ERROR)).not.toBeInTheDocument();
-
-    setField('Специализация', ` ${'я'.repeat(301)} `);
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    expect(updateProfile).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(SPECIALIZATION_LIMIT_ERROR)).toBeInTheDocument();
-
-    setField('Специализация', '   ');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(2));
-    expect(updateProfile.mock.calls[1][0].specialization).toBe('');
-    expect(screen.queryByText(SPECIALIZATION_LIMIT_ERROR)).not.toBeInTheDocument();
-  });
-
-  it('профиль менеджера ТК-8: год от 1950 до текущего UTC, пустой год не стирает сохранённый', async () => {
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue(managerUser);
-    renderProfile();
-    const current = new Date().getUTCFullYear();
-
-    for (const year of ['1949', String(current + 1)]) {
-      setField('В туризме с', year);
-      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-      expect(updateProfile).not.toHaveBeenCalled();
-      expect(screen.getByText(YEAR_ERROR)).toBeInTheDocument();
-      expect(screen.queryByText(/1950/)).not.toBeInTheDocument();
-    }
-
-    for (const year of [1950, current]) {
-      setField('В туризме с', String(year));
-      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-      await waitFor(() => expect(updateProfile).toHaveBeenCalled());
-      expect(updateProfile.mock.lastCall?.[0].tourismSince).toBe(year);
-      updateProfile.mockClear();
-    }
-
-    setField('В туризме с', '   ');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile.mock.calls[0][0]).not.toHaveProperty('tourismSince');
-  });
-
-  it('профиль менеджера ТК-9: языки — коды ISO 639-1, без повторов и без русских названий', async () => {
-    const codes = identityLanguageCodes();
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockImplementation(async (payload) => ({
-      ...managerUser,
-      ...payload,
-      tourismSince: payload.tourismSince ?? managerUser.tourismSince,
-    }));
-    const view = renderProfile();
-
-    const select = screen.getByLabelText('Языки');
-    await userEvent.click(select);
-    const options = within(select).getAllByRole('option');
-    expect(options.map((option) => option.textContent)).toEqual(codes);
-    expect(options.map((option) => (option as HTMLOptionElement).value)).toEqual(codes);
-    expect(options.some((option) => /[А-Яа-яЁё]/.test(option.textContent ?? ''))).toBe(false);
-    expect(selectedLanguageCodes().sort()).toEqual(['en', 'ru']);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect([...(updateProfile.mock.calls[0][0].languages ?? [])].sort()).toEqual(['en', 'ru']);
-    view.unmount();
-
-    signIn({ ...managerUser, languages: ['ru', 'ru', 'EN'] });
-    updateProfile.mockClear();
-    const duplicate = renderProfile();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    const sent = [...(updateProfile.mock.calls[0][0].languages ?? [])];
-    expect(sent.map((code) => code.toLowerCase()).sort()).toEqual(['en', 'ru']);
-    expect(new Set(sent).size).toBe(sent.length);
-    duplicate.unmount();
-
-    signIn({ ...managerUser, languages: [] });
-    updateProfile.mockClear();
-    renderProfile();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile.mock.calls[0][0].languages).toEqual([]);
-  });
-
-  it('профиль менеджера ТК-10: код вне ISO 639-1 не уходит и пишется у языков', () => {
-    const updateProfile = vi.spyOn(authApi, 'updateProfile');
-
-    signIn({ ...managerUser, languages: ['xx'] });
-    const first = renderProfile();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    expect(updateProfile).not.toHaveBeenCalled();
-    expect(screen.getByText(languageError('xx'))).toBeInTheDocument();
-    expect(screen.getByLabelText('О себе').parentElement).not.toHaveTextContent(languageError('xx'));
-    first.unmount();
-
-    signIn({ ...managerUser, languages: ['xx', 'qq'] });
-    renderProfile();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    expect(updateProfile).not.toHaveBeenCalled();
-    expect(screen.getByText(languageError('xx'))).toBeInTheDocument();
-    expect(screen.getByText(languageError('qq'))).toBeInTheDocument();
-    expect(screen.getByLabelText('О себе').parentElement).not.toHaveTextContent('ISO 639-1');
-  });
-
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   it('профиль менеджера ТК-11: неверный телефон блокирует сохранение целиком', () => {
     signIn(managerUser);
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
@@ -1382,135 +801,14 @@ describe('ProfilePage', () => {
     expect(screen.getAllByText(PHONE_E164_ERROR)).toHaveLength(1);
     const phone = screen.getByLabelText('Телефон');
     expect(phone.parentElement?.parentElement).toHaveTextContent(PHONE_E164_ERROR);
-    for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация']) {
-      expect(screen.getByLabelText(label).parentElement).not.toHaveTextContent(PHONE_E164_ERROR);
+    for (const label of ['О себе', 'В туризме с', 'Языки', 'Специализация', 'Город', 'Паспорт']) {
+      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
     }
   });
 
-  it('профиль менеджера ТК-12: русские строки 400 стоят под своими полями', async () => {
-    signIn(managerUser);
-    vi.spyOn(authApi, 'updateProfile').mockRejectedValue({
-      response: {
-        status: 400,
-        data: {
-          detail: 'One or more validation errors occurred.',
-          errors: {
-            about: [ABOUT_LIMIT_ERROR],
-            tourismSince: [YEAR_ERROR],
-            languages: [languageError('xx'), languageError('qq')],
-            specialization: [SPECIALIZATION_LIMIT_ERROR],
-            firstName: ['Укажите имя длиной от 1 до 100 символов.'],
-          },
-        },
-      },
-    });
-    renderProfile();
-    setField('Имя', 'Мария');
-    setField('О себе', 'Текст о себе');
-    setField('В туризме с', '2016');
-    setField('Специализация', 'Европа');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    expect(await screen.findByText(ABOUT_LIMIT_ERROR)).toBeInTheDocument();
-    expect(screen.getByText(YEAR_ERROR)).toBeInTheDocument();
-    expect(screen.getByText(languageError('xx'))).toBeInTheDocument();
-    expect(screen.getByText(languageError('qq'))).toBeInTheDocument();
-    expect(screen.getByText(SPECIALIZATION_LIMIT_ERROR)).toBeInTheDocument();
-    expect(screen.getByText('Укажите имя длиной от 1 до 100 символов.')).toBeInTheDocument();
-    expect(screen.queryByText('One or more validation errors occurred.')).not.toBeInTheDocument();
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('О себе')).toHaveValue('Текст о себе');
-    expect(screen.getByLabelText('В туризме с')).toHaveValue('2016');
-    expect(screen.getByLabelText('Специализация')).toHaveValue('Европа');
-    expect(selectedLanguageCodes().sort()).toEqual(['en', 'ru']);
-  });
-
-  it('профиль менеджера ТК-13: сеть и 400 без русской строки оставляют карточку', async () => {
-    signIn(managerUser);
-    const updateProfile = vi.spyOn(authApi, 'updateProfile');
-    updateProfile.mockRejectedValueOnce(new Error('network'));
-    renderProfile();
-    setField('О себе', 'Черновик');
-    setField('Специализация', 'Азия');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Не удалось выполнить запрос. Попробуйте ещё раз.',
-    );
-    expect(screen.getByLabelText('О себе')).toHaveValue('Черновик');
-    expect(screen.getByLabelText('Специализация')).toHaveValue('Азия');
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
-
-    updateProfile.mockRejectedValueOnce({
-      response: {
-        status: 400,
-        data: { detail: 'One or more validation errors occurred.' },
-      },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Не удалось выполнить запрос. Попробуйте ещё раз.',
-    );
-    expect(screen.queryByText('One or more validation errors occurred.')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('О себе')).toHaveValue('Черновик');
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
-  });
-
-  it('профиль менеджера ТК-15: предпросмотр открывает сохранённую карточку тем же GET', async () => {
-    const get = vi.spyOn(apiClient, 'get').mockImplementation(async (url) => {
-      if (String(url) === `/users/${user.id}/manager-card`) {
-        return {
-          data: {
-            id: user.id,
-            displayName: 'Анна Смирнова',
-            about: 'сохранено',
-          },
-        };
-      }
-      throw new Error(`unexpected ${url}`);
-    });
-
-    for (const role of ['manager', 'admin'] as const) {
-      signIn({ ...managerUser, role, about: 'сохранено' });
-      const view = renderProfile();
-      setField('О себе', 'черновик');
-
-      const preview = screen.getByRole('button', { name: 'Как меня видит клиент' });
-      expect(preview).toBeEnabled();
-      expect(preview).not.toHaveAccessibleDescription('Появится позже');
-      fireEvent.click(preview);
-
-      const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
-      expect(within(dialog).getByText('сохранено')).toBeInTheDocument();
-      expect(within(dialog).queryByText('черновик')).not.toBeInTheDocument();
-      expect(get).toHaveBeenCalledWith(`/users/${user.id}/manager-card`);
-      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
-      expect(screen.getByTestId('location').textContent).not.toContain(user.id);
-      expect(screen.getByLabelText('О себе')).toHaveValue('черновик');
-
-      fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }));
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      });
-      fireEvent.click(screen.getByRole('button', { name: 'Настройки' }));
-      await waitFor(() => {
-        expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
-      });
-      expect(within(screen.getByRole('region', { name: 'Пароль' })).getByText('Появится позже')).toBeInTheDocument();
-      view.unmount();
-      get.mockClear();
-    }
-
-    signIn({ ...user, role: 'client' });
-    renderProfile();
-    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
-    expect(get).not.toHaveBeenCalled();
-    get.mockRestore();
-  });
-
+  
+  
+  
   it('профиль менеджера ТК-16: смена пароля остаётся неактивной', async () => {
     signIn(managerUser);
     const post = vi.spyOn(apiClient, 'post');
@@ -1537,67 +835,8 @@ describe('ProfilePage', () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('профиль менеджера ТК-17: у менеджера два неактивных письма, у клиента одно', () => {
-    const post = vi.spyOn(apiClient, 'post');
-    const patch = vi.spyOn(apiClient, 'patch');
-
-    for (const role of ['manager', 'admin'] as const) {
-      signIn({ ...user, role });
-      const view = renderProfile('/dashboard/profile?tab=settings');
-      const notes = screen.getByRole('region', { name: 'Уведомления' });
-      const applications = within(notes).getByRole('checkbox', { name: 'Письмо о новой заявке' });
-      const messages = within(notes).getByRole('checkbox', { name: 'Письмо о новом сообщении' });
-      expect(applications).toBeDisabled();
-      expect(applications).not.toBeChecked();
-      expect(messages).toBeDisabled();
-      expect(messages).not.toBeChecked();
-      expect(
-        within(notes).queryByRole('checkbox', { name: 'Уведомления на email о новых сообщениях' }),
-      ).not.toBeInTheDocument();
-      expect(notes).toHaveTextContent('Появится позже');
-      fireEvent.click(applications);
-      fireEvent.click(messages);
-      expect(applications).not.toBeChecked();
-      expect(messages).not.toBeChecked();
-      expect(post).not.toHaveBeenCalled();
-      expect(patch).not.toHaveBeenCalled();
-      view.unmount();
-
-      const againView = renderProfile('/dashboard/profile?tab=settings');
-      const again = screen.getByRole('region', { name: 'Уведомления' });
-      expect(within(again).getByRole('checkbox', { name: 'Письмо о новой заявке' })).toBeDisabled();
-      expect(within(again).getByRole('checkbox', { name: 'Письмо о новой заявке' })).not.toBeChecked();
-      expect(within(again).getByRole('checkbox', { name: 'Письмо о новом сообщении' })).toBeDisabled();
-      expect(within(again).getByRole('checkbox', { name: 'Письмо о новом сообщении' })).not.toBeChecked();
-      againView.unmount();
-    }
-
-    signIn({ ...user, role: 'client' });
-    renderProfile('/dashboard/profile?tab=settings');
-    const clientNotes = screen.getByRole('region', { name: 'Уведомления' });
-    const clientToggle = within(clientNotes).getByRole('checkbox', {
-      name: 'Уведомления на email о новых сообщениях',
-    });
-    expect(clientToggle).toBeDisabled();
-    expect(clientToggle).not.toBeChecked();
-    expect(clientNotes).toHaveTextContent('Появится позже');
-    expect(within(clientNotes).queryByRole('checkbox', { name: 'Письмо о новой заявке' })).not.toBeInTheDocument();
-    expect(within(clientNotes).queryByRole('checkbox', { name: 'Письмо о новом сообщении' })).not.toBeInTheDocument();
+  
   });
-
-  it('профиль менеджера ТК-18: видимость остаётся одной неактивной подписью', () => {
-    signIn(managerUser);
-    renderProfile('/dashboard/profile?tab=settings');
-    const visibility = screen.getByRole('region', { name: 'Видимость' });
-    expect(visibility).toHaveAttribute('aria-disabled', 'true');
-    expect(within(visibility).getByText('Появится позже')).toBeInTheDocument();
-    expect(within(visibility).queryByText('Контакты')).not.toBeInTheDocument();
-    expect(within(visibility).queryByText('О себе')).not.toBeInTheDocument();
-    expect(within(visibility).queryByRole('radio')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('О себе')).not.toBeInTheDocument();
-    expect(screen.queryByText('Контакты')).not.toBeInTheDocument();
-  });
-});
 
 describe('ProfilePage session', () => {
   const originalAdapter = apiClient.defaults.adapter;
@@ -1628,12 +867,11 @@ describe('ProfilePage session', () => {
     };
     renderProfile();
     setField('Телефон', '   ');
-    setField('Город', '   ');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(screen.getByLabelText('Телефон')).toHaveValue(''));
-    expect(screen.getByLabelText('Город')).toHaveValue('');
-    expect(useAuthStore.getState().user).toMatchObject({ phone: '', city: '' });
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
+    expect(useAuthStore.getState().user).toMatchObject({ phone: '' });
   });
 
   it('ТК-15 retries a profile save after refresh and treats the second 200 as success', async () => {
@@ -1652,7 +890,6 @@ describe('ProfilePage session', () => {
           ...profileDto,
           firstName: 'Мария',
           lastName: 'Ковалева',
-          city: 'Казань',
         });
       }
       throw httpError(config, 404);
@@ -1664,7 +901,7 @@ describe('ProfilePage session', () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
     expect(refresh).toBe(1);
     expect(patches).toBe(2);
-    expect(useAuthStore.getState().user).toMatchObject({ firstName: 'Мария', city: 'Казань' });
+    expect(useAuthStore.getState().user).toMatchObject({ firstName: 'Мария' });
     expect(screen.getByRole('heading', { name: 'Мария Ковалева' })).toBeInTheDocument();
   });
 
@@ -1740,7 +977,7 @@ describe('ProfilePage session', () => {
         return httpResponse(config, 200, { ...profileDto, avatarUrl: null });
       }
       if (url === '/auth/me' && method === 'patch') {
-        return httpResponse(config, 200, { ...profileDto, city: 'Сочи' });
+        return httpResponse(config, 200, { ...profileDto });
       }
       throw httpError(config, 404);
     };
@@ -1763,58 +1000,7 @@ describe('ProfilePage session', () => {
     expect(calls.some((call) => call.includes(user.id))).toBe(false);
   });
 
-  it('профиль менеджера ТК-19: повтор PATCH после refresh сохраняет поля менеджера', async () => {
-    signIn(managerUser);
-    let patches = 0;
-    let refresh = 0;
-    const bodies: Record<string, unknown>[] = [];
-    apiClient.defaults.adapter = async (config) => {
-      const url = config.url ?? '';
-      if (url.includes('/auth/refresh')) {
-        refresh += 1;
-        return httpResponse(config, 200, { success: true });
-      }
-      if (url === '/auth/me' && config.method === 'patch') {
-        patches += 1;
-        const body = patchBody(config);
-        bodies.push(body);
-        if (patches === 1) throw httpError(config, 401);
-        return httpResponse(config, 200, {
-          ...profileDto,
-          role: 'Manager',
-          firstName: 'Мария',
-          about: 'Гид',
-          tourismSince: 2015,
-          languages: ['ru', 'en'],
-          specialization: 'Азия',
-        });
-      }
-      throw httpError(config, 404);
-    };
-
-    renderProfile();
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
-    expect(refresh).toBe(1);
-    expect(patches).toBe(2);
-    expect(bodies).toHaveLength(2);
-    for (const body of bodies) {
-      expect(body.about).toBe('Гид');
-      expect(body.tourismSince).toBe(2015);
-      expect(body.languages).toEqual(['ru', 'en']);
-      expect(body.specialization).toBe('Азия');
-    }
-    expect(useAuthStore.getState().user).toMatchObject({
-      firstName: 'Мария',
-      about: 'Гид',
-      tourismSince: 2015,
-      languages: ['ru', 'en'],
-      specialization: 'Азия',
-      role: 'manager',
-    });
-  });
-
+  
   it('профиль менеджера ТК-19: неудачный refresh не показывает чужой профиль', async () => {
     signIn(managerUser);
     apiClient.defaults.adapter = async (config) => {
@@ -1830,7 +1016,6 @@ describe('ProfilePage session', () => {
           firstName: 'Чужой',
           lastName: 'Профиль',
           role: 'Manager',
-          about: 'Чужой текст',
         });
       }
       throw httpError(config, 404);

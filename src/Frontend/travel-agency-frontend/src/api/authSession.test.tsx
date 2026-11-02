@@ -26,7 +26,6 @@ const profile = {
   firstName: 'John',
   lastName: 'Doe',
   phone: '',
-  city: '',
   role: 'Client',
   createdAt: '2025-01-01T00:00:00Z',
 };
@@ -320,7 +319,6 @@ describe('auth session refresh', () => {
         firstName: 'John',
         lastName: 'Doe',
         phone: '',
-        city: '',
         role: 'client',
         createdAt: '2025-01-01T00:00:00Z',
       },
