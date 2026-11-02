@@ -1,5 +1,5 @@
 # 07 Feature architecture (column Архитектура)
-**Entry:** Аналитика passed its gate, including the recorded size ([Аналитика](06-feature-analytics.md)). The architect refuses the column otherwise.
+**Entry:** Аналитика passed its gate, including the recorded size ([Аналитика](06-feature-analytics.md)). The architect refuses the column when size is missing, except an in-flight item that keeps the full route without a size ([in-flight](README.md#gates)).
 
 **Who:** one cloud agent with the [architect brief](../briefs/architect.md); the orchestrator reviews and publishes. On Малая the same run also writes «Тест-кейсы» to the [test-case bar](08-test-cases.md). A second test-designer launch is only for Крупная.
 

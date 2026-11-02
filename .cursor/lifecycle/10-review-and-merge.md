@@ -22,7 +22,7 @@ On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting o
 - Confirm every bot finding is answered, no critical defect remains, scope matches the page and the epic problem, formats and secrets pass ([PR](../elements/git/pull-requests.md), [security](../rules/security.mdc)).
 - Verdict: [deliverable review](../templates/agents/deliverable-review.md). A gap: reply to the same agent (steer) and, in the same turn, set `Agent` to the new run, `Waiting on` = `agent` (the agent is the wait here; [cloud agents](../elements/cloud-agents.md#acceptance)), `Next` = wait for the new ready report. Back to `none` and full review only on that finish.
 - Green CI and «Secret scan» ([CI/CD](../elements/ci-cd.md)). Do not merge while either is red or still running.
-- The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge.
+- The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge. Малая that names a page also includes the draft text in «Документация»; a name without the draft blocks merge.
 - «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is open.
 
 ## 3. Escalation review

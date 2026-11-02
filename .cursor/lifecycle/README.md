@@ -10,8 +10,8 @@ Owner idea / roadmap
   → Feature, size recorded at Аналитика ([feature analytics](06-feature-analytics.md#size)):
        Крупная: Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово
        Малая:   Очередь → Аналитика → Архитектура (тест-кейсы в том же шаге) → Разработка → Приёмка → Готово
-             `Doc-`: Малая, черновик в PR, публикация сразу после слияния; Крупная, черновик после слияния.
-             Готово в обоих случаях только когда названные страницы `Doc-` актуальны (или «вики не затронута»)
+             `Doc-`: Малая, draft in the PR, published in the merge turn; Крупная, draft after merge.
+             Готово only when every named Doc- page is current, or the PR says «вики не затронута».
   → Epic done → STOP: owner demo in Демо → next epic pick
 ```
 Interrupts: Удержание (long work-stream pause). Owner questions: pause in place (same column) + [memory](../elements/memory.md). Демо = epic owner demo only ([epic demo](13-epic-acceptance.md)); features never use Демо. Per-transition deliverable review stays an FSM rule (not a column). Bugs and backlog: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md), [memory](../elements/memory.md).
