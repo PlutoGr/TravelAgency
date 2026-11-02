@@ -1,0 +1,16 @@
+---
+description: Secrets policy and pre-push checks (no secret values here)
+alwaysApply: true
+---
+# Security and secrets
+Repo and wiki are public: pushed means public forever.
+
+- Never print, echo, log, commit or paste secrets: passwords, tokens (`ghp_`, `github_pat_`, `sk-`, `AKIA…`), JWT signing keys, service-to-service tokens, S3/MinIO keys, connection strings with passwords, `*.pem`, `*.key`, `*.pfx`, `id_rsa`, `id_ed25519`, htpasswd, `.env` contents, personal emails and phones, server credentials.
+- Use a secret only by path or variable inside a command, never in output or a URL. Never ask for one in chat.
+- Allowed in the repo: variable names, placeholders (`CHANGE_ME`, `<your-password>`, angle-bracket stubs like `<POSTGRES_PASSWORD>`), `@example.com` addresses. The dev server address and dev domain may be published.
+- Where values live: server `.env`, GitHub Secrets (environment `dev`), local `dotnet user-secrets`, box secrets directory (never print, change or copy). Exact paths: box-only ops file.
+- Test-key allowlist: `.gitleaks.toml`, exact values only, never whole folders.
+- Custom gitleaks rule `connection-string-password` flags password keys in connection strings. Allowed: env substitutions, angle-bracket stubs, explicit stubs (`CHANGE_ME`, `REPLACE_...`, `your-...`). A weak literal password still matches.
+- Before every push: `gitleaks git --redact .`. Wiki pushes add `gitleaks dir --redact .` ([wiki push checklist](../elements/wiki/README.md#push-checklist)).
+- Suspected leak: rotate first, then remove, report at once. Deleting without rotating is not a fix.
+- Auth errors, host-key mismatch, safety blocks: do not work around; report.

@@ -1,0 +1,15 @@
+# 11 Deploy and acceptance on dev (column Приёмка)
+**Entry:** merged PR and a green «Deploy to dev» whose deployed sha includes the merge; applies to a feature, a bug-feature, or a non-product issue whose criteria need a dev check (other non-product issues close from Разработка, [non-product work](non-product-work.md)). The «Deploy to dev» webhook (routine «TravelAgency CI/CD») is the wake ([Deploy wait](events.md#deploy-wait)); the memory row's match sha decides the advance, then set `статус: приёмка`. A red Deploy keeps the row waiting. A later rollback that no longer contains the row's match sha sends the issue back to Разработка and restores Приёмка when redeployed; both are defined once in the [row lifecycle](../elements/memory.md#row-lifecycle).
+
+**Who:** the orchestrator (dev access). Not a cloud launch. The owner may spot-check a major feature; the orchestrator still owns the acceptance comment and the close.
+
+**Steps**
+1. Run the feature's manual and e2e cases (for a bug-feature, its cases) plus a short smoke (login, catalog, booking). Check by API or curl first; a browser only for what must be seen. Dev credentials only by file path, never printed.
+2. Post one [acceptance comment](../templates/github/acceptance-comment.md) listing cases passed or failed by id.
+3. Tiny miss (typo, or a 500 caused by a typo): fix it inside this feature (developer launch, same route through review and merge); stay in Приёмка until the redeploy passes. Memory: the fix run in `Agent` with `Waiting on` = `agent` until it reports ready; after its merge `Waiting on` = `Deploy` with `fix` set in the [Sha cell](../elements/memory.md#sha-cell); acceptance continues only when the deployed sha contains the fix. One `Agent` slot per issue ([row lifecycle](../elements/memory.md#row-lifecycle)).
+4. Substantial miss (add or remove a field, change a screen, change a business rule): open a bug-feature linked to this feature ([bugs](bugs.md)) and take it next. This issue stays open in Приёмка until that bug-feature is Готово and the remaining cases pass here; each issue closes on its own gate. Memory: `Waiting on` = `issue #NN` (the bug-feature), `Next` = resume acceptance of this issue; the close of #NN resumes it ([done](../elements/board/columns/done.md)). A run launched meanwhile on this issue (for example its `Doc-` draft) goes only in `Agent`; if it blocks on an owner question, the `issue #NN` wait and this `Next` stay ([row lifecycle](../elements/memory.md#row-lifecycle)).
+5. Pass: when the PR named a `Doc-` page, finish and publish it ([Doc- after merge](12-docs-after-merge.md)); its draft may already exist from the merge. When the PR says «вики не затронута», close at once.
+
+**Exit gate:** all cases pass and either the named `Doc-` page is published or the PR «Документация» says «вики не затронута»; then close by the [close procedure](../elements/board/columns/done.md) in the same turn.
+
+Later environments: when test and prod exist, a release stage is added here (promotion rules, smoke per environment) as an owner-approved rules change.

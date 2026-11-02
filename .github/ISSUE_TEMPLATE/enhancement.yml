@@ -6,10 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
+        Фича продукта: колонки Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово. Страница `Feature-`. Родитель: эпик. Стадия равна метке `статус:*`, на вики её не дублировать.
         Заголовок: `<тип>(<сервис>): …` (`разработка`, реже `аналитика` / `инфраструктура`).
         Сервисы: `чат`, `каталог`, `бронирование`, `identity`, `медиа`, `шлюз`, `фронт`, `ci`, `деплой`, `бд`, `общее`, `процесс`.
         Текст безличный: без личных имён, без ролей и агентов как действующих лиц, без «я/мы». Если без этого неясно, можно назвать Cursor Automations.
-        Правила: `.cursor/rules/project-github-formats.mdc`.
+        Только для фичи продукта. Процесс и правила: форма «Документация». Инфраструктура: пустой issue по шаблону `.cursor/templates/github/non-product-issue.md` (метки `enhancement` и `статус: очередь` добавляются при приведении к шаблону).
+        Правила: `.cursor/elements/issues/feature.md`, шаблон `.cursor/templates/github/feature-issue.md`.
   - type: textarea
     id: zachem
     attributes:
@@ -31,6 +33,8 @@ body:
       description: Проверяемые условия
       value: |
         - [ ] 
+        - [ ] Тест-кейсы страницы фичи пройдены на dev
+        - [ ] Страница `Doc-`, названная в PR, обновлена после слияния (или «вики не затронута»)
     validations:
       required: true
   - type: textarea
@@ -39,4 +43,4 @@ body:
       label: Связи
       description: Эпик, issues, PR, вики
     validations:
-      required: false
+      required: true
