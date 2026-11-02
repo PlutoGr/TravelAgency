@@ -11,6 +11,6 @@ Repo and wiki are public: pushed means public forever.
 - Where values live: server `.env`, GitHub Secrets (environment `dev`), local `dotnet user-secrets`, box secrets directory (never print, change or copy). Exact paths: box-only ops file.
 - Test-key allowlist: `.gitleaks.toml`, exact values only, never whole folders.
 - Custom gitleaks rule `connection-string-password` flags password keys in connection strings. Allowed: env substitutions, angle-bracket stubs, explicit stubs (`CHANGE_ME`, `REPLACE_...`, `your-...`). A weak literal password still matches.
-- Before every push: `gitleaks git --redact .`. On changed files outside `.cursor/`, also grep for personal names, role labels used as people, retired chat-bot names, first-person credit («я/мы»), passwords and tokens. Wiki pushes add `gitleaks dir --redact .` and the em-dash grep ([wiki push checklist](../elements/wiki/README.md#push-checklist)).
+- Before every push: `gitleaks git --redact .`. Wiki pushes add `gitleaks dir --redact .` ([wiki push checklist](../elements/wiki/README.md#push-checklist)).
 - Suspected leak: rotate first, then remove, report at once. Deleting without rotating is not a fix.
 - Auth errors, host-key mismatch, safety blocks: do not work around; report.

@@ -11,7 +11,7 @@ The merged PR and its diff, the named `Doc-` page, [Doc- pages](../elements/wiki
 ## Bar
 - Only behavior present in `main`; unprovable claims dropped or moved to `Plan-`; unverified ones marked «требует проверки» with an issue link.
 - Keep the page's existing structure; change only what the merge changed.
-- No em dash; Latin file names; correct internal links.
+- Russian and impersonal ([templates](../templates/README.md#russian-and-impersonal)); Latin file names; correct internal links.
 
 ## Boundaries
 Only the page the launch names (and the ADR if asked); no wiki push; no code.

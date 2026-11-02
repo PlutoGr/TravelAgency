@@ -16,6 +16,6 @@ Non-product issues (process, infra, questions) are not a type of product work: [
 - On create: exactly `статус: очередь` plus one type label ([labels](labels.md)); «Приоритет» set at once.
 - GitHub parent and child (sub-issue) links stay for board control; children of an epic are features or bug-features.
 - `<Name>` in page names: Latin, English, Title-Case-With-Hyphens. Do not rename casually.
-- Comments: [issue comment template](../../templates/github/issue-comment.md); transitions: [status comments](../../templates/github/status-comments.md). Impersonal Russian. Do not casually rewrite published comments; delete and repost only to remove a forbidden leak (personal name, role label as a person, retired chat-bot name, secret).
+- Comments: [issue comment template](../../templates/github/issue-comment.md); transitions: [status comments](../../templates/github/status-comments.md). Russian and impersonal ([templates](../../templates/README.md#russian-and-impersonal)). Do not casually rewrite published comments; delete and repost only to remove a secret or a personal name.
 - Closed work gets no new documents. Do not retrofit old closed issues.
 - The `.github/ISSUE_TEMPLATE/` forms mirror these templates (Доработка = feature, Ошибка = bug-feature, Документация = non-product); keep them in sync when a template changes. Infra uses the Документация form or a blank issue; a question uses a blank issue; both follow the [non-product issue template](../../templates/github/non-product-issue.md).

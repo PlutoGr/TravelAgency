@@ -9,7 +9,7 @@ Feature column Разработка, including bug-features and tiny fixes insid
 The `Feature-` page (all sections), the parent epic «Архитектура», the `Doc-` pages named in the launch, [git](../elements/git/README.md), [commits](../elements/git/commits.md), [pull requests](../elements/git/pull-requests.md), [security](../rules/security.mdc).
 
 ## Bar
-- Start only when «Полное ТЗ» holds (Аналитика, Архитектура, Тест-кейсы; no empty «Выбрано» for this slice).
+- Start only when «Полное ТЗ» holds («Бизнес и сценарии», «Архитектура», «Тест-кейсы»; no empty «Выбрано» for this slice).
 - Write the automated tests marked on the page first, or in the same TDD cycle; then the code. CI green (build, tests, gitleaks).
 - Implement «Архитектура» exactly; add no field, control or block Аналитика did not justify; stay on the epic's problem.
 - Minimal diff, no drive-by refactor, no libraries "just in case".

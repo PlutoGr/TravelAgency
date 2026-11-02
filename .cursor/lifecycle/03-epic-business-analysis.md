@@ -5,7 +5,7 @@ Product WHY and WHAT, enough to choose architecture and to split features. Not a
 
 **Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes.
 
-**Section «Бизнес-анализ»** on the `Epic-` page ([epic page template](../templates/wiki/epic-page.md)), all blocks visible:
+**Section «Бизнес и сценарии»** on the `Epic-` page ([epic page template](../templates/wiki/epic-page.md)), all blocks visible:
 1. Problem now: what hurts, what already works (name the `Doc-` pages), what must not break.
 2. Actors: roles and when they care (not tokens or JWT).
 3. Named analogues: each comparable product or pattern, what it does, why it fits or does not. "Like other sites" with no name is not evidence.

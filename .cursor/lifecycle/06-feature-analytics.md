@@ -5,7 +5,7 @@ Product WHY and WHAT for one feature (or bug-feature). No solution design.
 
 **Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes.
 
-**Section «Аналитика»** on the `Feature-` page ([feature page template](../templates/wiki/feature-page.md)):
+**Section «Бизнес и сценарии»** on the `Feature-` page ([feature page template](../templates/wiki/feature-page.md)):
 1. Inherit the epic's chosen user story. Restate the epic goal only when this feature changes it.
 2. Every proposed field, control or block, on a screen or only in the backend: who fills or supplies it, who reads it, why it exists, lifecycle (create, edit, empty, error), how it looks and behaves. A field the service accepts or stores is a product decision. Prefer omit: an item that does not earn its place is left out.
 3. Layout when a screen is proposed: grouping, primary action, behavior, use of width and empty space. A pixel mock only when behavior stays unclear without it.

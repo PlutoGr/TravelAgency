@@ -7,7 +7,7 @@ GitHub Project (private) «PlutoGr/projects/2». One Status field. Columns = rou
   - a closed issue always goes to Готово and gets `статус: готово` (other status labels removed);
   - an open issue labeled `статус: готово` is relabeled `статус: очередь` (hence the [close procedure](columns/done.md));
   - an open issue with no status label gets `статус: очередь`, or `статус: удержание` when its body starts with `⏸ На удержании`;
-  - an issue whose body starts with `⏸ На удержании` is shown in Удержание whatever its label says (legacy hold marker; do not use it: hold only by label);
+  - an issue whose body starts with `⏸ На удержании` is shown in Удержание whatever its label says (do not set this prefix: hold only by label);
   - an issue with two status labels keeps its column and is reported in the run log;
   - it never infers an epic's label from its children and never relabels a leftover coarse `статус: в работе` on a feature.
 - Do not move Projects cards, edit the Status field by hand, or edit view filters. Carve-out: the owner explicitly asks.

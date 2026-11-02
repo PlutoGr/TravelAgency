@@ -23,4 +23,4 @@ A senior product analyst with long experience in consumer web products and trave
 Missing product facts, a conflict with the roadmap or with an existing `Doc-` page, or a choice only the owner can make: raise a [question](../templates/agents/question.md) with options and a recommendation. Do not invent a column or a decision.
 
 ## Deliverable and report
-Ready Russian section text for the named section, impersonal, no em dash, following the page template; returned in the [agent report](../templates/agents/agent-report.md). No wiki push.
+Ready Russian section text for the named section, impersonal, following the page template; returned in the [agent report](../templates/agents/agent-report.md). No wiki push.

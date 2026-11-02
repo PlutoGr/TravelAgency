@@ -36,7 +36,7 @@ File numbers only order the files and may appear in link text. Prose names a sta
 - A column is entered only when the previous deliverable is visible (wiki section, test cases, PR, green Deploy) and the orchestrator accepted it.
 - Recorded verification: on every advance the orchestrator posts the stage comment ([status comments](../templates/github/status-comments.md)) naming what was checked and the new column, then sets the label. The [deliverable review](../templates/agents/deliverable-review.md) is the internal checklist behind that comment.
 - A cloud agent never changes `статус:*`, the board or the wiki.
-- «Полное ТЗ» before Разработка: the Feature page shows Аналитика, Архитектура and Тест-кейсы, and no «Решения» row for this slice has an empty «Выбрано». Epic Бизнес-анализ alone never unlocks feature code; the epic page is not the feature specification.
+- «Полное ТЗ» before Разработка: the Feature page shows «Бизнес и сценарии», «Архитектура» and «Тест-кейсы», and no «Решения» row for this slice has an empty «Выбрано». The epic's «Бизнес и сценарии» alone never unlocks feature code; the epic page is not the feature specification.
 - Test cases come before development.
 - Every feature stays aimed at its epic's problem. A drift is a rewrite, not a new goal.
 - Disagreement (analyst vs architect, agent vs page): options go to «Решения»; the orchestrator decides by the rules, otherwise the owner ([decisions log](../elements/wiki/decisions-log.md)).

@@ -1,6 +1,9 @@
 # Templates
 Every artifact is created from one of these files. Rules link here instead of inlining. Text inside the code blocks is copied; `<...>` are placeholders. GitHub and wiki templates are Russian and impersonal; agent templates are English; owner templates are Russian (owner chat).
 
+## Russian and impersonal
+Every GitHub and wiki artifact made from these templates: Russian; says what was done or what the system does («добавлено», «проверено», «Gateway отвечает 404»), not who did it. No personal names, no people, roles, agents or AI as actors, no «я/мы», no `Co-authored-by` for bots. Cursor Automations may be named when the sentence needs a process actor.
+
 ## GitHub artifacts
 | Template | Used for | Rules |
 |---|---|---|

@@ -6,7 +6,7 @@ A senior QA engineer. You think in behaviors, boundaries and failure paths; you 
 - Feature column Тест-кейсы, including bug-features ([stage 08](../lifecycle/08-test-cases.md)). The developer writes the automated tests in Разработка.
 
 ## Read first
-The `Feature-` page («Аналитика» Given/When/Then, «Архитектура» API and errors, «Решения»), [feature page template](../templates/wiki/feature-page.md) («Тест-кейсы» table), neighbouring test projects (`*.UnitTests`, `*.IntegrationTests`, vitest) to choose realistic levels.
+The `Feature-` page («Бизнес и сценарии» Given/When/Then, «Архитектура» API and errors, «Решения»), [feature page template](../templates/wiki/feature-page.md) («Тест-кейсы» table), neighbouring test projects (`*.UnitTests`, `*.IntegrationTests`, vitest) to choose realistic levels.
 
 ## Bar
 - Each case: id (`ТК-1`), precondition, steps, expected result, level (unit / integration / e2e / ручная на dev), automated yes/no.

@@ -8,7 +8,7 @@ Personal pet project: a travel agency website (search and compare package tours,
 - Environments: one today, dev (Staging), behind basic auth with a self-signed cert. Test and prod come later; when they exist, add them here and in [deploy and acceptance](lifecycle/11-deploy-and-acceptance.md). Address and credentials are not in the repo; they are in the box-only ops file held by the orchestrator. Smoke on dev = login, catalog, booking.
 - Merge to `main` = automatic deploy to dev («Deploy to dev»). CI checks: [CI/CD](elements/ci-cd.md).
 - Repo wins over any description; [commit](templates/github/commit.md) and [PR](templates/github/pull-request.md) templates (mirrored by `.github/pull_request_template.md`) win on format conflicts.
-- Team rules (secrets, merge order and the rest) live in this package, never in the wiki. The box file `/home/box/shared/travelagency/TEAM-RULES.md` is a superseded history copy; private ops facts are in `/home/box/shared/travelagency/OPS.md`.
+- Team rules (secrets, merge order and the rest) live in this package, never in the wiki. Private ops facts are in `/home/box/shared/travelagency/OPS.md`.
 
 ## Product themes
 Coarse product focus (not the «Приоритет» field): 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. The orchestrator orders work within this; changing the theme order needs the owner. Queue numbers: [queue priority](elements/board/queue-priority.md).

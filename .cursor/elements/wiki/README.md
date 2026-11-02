@@ -18,13 +18,12 @@ No other page kinds. Sidebar groups: «Действующая документа
 Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, «Решения» rows), [test designer](../../briefs/test-designer.md) (feature «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (`Doc-` and `Doc-ADR-NNN-<Name>` after the change ships). Other text arrives via the issue or the PR.
 
 ## Writing
-- Russian, impersonal: what the system does («Gateway отвечает 404»), not who decided. No personal names, roles, agents or AI as actors; no customer company names. Cursor Automations may be named when needed.
+- Russian and impersonal ([templates](../../templates/README.md#russian-and-impersonal)); no customer company names.
 - Simple example first (a request and response, a user step), then details. Public sources (for example Tourvisor) may be cited. Links to `#81`, `PR #82` are welcome.
-- No em dash: period, colon, comma or parentheses.
 - Code names (classes, fields, routes, commands) as in code. Dates `2026-10-17`. No «Обновлено» line (history shows dates).
 - File names Latin, English, words joined by hyphens: `Doc-Booking-Request.md` (Cyrillic breaks links). The Russian title is only the first line `# <русский заголовок>`. Links without `.md`: `[text](Doc-Booking-Request)`, anchors `[text](Doc-Booking-Request#section)`.
 - No status line as the source of truth: the stage is the issue label. «сделано» or «отменено» are content marks.
-- Templates live in this repo ([templates/wiki](../../templates/README.md#wiki-pages)). The wiki pages `Epic-Template` and `Feature-Template` are legacy copies and must not be used as the bar; a page following an old template (status line, subtasks, epic test cases) is brought to the current template when next edited.
+- Page templates live only in this package ([templates/wiki](../../templates/README.md#wiki-pages)); the wiki holds no template pages. A page that does not match its current template is brought to it when next edited.
 
 ## Lifecycle
 - Shipped: `Doc-` (and ADR) written after merge; the source page marked «сделано» with links. Cancelled: «отменено» with the reason.
@@ -37,7 +36,5 @@ git pull --rebase                      # never force-push
 # 1. _Sidebar.md updated for every new, renamed or deleted page
 # 2. every [text](Name) link resolves to an existing file
 gitleaks dir --redact . && gitleaks git --redact .
-rg -n $'\u2014' <changed files>        # no em dash
-# 3. stop-word grep on changed files: personal names, agent and role names, labels like [Разработчик], AI mentions, «я/мы», passwords, tokens
 ```
 Commit `документация(вики): <что изменено>` with «Зачем» and «Как работает» ([commit](../../templates/github/commit.md)).

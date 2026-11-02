@@ -22,4 +22,4 @@ Mirrored by `.github/pull_request_template.md`. Rules: [pull requests](../../ele
 #NN
 ```
 
-Never: `closes`/`fix`/`fixes`, «Учебный кейс», names, roles, agents, «я/мы».
+Never `closes`/`fix`/`fixes`. Russian and impersonal ([templates](../README.md#russian-and-impersonal)).

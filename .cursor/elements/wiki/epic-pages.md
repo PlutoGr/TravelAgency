@@ -4,12 +4,11 @@
 | Section | Filled in column | Bar |
 |---|---|---|
 | «Связи с другими эпиками» | Бизнес-анализ or Архитектура | [stage 04](../../lifecycle/04-epic-architecture.md) |
-| «Бизнес-анализ» | Бизнес-анализ | [stage 03](../../lifecycle/03-epic-business-analysis.md) |
+| «Бизнес и сценарии» | Бизнес-анализ | [stage 03](../../lifecycle/03-epic-business-analysis.md) |
 | «Архитектура» | Архитектура | [stage 04](../../lifecycle/04-epic-architecture.md) |
 | «Решения» | whenever a question is open | [decisions log](decisions-log.md) |
 | «Разбиение» | Разбиение | [stage 05](../../lifecycle/05-epic-split.md) |
 
-- Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, set На ревью and name the column to restore. No status line. No «Тест-кейсы» on new epics; an older page that has one keeps it.
-- Legacy heading «Бизнес и сценарии» counts as «Бизнес-анализ» until the page is next edited, then it is renamed.
+- Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, set На ревью and name the column to restore. No status line. No «Тест-кейсы» section.
 - Not a screen specification; does not unlock feature code. No child analysis pages: the child is a Feature.
 - «сделано» with links is added in the same step as the close after owner acceptance ([done](../board/columns/done.md)).

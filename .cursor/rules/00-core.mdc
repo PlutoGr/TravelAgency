@@ -12,10 +12,7 @@ Map of the rule set: [.cursor/README.md](../README.md). The controller is the or
 - Repo and GitHub artifacts (issues, comments, commits, PRs, review replies, wiki, code comments): Russian.
 
 ## Public wording (everything outside `.cursor/`)
-- Impersonal: «добавлено», «принято решение», «проверено». No «я/мы сделали».
-- No personal names, no role labels used as people, no agent or role as the actor, no mention of AI, assistants or retired chat-bots, no `Co-authored-by` for bots.
-- Cursor Automations may be named when the sentence needs a process actor.
-- No em dash (U+2014): use a period, colon, comma or parentheses. The wiki push check enforces it ([wiki](../elements/wiki/README.md#push-checklist)).
+- Commits, PRs, issues, comments and wiki are Russian and impersonal, as stated in their templates ([templates](../templates/README.md#russian-and-impersonal)).
 - `AGENTS.md` stays a short pointer to this package and does not repeat rules.
 
 ## Always
