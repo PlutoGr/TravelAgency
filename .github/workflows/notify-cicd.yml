@@ -1,8 +1,9 @@
-# Уведомление оркестратора после CI или Deploy (успех или ошибка). Секреты репозитория:
+# Уведомление оркестратора после CI, Deploy или Secret scan (успех или ошибка). Секреты репозитория:
 #   GROK_BOT_CICD_WEBHOOK_URL  : URL webhook routine «TravelAgency CI/CD»
 #   GROK_BOT_CICD_WEBHOOK_KEY  : полное значение заголовка Authorization из панели routine
 #     (схема может уже входить в значение). Значение секрета в репозиторий не записывается.
-# Пока секретов нет, job завершается без ошибки и пишет в лог.
+# Если секрета нет, job завершается с ошибкой: пропущенное уведомление должно быть видно.
+# Значение conclusion=cancelled означает, что запуск вытеснен более новым; оркестратор его не обрабатывает.
 # Ответ не 2xx завершает job с ошибкой.
 name: Notify orchestrator
 
@@ -11,6 +12,7 @@ on:
     workflows:
       - CI
       - Deploy to dev
+      - Secret scan
     types:
       - completed
 
@@ -37,8 +39,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
-            echo "Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY ещё не заданы : уведомление пропущено."
-            exit 0
+            echo "::error::Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY не заданы: уведомление не отправлено."
+            exit 1
           fi
           # Хвостовой перевод строки в секрете не входит в значение заголовка.
           WEBHOOK_KEY=${WEBHOOK_KEY//$'\r'/}

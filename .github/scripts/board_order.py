@@ -10,14 +10,17 @@
      (возвращает из архива, если карточка была заархивирована).
   2. Выравнивает метки статуса с open/closed (без изобретения других меток):
        закрытая → «статус: готово», остальные «статус: …» снимаются;
-       открытая без статуса → «статус: очередь» (или «статус: удержание» при hold);
-       открытая с «статус: готово» → замена на «статус: очередь»;
+       открытая без статуса → «статус: очередь»;
+       открытая с «статус: готово» (например, после повторного открытия) не меняется:
+         это конфликт, колонку выбирает оркестратор;
        прочие одиночные метки «статус: …» на открытых не трогаются.
+     Префикс «⏸ На удержании» в теле задачи ни на метку, ни на колонку не влияет,
+     только пишется в лог: удержание задаётся только меткой.
   3. Сверяет колонку Status с меткой: закрытая задача идёт в «Готово»,
-     удержание в «Удержание», остальные по метке «статус: …».
-     После выравнивания меток открытая без статуса не должна оставаться
-     (новая карточка без колонки попадает в «Очередь»).
-  4. Очищает поле «Приоритет» у карточек, которые ушли из «Очереди».
+     остальные по единственной метке «статус: …».
+     Новая карточка без колонки и без метки попадает в «Очередь».
+  4. Очищает поле «Приоритет» только у карточек, которые ушли из «Очереди»
+     по единственной метке (или закрыты); при конфликте поле не трогается.
   5. Архивирует карточки задач, закрытых 30 и более дней назад (--no-archive отключает).
   6. Расставляет порядок внутри колонок:
        Готово     сначала недавно закрытые;
@@ -28,7 +31,9 @@
      подпоследовательность остаётся на месте).
   7. Печатает итог (включая план смены меток) и после реального запуска
      перечитывает доску и сверяет порядок.
-  8. Если в поле Status нет хотя бы одной требуемой колонки, код выхода 2.
+  8. Код выхода 2 (job красный), если в поле Status нет требуемой колонки,
+     есть конфликт меток (несколько меток статуса, открытая с «статус: готово»,
+     открытая без метки в колонке), не удалась смена меток или сверка разошлась.
 
 PR, черновики и архивные карточки не двигаются. Виды доски не меняются.
 Меняются только метки «статус: …» по правилам выше (через gh issue edit).
@@ -194,7 +199,11 @@ def read_items():
 
 
 def is_hold(it):
-    return HOLD_LABEL in it["labels"] or it["body1"].startswith(HOLD_PREFIX)
+    return HOLD_LABEL in it["labels"]
+
+
+def has_hold_prefix(it):
+    return it["body1"].startswith(HOLD_PREFIX)
 
 
 def status_labels_of(it):
@@ -205,11 +214,9 @@ def wanted_status_label(it):
     """Нужная единственная метка статуса или None, если метки не трогать."""
     if it["state"] == "CLOSED":
         return DONE_LABEL
-    if "статус: готово" in it["labels"]:
-        return QUEUE_LABEL
     if status_labels_of(it):
         return None
-    return HOLD_LABEL if is_hold(it) else QUEUE_LABEL
+    return QUEUE_LABEL
 
 
 def plan_label_fixes(items, notes):
@@ -229,9 +236,7 @@ def plan_label_fixes(items, notes):
         if not add and not remove:
             continue
         fixes.append((it, add, remove))
-        if it["state"] == "OPEN" and DONE_LABEL in have:
-            notes.append(f"#{it['number']}: открыта с «статус: готово», метка заменяется на «{want}»")
-        elif it["state"] == "CLOSED" and have - {DONE_LABEL}:
+        if it["state"] == "CLOSED" and have - {DONE_LABEL}:
             notes.append(f"#{it['number']}: закрыта, лишние метки статуса снимаются → «{DONE_LABEL}»")
         elif not have:
             notes.append(f"#{it['number']}: нет метки статуса → «{want}»")
@@ -247,7 +252,8 @@ def apply_label_memory(fixes):
 
 
 def apply_status_labels(fixes):
-    """Смена меток статуса. Ошибка по одной задаче не останавливает остальные и column moves."""
+    """Смена меток статуса. Ошибка по одной задаче не останавливает остальные и column moves.
+    Возвращает число задач, у которых смена не удалась."""
     env = dict(os.environ, GH_TOKEN=token())
     failed = 0
     for it, add, remove in fixes:
@@ -263,30 +269,40 @@ def apply_status_labels(fixes):
             print(f"  ошибка меток #{it['number']}: {err} (продолжаем)", file=sys.stderr)
     if failed:
         print(f"замечание: сбой смены меток у {failed} задач(и); колонки и порядок всё равно обновляются")
+    return failed
 
 
 def managed(it):
     return it["type"] == "ISSUE" and not it["archived"] and it["number"] is not None
 
 
-def wanted_status(it, notes):
-    """Нужная колонка или None, если колонку не трогать."""
+def wanted_status(it, notes, conflicts=None):
+    """Нужная колонка или None, если колонку не трогать.
+    Конфликты (задача требует ручного решения оркестратора) пишутся и в notes, и в conflicts."""
+    if conflicts is None:
+        conflicts = []
+
+    def conflict(msg):
+        notes.append(msg)
+        conflicts.append(msg)
+
     if it["state"] == "CLOSED":
         return "Готово"
-    if is_hold(it):
-        return "Удержание"
+    if has_hold_prefix(it) and not is_hold(it):
+        notes.append(f"#{it['number']}: в теле префикс «{HOLD_PREFIX}», он ни на что не влияет (удержание только меткой)")
     cols = {LABEL_TO_COL[l] for l in it["labels"] if l in LABEL_TO_COL}
     if len(cols) > 1:
-        notes.append(f"#{it['number']}: противоречивые метки статуса {sorted(cols)}, колонка «{it['status']}» не меняется")
+        conflict(f"#{it['number']}: противоречивые метки статуса {sorted(cols)}, колонка «{it['status']}» не меняется")
         return None
     if not cols:
         if it["status"] is None:
             return "Очередь"
-        notes.append(f"#{it['number']}: открыта без метки статуса, остаётся в «{it['status']}»")
+        conflict(f"#{it['number']}: открыта без метки статуса, остаётся в «{it['status']}»")
         return None
     col = cols.pop()
     if col == "Готово":
-        notes.append(f"#{it['number']}: открыта, но с меткой «статус: готово»")
+        conflict(f"#{it['number']}: открыта с меткой «статус: готово», метка и колонка «{it['status']}» не меняются")
+        return None
     return col
 
 
@@ -343,21 +359,24 @@ def lis_keep(seq):
     return keep
 
 
-def plan(items, archive):
+def plan(items, archive, conflicts=None):
+    if conflicts is None:
+        conflicts = []
     notes, fixes, clears, archives, moves, desired = [], [], [], [], [], {}
     cutoff = (datetime.now(timezone.utc) - timedelta(days=ARCHIVE_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
     for it in items:
         if not managed(it):
             it["new_status"] = it["status"]
             continue
-        w = wanted_status(it, notes)
+        w = wanted_status(it, notes, conflicts)
         if w and w not in OPTIONS:
             notes.append(f"#{it['number']}: нет колонки «{w}» в поле Status, карточка не переносится")
             w = None
         it["new_status"] = w if w else it["status"]
         if w and w != it["status"]:
             fixes.append((it, it["status"], w))
-        if it["prio"] is not None and it["new_status"] != "Очередь":
+        # «Приоритет» очищается только при законном уходе из Очереди (единственная метка или закрытие).
+        if it["prio"] is not None and w and w != "Очередь":
             clears.append(it)
         if archive and it["state"] == "CLOSED" and it["closedAt"] and it["closedAt"] <= cutoff:
             archives.append(it)
@@ -420,12 +439,14 @@ def main():
         rem_s = ", ".join(f"−«{r}»" for r in remove)
         print(f"  {label(it)}: " + ", ".join(x for x in (add_s, rem_s) if x))
     apply_label_memory(label_fixes)
+    label_failed = 0
     if label_fixes and not a.dry_run:
-        apply_status_labels(label_fixes)
+        label_failed = apply_status_labels(label_fixes)
 
     cols = column_names()
     before = {c: sum(1 for i in items if managed(i) and i["status"] == c) for c in cols}
-    fixes, clears, archives, moves, desired, notes = plan(items, not a.no_archive)
+    conflicts = []
+    fixes, clears, archives, moves, desired, notes = plan(items, not a.no_archive, conflicts)
     notes = label_notes + notes
     after = {c: len(desired[c]) for c in cols}
     other = sum(1 for i in items if not managed(i))
@@ -448,6 +469,8 @@ def main():
         print(f"  [{col}] #{it['number']} -> " + (f"после #{prev['number']}" if prev else "наверх"))
     for n in notes:
         print(f"замечание: {n}")
+    for c in conflicts:
+        print(f"::error::конфликт доски: {c}")
 
     if not a.dry_run:
         run_batched([f'updateProjectV2ItemFieldValue(input:{{projectId:"{PROJECT_ID}",itemId:"{it["id"]}",'
@@ -479,6 +502,7 @@ def main():
             print(f"СВЕРКА: в колонке «{col}» порядок или состав отличается от плана")
         print("сверка: доска совпадает с планом" if ok else "сверка: РАСХОЖДЕНИЕ")
         if not ok:
+            print("::error::сверка доски: РАСХОЖДЕНИЕ с планом")
             sys.exit(2)
 
     if "Очередь" in desired:
@@ -491,6 +515,10 @@ def main():
         for i in desired["Готово"][:5]:
             print(f"  {label(i)}  (закрыта {i['closedAt']})")
     if missing_columns:
+        print("::error::в поле Status нет колонок: " + ", ".join(missing_columns))
+    if label_failed:
+        print(f"::error::не удалась смена меток статуса у {label_failed} задач(и)")
+    if missing_columns or conflicts or label_failed:
         sys.exit(2)
 
 
