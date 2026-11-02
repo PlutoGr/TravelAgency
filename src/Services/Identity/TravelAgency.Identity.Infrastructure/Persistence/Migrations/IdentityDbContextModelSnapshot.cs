@@ -62,7 +62,10 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                     b.HasIndex("ConfirmTokenHash")
                         .IsUnique();
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EmailChangeRequests_OneActive")
+                        .HasFilter("\"ConsumedAt\" IS NULL");
 
                     b.ToTable("EmailChangeRequests", (string)null);
                 });
@@ -94,7 +97,10 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PasswordResetTokens_OneActive")
+                        .HasFilter("\"ConsumedAt\" IS NULL");
 
                     b.ToTable("PasswordResetTokens", (string)null);
                 });

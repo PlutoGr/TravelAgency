@@ -13,6 +13,10 @@ public class PasswordResetTokenConfiguration : IEntityTypeConfiguration<Password
         builder.Property(token => token.Id).ValueGeneratedNever();
         builder.Property(token => token.TokenHash).IsRequired().HasMaxLength(RefreshToken.HashLength);
         builder.HasIndex(token => token.TokenHash).IsUnique();
+        builder.HasIndex(token => token.UserId)
+            .IsUnique()
+            .HasFilter("\"ConsumedAt\" IS NULL")
+            .HasDatabaseName("IX_PasswordResetTokens_OneActive");
         builder.Property(token => token.ExpiresAt).IsRequired();
         builder.Property(token => token.CreatedAt).IsRequired();
         builder.HasOne(token => token.User)

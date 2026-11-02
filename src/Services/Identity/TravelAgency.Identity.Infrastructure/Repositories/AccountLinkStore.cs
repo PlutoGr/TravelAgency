@@ -19,8 +19,16 @@ public sealed class AccountLinkStore(IdentityDbContext db) : IAccountLinkStore
             .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.ConsumedAt, now), cancellationToken);
         DetachResets(userId);
         db.PasswordResetTokens.Add(created);
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            db.Entry(created).State = EntityState.Detached;
+            await transaction.RollbackAsync(cancellationToken);
+        }
     }
 
     public async Task<bool> TryConsumePasswordResetAsync(
@@ -65,8 +73,17 @@ public sealed class AccountLinkStore(IdentityDbContext db) : IAccountLinkStore
         DetachEmailChanges(userId);
         if (created is not null)
             db.EmailChangeRequests.Add(created);
-        await db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            if (created is not null)
+                db.Entry(created).State = EntityState.Detached;
+            await transaction.RollbackAsync(cancellationToken);
+        }
     }
 
     public async Task<EmailChangeConsumption> TryConsumeEmailConfirmationAsync(

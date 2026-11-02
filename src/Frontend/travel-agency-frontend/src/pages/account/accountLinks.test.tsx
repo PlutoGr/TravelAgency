@@ -246,6 +246,22 @@ describe('ТК-2 новый пароль', () => {
     expect(post).toHaveBeenCalledWith('/auth/logout', {});
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
+
+  it('shows a request failure instead of a dead link when inspect fails', async () => {
+    const user = userEvent.setup();
+    const post = vi.spyOn(apiClient, 'post').mockRejectedValue({
+      response: { status: 429, data: { detail: 'Too many requests.' } },
+    });
+    renderReset();
+    expect(await screen.findByRole('alert')).toHaveTextContent(ACCOUNT_TEXT.requestFailed);
+    expect(screen.queryByText(ACCOUNT_TEXT.resetInvalid)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Запросить ещё раз' })).not.toBeInTheDocument();
+
+    post.mockResolvedValueOnce({ data: { outcome: 'ready' } });
+    await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
+    expect(await screen.findByRole('button', { name: 'Задать пароль' })).toBeInTheDocument();
+    expect(post).toHaveBeenLastCalledWith('/auth/password-resets/inspect', { token: 'secret-value' });
+  });
 });
 
 describe('ТК-24 nginx token mask and referrer', () => {
@@ -279,6 +295,9 @@ describe('ТК-24 nginx token mask and referrer', () => {
     for (const path of ['/account/password/new', '/account/email/confirm', '/account/email/cancel']) {
       expect(app).toContain(`location = ${path}`);
     }
+    const accountBlock = app.slice(app.indexOf('location = /account/password/new'), app.indexOf('location / {'));
+    expect(accountBlock.match(/try_files \/index.html =404;/g)?.length).toBe(3);
+    expect(accountBlock).not.toContain('try_files $uri $uri/ /index.html');
     const account = app.slice(app.indexOf('location = /account/password/new'));
     expect(account).toContain('Referrer-Policy "no-referrer"');
     expect(account.match(/Referrer-Policy "no-referrer"/g)?.length).toBe(3);

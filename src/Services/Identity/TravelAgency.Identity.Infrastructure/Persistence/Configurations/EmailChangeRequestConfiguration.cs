@@ -16,6 +16,10 @@ public class EmailChangeRequestConfiguration : IEntityTypeConfiguration<EmailCha
         builder.Property(request => request.CancelTokenHash).IsRequired().HasMaxLength(RefreshToken.HashLength);
         builder.HasIndex(request => request.ConfirmTokenHash).IsUnique();
         builder.HasIndex(request => request.CancelTokenHash).IsUnique();
+        builder.HasIndex(request => request.UserId)
+            .IsUnique()
+            .HasFilter("\"ConsumedAt\" IS NULL")
+            .HasDatabaseName("IX_EmailChangeRequests_OneActive");
         builder.Property(request => request.ExpiresAt).IsRequired();
         builder.Property(request => request.CreatedAt).IsRequired();
         builder.HasOne(request => request.User)

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { AccountAlert, AccountColumn, AccountStatus, useLinkToken } from './accountPage';
 
-type Phase = 'loading' | 'ready' | 'invalid' | 'changed' | 'changed-other';
+type Phase = 'loading' | 'ready' | 'invalid' | 'unavailable' | 'changed' | 'changed-other';
 
 export default function NewPasswordPage() {
   const token = useLinkToken();
@@ -19,6 +19,7 @@ export default function NewPasswordPage() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [inspectAttempt, setInspectAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,13 +27,16 @@ export default function NewPasswordPage() {
       .then((data) => {
         if (!cancelled) setPhase(data.outcome === 'ready' ? 'ready' : 'invalid');
       })
-      .catch(() => {
-        if (!cancelled) setPhase('invalid');
+      .catch((err) => {
+        if (!cancelled) {
+          setError(accountFailureText(err));
+          setPhase('unavailable');
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, inspectAttempt]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -119,6 +123,14 @@ export default function NewPasswordPage() {
       )}
       {phase === 'changed-other' && (
         <AccountStatus>{ACCOUNT_TEXT.resetChangedOther}</AccountStatus>
+      )}
+      {phase === 'unavailable' && (
+        <div className="mt-6 space-y-4">
+          <AccountAlert>{error ?? ACCOUNT_TEXT.requestFailed}</AccountAlert>
+          <Button type="button" fullWidth onClick={() => setInspectAttempt((value) => value + 1)}>
+            Попробовать ещё раз
+          </Button>
+        </div>
       )}
       {phase === 'invalid' && (
         <div className="mt-6 space-y-4">

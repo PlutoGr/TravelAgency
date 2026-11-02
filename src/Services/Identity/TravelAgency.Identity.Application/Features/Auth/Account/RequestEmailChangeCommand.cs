@@ -73,10 +73,10 @@ public sealed class RequestEmailChangeCommandHandler(
         {
             var confirmSecret = LinkSecret.Create();
             var cancelSecret = LinkSecret.Create();
-            var confirm = await mail.SendAsync(composer.ConfirmEmail(email, confirmSecret), cancellationToken);
-            var notice = confirm
-                && await mail.SendAsync(composer.EmailChangeNotice(user.Email, email, cancelSecret), cancellationToken);
-            kept = confirm && notice;
+            var notice = await mail.SendAsync(composer.EmailChangeNotice(user.Email, email, cancelSecret), cancellationToken);
+            var confirm = notice
+                && await mail.SendAsync(composer.ConfirmEmail(email, confirmSecret), cancellationToken);
+            kept = notice && confirm;
             if (kept)
             {
                 var created = EmailChangeRequest.Create(
