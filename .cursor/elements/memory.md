@@ -11,31 +11,45 @@ One table (or short lists) with:
 | Issue | always for a row | `#NN`, or `-` for a Dependabot / unowned PR row |
 | Stage / column | always | current `статус:*` (FSM state), or `Dependabot` / PR label when Issue is `-` |
 | PR | when a PR exists | number and URL |
-| Sha | when waiting on CI/Deploy, and through Приёмка | head sha before merge, merge sha after; the entry merge sha (that entered Приёмка) stays on the row until close for the [rollback check](../lifecycle/events.md#deploy-wait) only; a fix merge during Приёмка is added next to it and is the sha the Deploy wait and catch-up match (with that fix PR's `mergedAt`) |
-| Agent | while a cloud agent run is live | agent id; the only place a live run is stored; cleared on that run's finish or error wake, which keeps any external wait in `Waiting on` |
-| Waiting on | always | `agent` \| `CI+Automations` \| `Deploy` \| `owner` \| `issue #NN` \| `none` |
+| Sha | when a PR exists or was merged | the [Sha cell](#sha-cell) format |
+| Agent | while a cloud agent run is live | agent id of the live run only ([agent rule](#row-lifecycle)) |
+| Waiting on | always | one value of the [vocabulary](#waiting-on-values) |
 | Next | always | the next concrete step (never empty) |
-| Pause / why | when paused | why paused and what resumes it (owner answer, resume word); when an agent ended `RESULT blocked` on an owner-needed question, also `agent <id>` so the reply goes to that run; cleared once the reply is sent or the run is relaunched |
+| Pause / why | when paused | why paused and what resumes it (owner answer, resume word); also the blocked agent id and the rollback condition ([row lifecycle](#row-lifecycle)) |
 
-`Waiting on` values:
-- `agent`: a live cloud agent run is the wait (its deliverable is the next step). A run launched while the row waits on `Deploy`, `issue #NN` or `owner` (for example a `Doc-` draft after merge) is recorded only in `Agent`; `Waiting on` keeps the external wait. On that run's finish, clear `Agent` and keep the external wait.
+Under the table: a `Queue:` line while the merge queue is stopped (`stopped since run <id>; repair: re-run <run id> | #NN`), removed only when the queue resumes ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)). Also allowed as short bullets: active agents list, open owner questions (issue + question text), paused epics.
+
+## Sha cell
+One format for every row (product, non-product, Dependabot):
+- Before merge: `head=<40-hex>` (the PR head; CI wakes match it). A fix PR during Приёмка adds `head=<40-hex>` to the cell until it merges.
+- After merge: `entry=<40-hex> fix=<40-hex|->`. `entry` = the merge that first left Разработка for Приёмка or the Deploy wait; `fix` = the latest fix merge during Приёмка, else `-` (always `-` on Dependabot and non-product rows without a fix).
+- **Match sha** = `fix` when set, else `entry`. The Deploy wait and the 60-minute catch-up (that PR's `mergedAt`) use the match sha.
+- **Contains:** a sha is contained when it is the deployed sha or its ancestor (`git merge-base --is-ancestor <sha> <deployed sha>`), with the deployed sha read per [Deploy wait](../lifecycle/events.md#deploy-wait).
+- The rollback check compares `entry` only; re-entry after a rollback requires `entry` and, when set, `fix`.
+
+## `Waiting on` values
+This is the single vocabulary; other files link here.
+- `agent`: a live cloud agent run is the wait (its deliverable is the next step).
 - `CI+Automations`: Automations still running after green CI on a PR no live agent watches (Dependabot). Red CI is not this wait; it follows the unowned-red path.
-- `Deploy`: merged, waiting for a green «Deploy to dev» whose deployed sha (not the run head) contains the merge sha ([Deploy wait](../lifecycle/events.md#deploy-wait)). Only a feature, bug-feature, non-product or Dependabot row waits on Deploy; never put an epic on `Waiting on` = `Deploy`.
+- `Deploy`: merged, waiting for a green «Deploy to dev» whose deployed sha contains the match sha. Only a feature, bug-feature, non-product or Dependabot row waits on Deploy; never an epic.
 - `owner`: an owner question, the epic demo or the request to create Status «Демо» is open (re-asked only on memory-refresh and the Monday audit), or an owner hold ([Удержание](board/columns/on-hold.md)) waits for the resume word (not re-asked).
-- `issue #NN`: parked until issue #NN is Готово; `Next` = resume the parked step (for example acceptance of the parent). Resumed by the [close procedure](board/columns/done.md) of #NN; the never-stall loop does not execute it.
+- `issue #NN`: parked until issue #NN is Готово; `Next` = resume the parked step (for example acceptance of the parent). Resumed by the [close procedure](board/columns/done.md) of #NN.
+- `children`: an epic in В работе; `Next` = stage 13 on the last child close. No orchestrator step until then: resumed only by the child-close step of the [close procedure](board/columns/done.md); it never starts [stage 13](../lifecycle/13-epic-acceptance.md) on its own.
 - `none`: the `Next` step is actionable by the orchestrator now. Never use `none` for a wait.
 
-An “orchestrator review” is `none` with `Next` = full review. Use that shape only when the review can start now: a Dependabot PR whose Automations are still running stays `Waiting on` = `CI+Automations` ([dependencies](dependencies.md)).
+The never-stall loop performs only `none` rows; `issue #NN` and `children` rows are resumed by the close procedure (a missed resume is done at once when the issue is already closed).
 
-Dependabot row `Issue` = `-`, `Stage` = `Dependabot`, `PR` = number, `Sha` = head sha, `Waiting on` = `CI+Automations` with `Next` = check Automations, then full review; after the switch `none` with `Next` = full review; after merge `Deploy` with the merge sha.
+An “orchestrator review” is `none` with `Next` = full review. Use that shape only when the review can start now: a Dependabot PR whose Automations are still running stays `Waiting on` = `CI+Automations` ([dependencies](dependencies.md)). Dependabot row: `Issue` = `-`, `Stage` = `Dependabot`, `PR`, `Sha` = `head=…`, `Waiting on` = `CI+Automations`, `Next` = check Automations, then full review; after the switch `none` with `Next` = full review; after merge `Deploy` with `entry=… fix=-`.
 
-Also allowed as short bullets under the table: active agents list, open owner questions (issue + question text), paused epics.
-
-## Update rules
-- **Write** when an item is taken, advanced, paused, waiting on CI/Automations/Deploy/owner, when an agent is launched or finishes, when the owner answers, and when a wait clears. Always write both `Next` and `Waiting on`.
-- **Prune** (delete a row) only when its issue is closed and no Deploy wait remains, or when a `Deploy` row is consumed by the green Deploy that contains its merge and the close or hand-off (Приёмка, criteria check, Dependabot done) is recorded. A Deploy row stays until that green Deploy even after its issue is closed. When a pause ends, an agent is dismissed or a wait clears on an open issue, rewrite `Waiting on` and `Next` and keep the row. Do not accumulate history; closed items leave the file. A reopened issue gets a row again in the reopen turn, in the column its close comment names ([done](board/columns/done.md)).
-- **Read** on every wake, before new work, on the weekday memory-refresh routine (`travelagency-memory-refresh`), and at the weekly audit.
-- A CI/CD safety-net wake is matched to rows by sha and agent ([events](../lifecycle/events.md#wake-sources)).
+## Row lifecycle
+The single definition of how a row changes; stage and event files link here.
+- **Create** when an item is taken, when a Dependabot PR's CI is green ([dependencies](dependencies.md)), and when an issue is reopened (in the column its close comment names, [done](board/columns/done.md)).
+- **Rewrite, keep the row:** every other transition (advance, pause, pause end, owner answer, agent launch, finish or dismissal, wait cleared, rollback) rewrites `Waiting on` and `Next` (always both) and keeps the row while the issue is open.
+- **Delete** only when the issue is closed and no Deploy wait remains, or when a Dependabot row (`Issue` = `-`) is consumed by its green Deploy. Nothing else deletes a row; closed items then leave the file. Do not accumulate history.
+- **Agent:** one live run per issue in `Agent` (finish or cancel a live run, for example a `Doc-` draft during Приёмка, before launching another). Launching never overwrites an external wait: `Waiting on` = `agent` only when the agent is the wait; otherwise it keeps `Deploy`, `issue #NN` or `owner`. On the run's finish or error wake clear `Agent` and keep the external wait. When a run ends `RESULT blocked` on an owner-needed question, `Waiting on` = `owner` and Pause/why keeps `agent <id>` until the reply is sent or the run is relaunched.
+- **Green Deploy containing the match sha** (a `Deploy` row): feature, bug-feature or non-product issue with a dev check → Приёмка, `Waiting on` = `none`, `Next` = finish acceptance; non-product issue without a dev check → close in this wake when its exit holds ([non-product work](../lifecycle/non-product-work.md)), else `Waiting on` = `agent` while a `Doc-` draft run is live, otherwise `none` with `Next` = the remaining step (publish the named page, check the criteria) and close; a closed issue or a Dependabot row → delete. Until that green Deploy a draft run is only in `Agent` and `Waiting on` stays `Deploy`.
+- **Rollback after advance** (checked on every green Deploy): a row in Приёмка (issue open) whose `entry` the deployed sha does not contain → column Разработка (label, Status and a status comment naming the rollback). `Waiting on` = `none` becomes `Deploy` with `Next` = re-enter Приёмка when the deployed sha contains `entry` and, when set, `fix`. Any other wait (`agent`, `issue #NN`, `owner`) is kept; Pause/why gets `rolled back: re-enter Приёмка when entry[/fix] is deployed`, and such rows are checked on every green Deploy. When contained again: restore Приёмка and the kept wait (or `none` with `Next` = finish acceptance) and drop the rollback note.
+- **Read** on every wake, before new work, on the weekday memory-refresh routine (`travelagency-memory-refresh`), and at the weekly audit. A CI/CD safety-net wake is matched to rows by sha and agent ([events](../lifecycle/events.md#wake-sources)).
 
 ## Relation to the FSM
 The column on the issue is the state. Memory only records **waits and pauses inside** that state so the orchestrator can resume. An owner question does **not** change the column; it sets `Waiting on` = owner and Pause/why.
@@ -48,7 +62,9 @@ Updated: <YYYY-MM-DD HH:MM Europe/Moscow>
 
 | Issue | Stage | PR | Sha | Agent | Waiting on | Next | Pause / why |
 |---|---|---|---|---|---|---|---|
-| #NN or - | <column> | #PR or - | <sha> or - | <id> or - | owner / agent / CI+Automations / Deploy / issue #NN / none | <step> | <why / what resumes> or - |
+| #NN or - | <column> | #PR or - | head=<sha> or entry=<sha> fix=<sha or -> or - | <id> or - | agent / CI+Automations / Deploy / owner / issue #NN / children / none | <step> | <why / what resumes> or - |
+
+Queue: stopped since run <id>; repair: re-run <run id> | #NN   (only while the queue is stopped)
 
 ## Open owner questions
 - #NN: <question one line>
