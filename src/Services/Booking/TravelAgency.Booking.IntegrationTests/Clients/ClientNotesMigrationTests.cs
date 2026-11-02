@@ -113,8 +113,9 @@ public class ClientNotesMigrationTests
             await using (var connection = new NpgsqlConnection(notesCs))
             {
                 await connection.OpenAsync();
-                await using var exists = new NpgsqlCommand("SELECT to_regclass('\"ClientNotes\"')", connection);
-                (await exists.ExecuteScalarAsync()).Should().BeNull();
+                await using var exists = new NpgsqlCommand("SELECT to_regclass('\"ClientNotes\"')::text", connection);
+                var table = await exists.ExecuteScalarAsync();
+                (table is null || table is DBNull).Should().BeTrue();
             }
 
             var root = RepoRoot();
