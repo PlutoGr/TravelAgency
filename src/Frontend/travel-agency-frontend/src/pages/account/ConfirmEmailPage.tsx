@@ -6,7 +6,7 @@ import { Button } from '@/components/ui';
 import { ACCOUNT_TEXT, accountFailureText } from '@/domain/accountLinks';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
-import { AccountAlert, AccountColumn, AccountStatus, useLinkToken } from './accountPage';
+import { AccountColumn, AccountStatus, useLinkToken } from './accountPage';
 
 type Phase = 'loading' | 'changed' | 'changed-other' | 'taken' | 'invalid';
 
@@ -30,10 +30,14 @@ export default function ConfirmEmailPage() {
         }
         if (data.outcome === 'changed') {
           if (data.session === 'current') {
-            const profile = await getMe();
-            if (!cancelled) setUser(profile);
+            try {
+              const profile = await getMe();
+              if (!cancelled) setUser(profile);
+            } catch {
+              // Адрес уже сменён. Сбой чтения профиля не делает ссылку мёртвой.
+            }
           }
-          setPhase('changed');
+          if (!cancelled) setPhase('changed');
           return;
         }
         if (data.outcome === 'taken') {

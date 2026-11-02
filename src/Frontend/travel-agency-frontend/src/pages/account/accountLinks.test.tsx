@@ -324,8 +324,16 @@ describe('account pages and settings', () => {
     expect(get).toHaveBeenCalledWith('/auth/me');
     expect(screen.getByTestId('loc').textContent).not.toContain('token');
     expect(useAuthStore.getState().user?.email).toBe('new@example.com');
-    expect(document.querySelector('meta[name="referrer"]')).toHaveAttribute('content', 'no-referrer');
     view.unmount();
+
+    useAuthStore.setState({ user: person('client'), isAuthenticated: true, isLoading: false });
+    post.mockResolvedValue({ data: { outcome: 'changed', session: 'current' } });
+    get.mockRejectedValueOnce(new Error('profile'));
+    const profileFails = renderAt('/account/email/confirm?token=profile-fails', <ConfirmEmailPage />);
+    expect(await screen.findByText(ACCOUNT_TEXT.emailChanged)).toBeInTheDocument();
+    expect(screen.queryByText(ACCOUNT_TEXT.linkInvalid)).not.toBeInTheDocument();
+    expect(document.querySelector('meta[name="referrer"]')).toHaveAttribute('content', 'no-referrer');
+    profileFails.unmount();
 
     useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
     post.mockResolvedValue({ data: { outcome: 'changed', session: 'none' } });
