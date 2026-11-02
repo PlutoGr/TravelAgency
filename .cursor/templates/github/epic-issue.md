@@ -1,7 +1,7 @@
 # Epic issue
 Labels: `тип: родительская`, `статус: очередь`. Field «Тип» = «Эпик». «Приоритет» set at once. Rules: [epic](../../elements/issues/epic.md).
 
-Title: `аналитика(<сервис>): эпик <цель кратко>` (service usually `общее`).
+Title: `эпик(<сервис>): <цель кратко>` (service usually `общее`).
 
 ```markdown
 ## Зачем
