@@ -14,7 +14,16 @@ internal sealed class BookingExceptionMapper : IExceptionMapper
         ProblemDetails? details = exception switch
         {
             TourUnavailableException unavailable => CreateTourUnavailable(context, unavailable),
+            AppValidationException validation => CreateValidationProblem(context, validation),
             AppException appEx => CreateAppProblemDetails(context, appEx),
+            UpstreamUnavailableException => new ProblemDetails
+            {
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.6.4",
+                Title = "Service Unavailable",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "Upstream service unavailable",
+                Instance = context.Request.Path
+            },
             BookingAssignmentConflictException or DbUpdateConcurrencyException => new ProblemDetails
             {
                 Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
@@ -63,6 +72,18 @@ internal sealed class BookingExceptionMapper : IExceptionMapper
             Type = type,
             Title = title,
             Status = exception.StatusCode,
+            Detail = exception.Message,
+            Instance = context.Request.Path
+        };
+    }
+
+    private static ProblemDetails CreateValidationProblem(HttpContext context, AppValidationException exception)
+    {
+        return new ValidationProblemDetails(exception.Errors)
+        {
+            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+            Title = "Validation Error",
+            Status = StatusCodes.Status400BadRequest,
             Detail = exception.Message,
             Instance = context.Request.Path
         };

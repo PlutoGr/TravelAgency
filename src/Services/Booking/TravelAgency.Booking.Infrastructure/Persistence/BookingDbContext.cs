@@ -12,6 +12,7 @@ public class BookingDbContext : DbContext, IUnitOfWork
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<BookingStatusHistory> BookingStatusHistories => Set<BookingStatusHistory>();
     public DbSet<BookingAssignmentHistory> BookingAssignmentHistories => Set<BookingAssignmentHistory>();
+    public DbSet<ClientNote> ClientNotes => Set<ClientNote>();
 
     public BookingDbContext(DbContextOptions<BookingDbContext> options) : base(options) { }
 

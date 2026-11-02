@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -12,6 +13,8 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 import type { Booking } from '@/types';
 import { getAllBookings } from '@/api/bookings';
+import { getClientList, type ClientListItem } from '@/api/clientCards';
+import { bookingCountLabel } from '@/domain/bookingCountLabel';
 import { Card, Avatar, Skeleton } from '@/components/ui';
 import { BookingCard } from '@/components/booking';
 import { Breadcrumbs } from '@/components/layout';
@@ -23,70 +26,73 @@ const BREADCRUMBS = [
   { label: 'Клиенты' },
 ];
 
+const LIST_ERROR = 'Не удалось загрузить список бронирований';
+
 interface ClientInfo {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  avatar?: string;
+  phone?: string;
+  avatarUrl?: string;
+  bookingCount: number;
   bookings: Booking[];
   lastBookingDate: string;
 }
 
-function buildClientsFromBookings(bookings: Booking[]): ClientInfo[] {
-  const clientMap = new Map<string, ClientInfo>();
-
-  for (const booking of bookings) {
-    const existing = clientMap.get(booking.clientId);
-    if (existing) {
-      existing.bookings.push(booking);
-      if (booking.createdAt > existing.lastBookingDate) {
-        existing.lastBookingDate = booking.createdAt;
-      }
-    } else {
-      clientMap.set(booking.clientId, {
-        id: booking.clientId,
-        name: booking.clientName || booking.clientId,
-        email: booking.clientEmail ?? '—',
-        phone: booking.clientPhone ?? '—',
-        bookings: [booking],
-        lastBookingDate: booking.createdAt,
-      });
-    }
-  }
-
-  return Array.from(clientMap.values()).sort(
-    (a, b) =>
-      new Date(b.lastBookingDate).getTime() -
-      new Date(a.lastBookingDate).getTime(),
-  );
+function clientsFromApi(items: ClientListItem[], bookings: Booking[]): ClientInfo[] {
+  return items.map((item) => {
+    const own = bookings.filter((booking) => booking.clientId === item.id);
+    const lastBookingDate = own.reduce(
+      (latest, booking) => (booking.createdAt > latest ? booking.createdAt : latest),
+      own[0]?.createdAt ?? '',
+    );
+    return {
+      id: item.id,
+      name: item.displayName,
+      email: item.email,
+      ...(item.phone ? { phone: item.phone } : {}),
+      ...(item.avatarUrl ? { avatarUrl: item.avatarUrl } : {}),
+      bookingCount: item.bookingCount,
+      bookings: own,
+      lastBookingDate,
+    };
+  });
 }
 
 export default function ManagerClientsPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [clients, setClients] = useState<ClientInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    getAllBookings()
-      .then(setBookings)
-      .catch(() => toast.error('Не удалось загрузить список бронирований'))
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+    Promise.all([getClientList(), getAllBookings().catch(() => [] as Booking[])])
+      .then(([items, bookings]) => {
+        if (cancelled) return;
+        setClients(clientsFromApi(items, bookings));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadError(true);
+        setClients([]);
+        toast.error(LIST_ERROR);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  const clients = useMemo(
-    () => buildClientsFromBookings(bookings),
-    [bookings],
-  );
 
   const filteredClients = useMemo(() => {
     if (!searchQuery) return clients;
     const q = searchQuery.toLowerCase();
     return clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q),
+      (client) =>
+        client.name.toLowerCase().includes(q) || client.email.toLowerCase().includes(q),
     );
   }, [clients, searchQuery]);
 
@@ -120,7 +126,6 @@ export default function ManagerClientsPage() {
           Клиенты
         </h1>
 
-        {/* Search */}
         <Card className="p-4 sm:p-5">
           <div className="relative max-w-md">
             <Search
@@ -137,129 +142,127 @@ export default function ManagerClientsPage() {
           </div>
         </Card>
 
-        {/* Client list */}
-        <div className="space-y-3">
-          {filteredClients.map((client, idx) => {
-            const isExpanded = expandedId === client.id;
+        {loadError ? (
+          <p role="alert" className="text-sm text-warm-gray">
+            {LIST_ERROR}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {filteredClients.map((client, idx) => {
+              const isExpanded = expandedId === client.id;
 
-            return (
-              <motion.div
-                key={client.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <Card className="overflow-hidden">
-                  {/* Client header row */}
-                  <button
-                    onClick={() => toggleExpanded(client.id)}
-                    className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-cream/40 sm:p-5"
-                  >
-                    <Avatar name={client.name} size="lg" />
-
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-heading text-base font-semibold text-dark">
-                        {client.name}
-                      </h3>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-warm-gray">
-                        <span className="flex items-center gap-1">
-                          <Mail size={13} />
-                          {client.email}
-                        </span>
-                        <span className="hidden items-center gap-1 sm:flex">
-                          <Phone size={13} />
-                          {client.phone}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="hidden flex-shrink-0 text-right sm:block">
-                      <div className="flex items-center gap-1.5 text-sm text-warm-gray">
-                        <Briefcase size={14} />
-                        <span>
-                          {client.bookings.length}{' '}
-                          {pluralizeBookings(client.bookings.length)}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-warm-gray">
-                        <Calendar size={12} />
-                        {formatDate(client.lastBookingDate)}
-                      </p>
-                    </div>
-
-                    <ChevronDown
-                      size={20}
-                      className={clsx(
-                        'shrink-0 text-warm-gray transition-transform duration-200',
-                        isExpanded && 'rotate-180',
-                      )}
-                    />
-                  </button>
-
-                  {/* Mobile stats */}
-                  <div className="flex items-center gap-4 border-t border-sand px-5 py-2.5 text-xs text-warm-gray sm:hidden">
-                    <span className="flex items-center gap-1">
-                      <Phone size={12} />
-                      {client.phone}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Briefcase size={12} />
-                      {client.bookings.length}{' '}
-                      {pluralizeBookings(client.bookings.length)}
-                    </span>
-                  </div>
-
-                  {/* Expanded booking history */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
+              return (
+                <motion.div
+                  key={client.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                >
+                  <Card className="overflow-hidden">
+                    <div className="flex items-center gap-4 p-4 sm:p-5">
+                      <Link
+                        to={`/manager/clients/${client.id}`}
+                        aria-label={`Карточка клиента, ${client.name}`}
+                        className="shrink-0"
                       >
-                        <div className="border-t border-sand bg-cream/30 p-4 sm:p-5">
-                          <h4 className="mb-3 text-sm font-semibold text-dark">
-                            История бронирований
-                          </h4>
-                          <div className="space-y-3">
-                            {client.bookings.map((booking) => (
-                              <BookingCard
-                                key={booking.id}
-                                booking={booking}
-                              />
-                            ))}
+                        <Avatar name={client.name} src={client.avatarUrl} size="lg" />
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(client.id)}
+                        className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-heading text-base font-semibold text-dark">
+                            {client.name}
+                          </h3>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-warm-gray">
+                            <span className="flex items-center gap-1">
+                              <Mail size={13} />
+                              {client.email}
+                            </span>
                           </div>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Card>
-              </motion.div>
-            );
-          })}
 
-          {filteredClients.length === 0 && (
-            <div className="py-16 text-center text-warm-gray">
-              <p className="text-base font-medium">Клиенты не найдены</p>
-              <p className="mt-1 text-sm">
-                Попробуйте изменить параметры поиска
-              </p>
-            </div>
-          )}
-        </div>
+                        <div className="hidden flex-shrink-0 text-right sm:block">
+                          <div className="flex items-center gap-1.5 text-sm text-warm-gray">
+                            <Briefcase size={14} />
+                            <span>{bookingCountLabel(client.bookingCount)}</span>
+                          </div>
+                          {client.lastBookingDate ? (
+                            <p className="mt-0.5 flex items-center gap-1 text-xs text-warm-gray">
+                              <Calendar size={12} />
+                              {formatDate(client.lastBookingDate)}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <ChevronDown
+                          size={20}
+                          className={clsx(
+                            'shrink-0 text-warm-gray transition-transform duration-200',
+                            isExpanded && 'rotate-180',
+                          )}
+                        />
+                      </button>
+                      {client.phone ? (
+                        <a
+                          href={`tel:${client.phone}`}
+                          className="hidden items-center gap-1 text-sm text-dark sm:flex"
+                        >
+                          <Phone size={13} />
+                          {client.phone}
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-4 border-t border-sand px-5 py-2.5 text-xs text-dark sm:hidden">
+                      {client.phone ? (
+                        <a href={`tel:${client.phone}`} className="flex items-center gap-1">
+                          <Phone size={12} />
+                          {client.phone}
+                        </a>
+                      ) : null}
+                      <span className="text-warm-gray">{bookingCountLabel(client.bookingCount)}</span>
+                    </div>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="border-t border-sand bg-cream/30 p-4 sm:p-5">
+                            <h4 className="mb-3 text-sm font-semibold text-dark">
+                              История бронирований
+                            </h4>
+                            <div className="space-y-3">
+                              {client.bookings.map((booking) => (
+                                <BookingCard key={booking.id} booking={booking} />
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Card>
+                </motion.div>
+              );
+            })}
+
+            {filteredClients.length === 0 && (
+              <div className="py-16 text-center text-warm-gray">
+                <p className="text-base font-medium">Клиенты не найдены</p>
+                <p className="mt-1 text-sm">Попробуйте изменить параметры поиска</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </PageTransition>
   );
-}
-
-function pluralizeBookings(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-
-  if (mod100 >= 11 && mod100 <= 19) return 'бронирований';
-  if (mod10 === 1) return 'бронирование';
-  if (mod10 >= 2 && mod10 <= 4) return 'бронирования';
-  return 'бронирований';
 }

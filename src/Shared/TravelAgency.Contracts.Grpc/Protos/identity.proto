@@ -6,6 +6,7 @@ package identity;
 
 service IdentityGrpc {
   rpc GetUserSummary (GetUserSummaryRequest) returns (UserSummaryResponse);
+  rpc GetUserPhone (GetUserPhoneRequest) returns (UserPhoneResponse);
 }
 
 message GetUserSummaryRequest {
@@ -20,4 +21,13 @@ message UserSummaryResponse {
   string role = 5;
   string avatar_url = 6;
   string display_name = 7;
+}
+
+message GetUserPhoneRequest {
+  string user_id = 1;
+}
+
+message UserPhoneResponse {
+  string user_id = 1;
+  string phone = 2;
 }

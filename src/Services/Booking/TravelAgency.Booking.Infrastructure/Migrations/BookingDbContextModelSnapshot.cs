@@ -120,6 +120,32 @@ namespace TravelAgency.Booking.Infrastructure.Migrations
                     b.ToTable("BookingStatusHistories", (string)null);
                 });
 
+            modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.ClientNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("ClientNotes", (string)null);
+                });
+
             modelBuilder.Entity("TravelAgency.Booking.Domain.Entities.Favorite", b =>
                 {
                     b.Property<Guid>("Id")

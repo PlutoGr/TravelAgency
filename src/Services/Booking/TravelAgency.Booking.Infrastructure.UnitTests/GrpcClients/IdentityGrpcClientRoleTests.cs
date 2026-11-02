@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Infrastructure.GrpcClients;
 using TravelAgency.Contracts.Grpc.Identity;
 using TravelAgency.Shared.Contracts.Authorization;
@@ -66,6 +67,54 @@ public class IdentityGrpcClientRoleTests
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ReadCardProfileAsync_ReturnsAvatarAndDisplayName_AndSplitsNotFoundFromOtherFailures()
+    {
+        using var foundHost = await CreateTestServerAsync(new CallPlan(
+            Role: AppRoles.Client,
+            DisplayName: "  Анна Соколова  ",
+            AvatarUrl: "/api/v1/media/files/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/a256"));
+        var found = await CreateClient(foundHost).ReadCardProfileAsync(Guid.NewGuid(), CancellationToken.None);
+        found.Kind.Should().Be(IdentityReadKind.Found);
+        found.Profile!.Email.Should().Be("manager@example.com");
+        found.Profile.DisplayName.Should().Be("  Анна Соколова  ");
+        found.Profile.Role.Should().Be(AppRoles.Client);
+        found.Profile.AvatarUrl.Should().Be("/api/v1/media/files/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/a256");
+
+        using var missingHost = await CreateTestServerAsync(new CallPlan(Error: StatusCode.NotFound));
+        var missing = await CreateClient(missingHost).ReadCardProfileAsync(Guid.NewGuid(), CancellationToken.None);
+        missing.Kind.Should().Be(IdentityReadKind.NotFound);
+        missing.Profile.Should().BeNull();
+
+        using var downHost = await CreateTestServerAsync(new CallPlan(Error: StatusCode.Unavailable));
+        var down = await CreateClient(downHost).ReadCardProfileAsync(Guid.NewGuid(), CancellationToken.None);
+        down.Kind.Should().Be(IdentityReadKind.Unavailable);
+        down.Profile.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReadUserPhoneAsync_ReturnsStoredOrEmptyPhone_AndDoesNotTurnFailureIntoEmptyPhone()
+    {
+        using var foundHost = await CreateTestServerAsync(new CallPlan(Phone: "+79991234567"));
+        var found = await CreateClient(foundHost).ReadUserPhoneAsync(Guid.NewGuid(), CancellationToken.None);
+        found.Kind.Should().Be(IdentityReadKind.Found);
+        found.Phone.Should().Be("+79991234567");
+
+        using var emptyHost = await CreateTestServerAsync(new CallPlan(Phone: ""));
+        var empty = await CreateClient(emptyHost).ReadUserPhoneAsync(Guid.NewGuid(), CancellationToken.None);
+        empty.Kind.Should().Be(IdentityReadKind.Found);
+        empty.Phone.Should().BeEmpty();
+
+        using var missingHost = await CreateTestServerAsync(new CallPlan(Error: StatusCode.NotFound));
+        var missing = await CreateClient(missingHost).ReadUserPhoneAsync(Guid.NewGuid(), CancellationToken.None);
+        missing.Kind.Should().Be(IdentityReadKind.NotFound);
+
+        using var downHost = await CreateTestServerAsync(new CallPlan(Error: StatusCode.Unavailable));
+        var down = await CreateClient(downHost).ReadUserPhoneAsync(Guid.NewGuid(), CancellationToken.None);
+        down.Kind.Should().Be(IdentityReadKind.Unavailable);
+        down.Phone.Should().BeEmpty();
+    }
+
     private static async Task<IHost> CreateTestServerAsync(CallPlan plan)
     {
         var host = Host.CreateDefaultBuilder()
@@ -110,7 +159,12 @@ public class IdentityGrpcClientRoleTests
             NullLogger<IdentityGrpcClient>.Instance);
     }
 
-    private sealed record CallPlan(StatusCode? Error = null, string Role = AppRoles.Manager);
+    private sealed record CallPlan(
+        StatusCode? Error = null,
+        string Role = AppRoles.Manager,
+        string Phone = "+79991234567",
+        string DisplayName = "Test Manager",
+        string AvatarUrl = "");
 
     private sealed class MockIdentityGrpcService : IdentityGrpc.IdentityGrpcBase
     {
@@ -134,7 +188,23 @@ public class IdentityGrpcClientRoleTests
                 Email = "manager@example.com",
                 FirstName = "Test",
                 LastName = "Manager",
-                Role = _plan.Role
+                Role = _plan.Role,
+                DisplayName = _plan.DisplayName,
+                AvatarUrl = _plan.AvatarUrl
+            });
+        }
+
+        public override Task<UserPhoneResponse> GetUserPhone(
+            GetUserPhoneRequest request,
+            ServerCallContext context)
+        {
+            if (_plan.Error is StatusCode statusCode)
+                throw new RpcException(new Status(statusCode, "identity"));
+
+            return Task.FromResult(new UserPhoneResponse
+            {
+                UserId = request.UserId,
+                Phone = _plan.Phone
             });
         }
     }

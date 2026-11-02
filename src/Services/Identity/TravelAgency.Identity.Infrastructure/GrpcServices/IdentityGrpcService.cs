@@ -32,4 +32,23 @@ public sealed class IdentityGrpcService(IUserRepository userRepository)
             DisplayName = user.DisplayName
         };
     }
+
+    public override async Task<UserPhoneResponse> GetUserPhone(
+        GetUserPhoneRequest request,
+        ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.UserId, out var userId))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid user ID format."));
+
+        var user = await userRepository.GetByIdAsync(userId, context.CancellationToken);
+
+        if (user is null)
+            throw new RpcException(new Status(StatusCode.NotFound, $"User '{request.UserId}' not found."));
+
+        return new UserPhoneResponse
+        {
+            UserId = user.Id.ToString(),
+            Phone = user.Phone ?? string.Empty
+        };
+    }
 }

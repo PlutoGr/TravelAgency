@@ -59,7 +59,10 @@ public class NarrowProfileContractTests
         UserSummaryResponse.Descriptor.Fields.InDeclarationOrder()
             .Select(field => field.Name)
             .Should().Equal("user_id", "email", "first_name", "last_name", "role", "avatar_url", "display_name");
+        UserPhoneResponse.Descriptor.Fields.InDeclarationOrder()
+            .Select(field => field.Name)
+            .Should().Equal("user_id", "phone");
         IdentityGrpc.Descriptor.Methods.Select(method => method.Name)
-            .Should().Equal("GetUserSummary");
+            .Should().Equal("GetUserSummary", "GetUserPhone");
     }
 }

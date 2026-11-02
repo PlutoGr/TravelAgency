@@ -48,6 +48,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<BookingDbContext>());
         services.AddScoped<IBookingRepository, BookingRepository>();
+        services.AddScoped<IClientNoteRepository, ClientNoteRepository>();
         services.AddScoped<IFavoriteRepository, FavoriteRepository>();
         services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
         services.AddHttpContextAccessor();

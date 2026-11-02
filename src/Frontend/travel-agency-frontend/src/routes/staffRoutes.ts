@@ -18,6 +18,7 @@ export const MANAGER_ROUTE_DEFS: readonly StaffRouteDef[] = [
   { path: 'manager/tours/:tourId', url: '/manager/tours/tour-1' },
   { path: 'manager/tours', url: '/manager/tours' },
   { path: 'manager/clients', url: '/manager/clients' },
+  { path: 'manager/clients/:id', url: '/manager/clients/11111111-1111-1111-1111-111111111111' },
 ];
 
 export const ADMIN_ROUTE_DEFS: readonly StaffRouteDef[] = [

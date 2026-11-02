@@ -768,6 +768,86 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
     }
 
     [Fact]
+    public async Task ClientCards_UseManagerRoutes_AndDoNotPublishGetUserPhone()
+    {
+        var proxy = _fixture.Factory.Services.GetRequiredService<IProxyConfigProvider>().GetConfig();
+        var list = proxy.Routes.Single(route => route.RouteId == "client-cards-list-route");
+        var card = proxy.Routes.Single(route => route.RouteId == "client-cards-route");
+
+        Assert.Equal(-1, list.Order);
+        Assert.Equal(-1, card.Order);
+        Assert.Equal("booking-cluster", list.ClusterId);
+        Assert.Equal("booking-cluster", card.ClusterId);
+        Assert.Equal("RequireManagerOrAdmin", list.AuthorizationPolicy);
+        Assert.Equal("RequireManagerOrAdmin", card.AuthorizationPolicy);
+        Assert.Equal("/api/v1/bookings/clients", list.Match.Path);
+        Assert.Equal("/api/v1/bookings/clients/{**catch-all}", card.Match.Path);
+        Assert.Equal(new[] { "GET", "POST", "PUT", "PATCH", "DELETE" }, list.Match.Methods);
+        Assert.Equal(new[] { "GET", "POST", "PUT", "PATCH", "DELETE" }, card.Match.Methods);
+        Assert.Contains(list.Transforms!, transform =>
+            transform.TryGetValue("PathRemovePrefix", out var prefix) && prefix == "/api/v1");
+        Assert.Contains(card.Transforms!, transform =>
+            transform.TryGetValue("PathRemovePrefix", out var prefix) && prefix == "/api/v1");
+        Assert.DoesNotContain(proxy.Routes, route =>
+            (route.Match.Path ?? string.Empty).Contains("GetUserPhone", StringComparison.OrdinalIgnoreCase)
+            || route.RouteId.Contains("GetUserPhone", StringComparison.OrdinalIgnoreCase));
+
+        var id = "6b1c2a0e-7b4d-4e1a-9c2f-6a8b0d1e2f30";
+        var guest = CreateClient(withAuth: false);
+        var guestResponse = await guest.GetAsync("/api/v1/bookings/clients");
+        Assert.Equal(HttpStatusCode.Unauthorized, guestResponse.StatusCode);
+        var guestBody = await guestResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("displayName", guestBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("notes", guestBody, StringComparison.Ordinal);
+
+        var client = CreateClientForRole(AppRoles.Client);
+        var forbidden = await client.GetAsync($"/api/v1/bookings/clients/{id}");
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        var forbiddenBody = await forbidden.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("displayName", forbiddenBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("authorName", forbiddenBody, StringComparison.Ordinal);
+
+        var beforeClient = _fixture.MockServer.RequestPaths.Count;
+        var clientPost = await client.PostAsync(
+            $"/api/v1/bookings/clients/{id}/notes",
+            new StringContent("{\"text\":\"hello\"}", Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.Forbidden, clientPost.StatusCode);
+        Assert.Equal(beforeClient, _fixture.MockServer.RequestPaths.Count);
+
+        var manager = CreateClientForRole(AppRoles.Manager);
+        var listResponse = await manager.GetAsync("/api/v1/bookings/clients");
+        var listEcho = await ReadEchoAsync(listResponse);
+        Assert.Equal("client-cards-list-route", listEcho.RouteId);
+        Assert.Equal("/bookings/clients", listEcho.Path);
+
+        var cardResponse = await manager.GetAsync($"/api/v1/bookings/clients/{id}");
+        var cardEcho = await ReadEchoAsync(cardResponse);
+        Assert.Equal("client-cards-route", cardEcho.RouteId);
+        Assert.Equal($"/bookings/clients/{id}", cardEcho.Path);
+
+        var noteRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/bookings/clients/{id}/notes")
+        {
+            Content = new StringContent("{\"text\":\"hello\"}", Encoding.UTF8, "application/json")
+        };
+        var noteResponse = await manager.SendAsync(noteRequest);
+        var noteEcho = await ReadEchoAsync(noteResponse);
+        Assert.Equal("client-cards-route", noteEcho.RouteId);
+        Assert.Equal($"/bookings/clients/{id}/notes", noteEcho.Path);
+        Assert.DoesNotContain("phone", noteEcho.Path, StringComparison.OrdinalIgnoreCase);
+
+        var put = await manager.PutAsync($"/api/v1/bookings/clients/{id}", new StringContent("{}", Encoding.UTF8, "application/json"));
+        Assert.Equal("client-cards-route", (await ReadEchoAsync(put)).RouteId);
+        var delete = await manager.DeleteAsync($"/api/v1/bookings/clients/{id}/notes");
+        Assert.Equal("client-cards-route", (await ReadEchoAsync(delete)).RouteId);
+
+        var bookingId = "b7c1c2a0-7b4d-4e1a-9c2f-6a8b0d1e2f31";
+        var booking = await manager.GetAsync($"/api/v1/bookings/{bookingId}");
+        var bookingEcho = await ReadEchoAsync(booking);
+        Assert.Equal("bookings-route", bookingEcho.RouteId);
+        Assert.Equal($"/bookings/{bookingId}", bookingEcho.Path);
+    }
+
+    [Fact]
     public async Task HealthReady_Returns200_WithMockBackend()
     {
         // Arrange
