@@ -2,7 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using TravelAgency.Booking.Application.Abstractions;
 using TravelAgency.Booking.Application.Features.Clients;
 using TravelAgency.Booking.Domain.Entities;
@@ -195,8 +198,7 @@ public class ClientCardsHttpTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task RequestLog_WritesThePath_AndNotThePhoneOrNote()
     {
-        var logPath = Path.Combine(Path.GetTempPath(), $"client-cards-{Guid.NewGuid():N}.log");
-        await using var factory = new ClientCardLogFactory(logPath);
+        await using var factory = new ClientCardLogFactory();
         factory.EnsureDbCreated();
         var clientId = Guid.NewGuid();
         var managerId = Guid.NewGuid();
@@ -223,8 +225,7 @@ public class ClientCardsHttpTests : IClassFixture<CustomWebApplicationFactory>
         (await http.PostAsJsonAsync($"/bookings/clients/{clientId}/notes", new { text = Note })).StatusCode
             .Should().Be(HttpStatusCode.Created);
 
-        await factory.DisposeAsync();
-        var log = File.Exists(logPath) ? await File.ReadAllTextAsync(logPath) : string.Empty;
+        var log = string.Join('\n', factory.Sink.Lines);
         log.Should().Contain($"/bookings/clients/{clientId}");
         log.Should().NotContain(Phone);
         log.Should().NotContain(Note);
@@ -300,22 +301,22 @@ public class ClientCardsHttpTests : IClassFixture<CustomWebApplicationFactory>
 
     private sealed class ClientCardLogFactory : CustomWebApplicationFactory
     {
-        private readonly string _logPath;
+        public ListSink Sink { get; } = new();
 
-        public ClientCardLogFactory(string logPath) => _logPath = logPath;
-
-        protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
+        protected override IHost CreateHost(IHostBuilder builder)
         {
-            base.ConfigureWebHost(builder);
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Serilog:WriteTo:1:Name"] = "File",
-                    ["Serilog:WriteTo:1:Args:path"] = _logPath,
-                    ["Serilog:WriteTo:1:Args:shared"] = "true"
-                });
-            });
+            builder.UseSerilog(
+                (_, configuration) => configuration.MinimumLevel.Information().WriteTo.Sink(Sink),
+                preserveStaticLogger: true,
+                writeToProviders: false);
+            return base.CreateHost(builder);
         }
+    }
+
+    private sealed class ListSink : ILogEventSink
+    {
+        public List<string> Lines { get; } = new();
+
+        public void Emit(LogEvent logEvent) => Lines.Add(logEvent.RenderMessage());
     }
 }
