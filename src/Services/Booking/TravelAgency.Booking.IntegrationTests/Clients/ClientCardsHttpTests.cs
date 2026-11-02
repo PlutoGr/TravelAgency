@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.AspNetCore;
 using Serilog.Core;
 using Serilog.Events;
 using TravelAgency.Booking.Application.Abstractions;
@@ -302,6 +304,16 @@ public class ClientCardsHttpTests : IClassFixture<CustomWebApplicationFactory>
     private sealed class ClientCardLogFactory : CustomWebApplicationFactory
     {
         public ListSink Sink { get; } = new();
+
+        protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureServices(services =>
+            {
+                services.AddOptions<RequestLoggingOptions>()
+                    .Configure<Serilog.ILogger>((options, logger) => options.Logger = logger);
+            });
+        }
 
         protected override IHost CreateHost(IHostBuilder builder)
         {
