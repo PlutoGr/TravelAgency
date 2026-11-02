@@ -11,6 +11,15 @@ Active project automations post GitHub comments as `cursor`. They are the first-
 | `TA: Doc- after merge` | PR merged | after merge: Doc- gap → issue or wiki fix |
 | `TA: Weekly vuln scan` | Monday 09:00 MSK | weekly: read run history; open issues if needed |
 
+## Routines (keep enabled)
+| Routine | When | Role |
+|---|---|---|
+| «TravelAgency CI/CD» | after «CI», «Deploy to dev», «Secret scan» | safety-net wake ([events](../lifecycle/events.md#wake-sources)) |
+| `travelagency-memory-refresh` | weekdays | memory refresh, owner re-ask, routine check |
+| «Еженедельный аудит порядка» | Monday 12:00 Europe/Moscow | [weekly audit](../lifecycle/weekly-audit.md) |
+
+A missing or disabled routine is a blocker: report it to the owner ([escalation](../templates/owner/escalation.md)); re-enabling or recreating it is the owner's yes.
+
 ## Handling
 - Before merge: wait until CI and automations have finished, read every finding including medium and lower, reply on each thread ([review replies](../templates/github/review-replies.md), [review and merge](../lifecycle/10-review-and-merge.md#1-cloud-agent-until-ready)). A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
 - Do not merge while a blocker is open (format, Doc- line, red CI, a validated security or bug finding without a finished reply).

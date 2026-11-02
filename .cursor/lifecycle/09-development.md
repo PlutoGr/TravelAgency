@@ -9,8 +9,8 @@
 - A typo, or a 500 caused by a typo, inside this feature is fixed here; no new issue ([bugs](bugs.md)).
 - Deviation needed: stop and raise a [question](../templates/agents/question.md) with a proposed «Решения» row. Do not code around the page. If the architecture prevents a clean, secure solution, raise an architecture-change question instead of hacking.
 - PR per [pull requests](../elements/git/pull-requests.md): «Задача» `#NN` only, never `closes`/`fix`/`fixes`; «Документация» names the `Doc-` page to write after merge or «вики не затронута»; no wiki edit in the PR. Commits per [commits](../elements/git/commits.md).
-- The agent watches CI and Cursor Automations, fixes red CI that belongs to this PR, answers bot findings, and only then marks the PR ready and reports with the [agent report](../templates/agents/agent-report.md) ([stage 10 §1](10-review-and-merge.md#1-cloud-agent-until-ready)).
+- The agent watches CI, Secret scan and Cursor Automations, fixes red CI that belongs to this PR, answers bot findings, and only when the [ready predicate](10-review-and-merge.md#ready-predicate) holds marks the PR ready and reports with the [agent report](../templates/agents/agent-report.md) ([stage 10 §1](10-review-and-merge.md#1-cloud-agent-until-ready)).
 
-**Output:** a PR ready for orchestrator review (CI green, Automations finished, findings answered).
+**Output:** a PR ready for orchestrator review ([ready predicate](10-review-and-merge.md#ready-predicate)).
 
-**Exit gate:** PR open into `main`, agent reported ready, «Документация» and «Задача» set; the label stays `статус: разработка` (orchestrator full review and merge in [10](10-review-and-merge.md), then [11](11-deploy-and-acceptance.md)).
+**Exit gate:** PR open into `main`, agent reported ready, «Документация» and «Задача» set; the label stays `статус: разработка` through the orchestrator full review and merge ([10](10-review-and-merge.md)). After a green Deploy that contains the merge: a product item (feature, bug-feature) → Приёмка ([11](11-deploy-and-acceptance.md)); a non-product item per [non-product work](non-product-work.md).

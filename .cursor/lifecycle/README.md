@@ -7,7 +7,8 @@ Owner idea / roadmap
   → 01 Intake and discussion → 02 Roadmap upkeep
   → Epic:    Очередь → Бизнес-анализ (03) → Архитектура (04) → Разбиение (05) → В работе → Демо (13) → Готово
                                                               ↓ one Feature per split line
-  → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → `Doc-` (12) → Готово
+  → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → Готово
+             side condition, only when «Документация» names a page: `Doc-` (12), drafted after merge while in Разработка or Приёмка; Готово waits for it
   → Epic done → STOP: owner demo in Демо (13) → next epic pick (02)
 ```
 Interrupts: Удержание (long work-stream pause). Owner questions: pause in place (same column) + [memory](../elements/memory.md). Демо = epic owner demo only ([13](13-epic-acceptance.md)); features never use Демо. Per-transition deliverable review stays an FSM rule (not a column). Bugs and backlog: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md), [memory](../elements/memory.md).
@@ -33,7 +34,7 @@ File numbers only order the files and may appear in link text. Prose names a sta
 
 ## Gates
 - Hard and sequential (**FSM**): [orchestrator §2](../orchestrator.md#2-process-as-a-finite-state-machine). No column is skipped on a product epic or feature, including small features, bug-features and backlog children. A short stage is still entered and filled (thin text by the orchestrator is allowed). There is no shorter product route.
-- **In-flight items (rules first):** an item already in work when this rule set took effect keeps its current column; the current columns and templates apply from its next transition. An epic that already has children stays in В работе and is not walked back (epic #92 stays as it is). Old issues and wiki pages are brought to the current templates in a later docs-and-tasks phase, not by walking items back.
+- **In-flight items (rules first):** an item already in work when this rule set took effect is not walked back. On its next touch the orchestrator maps it to the column of the work actually in progress: open PR → Разработка; merged and on dev → Приёмка; otherwise the column of the earliest unfilled section. A legacy `статус: на ревью` or `статус: в работе` on a feature is mapped the same way. A legacy epic (for example #92) stays in В работе and, once resumed, follows the normal epic machine including [stage 13](13-epic-acceptance.md) (В работе → Демо → Готово); an existing owner pause on it stays in force until the owner lifts it. Old issues and wiki pages are brought to the current templates in a later docs-and-tasks phase.
 - A column is entered only when the previous deliverable is visible (wiki section, test cases, PR, green Deploy) and the orchestrator accepted it.
 - Recorded verification: on every advance the orchestrator posts the stage comment ([status comments](../templates/github/status-comments.md)) naming what was checked and the new column, then sets the label and board Status together. The [deliverable review](../templates/agents/deliverable-review.md) is the internal checklist behind that comment (FSM rule, not a board column).
 - A cloud agent never changes `статус:*`, the board or the wiki.

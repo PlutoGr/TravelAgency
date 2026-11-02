@@ -12,12 +12,20 @@ One table (or short lists) with:
 | Stage / column | always | current `статус:*` (FSM state), or `Dependabot` / PR label when Issue is `-` |
 | PR | when a PR exists | number and URL |
 | Sha | when waiting on CI/Deploy | head sha before merge, merge sha after |
-| Agent | when a cloud agent owns the stage | agent id |
-| Waiting on | always | `agent` \| `CI+Automations` \| `Deploy` \| `owner` \| `none` |
+| Agent | while a cloud agent run is live | agent id; cleared on that run's finish or error wake |
+| Waiting on | always | `agent` \| `CI+Automations` \| `Deploy` \| `owner` \| `issue #NN` \| `none` |
 | Next | always | the next concrete step (never empty) |
 | Pause / why | when paused | why paused and what resumes it (owner answer, resume word) |
 
-Map an “orchestrator review” wait to `Waiting on` = `none` and `Next` = full review (do not invent a sixth enum value). Use that shape only when the review can start now: a Dependabot PR whose Automations are still running stays `Waiting on` = `CI+Automations` ([dependencies](dependencies.md)).
+`Waiting on` values:
+- `agent`: a live cloud agent run owns the step.
+- `CI+Automations`: checks or Automations still running on a PR no live agent watches (Dependabot).
+- `Deploy`: merged, waiting for a green «Deploy to dev» whose commit contains the merge sha ([Deploy wait](../lifecycle/events.md#deploy-wait)).
+- `owner`: an owner question or the epic demo is open; re-asked only on memory-refresh and the Monday audit.
+- `issue #NN`: parked until issue #NN is Готово; `Next` = resume the parked step (for example acceptance of the parent). Resumed by the [close procedure](board/columns/done.md) of #NN; the never-stall loop does not execute it.
+- `none`: the `Next` step is actionable by the orchestrator now. Never use `none` for a wait.
+
+An “orchestrator review” is `none` with `Next` = full review. Use that shape only when the review can start now: a Dependabot PR whose Automations are still running stays `Waiting on` = `CI+Automations` ([dependencies](dependencies.md)).
 
 Dependabot row `Issue` = `-`, `Stage` = `Dependabot`, `PR` = number, `Sha` = head sha, `Waiting on` = `CI+Automations` with `Next` = check Automations, then full review; after the switch `none` with `Next` = full review; after merge `Deploy` with the merge sha.
 
@@ -40,7 +48,7 @@ Updated: <YYYY-MM-DD HH:MM Europe/Moscow>
 
 | Issue | Stage | PR | Sha | Agent | Waiting on | Next | Pause / why |
 |---|---|---|---|---|---|---|---|
-| #NN or - | <column> | #PR or - | <sha> or - | <id> or - | owner / agent / CI+Automations / Deploy / none | <step> | <why / what resumes> or - |
+| #NN or - | <column> | #PR or - | <sha> or - | <id> or - | owner / agent / CI+Automations / Deploy / issue #NN / none | <step> | <why / what resumes> or - |
 
 ## Open owner questions
 - #NN: <question one line>

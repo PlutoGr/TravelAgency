@@ -11,7 +11,7 @@ The `Feature-` page («Бизнес и сценарии» Given/When/Then, «А�
 ## Bar
 - Each case: id (`ТК-1`), precondition, steps, expected result, level (unit / integration / e2e / ручная на dev), automated yes/no.
 - Derived from Given/When/Then and from the API and error paths; every criterion covered.
-- A substantial miss is described as a bug-feature linked to its source feature; a typo or a typo-caused 500 is a fix inside the open feature (extend its cases); an unrelated discovery is named for the [standing backlog](../project.md#standing-backlog) ([bugs](../lifecycle/bugs.md)).
+- A gap or contradiction in the feature becomes a proposed «Решения» row in the report, not a new issue; this stage never opens a bug-feature (the orchestrator opens them from Приёмка or the epic demo, [bugs](../lifecycle/bugs.md)). An unrelated discovery is named for the [standing backlog](../project.md#standing-backlog).
 
 ## Boundaries
 - No code and no PR: the deliverable is the case table.

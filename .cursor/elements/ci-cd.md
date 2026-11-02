@@ -13,7 +13,7 @@ Board hygiene / `board-sync` / `board_order` are deleted; the orchestrator alone
 
 - Merge = deploy: one PR at a time.
 - Do not merge while «CI» or «Secret scan» for the head sha is still running or red.
-- Primary path to review: the cloud agent reports ready after all checks and bot reviews finish; the safety-net wake confirms or catches misses.
+- Primary path to review: the cloud agent reports ready ([ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)); the safety-net wake confirms or catches misses.
 
 ## Red run
 While CI is red, do not merge. Who fixes:

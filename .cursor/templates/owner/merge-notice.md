@@ -6,3 +6,8 @@ After every merge (including Dependabot). Several merges of one wake go in one m
 Что меняется: <одна фраза для владельца>.
 Дальше: деплой на dev, затем приёмка | <другое>.
 ```
+
+Non-product issue whose criteria need no dev check (no Приёмка): the last line is
+```markdown
+Дальше: деплой на dev, затем проверка критериев и закрытие из «Разработка».
+```

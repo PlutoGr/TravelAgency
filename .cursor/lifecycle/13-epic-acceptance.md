@@ -5,7 +5,7 @@
 
 **Steps**
 1. STOP taking new roadmap work. Set the epic `статус: демо` and board Status = Демо (same step as the last child close when no siblings remain).
-2. Send the owner the [epic demo](../templates/owner/epic-demo.md): what shipped (features, `Doc-` and wiki links), how to check on dev, and the checklist: the problem, the chosen user story and the non-goals from «Бизнес и сценарии». Closed children are not enough.
+2. Send the owner the [epic demo](../templates/owner/epic-demo.md): what shipped (features, `Doc-` and wiki links), how to check on dev, and the checklist: the problem, the chosen user story and the non-goals from «Бизнес и сценарии». Closed children are not enough. In the same turn write memory `Waiting on` = `owner`, `Next` = record accept or gaps, Pause/why = epic demo.
 3. Owner pass: close the epic by the [close procedure](../elements/board/columns/done.md) and mark the `Epic-` page «сделано» in the same step (a content mark, not a status). Then epic pick ([02](02-roadmap.md)).
 4. Owner finds gaps: set the epic back to `статус: в работе`. Related gaps become features or bug-features under this epic, in Очередь with priority. The owner's wording is input to Аналитика, not a skip: the new feature still enters Аналитика; evaluate the proposed fix versus alternatives and bring options if needed. Unrelated discoveries go to the [standing backlog](../project.md#standing-backlog). Repeat this stage after they are done.
 5. A child reopened while the epic is in Демо: in the same step set the epic back to `статус: в работе` and Status = В работе ([done](../elements/board/columns/done.md)); repeat this stage once that child is Готово again.

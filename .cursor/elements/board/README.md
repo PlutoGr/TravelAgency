@@ -13,8 +13,8 @@ The former board mover / hygiene script and `board-sync` workflow are **removed*
 ## Rules
 - Exactly one `статус:*` on every open issue; a closed issue has only `статус: готово`. Close only by the [close procedure](columns/done.md), never from a PR body.
 - Columns and their entry and exit rules: [columns/README.md](columns/README.md). Label spelling: [labels](../issues/labels.md).
-- The Status field needs one option per column name (same spelling), including **Демо**. Missing options are created by the orchestrator before first use; Status options are project settings, so ask the owner first. Remove obsolete «На ревью» once live cards no longer use it.
+- The Status field needs one option per column name (same spelling), including **Демо**. Missing options are created by the orchestrator before first use; Status options are project settings, so ask the owner first. Remove obsolete «На ревью» once live cards no longer use it; a card still on it is mapped by the [in-flight rule](../../lifecycle/README.md#gates).
 - Views: «Задачи» (all except epics, by field «Тип») and «Эпики» («Тип» = «Эпик»). Every column is listed on both; empty columns on a view are expected. Ordinary tasks have no «Тип».
 - Card order: Очередь top = next by «Приоритет», then by issue number; Готово newest closed first; other columns by issue number; Удержание is its own column.
-- Leftover coarse `статус: в работе` on a feature: the orchestrator relabels it by hand to its real column when that issue is next taken.
+- Leftover `статус: в работе` or `статус: на ревью` on a feature: on the next touch the orchestrator maps it to the column of the work in progress by the [in-flight rule](../../lifecycle/README.md#gates).
 - A body line `⏸ На удержании` has no process meaning; hold only by `статус: удержание` ([Удержание](columns/on-hold.md)). Remove the prefix when the issue is next edited.

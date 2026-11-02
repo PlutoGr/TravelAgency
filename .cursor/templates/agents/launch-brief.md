@@ -24,7 +24,7 @@ Boundaries:
 - Out of scope: <explicit list>
 
 Deliverable:
-- <code: PR from branch `<type/NN-slug>` per `.cursor/templates/github/pull-request.md`, ready when CI is green>
+- <code: PR from branch `<type/NN-slug>` per `.cursor/templates/github/pull-request.md`, ready only when the ready predicate in `.cursor/lifecycle/10-review-and-merge.md` holds>
 - <text: ready Russian section text for «<section>» per `.cursor/templates/wiki/<page>.md`; no wiki push>
 
 Questions: if something blocks a correct result, stop, ask with `.cursor/templates/agents/question.md`, and end the run with `RESULT blocked` (do not stay open waiting for an answer).

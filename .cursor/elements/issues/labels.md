@@ -11,7 +11,7 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 | `статус: разбиение` | Разбиение | epic |
 | `статус: тест-кейсы` | Тест-кейсы | feature, including bug-feature |
 | `статус: в работе` | В работе | epic only: children in flight |
-| `статус: разработка` | Разработка | feature, including bug-feature; non-product while its PR is open; includes PR review and the wait for Deploy |
+| `статус: разработка` | Разработка | feature, including bug-feature; non-product issue: PR open, post-merge Deploy wait, and the criteria check when no dev check is needed; includes PR review and the wait for Deploy |
 | `статус: приёмка` | Приёмка | feature, including bug-feature; non-product when dev acceptance applies; on dev after Deploy green |
 | `статус: демо` | Демо | epic owner demo only (not mid-stage questions; not features) |
 | `статус: готово` | Готово | closed after acceptance or as not planned |
