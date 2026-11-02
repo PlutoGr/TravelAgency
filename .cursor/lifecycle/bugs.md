@@ -7,6 +7,7 @@ There is no separate bug type. Decide by size and relation:
 | Substantial change (add or remove a field, change a screen, change a business rule) caused by a feature of the current epic | bug-feature under the current epic | full feature route ([06](06-feature-analytics.md) to [12](12-docs-after-merge.md)), label `bug` |
 | Unrelated bug found while an epic is in flight | bug-feature under the standing bugs epic | same feature route, label `bug`; does not stop the current epic and does not jump ahead of it |
 | Red CI or failed Deploy on `main` | fix PR at once | [events](events.md) |
+| Validated security vulnerability | fixed first, ahead of the epic order | [queue priority](../elements/board/queue-priority.md#outside-the-epic-order) |
 
 - A bug-feature is a Feature with label `bug`: same columns, same wiki sections, a `Feature-` page. In «Связи» it links the feature that spawned it and the parent epic ([bug-feature](../elements/issues/bug-feature.md), [template](../templates/github/bug-feature-issue.md)).
 - A bug-feature covers its product change only; no unrelated fields.

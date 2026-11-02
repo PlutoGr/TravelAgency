@@ -13,6 +13,8 @@ Owner idea / roadmap
 Interrupts: На ревью (owner must decide; on an epic also owner acceptance) and Удержание (paused). Bugs: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md).
 
 ## Stages
+File numbers only order the files. Always name a stage by its column, never by a number.
+
 | # | Stage | Column (item) | Done by (brief) | File |
 |---|---|---|---|---|
 | 01 | Intake and discussion with the owner | none yet, ends in Очередь | orchestrator | [01-intake.md](01-intake.md) |

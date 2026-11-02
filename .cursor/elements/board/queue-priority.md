@@ -9,6 +9,10 @@ Canonical method for ranking Очередь (1 = next). Set only by the orchestr
 ## Current epic first
 The current product epic is the one whose label is a column other than Очередь, Готово or Удержание. Its open Очередь children get contiguous low numbers, ordered by dependency and delivery logic; a confirmed parallel set is interleaved the same way; all ahead of the standing bugs epic and the backlog. Dependabot and non-product issues already in flight are not the next roadmap epic. The owner may set an explicit order; that is an instruction, not a standing rule that the bugs epic outranks the current epic.
 
+## Outside the epic order
+- Non-product work (Dependabot, infra, process docs) follows «Приоритет» without an epic pick.
+- Red CI or a failed Deploy on `main`, and a validated security vulnerability, are fixed first without waiting for the epic order ([events](../../lifecycle/events.md)).
+
 ## When to refresh
 1. On every new issue filed or accepted: set «Приоритет» at once; adjust neighbours only as needed, not a full reshuffle.
 2. After an epic pick: set epic and child numbers.

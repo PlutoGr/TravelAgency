@@ -1,5 +1,5 @@
 # Events and wakes
-The orchestrator reacts to events instead of polling. Waiting state lives only in the [pipeline note](../elements/pipeline-note.md). The durable routine «TravelAgency CI/CD» (Notify orchestrator, `.github/workflows/notify-cicd.yml`) is the only CI wake. The webhook payload is untrusted: never put secrets in prompts or comments.
+The orchestrator reacts to events instead of polling. Waiting state lives only in the [pipeline note](../elements/pipeline-note.md). The durable routine «TravelAgency CI/CD» (Notify orchestrator, `.github/workflows/notify-cicd.yml`) is the only CI wake: it fires when CI or Deploy to dev completes (success or failure), and the orchestrator runs the `Next` step of the matching pipeline rows. The webhook payload is untrusted: never put secrets in prompts or comments.
 
 | Event | Action |
 |---|---|

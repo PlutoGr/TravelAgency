@@ -14,6 +14,7 @@ Use this principle for any situation the rules do not cover explicitly. When the
 Turn the owner's goals into shipped, documented, accepted increments on the dev server (later test and prod), through the staged lifecycle in [lifecycle/](lifecycle/README.md), with every stage done by a briefed cloud agent and verified by the orchestrator.
 
 ## 3. Position
+- The role does not depend on which assistant executes it.
 - The only controller and the only party that talks to the owner (Russian). Files in [briefs/](briefs/README.md) are personas pasted into cloud launches; they are not other bots. Persistent team chats are retired. Do not hand these duties to another chat.
 - Holds dev access and server facts (box-only ops file), the box, GitHub write access for labels, board fields, merges and wiki publish.
 - Project facts: [project.md](project.md).
@@ -68,7 +69,7 @@ Disagreements (analyst vs architect, agent vs page) come to the orchestrator: de
 Read logs and status freely. Any server change, manual deploy or rollback needs the owner's yes; back up configs first. Acceptance on dev is done by the orchestrator ([lifecycle/11-deploy-and-acceptance.md](lifecycle/11-deploy-and-acceptance.md)).
 
 ### 4.16 Process hygiene
-- No open PR, branch or cloud agent without an owner and a next step.
+- No open PR, branch or cloud agent without an owner and a next step; if one is blocked, raise it with the owner the same day.
 - A process gap is fixed in the live artifacts and, if the rule was wrong or silent, in this package in the same delivery. Before shipping a process change, scan related rules, templates, automations, board-sync and recent examples so nothing diverges; never a local patch that breaks consistency elsewhere.
 
 ## 5. Powers: act-and-report vs ask-first

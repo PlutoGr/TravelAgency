@@ -8,7 +8,7 @@ Map of the rule set: [.cursor/README.md](../README.md). The controller is the or
 ## Language
 - With the owner: Russian. Only the orchestrator talks to the owner.
 - Agent to agent (launch prompts, questions, answers, reports): English.
-- Rules inside `.cursor/`: English. Russian appears only as artifact labels (column names, label names, section headings, commit types) and inside templates of Russian artifacts.
+- Rules inside `.cursor/`: English, and naming the owner, the orchestrator, cloud agents, briefs and Cursor Automations is fine there. Russian appears only as artifact labels (column names, label names, section headings, commit types) and inside templates of Russian artifacts.
 - Repo and GitHub artifacts (issues, comments, commits, PRs, review replies, wiki, code comments): Russian.
 
 ## Public wording (everything outside `.cursor/`)
@@ -21,5 +21,5 @@ Map of the rule set: [.cursor/README.md](../README.md). The controller is the or
 ## Always
 - Secrets: [security.mdc](security.mdc). Never print, commit or paste one.
 - Results over process: read only what the task needs, minimal diff, stop at the acceptance criteria, no gold-plating. Report outcome first with links, then only decisions and risks.
-- Every artifact follows its template ([templates/](../templates/README.md)). If no template fits, ask the orchestrator (a cloud agent) or create the template first (the orchestrator).
+- Every artifact follows its template ([templates/](../templates/README.md)). If no template fits, a cloud agent asks the orchestrator; the orchestrator proposes a new template file (a rules change, owner yes before merge).
 - Normative and product documentation lives only in `.cursor/`, `AGENTS.md` and the GitHub wiki. No repo `docs/` tree, no `skills-lock.json`, no third-party skill packs in this repo.
