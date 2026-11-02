@@ -1,0 +1,17 @@
+# 06 Feature analytics (column Аналитика)
+Product WHY and WHAT for one feature (or bug-feature). No solution design.
+
+**Entry:** feature taken from Очередь in priority order. Set `статус: аналитика` with the take comment; if this is the epic's first child leaving Очередь, set the epic to `статус: в работе`.
+
+**Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes.
+
+**Section «Аналитика»** on the `Feature-` page ([feature page template](../templates/wiki/feature-page.md)):
+1. Inherit the epic's chosen user story. Restate the epic goal only when this feature changes it.
+2. Every proposed field, control or block, on a screen or only in the backend: who fills or supplies it, who reads it, why it exists, lifecycle (create, edit, empty, error), how it looks and behaves. A field the service accepts or stores is a product decision. Prefer omit: an item that does not earn its place is left out.
+3. Layout when a screen is proposed: grouping, primary action, behavior, use of width and empty space. A pixel mock only when behavior stays unclear without it.
+4. Given/When/Then for the behavior this feature must show.
+5. Open questions in «Решения» with «Выбрано» empty. Do not invent a column for them.
+
+No services, API paths, storage, migrations or contracts. A bug-feature covers its product change only and adds no unrelated fields.
+
+**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. Then set `статус: архитектура` ([07](07-feature-architecture.md)).

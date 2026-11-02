@@ -1,0 +1,43 @@
+# Wiki
+Separate public repo `TravelAgency.wiki.git`, branch `master`; push = publish. Project documentation only; team rules live in this package, never in the wiki.
+
+## Structure
+| Page kind | Holds | Rules | Template |
+|---|---|---|---|
+| `Home` | what the product is, what works now, sections | [home.md](home.md) | none (single page) |
+| `_Sidebar`, `_Footer` | navigation | [sidebar.md](sidebar.md) | [sidebar](../../templates/wiki/sidebar.md) |
+| `Doc-<Name>` | only what works in `main`; `Doc-ADR-NNN-<Name>` for decisions | [doc-pages.md](doc-pages.md) | [doc page](../../templates/wiki/doc-page.md), [ADR](../../templates/wiki/adr-page.md) |
+| `Plan-<Name>` | only the current product vision and roadmap | [plan-pages.md](plan-pages.md) | [plan page](../../templates/wiki/plan-page.md) |
+| `Epic-<Name>` | epic work in progress (sections per column) | [epic-pages.md](epic-pages.md) | [epic page](../../templates/wiki/epic-page.md) |
+| `Feature-<Name>` | feature and bug-feature work in progress | [feature-pages.md](feature-pages.md) | [feature page](../../templates/wiki/feature-page.md) |
+| «Решения» (section) | decision log on Epic and Feature pages | [decisions-log.md](decisions-log.md) | [decisions table](../../templates/wiki/decisions-table.md) |
+
+No other page kinds. Sidebar groups: «Действующая документация» (Doc-), «Фичи» (Epic- and Feature-), «Планы» (Plan-).
+
+## Who writes
+Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, ADR draft), [test designer](../../briefs/test-designer.md) (feature «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (`Doc-` and ADR after merge). Other text arrives via the issue or the PR.
+
+## Writing
+- Russian, impersonal: what the system does («Gateway отвечает 404»), not who decided. No personal names, roles, agents or AI as actors; no customer company names. Cursor Automations may be named when needed.
+- Simple example first (a request and response, a user step), then details. Public sources (for example Tourvisor) may be cited. Links to `#81`, `PR #82` are welcome.
+- No em dash: period, colon, comma or parentheses.
+- Code names (classes, fields, routes, commands) as in code. Dates `2026-10-17`. No «Обновлено» line (history shows dates).
+- File names Latin `Doc-Название-Через-Дефис.md` (Cyrillic breaks links); first line `# <русский заголовок>`; links `[текст](Имя-Файла)` without `.md`, anchors `[текст](Имя-Файла#якорь)`.
+- No status line as the source of truth: the stage is the issue label. «сделано» or «отменено» are content marks.
+- Templates live in this repo ([templates/wiki](../../templates/README.md#wiki-pages)). The wiki pages `Epic-Template` and `Feature-Template` are legacy copies and must not be used as the bar; a page following an old template (status line, subtasks, epic test cases) is brought to the current template when next edited.
+
+## Lifecycle
+- Shipped: `Doc-` (and ADR) written after merge; the source page marked «сделано» with links. Cancelled: «отменено» with the reason.
+- `Doc-` vs code mismatch: fix the wiki if the code is right, else open an issue.
+- Rename: no redirects; update every link in the same commit; if issues or external sites link the old name, leave a one-line stub ([moved page stub](../../templates/wiki/moved-page-stub.md)).
+
+## Push checklist
+```bash
+git pull --rebase                      # never force-push
+# 1. _Sidebar.md updated for every new, renamed or deleted page
+# 2. every [text](Name) link resolves to an existing file
+gitleaks dir --redact . && gitleaks git --redact .
+rg -n $'\u2014' <changed files>        # no em dash
+# 3. stop-word grep on changed files: personal names, agent and role names, labels like [Разработчик], AI mentions, «я/мы», passwords, tokens
+```
+Commit `документация(вики): <что изменено>` with «Зачем» and «Как работает» ([commit](../../templates/github/commit.md)).

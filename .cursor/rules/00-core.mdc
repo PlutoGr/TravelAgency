@@ -1,31 +1,25 @@
 ---
-description: Core rules for any AI agent in this repo; index of the other rules
+description: Core rules for any agent in this repo (orchestrator and cloud agents); entry point and map
 alwaysApply: true
 ---
 # Core (read first)
-Layout: `playbook-*.mdc` = generic dev playbook (copyable to other projects). `project-*.mdc` = TravelAgency specifics (override the playbook where stated). Controller: `.cursor/agents/orchestrator.md`. Cloud personas: `.cursor/briefs/` (pasted into a launch; not separate bots).
+Map of the rule set: [.cursor/README.md](../README.md). The controller is the orchestrator ([orchestrator.md](../orchestrator.md)). A cloud agent works from the brief it was launched with ([briefs/](../briefs/README.md)) and reads only the files that brief links.
 
-- Language: talk to the owner in Russian; agent-to-agent in English. Repo artifacts (commits, PRs, issues, comments, wiki, code comments): Russian.
-- Inside `.cursor/` (rules, `.cursor/agents/`, `.cursor/briefs/`, templates): write what the process needs. Owner, orchestrator, Cursor Automations, cloud agents, and brief names are fine. `AGENTS.md` stays a short pointer to these files and does not repeat the rules.
-- Outside `.cursor/` (wiki, issues, PRs, commits, comments, code comments, and any other public text): impersonal Russian by default. No personal names, no role labels as people, no agent or role as the actor, no «я/мы сделали», no `Co-authored-by` for bots. Write «принято решение», «добавлено», «проверено». When clarity needs it, name Cursor Automations. Do not name a role, a person, or another agent as the actor. No names of retired chat-bots.
-- Secrets: `playbook-security.mdc`. Never print, commit or paste one.
-- Default at merge: if the owner already put the task in work or explicitly authorized that work, and the PR matches that scope, merge without a separate yes and notify the owner after merge.
-- Ask the owner before merge only when the PR hits one of these and that exact case is not already authorized: irreversible or large-scale work (global delete, secrets, server changes, repo settings or access, history rewrite or force-push, spending money); Dependabot for docker or github-actions, including grouped updates that may contain majors; work outside the authorized scope; an unclear breaking change; a peer conflict; red CI.
-- npm and NuGet Dependabot bumps, including majors: merge when CI is green and nothing needs clarification, then notify (`playbook-git-pr.mdc`). A peer conflict, red CI, or an unclear breaking change still blocks that merge.
-- Team approval requests go through the orchestrator.
-- Results over process: read only what the task needs, minimal diff, stop at acceptance criteria, no gold-plating. Report: outcome first with links, then only decisions/risks.
+## Language
+- With the owner: Russian. Only the orchestrator talks to the owner.
+- Agent to agent (launch prompts, questions, answers, reports): English.
+- Rules inside `.cursor/`: English. Russian appears only as artifact labels (column names, label names, section headings, commit types) and inside templates of Russian artifacts.
+- Repo and GitHub artifacts (issues, comments, commits, PRs, review replies, wiki, code comments): Russian.
 
-Load on demand:
-| Rule | When |
-|---|---|
-| `playbook-git-pr.mdc` | any commit, PR, review, merge |
-| `playbook-workflow.mdc` | types, column names, where the route files are |
-| `playbook-epic.mdc` | epic columns, owner acceptance, epic pick |
-| `playbook-feature.mdc` | feature and bug-feature columns, full specification, acceptance, Doc- |
-| `playbook-security.mdc` | always before push |
-| `playbook-cloud.mdc` | launching or accepting a cloud agent |
-| `playbook-ci-wake.mdc` | CI/CD webhook or a Cursor Automations wake |
-| `project-travelagency.mdc` | facts, stack, merge order |
-| `project-github-formats.mdc` | commit/PR/issue/comment text, board statuses |
-| `project-wiki.mdc` | any wiki edit |
-| `project-cursor-automations.mdc` | merge, PR review, or weekly audit (Cursor Automations comments) |
+## Public wording (everything outside `.cursor/`)
+- Impersonal: «добавлено», «принято решение», «проверено». No «я/мы сделали».
+- No personal names, no role labels used as people, no agent or role as the actor, no mention of AI, assistants or retired chat-bots, no `Co-authored-by` for bots.
+- Cursor Automations may be named when the sentence needs a process actor.
+- No em dash (U+2014): use a period, colon, comma or parentheses. The wiki push check enforces it ([wiki](../elements/wiki/README.md#push-checklist)).
+- `AGENTS.md` stays a short pointer to this package and does not repeat rules.
+
+## Always
+- Secrets: [security.mdc](security.mdc). Never print, commit or paste one.
+- Results over process: read only what the task needs, minimal diff, stop at the acceptance criteria, no gold-plating. Report outcome first with links, then only decisions and risks.
+- Every artifact follows its template ([templates/](../templates/README.md)). If no template fits, ask the orchestrator (a cloud agent) or create the template first (the orchestrator).
+- Normative and product documentation lives only in `.cursor/`, `AGENTS.md` and the GitHub wiki. No repo `docs/` tree, no `skills-lock.json`, no third-party skill packs in this repo.

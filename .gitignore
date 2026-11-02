@@ -130,7 +130,10 @@ riderModule.iml
 # Cursor: only shared rules are committed
 .cursor/*
 !.cursor/rules/
-!.cursor/agents/
+!.cursor/lifecycle/
+!.cursor/elements/
+!.cursor/orchestrator.md
+!.cursor/project.md
 !.cursor/briefs/
 !.cursor/skills/
 !.cursor/templates/
