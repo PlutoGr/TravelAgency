@@ -1,7 +1,7 @@
 import type { Tour } from '@/types';
 import { create } from 'zustand';
 
-type AuthModalTab = 'login' | 'register';
+type AuthModalTab = 'login' | 'register' | 'forgot';
 
 /** Что гость хотел сделать, когда его отправили во вход. */
 export type AuthIntent =

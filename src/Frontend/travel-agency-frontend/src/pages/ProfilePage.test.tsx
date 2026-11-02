@@ -733,7 +733,7 @@ describe('ProfilePage', () => {
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
     expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
-    expect(screen.getByLabelText('Текущий пароль')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Пароль' })).getByLabelText('Текущий пароль')).toBeInTheDocument();
     expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile?tab=settings');
 
@@ -751,32 +751,18 @@ describe('ProfilePage', () => {
     expect(screen.getByTestId('location').textContent).not.toContain(user.id);
   });
 
-  it('ТК-18 leaves the password block inactive', async () => {
-    const post = vi.spyOn(apiClient, 'post');
-    const patch = vi.spyOn(apiClient, 'patch');
-    const postForm = vi.spyOn(apiClient, 'postForm');
+  it('ТК-18 keeps the password block active', async () => {
     renderProfile('/dashboard/profile?tab=settings');
     const password = screen.getByRole('region', { name: 'Пароль' });
 
-    expect(within(password).getByLabelText('Текущий пароль')).toBeDisabled();
-    expect(within(password).getByLabelText('Новый пароль')).toBeDisabled();
-    expect(within(password).getByLabelText('Повторите пароль')).toBeDisabled();
-    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeDisabled();
-    expect(within(password).getByText('Появится позже')).toBeInTheDocument();
+    expect(within(password).getByLabelText('Текущий пароль')).toBeEnabled();
+    expect(within(password).getByLabelText('Новый пароль')).toBeEnabled();
+    expect(within(password).getByLabelText('Повторите пароль')).toBeEnabled();
+    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeEnabled();
+    expect(within(password).queryByText('Появится позже')).not.toBeInTheDocument();
     expect(within(password).getByText(PASSWORD_HINT)).toBeInTheDocument();
     expect(within(password).getByLabelText('Новый пароль')).toHaveAccessibleDescription(PASSWORD_HINT);
-
-    const events = userEvent.setup({ pointerEventsCheck: 0 });
-    await events.click(within(password).getByLabelText('Текущий пароль'));
-    await events.click(within(password).getByLabelText('Новый пароль'));
-    await events.click(within(password).getByLabelText('Повторите пароль'));
-    await events.click(within(password).getByRole('button', { name: 'Сменить пароль' }));
-
-    expect(post).not.toHaveBeenCalled();
-    expect(patch).not.toHaveBeenCalled();
-    expect(postForm).not.toHaveBeenCalled();
-    expect(toast.success).not.toHaveBeenCalled();
-    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeDisabled();
+    expect(within(password).queryByRole('link', { name: 'Забыли пароль?' })).not.toBeInTheDocument();
   });
 
   
@@ -809,30 +795,16 @@ describe('ProfilePage', () => {
   
   
   
-  it('профиль менеджера ТК-16: смена пароля остаётся неактивной', async () => {
+  it('профиль менеджера ТК-16: смена пароля активна', async () => {
     signIn(managerUser);
-    const post = vi.spyOn(apiClient, 'post');
-    const patch = vi.spyOn(apiClient, 'patch');
     renderProfile('/dashboard/profile?tab=settings');
     const password = screen.getByRole('region', { name: 'Пароль' });
 
-    expect(within(password).getByLabelText('Текущий пароль')).toBeDisabled();
-    expect(within(password).getByLabelText('Новый пароль')).toBeDisabled();
-    expect(within(password).getByLabelText('Повторите пароль')).toBeDisabled();
-    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeDisabled();
-    expect(within(password).getByText('Появится позже')).toBeInTheDocument();
+    expect(within(password).getByLabelText('Текущий пароль')).toBeEnabled();
+    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeEnabled();
+    expect(within(password).queryByText('Появится позже')).not.toBeInTheDocument();
     expect(within(password).getByText(PASSWORD_HINT)).toBeInTheDocument();
-    expect(within(password).getByLabelText('Новый пароль')).toHaveAccessibleDescription(PASSWORD_HINT);
-
-    const events = userEvent.setup({ pointerEventsCheck: 0 });
-    await events.click(within(password).getByLabelText('Текущий пароль'));
-    await events.click(within(password).getByLabelText('Новый пароль'));
-    await events.click(within(password).getByLabelText('Повторите пароль'));
-    await events.click(within(password).getByRole('button', { name: 'Сменить пароль' }));
-
-    expect(post).not.toHaveBeenCalled();
-    expect(patch).not.toHaveBeenCalled();
-    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
   });
 
   

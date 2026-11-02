@@ -246,6 +246,57 @@ public class AuthRequestTransformProviderTests
         Assert.Equal("custom-access", context.ProxyRequest.Headers.Authorization!.Parameter);
     }
 
+    [Theory]
+    [InlineData("/api/v1/auth/email-confirmations")]
+    [InlineData("/API/v1/auth/email-confirmations")]
+    public async Task Transform_WhenEmailConfirmation_InjectsRefreshTokenAndDoesNotLogIt(string path)
+    {
+        var logs = new List<string>();
+        var provider = new AuthRequestTransformProvider(
+            Options.Create(new CookieSettings()),
+            Options.Create(new AuthRouteSettings()),
+            new ListLogger(logs));
+        var context = CreateRequestContext(path, refreshTokenCookie: "confirm-refresh", body: """{"token":"secret"}""");
+
+        await InvokeTransformAsync(provider, context);
+
+        context.HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(context.HttpContext.Request.Body);
+        var body = await reader.ReadToEndAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(body);
+        Assert.Equal("confirm-refresh", doc.RootElement.GetProperty("refreshToken").GetString());
+        Assert.Equal("secret", doc.RootElement.GetProperty("token").GetString());
+        Assert.DoesNotContain(logs, line => line.Contains("confirm-refresh", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Transform_WhenEmailConfirmationWithoutCookie_LeavesBody()
+    {
+        var provider = CreateProvider();
+        var context = CreateRequestContext("/api/v1/auth/email-confirmations", body: """{"token":"secret"}""");
+
+        await InvokeTransformAsync(provider, context);
+
+        context.HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(context.HttpContext.Request.Body);
+        var body = await reader.ReadToEndAsync();
+        Assert.Equal("""{"token":"secret"}""", body);
+    }
+
+    private sealed class ListLogger(List<string> lines) : Microsoft.Extensions.Logging.ILogger<AuthRequestTransformProvider>
+    {
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            => lines.Add(formatter(state, exception));
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
+    }
+
     [Fact]
     public async Task Transform_WhenLoginPath_DoesNotModifyBody()
     {

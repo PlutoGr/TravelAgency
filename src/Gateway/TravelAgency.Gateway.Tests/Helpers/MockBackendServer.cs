@@ -15,16 +15,24 @@ public sealed class MockBackendServer : IAsyncDisposable
     private readonly WebApplication _app;
     private readonly ConcurrentQueue<string> _requestPaths;
     private readonly ConcurrentQueue<AuthExchange> _authExchanges;
+    private readonly ConcurrentDictionary<string, Func<HttpContext, Task>> _scripts;
 
     private MockBackendServer(
         WebApplication app,
         ConcurrentQueue<string> requestPaths,
-        ConcurrentQueue<AuthExchange> authExchanges)
+        ConcurrentQueue<AuthExchange> authExchanges,
+        ConcurrentDictionary<string, Func<HttpContext, Task>> scripts)
     {
         _app = app;
         _requestPaths = requestPaths;
         _authExchanges = authExchanges;
+        _scripts = scripts;
     }
+
+    /// <summary>
+    /// Подмена ответа конкретного пути Identity. Ключ сравнивается без учёта регистра.
+    /// </summary>
+    public ConcurrentDictionary<string, Func<HttpContext, Task>> Scripts => _scripts;
 
     /// <summary>
     /// Тело запроса, которое мок Identity получил на login, refresh или logout.
@@ -80,6 +88,7 @@ public sealed class MockBackendServer : IAsyncDisposable
         var app = builder.Build();
         var requestPaths = new ConcurrentQueue<string>();
         var authExchanges = new ConcurrentQueue<AuthExchange>();
+        var scripts = new ConcurrentDictionary<string, Func<HttpContext, Task>>(StringComparer.OrdinalIgnoreCase);
 
         app.UseWebSockets();
         app.Run(async context =>
@@ -92,6 +101,11 @@ public sealed class MockBackendServer : IAsyncDisposable
 
             var path = context.Request.Path.Value ?? "/";
             requestPaths.Enqueue(path);
+            if (scripts.TryGetValue(path, out var script))
+            {
+                await script(context);
+                return;
+            }
             if (authTokenSupport && (IsLogoutPath(path) || IsAuthTokenPath(path)))
             {
                 using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
@@ -139,7 +153,7 @@ public sealed class MockBackendServer : IAsyncDisposable
 
         await app.StartAsync(cancellationToken);
 
-        return new MockBackendServer(app, requestPaths, authExchanges) { BaseUrl = app.Urls.First() };
+        return new MockBackendServer(app, requestPaths, authExchanges, scripts) { BaseUrl = app.Urls.First() };
     }
 
     public async Task StopAsync()

@@ -2,6 +2,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Transforms;
 using Yarp.ReverseProxy.Transforms.Builder;
@@ -25,11 +27,16 @@ internal sealed class AuthRequestTransformProvider : ITransformProvider
 
     private readonly CookieSettings _cookieSettings;
     private readonly AuthRouteSettings _authRouteSettings;
+    private readonly ILogger<AuthRequestTransformProvider> _logger;
 
-    public AuthRequestTransformProvider(IOptions<CookieSettings> cookieSettings, IOptions<AuthRouteSettings> authRouteSettings)
+    public AuthRequestTransformProvider(
+        IOptions<CookieSettings> cookieSettings,
+        IOptions<AuthRouteSettings> authRouteSettings,
+        ILogger<AuthRequestTransformProvider>? logger = null)
     {
         _cookieSettings = cookieSettings.Value;
         _authRouteSettings = authRouteSettings.Value;
+        _logger = logger ?? NullLogger<AuthRequestTransformProvider>.Instance;
     }
 
     public void ValidateRoute(TransformRouteValidationContext context) { }
@@ -47,7 +54,7 @@ internal sealed class AuthRequestTransformProvider : ITransformProvider
     private async ValueTask ApplyAuthRequestTransform(RequestTransformContext transformContext)
     {
         var httpContext = transformContext.HttpContext;
-        var path = httpContext.Request.Path.Value ?? "";
+        var path = (httpContext.Request.Path.Value ?? "").TrimEnd('/');
 
         // Add Authorization header from access_token cookie for all Identity requests
         var accessToken = httpContext.Request.Cookies[_cookieSettings.AccessTokenName];
@@ -57,11 +64,15 @@ internal sealed class AuthRequestTransformProvider : ITransformProvider
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         }
 
-        // For refresh and logout: inject refreshToken from cookie into body
+        // For refresh, logout and email confirmation: inject refreshToken from cookie into body.
         var isRefresh = path.Equals(_authRouteSettings.RefreshPath, StringComparison.OrdinalIgnoreCase);
         var isLogout = path.Equals(_authRouteSettings.LogoutPath, StringComparison.OrdinalIgnoreCase);
-        if (!isRefresh && !isLogout)
+        var isEmailConfirmation = path.Equals(_authRouteSettings.EmailConfirmationPath, StringComparison.OrdinalIgnoreCase);
+        if (!isRefresh && !isLogout && !isEmailConfirmation)
             return;
+
+        if (isEmailConfirmation)
+            _logger.LogDebug("В тело подтверждения почты подставляется refresh из cookie");
 
         var refreshToken = CookieHeaderReader.ReadFirst(
             httpContext.Request.Headers.Cookie.ToString(),

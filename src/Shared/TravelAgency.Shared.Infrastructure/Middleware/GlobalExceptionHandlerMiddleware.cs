@@ -55,6 +55,8 @@ public class GlobalExceptionHandlerMiddleware
     private static readonly HashSet<string> OwnedValidationCodes = new(StringComparer.Ordinal)
     {
         "date_range",
+        "PasswordRule",
+        "InvalidEmail",
     };
 
     /// <summary>

@@ -22,6 +22,89 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TravelAgency.Identity.Domain.Entities.EmailChangeRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CancelTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ConfirmTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NewEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CancelTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("ConfirmTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_EmailChangeRequests_OneActive")
+                        .HasFilter("\"ConsumedAt\" IS NULL");
+
+                    b.ToTable("EmailChangeRequests", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Identity.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PasswordResetTokens_OneActive")
+                        .HasFilter("\"ConsumedAt\" IS NULL");
+
+                    b.ToTable("PasswordResetTokens", (string)null);
+                });
+
             modelBuilder.Entity("TravelAgency.Identity.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -157,12 +240,12 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AvatarMediaFileId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("BlockReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<Guid?>("AvatarMediaFileId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("BlockedAt")
                         .HasColumnType("timestamp with time zone");
@@ -257,6 +340,28 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                     b.HasIndex("TargetUserId", "CreatedAt");
 
                     b.ToTable("UserAdminAudit", (string)null);
+                });
+
+            modelBuilder.Entity("TravelAgency.Identity.Domain.Entities.EmailChangeRequest", b =>
+                {
+                    b.HasOne("TravelAgency.Identity.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TravelAgency.Identity.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.HasOne("TravelAgency.Identity.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TravelAgency.Identity.Domain.Entities.RefreshToken", b =>

@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using TravelAgency.Identity.Application;
 using TravelAgency.Identity.Application.Abstractions;
+using TravelAgency.Identity.Application.Features.Auth;
 using TravelAgency.Identity.Application.Interfaces;
 using TravelAgency.Identity.Application.Settings;
 using TravelAgency.Identity.Domain.Interfaces;
@@ -61,6 +62,12 @@ public static class InfrastructureExtensions
         services.AddScoped<ISiteSettingsRepository, SiteSettingsRepository>();
         services.AddScoped<IUserAdminAuditRepository, UserAdminAuditRepository>();
         services.AddScoped<IUserAdminLock, UserAdminLock>();
+        services.AddScoped<IAccountLinkStore, AccountLinkStore>();
+        services.AddSingleton<IAccountMailSender, NoOpAccountMailSender>();
+        services.AddSingleton(TimeProvider.System);
+        services.Configure<AccountLinkSettings>(configuration.GetSection(AccountLinkSettings.SectionName));
+        services.AddSingleton<AccountMailComposer>();
+        services.AddScoped<AccountSessionPublisher>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, PasswordHasherService>();
@@ -75,6 +82,7 @@ public static class InfrastructureExtensions
             services.AddSingleton<IConnectionMultiplexer>(_ =>
                 ConnectionMultiplexer.Connect(redisConnection!));
             services.AddSingleton<ILockoutService, RedisLockoutService>();
+            services.AddSingleton<IAccountMailQuota, RedisAccountMailQuota>();
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = redisConnection;
@@ -84,6 +92,7 @@ public static class InfrastructureExtensions
         else
         {
             services.AddSingleton<ILockoutService, InMemoryLockoutService>();
+            services.AddSingleton<IAccountMailQuota, InMemoryAccountMailQuota>();
             services.AddMemoryCache();
             services.AddSingleton<ISiteSettingsPublicCache, MemorySiteSettingsCache>();
         }

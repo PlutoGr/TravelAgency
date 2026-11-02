@@ -61,12 +61,13 @@ describe('narrow profile', () => {
     else expect(preview).toBeEnabled();
   });
 
-  it('keeps settings to the inactive password block', () => {
+  it('keeps settings to the password and email blocks', () => {
     for (const role of ['client', 'manager', 'admin'] as const) {
       useAuthStore.setState({ user: person(role), isAuthenticated: true, isLoading: false });
       const view = renderPage(<ProfilePage />, '/dashboard/profile?tab=settings');
       expect(screen.getByRole('region', { name: 'Пароль' })).toBeInTheDocument();
-      expect(screen.getByText('Появится позже')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Email' })).toBeInTheDocument();
+      expect(screen.queryByText('Появится позже')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Видимость' })).not.toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Уведомления' })).not.toBeInTheDocument();

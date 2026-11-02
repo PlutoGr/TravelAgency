@@ -33,6 +33,8 @@ internal sealed class IdentityExceptionMapper : IExceptionMapper
         var details = CreateAppProblemDetails(context, appEx);
         if (exception is AccountBlockedException)
             details.Extensions["code"] = AccountBlockedException.ErrorCode;
+        else if (exception is CodedBadRequestException coded)
+            details.Extensions["code"] = coded.Code;
 
         result = (appEx.StatusCode, details);
         return true;

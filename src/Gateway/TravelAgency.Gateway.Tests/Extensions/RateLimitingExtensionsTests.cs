@@ -162,4 +162,65 @@ public class RateLimitingExtensionsTests
         var limited = await client.PostAsync("/api/v1/auth/login", new StringContent(string.Empty));
         Assert.Equal(StatusCodes.Status429TooManyRequests, (int)limited.StatusCode);
     }
+
+    [Fact]
+    public async Task AuthLimit_RewritesPasswordResetRequest_AndKeeps429OnTheOtherSlicePaths()
+    {
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(web =>
+            {
+                web.UseTestServer()
+                   .ConfigureServices(services =>
+                   {
+                       services.AddRouting();
+                       services.AddGatewayRateLimiting(BuildConfig(new Dictionary<string, string?>
+                       {
+                           ["RateLimiting:Auth:Limit"] = "1",
+                           ["RateLimiting:Auth:PeriodSeconds"] = "60",
+                       }));
+                   })
+                   .Configure(app =>
+                   {
+                       app.UseRouting();
+                       app.UseGatewayRateLimiting();
+                       app.UseEndpoints(endpoints =>
+                       {
+                           endpoints.MapPost("/api/v1/auth/password-resets/request", () => Results.Ok(new { message = "from-app" }));
+                           endpoints.MapPost("/api/v1/auth/password-resets/inspect", () => Results.Ok());
+                           endpoints.MapPost("/api/v1/auth/password-resets", () => Results.Ok());
+                           endpoints.MapPost("/api/v1/auth/me/password", () => Results.Ok());
+                           endpoints.MapPost("/api/v1/auth/me/email", () => Results.Ok());
+                           endpoints.MapPost("/api/v1/auth/email-confirmations", () => Results.Ok());
+                           endpoints.MapPost("/api/v1/auth/email-cancellations", () => Results.Ok());
+                       });
+                   });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+        var first = await client.PostAsync("/api/v1/auth/password-resets/request", new StringContent("{}"));
+        Assert.Equal(StatusCodes.Status200OK, (int)first.StatusCode);
+
+        var limited = await client.PostAsync("/api/v1/auth/password-resets/request", new StringContent("{}"));
+        var body = await limited.Content.ReadAsStringAsync();
+        Assert.Equal(StatusCodes.Status200OK, (int)limited.StatusCode);
+        Assert.Contains("Проверьте почту", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Слишком много попыток", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("from-app", body, StringComparison.Ordinal);
+        Assert.Equal("no-store", limited.Headers.CacheControl?.ToString());
+
+        foreach (var path in new[]
+        {
+            "/api/v1/auth/password-resets/inspect",
+            "/api/v1/auth/password-resets",
+            "/api/v1/auth/me/password",
+            "/api/v1/auth/me/email",
+            "/api/v1/auth/email-confirmations",
+            "/api/v1/auth/email-cancellations"
+        })
+        {
+            var response = await client.PostAsync(path, new StringContent("{}"));
+            Assert.Equal(StatusCodes.Status429TooManyRequests, (int)response.StatusCode);
+        }
+    }
 }

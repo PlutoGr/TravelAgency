@@ -8,16 +8,17 @@ import ManagerShortCard from '@/components/booking/ManagerShortCard';
 import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
 import { getManagerCard } from '@/api/managerCard';
 import { authFormError } from '@/domain/authFormErrors';
+import { ACCOUNT_TEXT } from '@/domain/accountLinks';
 import {
   avatarFileError,
   AVATAR_ACCEPT,
   AVATAR_UPLOAD_ERROR,
-  PASSWORD_HINT,
   profileCardPayload,
   profileProblemFields,
   type ProfileField,
   type ProfileFieldErrors,
 } from '@/domain/profileForm';
+import { ProfileEmailBlock, ProfilePasswordBlock } from './ProfileSettingsAccount';
 import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types';
 
@@ -30,8 +31,6 @@ const TABS = [
   { id: 'profile', label: 'Профиль' },
   { id: 'settings', label: 'Настройки' },
 ];
-
-const LATER = 'Появится позже';
 
 function formFrom(person: User | null) {
   return {
@@ -267,7 +266,10 @@ export default function ProfilePage() {
                 error={fieldErrors.phone}
               />
 
-              <Input label="Email" value={form.email} disabled />
+              <div>
+                <Input label="Email" value={form.email} disabled />
+                <p className="mt-1.5 text-xs text-warm-gray">{ACCOUNT_TEXT.emailHint}</p>
+              </div>
 
               {isStaff && (
                 <div>
@@ -298,26 +300,8 @@ export default function ProfilePage() {
           </Card>
         ) : (
           <Card className="mx-auto max-w-2xl space-y-8 p-6 sm:p-8">
-            <section className="space-y-4" aria-label="Пароль">
-              <h2 className="font-heading text-lg font-semibold text-dark">Пароль</h2>
-              <Input label="Текущий пароль" type="password" disabled />
-              <div>
-                <Input
-                  label="Новый пароль"
-                  type="password"
-                  disabled
-                  aria-describedby="profile-password-hint"
-                />
-                <p id="profile-password-hint" className="mt-1.5 text-xs text-warm-gray">
-                  {PASSWORD_HINT}
-                </p>
-              </div>
-              <Input label="Повторите пароль" type="password" disabled />
-              <p className="text-sm text-warm-gray">{LATER}</p>
-              <Button type="button" disabled>
-                Сменить пароль
-              </Button>
-            </section>
+            <ProfilePasswordBlock />
+            <ProfileEmailBlock currentEmail={storeUser.email} />
           </Card>
         )}
       </div>

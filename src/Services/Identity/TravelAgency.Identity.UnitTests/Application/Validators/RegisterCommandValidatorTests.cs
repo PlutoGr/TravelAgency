@@ -1,5 +1,6 @@
 using FluentAssertions;
 using TravelAgency.Identity.Application.DTOs;
+using TravelAgency.Identity.Application.Features.Auth;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Register;
 
 namespace TravelAgency.Identity.UnitTests.Application.Validators;
@@ -63,7 +64,7 @@ public class RegisterCommandValidatorTests
         var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("uppercase"));
+        result.Errors.Should().Contain(e => e.ErrorCode == PasswordRules.Code);
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public class RegisterCommandValidatorTests
         var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("lowercase"));
+        result.Errors.Should().Contain(e => e.ErrorCode == PasswordRules.Code);
     }
 
     [Fact]
@@ -85,7 +86,7 @@ public class RegisterCommandValidatorTests
         var result = await _validator.ValidateAsync(command);
 
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.ErrorMessage.Contains("digit"));
+        result.Errors.Should().Contain(e => e.ErrorCode == PasswordRules.Code);
     }
 
     [Fact]
