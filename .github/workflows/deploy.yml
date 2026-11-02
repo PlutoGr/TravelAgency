@@ -318,4 +318,4 @@ jobs:
         with:
           name: deployed-sha
           path: deployed-sha.txt
-          retention-days: 7
+          retention-days: 90

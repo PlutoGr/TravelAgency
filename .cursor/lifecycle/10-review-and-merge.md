@@ -14,7 +14,7 @@ A PR is **ready** only when all four hold for its head sha: «CI» green, «Secr
 - A finding that needs the owner: raise a [question](../templates/agents/question.md) and end the run with `RESULT blocked`; the orchestrator pauses the issue in place (same column) with the memory [Question](../elements/memory.md#question) until answered: do not advance and do not ask the agent to keep coding past the blocker.
 - When the [ready predicate](#ready-predicate) holds: post the agent report that the PR is ready and finish the run.
 
-On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting on` = `none`, `Next` = full review, and starts the full review in the same wake.
+On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting on` = `none`, `Next` = full review, and starts the full review in the same wake, subject to the [Question guard](../elements/memory.md#question-guard) (with a `Question` set: no review or merge; `Next` = full review in the answer turn).
 
 ## 2. Full orchestrator review
 - Strip Cursor PR-body markers (`CURSOR_AGENT_PR_BODY`, artifact links) and the «Open in Cursor» footer (`gh pr edit --body-file`).

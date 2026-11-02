@@ -5,7 +5,7 @@ Responsible: the orchestrator (reads results, merges, reacts). The cloud agent t
 |---|---|---|
 | `ci.yml` «CI»: `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `Скрипт чипа PR` | every PR (not push to `main`) | merge gate: must be green |
 | `gitleaks.yml` «Secret scan» | PR and push to `main` | merge gate: must be green |
-| `deploy.yml` «Deploy to dev» | push to `main` (= merge), manual with rollback sha | automatic deploy to dev; the next merge waits until it is green, except the one repair PR for a failed Deploy on `main` ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)); a successful run uploads artifact `deployed-sha` (the commit it deployed) after its last step; manual run or rollback needs the owner's yes |
+| `deploy.yml` «Deploy to dev» | push to `main` (= merge), manual with rollback sha | automatic deploy to dev; the next merge waits until it is green, except the one repair PR for a failed Deploy on `main` ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)); a successful run uploads artifact `deployed-sha` (the commit it deployed, kept 90 days; memory [`Last deploy:`](memory.md#what-it-holds) records it) after its last step; manual run or rollback needs the owner's yes |
 | `notify-cicd.yml` «Notify orchestrator» | after «CI», «Deploy to dev» and «Secret scan» runs | **safety-net** wake for routine «TravelAgency CI/CD» ([events](../lifecycle/events.md#wake-sources)); the payload carries `deployed_sha` for Deploy ([Deploy wait](../lifecycle/events.md#deploy-wait)); fails visibly when its secret is missing |
 | `link-closed-by.yml` «Link PR on issue close» | issue closed | sets the PR chip after close ([done](board/columns/done.md)) |
 
