@@ -44,7 +44,7 @@ public class ClientNotesMigrationTests
                     RepoRoot(),
                     "src/Services/Booking/TravelAgency.Booking.Infrastructure/Migrations/BookingDbContextModelSnapshot.cs"));
                 snapshot.Should().Contain("ClientNotes");
-                snapshot.Should().Contain("IX_ClientNotes_ClientId");
+                snapshot.Should().Contain("HasIndex(\"ClientId\")");
                 snapshot.Should().NotContain("AuthorName");
             }
 
