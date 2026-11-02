@@ -5,12 +5,12 @@ From an owner idea to a feature accepted on the server and documented. Board col
 ```
 Owner idea / roadmap
   → 01 Intake and discussion → 02 Roadmap upkeep
-  → Epic:    Очередь → Бизнес-анализ (03) → Архитектура (04) → Разбиение (05) → В работе → На ревью (13) → Готово
+  → Epic:    Очередь → Бизнес-анализ (03) → Архитектура (04) → Разбиение (05) → В работе → Демо (13) → Готово
                                                               ↓ one Feature per split line
   → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → Doc- text (12) → Готово
-  → Epic done → STOP: owner demo (13) → next epic pick (02)
+  → Epic done → STOP: owner demo in Демо (13) → next epic pick (02)
 ```
-Interrupts: Удержание (long work-stream pause). Owner questions: pause in place (same column) + [memory](../elements/memory.md). На ревью = epic owner demo only ([13](13-epic-acceptance.md)). Bugs and backlog: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md), [memory](../elements/memory.md).
+Interrupts: Удержание (long work-stream pause). Owner questions: pause in place (same column) + [memory](../elements/memory.md). Демо = epic owner demo only ([13](13-epic-acceptance.md)); features never use Демо. Per-transition deliverable review stays an FSM rule (not a column). Bugs and backlog: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md), [memory](../elements/memory.md).
 
 ## Stages
 File numbers only order the files and may appear in link text. Prose names a stage by its column, never by a number.
@@ -29,17 +29,18 @@ File numbers only order the files and may appear in link text. Prose names a sta
 | 10 | Review and merge | Разработка (feature) | automations, orchestrator; [reviewer](../briefs/reviewer.md) on escalation | [10-review-and-merge.md](10-review-and-merge.md) |
 | 11 | Deploy and acceptance on dev | Разработка → Приёмка (feature) | orchestrator (dev access) | [11-deploy-and-acceptance.md](11-deploy-and-acceptance.md) |
 | 12 | `Doc-` after merge | Приёмка, before Готово | [docs writer](../briefs/docs-writer.md), orchestrator publishes | [12-docs-after-merge.md](12-docs-after-merge.md) |
-| 13 | Epic completion and owner demo | В работе → На ревью → Готово (epic) | orchestrator, owner accepts | [13-epic-acceptance.md](13-epic-acceptance.md) |
+| 13 | Epic completion and owner demo | В работе → Демо → Готово (epic) | orchestrator, owner accepts | [13-epic-acceptance.md](13-epic-acceptance.md) |
 
 ## Gates
 - Hard and sequential (**FSM**): [orchestrator §2](../orchestrator.md#2-process-as-a-finite-state-machine). No column is skipped on a product epic or feature, including small features, bug-features and backlog children. A short stage is still entered and filled (thin text by the orchestrator is allowed). There is no shorter product route.
 - **In-flight items (rules first):** an item already in work when this rule set took effect keeps its current column; the current columns and templates apply from its next transition. An epic that already has children stays in В работе and is not walked back (epic #92 stays as it is). Old issues and wiki pages are brought to the current templates in a later docs-and-tasks phase, not by walking items back.
 - A column is entered only when the previous deliverable is visible (wiki section, test cases, PR, green Deploy) and the orchestrator accepted it.
-- Recorded verification: on every advance the orchestrator posts the stage comment ([status comments](../templates/github/status-comments.md)) naming what was checked and the new column, then sets the label. The [deliverable review](../templates/agents/deliverable-review.md) is the internal checklist behind that comment.
+- Recorded verification: on every advance the orchestrator posts the stage comment ([status comments](../templates/github/status-comments.md)) naming what was checked and the new column, then sets the label and board Status together. The [deliverable review](../templates/agents/deliverable-review.md) is the internal checklist behind that comment (FSM rule, not a board column).
 - A cloud agent never changes `статус:*`, the board or the wiki.
 - «Полное ТЗ» before Разработка: the Feature page shows «Бизнес и сценарии», «Архитектура» and «Тест-кейсы», and no «Решения» row for this slice has an empty «Выбрано». The epic's «Бизнес и сценарии» alone never unlocks feature code; the epic page is not the feature specification.
 - Test cases come before development.
 - Every feature stays aimed at its epic's problem. A drift is a rewrite, not a new goal.
 - Disagreement (analyst vs architect, agent vs page): options go to «Решения»; the orchestrator decides by the rules, otherwise the owner with pause in place ([decisions log](../elements/wiki/decisions-log.md), [memory](../elements/memory.md)). Do not advance while a stage's owner question is open.
-- Order: finish the current epic, including bug-features spawned by its features, before the next roadmap epic. Unrelated bugs go to the [standing backlog](../project.md#standing-backlog) (#8) and do not block. After an epic is done: STOP for the owner demo.
+- Order: finish the current epic, including bug-features spawned by its features, before the next roadmap epic. Unrelated bugs go to the [standing backlog](../project.md#standing-backlog) (#8) and do not block. After every child is Готово: STOP for the owner demo in Демо; Готово only after the owner accepts.
 - Closed work gets no new documents.
+- Non-product work Очередь → Разработка → (Приёмка) → Готово is a second, explicit machine ([non-product-work.md](non-product-work.md)). It is the written exception to “no skipped product column”; red CI and vulnerabilities stay on the product machine with thin sections ([bugs.md](bugs.md)).

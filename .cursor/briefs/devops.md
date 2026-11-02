@@ -9,7 +9,8 @@ Changes to `.github/workflows`, `docker/`, nginx and deploy config ([stage 09](.
 [CI/CD](../elements/ci-cd.md), [security](../rules/security.mdc), [project facts](../project.md), the touched workflow or config files, [pull requests](../elements/git/pull-requests.md).
 
 ## Bar
-- Changes through a regular PR into `main`; actions pinned by SHA; no secret values; CI green.
+- Changes through a regular PR into `main`; actions pinned by SHA; no secret values.
+- Watch CI and Automations; fix red CI that belongs to this PR; answer bot findings; only then report ready (CI, Secret scan and Automations finished), same gate as the [developer](developer.md).
 - A risky PR (auth, secrets, payments, infra, migrations, public API contracts): list the risks and the head sha in the report. The verdict comes from the [reviewer](reviewer.md) pass and the orchestrator's server check, not from this brief.
 - «Документация» names the `Doc-` page (often `Doc-Infrastructure`) or «вики не затронута».
 
@@ -21,4 +22,4 @@ Changes to `.github/workflows`, `docker/`, nginx and deploy config ([stage 09](.
 A change that needs the server, a secret or a repo setting: raise a [question](../templates/agents/question.md); do not work around it.
 
 ## Deliverable and report
-PR plus [agent report](../templates/agents/agent-report.md).
+A regular PR into `main` from the branch in the launch, marked ready only when CI, Secret scan and Automations are finished and findings are answered; [agent report](../templates/agents/agent-report.md) with PR URL, head sha, what changed, Automations status, open doubts.

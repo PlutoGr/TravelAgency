@@ -1,6 +1,8 @@
 # Question (cloud agent → orchestrator)
 Raised when a gap, contradiction or architecture limit blocks a correct result. Do not guess around it. Rules: [cloud agents](../../elements/cloud-agents.md#during-the-run).
 
+End the run with `RESULT blocked` so the orchestrator wakes. Do not leave the run open waiting for an answer.
+
 ```markdown
 QUESTION <issue #NN> <column>
 Blocking: yes | no (can continue with stated assumption)
@@ -12,4 +14,5 @@ Options:
 Recommendation: <option and why>
 Proposed «Решения» row: <Вопрос | Варианты | (empty) | Почему | Дата>  (Russian, when the answer changes the page)
 Meanwhile: <stopped | continuing with option N>
+RESULT blocked
 ```

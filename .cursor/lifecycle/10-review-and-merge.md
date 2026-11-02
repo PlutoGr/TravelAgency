@@ -1,5 +1,5 @@
 # 10 Review and merge (still column Разработка)
-Code review is not column На ревью. На ревью is only the epic owner-demo gate ([13](13-epic-acceptance.md)). A fix PR during Приёмка goes through this stage too, and the issue keeps `статус: приёмка`.
+Code review is not a board column and is not Демо. Демо is only the epic owner-demo gate ([13](13-epic-acceptance.md)). A fix PR during Приёмка goes through this stage too, and the issue keeps `статус: приёмка`.
 
 **Entry:** the cloud agent reported the PR **ready for orchestrator review**: CI green, Secret scan green, Cursor Automations finished, every bot finding answered or marked, [agent report](../templates/agents/agent-report.md) posted. Until then the agent owns the PR ([cloud agents](../elements/cloud-agents.md), [orchestrator §5.8](../orchestrator.md#58-cloud-agents)).
 
@@ -9,7 +9,7 @@ Code review is not column На ревью. На ревью is only the epic owne
 - Watch CI and Automations on the PR; fix red CI that belongs to this PR (flake: one rerun; in-feature failure: fix; expired fixture / upstream digest: fix in this PR if it blocks this work, else raise a question).
 - Reply on every finding thread ([review replies](../templates/github/review-replies.md)). «Будет исправлено» is not finished: fix, push, then «исправлено» with the head sha.
 - A finding that needs the owner: raise a [question](../templates/agents/question.md); the orchestrator pauses the issue in place (same column) via [memory](../elements/memory.md) until answered: do not advance and do not ask the agent to keep coding past the blocker.
-- When all checks are green and findings are finished: post the agent report that the PR is ready. Record `Waiting on` = orchestrator review in memory.
+- When all checks are green and findings are finished: post the agent report that the PR is ready. In memory set `Waiting on` = `none` and `Next` = full review.
 
 ## 2. Full orchestrator review
 - Strip Cursor PR-body markers (`CURSOR_AGENT_PR_BODY`, artifact links) and the «Open in Cursor» footer (`gh pr edit --body-file`).
@@ -39,4 +39,4 @@ Otherwise Automations plus the agent's ready state plus the orchestrator's full 
 **Exit gate:** merged with every gate recorded; the issue stays Разработка (or Приёмка for a fix during acceptance) until Deploy to dev is green.
 
 ## Safety-net wakes
-A CI/Deploy/Secret-scan wake while an agent owns the PR is expected → sleep after confirming memory. A wake with no owner, a second branch, or Dependabot → act per [events](events.md).
+A CI/Deploy/Secret-scan wake while an agent owns the PR is expected → sleep after never-stall checks and confirming memory. A wake with no owner, a second branch, or Dependabot → act per [events](events.md).

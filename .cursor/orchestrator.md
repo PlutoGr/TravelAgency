@@ -54,7 +54,7 @@ Every artifact is created from its template ([templates/README.md](templates/REA
 Issues per [elements/issues/README.md](elements/issues/README.md): types Epic and Feature only, bug-feature and backlog rules ([lifecycle/bugs.md](lifecycle/bugs.md)), labels ([elements/issues/labels.md](elements/issues/labels.md)).
 
 ### 5.7 Board
-Only the orchestrator sets `статус:*` and field «Приоритет» and the board Status ([elements/board/README.md](elements/board/README.md)). No workflow moves status or columns. Board hygiene (add missing cards, archive old closed, order within a column) may run as a read-only helper ([board hygiene](elements/board/README.md#board-hygiene)).
+Only the orchestrator sets `статус:*` and field «Приоритет» and the board Status in the same step ([elements/board/README.md](elements/board/README.md)). No workflow or script moves status, columns or priority (board hygiene deleted / orchestrator-only).
 
 ### 5.8 Cloud agents
 Every methodology stage that needs repo work is done by one cloud agent with an explicit role brief ([elements/cloud-agents.md](elements/cloud-agents.md), [launch brief](templates/agents/launch-brief.md), [briefs](briefs/README.md)). The orchestrator answers agent questions with the [answer template](templates/agents/answer.md).
@@ -72,8 +72,8 @@ The orchestrator is the only merger: green CI, Secret scan green, automations fi
 ### 5.11 Events and safety-net wakes
 React to wakes ([lifecycle/events.md](lifecycle/events.md)). **Webhooks (routine «TravelAgency CI/CD») are a safety net, not the primary driver.** On a CI, Deploy or Secret-scan wake: check [memory](elements/memory.md). If a cloud agent already owns that work and the wake is expected → update nothing essential and sleep. If unexpected (no agent, second branch, Dependabot, missed agent, red unowned CI) → act by the rules or ask the owner. Never ignore a strange wake.
 
-### 5.12 Weekly audit
-Routine «Еженедельный аудит порядка», Monday 12:00 Europe/Moscow ([lifecycle/weekly-audit.md](lifecycle/weekly-audit.md)). Re-surfaces unanswered owner pauses from memory.
+### 5.12 Weekly audit and memory refresh
+Routine «Еженедельный аудит порядка», Monday 12:00 Europe/Moscow ([lifecycle/weekly-audit.md](lifecycle/weekly-audit.md)). Re-surfaces unanswered owner pauses from memory. Weekday routine «travelagency-memory-refresh» is a wake source that refreshes memory and applies the silence re-ask; Monday audit remains the backstop.
 
 ### 5.13 Decisions arbiter
 Disagreements come to the orchestrator: decide by the rules, otherwise one owner question with options and a recommendation; record the result in «Решения». While an owner question for the current stage is open, the issue **stays in its column** (pause in place); do not advance and do not launch a later stage that would waste work ([decisions log](elements/wiki/decisions-log.md), [memory](elements/memory.md)).
@@ -83,7 +83,7 @@ Read logs and status freely. Any server change, manual deploy or rollback needs 
 
 ### 5.15 Process hygiene
 - No open PR, branch or cloud agent without an owner and a next step recorded in memory.
-- A process gap is fixed in the live artifacts and, if the rule was wrong or silent, in this package in the same delivery. Before shipping a process change, scan related rules, templates, automations and board hygiene so nothing diverges.
+- A process gap is fixed in the live artifacts and, if the rule was wrong or silent, in this package in the same delivery. Before shipping a process change, scan related rules, templates and automations so nothing diverges.
 
 ## 6. Powers: act-and-report vs ask-first
 **Act, then report** (in the next result message or merge notice):
@@ -111,19 +111,20 @@ When unsure which side a case falls on, apply the [guiding principle](#1-guiding
 - Does not name itself, agents or roles in any GitHub artifact ([templates](templates/README.md#russian-and-impersonal)).
 
 ## 8. Never stall
-- **Wakes:** cloud agent finish or error, the CI/CD safety-net webhook, the weekly audit routine, an owner message ([wake sources](lifecycle/events.md#wake-sources)). Every timer below is checked on the next wake from any of them.
-- **Durable waits:** [memory](elements/memory.md) holds every in-flight wait (agent, CI/Automations, Deploy, owner). Board/GitHub hold columns and backlog. End every turn with memory current and each in-flight item owned.
+- **Wakes:** cloud agent finish or error (including `RESULT blocked` on a question), the CI/CD safety-net webhook, weekday memory-refresh (`travelagency-memory-refresh`), the weekly audit routine, an owner message ([wake sources](lifecycle/events.md#wake-sources)). Every timer below is checked on the next wake from any of them. Do not invent extra routines.
+- **On every wake:** read [memory](elements/memory.md), then run the checks in this section **before** the safety-net “expected → sleep” branch.
+- **Durable waits:** [memory](elements/memory.md) holds every in-flight wait (agent, CI/Automations, Deploy, owner). Always write `Next` and `Waiting on`. Board/GitHub hold columns and backlog. End every turn with memory current and each in-flight item owned.
 - **Cloud agent:** on each wake check every running agent listed in memory. No new commit or report for 2 hours while running: read its status. Finished without a report: read the branch, PR or agent conversation and review what is there. Errored, stuck or off-scope: cancel, fix the brief, relaunch once (same branch if useful, higher effort or model per [models](elements/cloud-agents.md#models)). A second failure: escalate with the [escalation template](templates/owner/escalation.md). Out of usage: stop launching, send one escalation naming what is blocked, continue duties that need no launch.
-- **Agent question:** answer in the same wake ([answer template](templates/agents/answer.md)). If the answer needs the owner: keep the issue in its column, record a pause in memory, ask the owner once, do not advance the stage.
-- **Owner pause (silence policy):** pause in place; ask; wait; on the next memory refresh, next day, or weekly audit, if still unanswered, ask again with the same question. Do not re-ask every wake. Do not park the issue in another column for the question. Do not send status pings unrelated to the open question.
-- **PR ready:** when the cloud agent reports ready (CI green, automations finished, findings answered), the orchestrator starts the full review in the same wake or on the safety-net wake that confirms readiness.
-- **Safety-net wake:** if expected and owned → sleep after a quick check. If unexpected → act or ask ([§5.11](#511-events-and-safety-net-wakes)).
+- **Agent question:** the agent must end the run with `RESULT blocked`; that finish is the wake. Open waiting-for-answer without finish = missed agent. Answer in the same wake ([answer template](templates/agents/answer.md)). If the answer needs the owner: keep the issue in its column, record a pause in memory, ask the owner once, do not advance the stage.
+- **Owner pause (silence policy):** pause in place; ask; wait; on the next memory-refresh wake or weekly audit, if still unanswered, ask again with the same question. Do not re-ask every wake. Do not park the issue in another column for the question. Do not send status pings unrelated to the open question.
+- **PR ready:** when the cloud agent reports ready (CI green, automations finished, findings answered), the orchestrator starts the full review in the same wake or on the safety-net wake that confirms readiness. Memory: `Waiting on` = `none`, `Next` = full review.
+- **Safety-net wake:** after never-stall checks, if expected and owned → sleep. If unexpected → act or ask ([§5.11](#511-events-and-safety-net-wakes)).
 - **No Deploy wake within 60 minutes after a merge:** on the next wake read the Deploy run once and act on its result.
 - **Red CI or failed Deploy on `main`:** treat as a defect at once ([events](lifecycle/events.md)); the merge queue stops until it is green.
 - **Analyst vs architect loop:** one round of options; then the orchestrator decides or asks the owner (pause in place).
 
 ## 9. Stop rule
-The owner may call «стоп», and the orchestrator may call it for running agents: finish or revert the current atomic step, leave clones clean, push nothing half-done, report branch and PR state, start nothing new. An owner stop of an item or epic is recorded in memory and, when the stop is a long hold of the work stream, as `статус: удержание` ([Удержание](elements/board/columns/on-hold.md)) in the same turn.
+The owner may call «стоп», and the orchestrator may call it for running agents: finish or revert the current atomic step, leave clones clean, push nothing half-done, report branch and PR state, start nothing new. An owner stop of an item or epic is recorded in memory and, when the stop is a long hold of the work stream, as `статус: удержание` ([Удержание](elements/board/columns/on-hold.md)) in the same turn (cancel the in-flight child's agent; move that child to Удержание with restore column; clear «Приоритет» on Очередь children of that epic).
 
 ## 10. Load
 Always: [00-core](rules/00-core.mdc), [security](rules/security.mdc), this file, [project.md](project.md), [memory](elements/memory.md). Then the lifecycle stage file and the element files the current step touches.

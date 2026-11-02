@@ -1,9 +1,9 @@
 # 06 Feature analytics (column Аналитика)
 Product WHY and WHAT for one feature (or bug-feature). No solution design.
 
-**Entry:** feature taken from Очередь in priority order. Set `статус: аналитика` with the take comment; if this is the epic's first child leaving Очередь, set the epic to `статус: в работе`.
+**Entry:** feature taken from Очередь in priority order. Set `статус: аналитика` with the take comment; if this is the epic's first child leaving Очередь, set the epic to `статус: в работе` (never for #8).
 
-**Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes. A gap named at the epic demo still runs this stage: the orchestrator (or analyst) evaluates the owner's proposed fix against alternatives and brings options back; analytics is not skipped ([13](13-epic-acceptance.md)).
+**Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes. A gap named at the epic demo still runs this stage: the orchestrator (or analyst) evaluates the owner's proposed fix against alternatives and brings options back; analytics is not skipped ([13](13-epic-acceptance.md)). A thin backlog / #8 child uses this feature route and this column; the orchestrator may write a short feature «Бизнес и сценарии» himself (thin fill), still inside Аналитика.
 
 **Section «Бизнес и сценарии»** on the `Feature-` page ([feature page template](../templates/wiki/feature-page.md)):
 1. Inherit the epic's chosen user story. Restate the epic goal only when this feature changes it.

@@ -27,7 +27,7 @@ Deliverable:
 - <code: PR from branch `<type/NN-slug>` per `.cursor/templates/github/pull-request.md`, ready when CI is green>
 - <text: ready Russian section text for «<section>» per `.cursor/templates/wiki/<page>.md`; no wiki push>
 
-Questions: if something blocks a correct result, stop and ask with `.cursor/templates/agents/question.md`.
+Questions: if something blocks a correct result, stop, ask with `.cursor/templates/agents/question.md`, and end the run with `RESULT blocked` (do not stay open waiting for an answer).
 Report: `.cursor/templates/agents/agent-report.md`.
 Token thrift: minimal diff, no drive-by refactor, stop when acceptance holds.
 ```

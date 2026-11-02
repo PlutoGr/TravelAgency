@@ -11,8 +11,8 @@
    child_id=$(gh api repos/PlutoGr/TravelAgency/issues/<child NN> --jq .id)
    gh api -X POST repos/PlutoGr/TravelAgency/issues/<epic NN>/sub_issues -F sub_issue_id="$child_id"
    ```
-   Write the child's issue number into its «Разбиение» line.
+   Write the child's issue number into its «Разбиение» line. Same turn: add each child's board card if missing and set Status = Очередь.
 2. Set contiguous low «Приоритет» on the children ([queue priority](../elements/board/queue-priority.md)).
 3. Sidebar entries for the new pages.
 
-**Exit gate:** every line has a page and an issue. When the first child leaves Очередь, set the epic to `статус: в работе` ([column В работе](../elements/board/columns/in-progress.md)); `board-sync` does not infer this from children.
+**Exit gate:** every line has a page and an issue. In the same turn that accepts the split deliverable, either take the first child (set that child into Аналитика and the epic to `статус: в работе`) or write memory `Next` = take #NN with `Waiting on` = `none`. When the first child leaves Очередь, set the epic to `статус: в работе` ([column В работе](../elements/board/columns/in-progress.md)); no script infers this from children.

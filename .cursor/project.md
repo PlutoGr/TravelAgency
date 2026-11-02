@@ -17,6 +17,7 @@ One backlog issue for accidental bugs and tiny features that do not belong to a 
 Coarse product focus (not the «Приоритет» field): 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. The orchestrator orders work within this; changing the theme order needs the owner. Queue numbers: [queue priority](elements/board/queue-priority.md).
 
 ## Parallel work
+- A **stream** is one feature (one issue, one agent, one pull request).
 - Features under one epic may run in parallel. Merge one PR at a time; per stream 1 active item and at most 1 waiting.
 - Start the next item only if it touches no files, endpoints or migrations of an open PR, does not depend on an unmerged PR, and its criteria are final. Branch from fresh `main`.
 - Any doubt about overlap: wait, or launch a review with the [reviewer brief](briefs/reviewer.md). After the previous merge, update the branch before review.

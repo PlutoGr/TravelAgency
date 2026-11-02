@@ -13,6 +13,6 @@ Product WHY and WHAT, enough to choose architecture and to split features. Not a
 5. Chosen user story, and why it is the best fit for us.
 6. Non-goals.
 
-No services, API paths, storage, migrations, contracts, field catalog or screen layout. A backlog child uses the same section; it may be short but still says why this fix exists.
+No services, API paths, storage, migrations, contracts, field catalog or screen layout.
 
-**Exit gate:** all six blocks visible, analogues named, more than one option on a continuum, the chosen story says why it is best, no field catalog and no services. Open questions sit in «Решения». Then set `статус: архитектура` ([04](04-epic-architecture.md)).
+**Exit gate:** all six blocks visible, analogues named, more than one option on a continuum, the chosen story says why it is best, no field catalog and no services. Open questions sit in «Решения». A choice only the owner can make: keep `статус: бизнес-анализ`, record a pause in [memory](../elements/memory.md), ask the owner; do not advance until answered. Then set `статус: архитектура` ([04](04-epic-architecture.md)).
