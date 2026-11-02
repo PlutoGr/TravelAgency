@@ -11,7 +11,7 @@ Changes to `.github/workflows`, `docker/`, nginx and deploy config ([Разра�
 ## Bar
 - Changes through a regular PR into `main`; actions pinned by SHA; no secret values.
 - Watch CI and Automations; fix red CI that belongs to this PR; answer bot findings; report ready only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds, same gate as the [developer](developer.md).
-- A risky PR (auth, secrets, payments, infra, migrations, public API contracts): list the risks and the head sha in the report. The verdict comes from the [reviewer](reviewer.md) pass and the orchestrator's server check, not from this brief.
+- When [escalation review](../lifecycle/10-review-and-merge.md#3-escalation-review) applies, list the risks and the head sha in the report. The verdict comes from that review and the orchestrator's server check, not from this brief.
 - «Документация» names the `Doc-` page (often `Doc-Infrastructure`) or «вики не затронута».
 
 ## Boundaries

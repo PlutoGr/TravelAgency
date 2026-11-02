@@ -1,5 +1,5 @@
 # Feature
-A demonstrable, checkable result that moves its epic's problem. Route: [lifecycle stages 06-12](../../lifecycle/README.md#stages).
+A demonstrable, checkable result that moves its epic's problem. Route by size: [lifecycle](../../lifecycle/README.md#flow), decided at [analytics](../../lifecycle/06-feature-analytics.md#size).
 
 - **Created by:** the orchestrator, from a «Разбиение» line or intake. Issue template [feature-issue](../../templates/github/feature-issue.md); page template [feature-page](../../templates/wiki/feature-page.md).
 - **Labels:** `enhancement` (or `bug` for a bug-feature) and `статус: очередь` on create. No field «Тип».

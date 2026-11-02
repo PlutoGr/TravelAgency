@@ -13,10 +13,10 @@ The `Feature-` page (all sections), the parent epic «Архитектура», 
 - Write the automated tests marked on the page first, or in the same TDD cycle; then the code. Watch CI and Automations; fix red CI that belongs to this PR; answer bot findings; report ready only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds.
 - Implement «Архитектура» exactly; add no field, control or block Аналитика did not justify; stay on the epic's problem.
 - Minimal diff, no drive-by refactor, no libraries "just in case".
-- Commits and PR per templates; «Задача» `#NN` only; «Документация» names the `Doc-` page or «вики не затронута».
+- Commits and PR per templates; «Задача» `#NN` only. «Документация» is «вики не затронута», or a page name. Малая also includes the `Doc-` draft text in that section. Крупная names the page only. Do not publish the wiki.
 
 ## Boundaries
-- No merge; no workflow, Docker, nginx or server edits; no wiki edits; no labels or board.
+- No merge; no workflow, Docker, nginx or server edits; no wiki publish; no labels or board.
 - No `closes`/`fix`/`fixes`, no `addCloseIssueReferences`, no closedBy.
 
 ## When blocked

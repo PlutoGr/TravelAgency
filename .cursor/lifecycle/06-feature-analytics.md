@@ -14,4 +14,9 @@ Product WHY and WHAT for one feature (or bug-feature). No solution design.
 
 No services, API paths, storage, migrations or contracts. A bug-feature covers its product change only and adds no unrelated fields.
 
-**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. Then set `статус: архитектура` ([feature Архитектура](07-feature-architecture.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура and Разбиение.
+## Size
+Recorded at this exit, on the issue and on the Feature page, as `Размер: Малая` or `Размер: Крупная`. Use only the visible part of [review §3](10-review-and-merge.md#3-escalation-review): Крупная when that section already calls the work Крупная, otherwise Малая. Do not copy the list. Writing «Архитектура» for this feature is not a trigger. An item already past this exit is not sized and keeps the full route ([in-flight](README.md#gates)).
+
+Малая then uses one architecture-and-test-cases step and a `Doc-` draft in the PR published right after merge. Крупная keeps separate Архитектура and Тест-кейсы and a `Doc-` draft after merge. A later escalation on a Малая head does not change `Размер` or this route ([review §3](10-review-and-merge.md#3-escalation-review)). Both reach Готово only when every named `Doc-` page is current, or the PR says «вики не затронута».
+
+**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. The size line is filled. Then set `статус: архитектура` ([feature Архитектура](07-feature-architecture.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура and Разбиение.

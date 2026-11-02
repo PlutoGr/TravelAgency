@@ -1,5 +1,11 @@
 # Weekly audit report (chat, Russian)
-Sent only when something needs a decision or the owner should know a fix. Rules: [weekly audit](../../lifecycle/weekly-audit.md).
+Sent after every weekly audit. When nothing was found or fixed, send only:
+
+```markdown
+Еженедельная проверка <дата>: замечаний нет.
+```
+
+Otherwise use the full report. Rules: [weekly audit](../../lifecycle/weekly-audit.md).
 
 ```markdown
 Еженедельная проверка <дата>.

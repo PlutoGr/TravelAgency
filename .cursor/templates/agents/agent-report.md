@@ -8,6 +8,6 @@ What changed: <short list>
 Tests: <added or updated; CI status>
 Acceptance check: <each acceptance item: met / not met>
 Open doubts: <non-blocking list or "none">  (a blocking doubt is a QUESTION instead of this report)
-Doc- page to write after merge: <name | «вики не затронута» | n/a>
+Doc- page: <Крупная: name to draft after merge | Малая: name, draft text is in the PR | «вики не затронута» | n/a>
 <Section text (Russian), when the deliverable is text>
 ```

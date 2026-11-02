@@ -14,7 +14,7 @@ Active project automations post GitHub comments as `cursor`. They are the first-
 ## Routines (keep enabled)
 | Routine | When | Role |
 |---|---|---|
-| «TravelAgency CI/CD» | after «CI», «Deploy to dev», «Secret scan» | safety-net wake ([events](../lifecycle/events.md#wake-sources)) |
+| «TravelAgency CI/CD» | one aggregated `pr-checks` or `deploy` webhook ([notify.yml](../../.github/workflows/notify.yml)) | meaningful wake; no match exits without logging ([events](../lifecycle/events.md#webhook-match)) |
 | `travelagency-memory-refresh` | weekdays | memory refresh, owner re-ask, routine check |
 | «Еженедельный аудит порядка» | Monday 12:00 Europe/Moscow | [weekly audit](../lifecycle/weekly-audit.md) |
 

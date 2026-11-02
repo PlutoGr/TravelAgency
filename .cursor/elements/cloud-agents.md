@@ -5,12 +5,12 @@ Cursor cloud agents do every repo-bound methodology stage: analysis text, archit
 | Stage or job | Brief |
 |---|---|
 | Epic Бизнес-анализ, feature Аналитика | [analyst](../briefs/analyst.md) |
-| Epic Архитектура, epic Разбиение, feature Архитектура | [architect](../briefs/architect.md) |
-| Тест-кейсы | [test designer](../briefs/test-designer.md) |
+| Epic Архитектура, epic Разбиение, feature Архитектура (Малая: also «Тест-кейсы» in that run) | [architect](../briefs/architect.md) |
+| Тест-кейсы (Крупная) | [test designer](../briefs/test-designer.md) |
 | Application code and its automated tests (Разработка) | [developer](../briefs/developer.md) |
 | Workflows, Docker, nginx, deploy files | [devops](../briefs/devops.md) |
 | Escalated PR review, overlap check | [reviewer](../briefs/reviewer.md) |
-| `Doc-` and ADR text after merge | [docs writer](../briefs/docs-writer.md) |
+| Крупная `Doc-` and ADR text after merge | [docs writer](../briefs/docs-writer.md) |
 | `.cursor/` consistency audit, process simulation | [methodology auditor](../briefs/methodology-auditor.md) |
 
 Acceptance on dev is not a cloud launch: the orchestrator has dev access ([Приёмка](../lifecycle/11-deploy-and-acceptance.md)).

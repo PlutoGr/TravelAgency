@@ -15,7 +15,7 @@ Separate public repo `TravelAgency.wiki.git`, branch `master`; push = publish. P
 No other page kinds. Sidebar groups: «Действующая документация» (Doc-), «Фичи» (Epic- and Feature-), «Планы» (Plan-).
 
 ## Who writes
-Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, «Решения» rows), [test designer](../../briefs/test-designer.md) (feature «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (`Doc-` and `Doc-ADR-NNN-<Name>` after the change ships). Other text arrives via the issue or the PR.
+Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, «Решения» rows; on Малая also «Тест-кейсы»), [test designer](../../briefs/test-designer.md) (Крупная «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (Крупная `Doc-` and `Doc-ADR-NNN-<Name>` after the change ships). A Малая `Doc-` draft arrives in the PR and is published right after merge. Other text arrives via the issue or the PR.
 
 ## Writing
 - Russian and impersonal ([templates](../../templates/README.md#russian-and-impersonal)); no customer company names.
@@ -26,7 +26,7 @@ Only the orchestrator publishes. Cloud agents return text: [analyst](../../brief
 - Page templates live only in this package ([templates/wiki](../../templates/README.md#wiki-pages)); the wiki holds no template pages. An open page that does not match its current template is brought to it when next edited (drop a status line, drop epic «Тест-кейсы», roadmap order only in «Порядок»); closed pages are left alone.
 
 ## Lifecycle
-- Shipped: `Doc-` (and ADR) written after merge; the source page marked «сделано» with links. Cancelled: «отменено» with the reason.
+- Shipped: `Doc-` (and ADR) published after merge, never from unmerged code ([Doc- pages](doc-pages.md)); the source page marked «сделано» with links. Cancelled: «отменено» with the reason.
 - `Doc-` vs code mismatch: fix the wiki if the code is right, else open an issue.
 - Rename: no redirects; update every link in the same commit; if issues or external sites link the old name, leave a one-line stub ([moved page stub](../../templates/wiki/moved-page-stub.md)).
 

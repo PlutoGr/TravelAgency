@@ -22,24 +22,27 @@ On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting o
 - Confirm every bot finding is answered, no critical defect remains, scope matches the page and the epic problem, formats and secrets pass ([PR](../elements/git/pull-requests.md), [security](../rules/security.mdc)).
 - Verdict: [deliverable review](../templates/agents/deliverable-review.md). A gap: reply to the same agent (steer) and, in the same turn, set `Agent` to the new run, `Waiting on` = `agent` (the agent is the wait here; [cloud agents](../elements/cloud-agents.md#acceptance)), `Next` = wait for the new ready report. Back to `none` and full review only on that finish.
 - Green CI and «Secret scan» ([CI/CD](../elements/ci-cd.md)). Do not merge while either is red or still running.
-- The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge.
+- The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge. Малая that names a page also includes the draft text in «Документация»; a name without the draft blocks merge.
 - «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is open.
 
 ## 3. Escalation review
-Run a dedicated review (in chat for a trivial diff, otherwise a cloud agent with the [reviewer brief](../briefs/reviewer.md)) when any holds:
-- an automation left a blocker or a validated finding the agent could not close;
-- the PR is risky (auth, secrets, payments, infra, migrations, public API contracts, runtime or network dependencies);
-- the diff is large or crosses services;
-- the Feature or Epic page changed in «Архитектура» or «Решения» for this work;
-- the orchestrator or the owner asks for it.
-Otherwise Automations plus the agent's ready state plus the orchestrator's full review are enough. The verdict is posted as a Russian GitHub review or comment ([review verdict](../templates/github/review-verdict.md)) with the head sha.
+The only list. Other files point here and do not copy it. Writing this feature's own «Архитектура» or «Решения» is not a trigger.
+
+Record `Размер` at analytics ([size](06-feature-analytics.md#size)) from what is already visible. Крупная when any holds:
+- the work touches auth, secrets, payments, infra, migrations, public API contracts, or runtime or network dependencies;
+- the work crosses services;
+- the owner asks for the larger route.
+
+Otherwise Малая.
+
+At review, a recorded Крупная feature or bug-feature runs this review. A recorded Малая feature or bug-feature runs it only when, on this head, an automation left a blocker or a validated finding the agent could not close, or the diff is large. That does not change `Размер` or the column route. A non-product PR runs it when any Крупная bullet holds, or an automation left a blocker, or the diff is large. In chat for a trivial diff, otherwise a cloud agent with the [reviewer brief](../briefs/reviewer.md). When this review does not run, Automations plus the agent's ready state plus the orchestrator's full review are enough. When it runs, the verdict is posted as a Russian GitHub review or comment ([review verdict](../templates/github/review-verdict.md)) with the head sha.
 
 ## 4. Merge
 - Only the orchestrator merges, squash, title per [commits](../elements/git/commits.md) with ` (#NN)`.
 - Authorized in-scope work merges without a separate yes; ask first only for the cases in [orchestrator §6](../orchestrator.md#6-powers-act-and-report-vs-ask-first).
 - One PR at a time: the next merge waits until the previous «Deploy to dev» is green. Exception: the one repair PR while the queue is stopped ([below](#repair-while-the-queue-is-stopped)).
 - Do not squash-merge while a run is in progress, a finding has no reply, or a reply only promises a fix.
-- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = `Deploy` and write the merge into the [Sha cell](../elements/memory.md#sha-cell). On green Deploy: a feature, a bug-feature, or a non-product issue whose criteria need a dev check continues at [Приёмка](11-deploy-and-acceptance.md); any other non-product issue keeps its column and closes from Разработка ([non-product work](non-product-work.md)). Read `TA: Doc- after merge`; when a `Doc-` page was named, its draft may start now ([Doc- after merge](12-docs-after-merge.md)): the run goes only in `Agent` ([row lifecycle](../elements/memory.md#row-lifecycle)).
+- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = `Deploy` and write the merge into the [Sha cell](../elements/memory.md#sha-cell). On green Deploy: a feature, a bug-feature, or a non-product issue whose criteria need a dev check continues at [Приёмка](11-deploy-and-acceptance.md); any other non-product issue keeps its column and closes from Разработка ([non-product work](non-product-work.md)). `Doc-`: Малая publishes the PR draft in the merge turn only when the PR names a page; «вики не затронута» publishes nothing. Крупная, and a PR with no `Размер`, follow [Doc- after merge](12-docs-after-merge.md). A docs-writer run, when that file starts one, goes only in `Agent` ([row lifecycle](../elements/memory.md#row-lifecycle)).
 
 ### Repair while the queue is stopped
 The single definition of the stopped queue; other files link here.
@@ -51,5 +54,5 @@ The single definition of the stopped queue; other files link here.
 
 **Exit gate:** merged with every gate recorded; the issue stays Разработка (or Приёмка for a fix during acceptance) until Deploy to dev is green; then Приёмка ([Приёмка](11-deploy-and-acceptance.md)) only for items that need a dev check.
 
-## Safety-net wakes
-A CI or Secret-scan wake on a PR whose agent run is still live is expected → sleep after never-stall checks and confirming memory. A Deploy wake is never slept: it goes through the [Deploy wait](events.md#deploy-wait) and the [event table](events.md#events). A wake with no live agent, a second branch, or Dependabot → act per [events](events.md).
+## Webhook
+A `pr-checks` event is acted on only when it matches `Waiting on` = `Automations` for that head, or the author is Dependabot ([events](events.md#webhook-match)). Anything else exits without logging. A `deploy` event goes through the [Deploy wait](events.md#deploy-wait).
