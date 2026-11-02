@@ -50,7 +50,6 @@ const clientUser: User = {
   firstName: 'Анна',
   lastName: 'Клиент',
   phone: '',
-  city: '',
   role: 'client',
   createdAt: '2025-01-01T00:00:00Z',
 };

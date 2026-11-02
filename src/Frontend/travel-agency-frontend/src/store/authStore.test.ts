@@ -28,7 +28,6 @@ const sampleUser: User = {
   firstName: 'John',
   lastName: 'Doe',
   phone: '',
-  city: '',
   role: 'client',
   createdAt: '2025-01-01T00:00:00Z',
 };

@@ -1,10 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Identity.Application.DTOs;
@@ -44,48 +46,33 @@ public class ProfileAvatarIntegrationTests : IClassFixture<CustomWebApplicationF
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    [Fact]
-    public async Task PatchMe_ClientWithAbout_Returns400WithField()
+    [Theory]
+    [InlineData("Client")]
+    [InlineData("Manager")]
+    [InlineData("Admin")]
+    public async Task PatchMe_RemovedFields_Return400AndDoNotChangeProfile(string role)
     {
-        var user = await SeedUserAsync("client-about@example.com", role: UserRole.Client);
-        var jwt = GenerateTestJwt(user.Id, user.Email, "Client");
+        var userRole = Enum.Parse<UserRole>(role);
+        var user = await SeedUserAsync($"removed-{role}@example.com", role: userRole);
+        var jwt = GenerateTestJwt(user.Id, user.Email, role);
 
         using var request = new HttpRequestMessage(HttpMethod.Patch, "/identity/me");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
-        request.Content = JsonContent.Create(new { firstName = "Иван", about = "нельзя" });
+        request.Content = new StringContent(
+            """{"firstName":"Иван","city":"Казань","about":"Гид","tourismSince":2015,"languages":["ru"],"specialization":"Кавказ","email":"hack@example.com"}""",
+            Encoding.UTF8,
+            "application/json");
 
         var response = await _client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("about");
-    }
+        body.Should().NotContain("доступно только менеджеру или администратору");
 
-    [Fact]
-    public async Task PatchMe_ManagerProfileFields_Returns200()
-    {
-        var user = await SeedUserAsync("mgr-profile@example.com", role: UserRole.Manager);
-        var jwt = GenerateTestJwt(user.Id, user.Email, "Manager");
-
-        using var request = new HttpRequestMessage(HttpMethod.Patch, "/identity/me");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
-        request.Content = JsonContent.Create(new
-        {
-            city = "Казань",
-            about = "Гид",
-            tourismSince = 2015,
-            languages = new[] { "ru", "en" },
-            specialization = "Кавказ"
-        });
-
-        var response = await _client.SendAsync(request);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var profile = await response.Content.ReadFromJsonAsync<UserProfileDto>();
-        profile!.City.Should().Be("Казань");
-        profile.About.Should().Be("Гид");
-        profile.TourismSince.Should().Be(2015);
-        profile.Languages.Should().BeEquivalentTo(["ru", "en"]);
-        profile.Specialization.Should().Be("Кавказ");
-        profile.AvatarUrl.Should().BeNull();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var stored = await db.Users.FindAsync(user.Id);
+        stored!.FirstName.Should().Be("Test");
+        stored.Email.Should().Be(user.Email);
     }
 
     [Fact]
@@ -132,6 +119,13 @@ public class ProfileAvatarIntegrationTests : IClassFixture<CustomWebApplicationF
         delResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var cleared = await delResp.Content.ReadFromJsonAsync<UserProfileDto>();
         cleared!.AvatarUrl.Should().BeNull();
+        var clearedJson = await delResp.Content.ReadAsStringAsync();
+        using (var clearedDoc = JsonDocument.Parse(clearedJson))
+        {
+            clearedDoc.RootElement.GetProperty("avatarUrl").ValueKind.Should().Be(JsonValueKind.Null);
+            clearedDoc.RootElement.TryGetProperty("city", out _).Should().BeFalse();
+            clearedDoc.RootElement.TryGetProperty("about", out _).Should().BeFalse();
+        }
         _factory.AvatarMedia.Deleted.Should().Contain(secondId);
     }
 

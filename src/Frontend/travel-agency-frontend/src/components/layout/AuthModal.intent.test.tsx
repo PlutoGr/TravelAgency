@@ -26,7 +26,6 @@ const clientUser: User = {
   firstName: 'Анна',
   lastName: 'Клиент',
   phone: '+79990001122',
-  city: '',
   role: 'client',
   createdAt: '2025-01-01T00:00:00Z',
 };

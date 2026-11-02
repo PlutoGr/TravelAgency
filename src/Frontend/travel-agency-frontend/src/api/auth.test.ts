@@ -54,12 +54,8 @@ describe('auth API', () => {
         firstName: 'John',
         lastName: 'Doe',
         phone: '',
-        city: '',
         role: 'client',
         createdAt: '2025-01-01T00:00:00Z',
-        about: '',
-        languages: [],
-        specialization: '',
       });
     });
 
@@ -144,12 +140,8 @@ describe('auth API', () => {
         firstName: 'Bob',
         lastName: 'Lee',
         phone: '',
-        city: '',
         role: 'admin',
         createdAt: '2025-01-03T00:00:00Z',
-        about: '',
-        languages: [],
-        specialization: '',
       });
     });
 
@@ -168,10 +160,11 @@ describe('auth API', () => {
 
       const result = await auth.getMe();
       expect(result.phone).toBe('');
-      expect(result.city).toBe('');
+      expect(result).not.toHaveProperty('city');
+      expect(result).not.toHaveProperty('about');
     });
 
-    it('maps a city and treats null city as an empty string', async () => {
+    it('drops removed profile keys and keeps a null phone empty', async () => {
       mockApiClient.get.mockResolvedValueOnce({
         data: {
           id: 'u4b',
@@ -180,27 +173,24 @@ describe('auth API', () => {
           lastName: 'Y',
           phone: '+79991234567',
           city: 'Казань',
+          about: 'Гид',
+          tourismSince: 2015,
+          languages: ['ru'],
+          specialization: 'Азия',
+          passport: '4510',
           role: 'client',
           createdAt: '2025-01-01T00:00:00Z',
         },
       });
 
-      await expect(auth.getMe()).resolves.toMatchObject({ city: 'Казань', phone: '+79991234567' });
-
-      mockApiClient.get.mockResolvedValueOnce({
-        data: {
-          id: 'u4c',
-          email: 'x@b.com',
-          firstName: 'X',
-          lastName: 'Y',
-          phone: null,
-          city: null,
-          role: 'client',
-          createdAt: '2025-01-01T00:00:00Z',
-        },
-      });
-
-      await expect(auth.getMe()).resolves.toMatchObject({ city: '', phone: '' });
+      const result = await auth.getMe();
+      expect(result).toMatchObject({ phone: '+79991234567', firstName: 'X' });
+      expect(result).not.toHaveProperty('city');
+      expect(result).not.toHaveProperty('about');
+      expect(result).not.toHaveProperty('tourismSince');
+      expect(result).not.toHaveProperty('languages');
+      expect(result).not.toHaveProperty('specialization');
+      expect(result).not.toHaveProperty('passport');
     });
   });
 
@@ -253,7 +243,7 @@ describe('auth API', () => {
       });
     });
 
-    it('sends an empty city string when the card clears it', async () => {
+    it('sends an empty phone and ignores removed keys on the mapped user', async () => {
       mockApiClient.patch.mockResolvedValue({
         data: {
           id: 'u7',
@@ -261,7 +251,8 @@ describe('auth API', () => {
           firstName: 'Анна',
           lastName: 'Смирнова',
           phone: null,
-          city: null,
+          city: 'Казань',
+          about: 'Гид',
           role: 'client',
           createdAt: '2025-01-01T00:00:00Z',
         },
@@ -271,102 +262,16 @@ describe('auth API', () => {
         firstName: 'Анна',
         lastName: 'Смирнова',
         phone: '',
-        city: '',
       });
 
       expect(mockApiClient.patch).toHaveBeenCalledWith('/auth/me', {
         firstName: 'Анна',
         lastName: 'Смирнова',
         phone: '',
-        city: '',
       });
       expect(result.phone).toBe('');
-      expect(result.city).toBe('');
-    });
-
-    it('профиль менеджера ТК-3 и ТК-5: пустые поля менеджера уходят, пустой год не ставится', async () => {
-      mockApiClient.patch.mockResolvedValue({
-        data: {
-          id: 'm1',
-          email: 'm@example.com',
-          firstName: 'Иван',
-          lastName: 'Петров',
-          phone: '',
-          city: '',
-          role: 'Manager',
-          createdAt: '2026-01-01T00:00:00Z',
-          about: '',
-          specialization: '',
-          languages: null,
-          tourismSince: 2015,
-        },
-      });
-
-      const result = await auth.updateProfile({
-        firstName: 'Иван',
-        lastName: 'Петров',
-        phone: '',
-        city: '',
-        about: '',
-        specialization: '',
-        languages: [],
-      });
-
-      const body = mockApiClient.patch.mock.calls[0][1] as Record<string, unknown>;
-      expect(mockApiClient.patch).toHaveBeenCalledWith('/auth/me', {
-        firstName: 'Иван',
-        lastName: 'Петров',
-        phone: '',
-        city: '',
-        about: '',
-        specialization: '',
-        languages: [],
-      });
-      expect(body).not.toHaveProperty('tourismSince');
-      expect(result.about).toBe('');
-      expect(result.specialization).toBe('');
-      expect(result.languages).toEqual([]);
-      expect(result.tourismSince).toBe(2015);
-      expect(result.role).toBe('manager');
-    });
-
-    it('отправляет tourismSince, когда год передан', async () => {
-      mockApiClient.patch.mockResolvedValue({
-        data: {
-          id: 'm1',
-          email: 'm@example.com',
-          firstName: 'Иван',
-          lastName: 'Петров',
-          phone: '',
-          role: 'Admin',
-          createdAt: '2026-01-01T00:00:00Z',
-          about: 'Гид',
-          tourismSince: 2015,
-          languages: ['ru', 'en'],
-          specialization: 'Азия',
-        },
-      });
-
-      const result = await auth.updateProfile({
-        about: 'Гид',
-        tourismSince: 2015,
-        languages: ['ru', 'en'],
-        specialization: 'Азия',
-      });
-
-      expect(mockApiClient.patch).toHaveBeenCalledWith('/auth/me', {
-        about: 'Гид',
-        tourismSince: 2015,
-        languages: ['ru', 'en'],
-        specialization: 'Азия',
-      });
-      expect(result).toMatchObject({
-        role: 'admin',
-        about: 'Гид',
-        tourismSince: 2015,
-        languages: ['ru', 'en'],
-        specialization: 'Азия',
-      });
+      expect(result).not.toHaveProperty('city');
+      expect(result).not.toHaveProperty('about');
     });
   });
 
@@ -381,65 +286,31 @@ describe('auth API', () => {
       avatarUrl: '/api/v1/media/files/abc/a256',
     };
 
-    it('профиль менеджера ТК-3: переносит поля менеджера и пустые значения', () => {
-      for (const role of ['Manager', 'Admin']) {
-        expect(
-          auth.mapUserProfileDtoToUser({
-            ...base,
-            role,
-            city: null,
-            about: 'Гид',
-            tourismSince: 2015,
-            languages: ['ru', 'en'],
-            specialization: 'Азия',
-          }),
-        ).toEqual({
+    it('keeps the narrow profile and drops removed keys', () => {
+      for (const role of ['Client', 'Manager', 'Admin']) {
+        const raw = {
+          ...base,
+          role,
+          city: null,
+          about: 'Гид',
+          tourismSince: 2015,
+          languages: ['ru', 'en'],
+          specialization: 'Азия',
+          passport: '4510',
+        };
+        const mapped = auth.mapUserProfileDtoToUser(raw);
+        expect(mapped).toEqual({
           id: 'm1',
           email: 'm@example.com',
           firstName: 'Иван',
           lastName: 'Петров',
           phone: '+79990001122',
-          city: '',
           avatar: '/api/v1/media/files/abc/a256',
           role: role.toLowerCase(),
           createdAt: '2026-01-01T00:00:00Z',
-          about: 'Гид',
-          tourismSince: 2015,
-          languages: ['ru', 'en'],
-          specialization: 'Азия',
         });
-
-        const cleared = auth.mapUserProfileDtoToUser({
-          ...base,
-          role,
-          city: null,
-          about: null,
-          tourismSince: null,
-          languages: null,
-          specialization: null,
-        });
-        expect(cleared.role).toBe(role.toLowerCase());
-        expect(cleared.city).toBe('');
-        expect(cleared.avatar).toBe('/api/v1/media/files/abc/a256');
-        expect(cleared.about).toBe('');
-        expect(cleared.specialization).toBe('');
-        expect(cleared.languages).toEqual([]);
-        expect(cleared.tourismSince).toBeUndefined();
-        expect(cleared).not.toHaveProperty('tourismSince');
-
-        const blanks = auth.mapUserProfileDtoToUser({
-          ...base,
-          role,
-          city: null,
-          about: '',
-          tourismSince: null,
-          languages: [],
-          specialization: '',
-        });
-        expect(blanks.about).toBe('');
-        expect(blanks.specialization).toBe('');
-        expect(blanks.languages).toEqual([]);
-        expect(blanks).not.toHaveProperty('tourismSince');
+        expect(mapped).not.toHaveProperty('city');
+        expect(mapped).not.toHaveProperty('passport');
       }
     });
   });
@@ -451,7 +322,6 @@ describe('auth API', () => {
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '+79991234567',
-      city: 'Казань',
       role: 'client',
       createdAt: '2025-01-01T00:00:00Z',
     };
@@ -469,7 +339,7 @@ describe('auth API', () => {
       const body = mockApiClient.postForm.mock.calls[0][1] as FormData;
       expect(body.get('file')).toBe(file);
       expect(result.avatar).toBe('/api/v1/media/files/abc/a256');
-      expect(result.city).toBe('Казань');
+      expect(result).not.toHaveProperty('city');
     });
 
     it('deletes the avatar without a body and maps a null avatarUrl', async () => {

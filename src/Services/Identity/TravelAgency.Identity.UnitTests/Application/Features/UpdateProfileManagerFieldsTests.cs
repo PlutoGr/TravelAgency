@@ -2,7 +2,6 @@ using FluentAssertions;
 using Moq;
 using TravelAgency.Identity.Application.Abstractions;
 using TravelAgency.Identity.Application.DTOs;
-using TravelAgency.Identity.Application.Exceptions;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
 using TravelAgency.Identity.Domain.Entities;
 using TravelAgency.Identity.Domain.Enums;
@@ -24,63 +23,27 @@ public class UpdateProfileManagerFieldsTests
         _handler = new UpdateProfileCommandHandler(_currentUser.Object, _users.Object, _uow.Object);
     }
 
-    [Fact]
-    public async Task Handle_ClientSendingAbout_Throws400WithField()
+    [Theory]
+    [InlineData(UserRole.Client)]
+    [InlineData(UserRole.Manager)]
+    [InlineData(UserRole.Admin)]
+    public async Task Handle_TrimsNameAndPhone_ForEveryRole(UserRole role)
     {
         var userId = Guid.NewGuid();
-        var user = User.Create("c@example.com", "hash", "A", "B", null, UserRole.Client);
-        _currentUser.Setup(s => s.IsAuthenticated).Returns(true);
-        _currentUser.Setup(s => s.UserId).Returns(userId);
-        _users.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
-
-        var act = async () => await _handler.Handle(
-            new UpdateProfileCommand(new UpdateProfileRequest(FirstName: "A", About: "секрет")),
-            CancellationToken.None);
-
-        var ex = await act.Should().ThrowAsync<AppValidationException>();
-        ex.Which.Errors.Should().ContainKey("about");
-        user.About.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Handle_ManagerCanUpdateAboutAndLanguages()
-    {
-        var userId = Guid.NewGuid();
-        var user = User.Create("m@example.com", "hash", "A", "B", null, UserRole.Manager);
+        var user = User.Create("person@example.com", "hash", "Старое", "Имя", "+79990000000", role);
         _currentUser.Setup(s => s.IsAuthenticated).Returns(true);
         _currentUser.Setup(s => s.UserId).Returns(userId);
         _users.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
 
         var result = await _handler.Handle(
-            new UpdateProfileCommand(new UpdateProfileRequest(
-                About: "Гид",
-                TourismSince: 2012,
-                Languages: ["ru", "en"],
-                Specialization: "Азия")),
+            new UpdateProfileCommand(new UpdateProfileRequest(" Марина ", " Иванова ", " +79991234567 ")),
             CancellationToken.None);
 
-        result.About.Should().Be("Гид");
-        result.TourismSince.Should().Be(2012);
-        result.Languages.Should().BeEquivalentTo(["ru", "en"]);
-        result.Specialization.Should().Be("Азия");
-    }
-
-    [Fact]
-    public async Task Handle_DoesNotChangeEmailOrRole()
-    {
-        var userId = Guid.NewGuid();
-        var user = User.Create("c@example.com", "hash", "A", "B", null, UserRole.Client);
-        _currentUser.Setup(s => s.IsAuthenticated).Returns(true);
-        _currentUser.Setup(s => s.UserId).Returns(userId);
-        _users.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(user);
-
-        var result = await _handler.Handle(
-            new UpdateProfileCommand(new UpdateProfileRequest(FirstName: "New", City: "Москва")),
-            CancellationToken.None);
-
-        result.Email.Should().Be("c@example.com");
-        result.Role.Should().Be("Client");
-        result.City.Should().Be("Москва");
-        result.FirstName.Should().Be("New");
+        result.FirstName.Should().Be("Марина");
+        result.LastName.Should().Be("Иванова");
+        result.Phone.Should().Be("+79991234567");
+        result.Email.Should().Be("person@example.com");
+        result.Role.Should().Be(role.ToRoleString());
+        user.DisplayName.Should().Be("Марина Иванова");
     }
 }

@@ -27,7 +27,6 @@ const dto = {
   firstName: 'Анна',
   lastName: 'Смирнова',
   phone: '+79991234567',
-  city: 'Казань',
   role: 'Client',
   createdAt: '2026-01-01T00:00:00Z',
 };
@@ -69,7 +68,7 @@ describe('avatar transport', () => {
     expect((calls[0].data as FormData).get('file')).toBe(file);
     expect(calls[1].data ?? null).toBeNull();
     expect(uploaded.avatar).toBe('/api/v1/media/files/abc/a256');
-    expect(uploaded.city).toBe('Казань');
+    expect(uploaded).not.toHaveProperty('city');
     expect(deleted.avatar).toBeUndefined();
   });
 });
