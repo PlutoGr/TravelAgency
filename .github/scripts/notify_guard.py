@@ -110,6 +110,21 @@ def pr_payload(decision, pr, sha, branch, author, html_url):
     }
 
 
+def deploy_run_counts(event, head_branch, head_repo, this_repo):
+    """«Deploy to dev» считается только push этого репозитория в main."""
+    return (
+        event == "push"
+        and head_branch == "main"
+        and bool(this_repo)
+        and head_repo == this_repo
+    )
+
+
+def pr_head_in_repo(head_repo, this_repo):
+    """PR учитывается, только если голова в этом репозитории, не в форке."""
+    return bool(this_repo) and head_repo == this_repo
+
+
 def deploy_payload(conclusion, sha, deployed_sha, branch, run_id, html_url):
     green = conclusion == "success"
     sha_ok = bool(deployed_sha) and bool(_SHA.match(deployed_sha))

@@ -143,6 +143,25 @@ class PrDecision(unittest.TestCase):
         self.assertEqual(sent["result"], "green")
 
 
+class TrustedRuns(unittest.TestCase):
+    def test_deploy_counts_only_push_on_this_repo_main(self):
+        self.assertTrue(guard.deploy_run_counts("push", "main", "PlutoGr/TravelAgency", "PlutoGr/TravelAgency"))
+
+    def test_deploy_rejects_fork_pull_request_and_other_events(self):
+        repo = "PlutoGr/TravelAgency"
+        self.assertFalse(guard.deploy_run_counts("pull_request", "main", "evil/TravelAgency", repo))
+        self.assertFalse(guard.deploy_run_counts("pull_request", "main", repo, repo))
+        self.assertFalse(guard.deploy_run_counts("workflow_dispatch", "main", repo, repo))
+        self.assertFalse(guard.deploy_run_counts("push", "feature", repo, repo))
+        self.assertFalse(guard.deploy_run_counts("push", "main", "evil/TravelAgency", repo))
+        self.assertFalse(guard.deploy_run_counts("push", "main", repo, ""))
+
+    def test_pr_head_must_be_this_repository(self):
+        self.assertTrue(guard.pr_head_in_repo("PlutoGr/TravelAgency", "PlutoGr/TravelAgency"))
+        self.assertFalse(guard.pr_head_in_repo("evil/TravelAgency", "PlutoGr/TravelAgency"))
+        self.assertFalse(guard.pr_head_in_repo("", "PlutoGr/TravelAgency"))
+
+
 class Payload(unittest.TestCase):
     def test_pr_payload_shape(self):
         decision = {"result": "red", "failed_checks": ["gitleaks"]}

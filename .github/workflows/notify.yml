@@ -6,7 +6,7 @@
 #   Одно событие, когда все обязательные проверки текущего открытого head завершены.
 #   Шлёт только suite этого запуска, если в нём самая поздняя обязательная проверка.
 #   main и устаревший head не шлют. Cursor Automations обязательными проверками не являются.
-# main: одно событие, когда завершился «Deploy to dev» (result и deployed_sha).
+# main: одно событие, когда «Deploy to dev» завершился как push этого репозитория в main.
 # Если секрета нет в момент отправки, job завершается с ошибкой.
 # Ответ не 2xx завершает job с ошибкой.
 name: Notify orchestrator
@@ -34,7 +34,9 @@ concurrency:
 jobs:
   pr-checks:
     name: Проверки PR
-    if: github.event.workflow_run.name == 'CI' || github.event.workflow_run.name == 'Secret scan'
+    if: >-
+      (github.event.workflow_run.name == 'CI' || github.event.workflow_run.name == 'Secret scan')
+      && github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -65,7 +67,12 @@ jobs:
           pr_json=$(gh api "repos/${GH_REPO}/pulls/${PR_NUM}")
           state=$(echo "$pr_json" | jq -r '.state')
           pr_head=$(echo "$pr_json" | jq -r '.head.sha')
+          head_repo=$(echo "$pr_json" | jq -r '.head.repo.full_name // empty')
           base=$(echo "$pr_json" | jq -r '.base.ref')
+          if [ "$head_repo" != "$GH_REPO" ]; then
+            echo "skip: fork pull request"
+            exit 0
+          fi
           if [ "$state" != "open" ] || [ "$pr_head" != "$SHA" ]; then
             echo "skip: not the open head"
             exit 0
@@ -117,7 +124,11 @@ jobs:
 
   deploy:
     name: Деплой main
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy to dev'
+    if: >-
+      github.event.workflow_run.name == 'Deploy to dev'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
