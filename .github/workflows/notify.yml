@@ -2,10 +2,10 @@
 #   GROK_BOT_CICD_WEBHOOK_URL  : URL webhook
 #   GROK_BOT_CICD_WEBHOOK_KEY  : полное значение заголовка Authorization
 #     (схема может уже входить в значение). Значение секрета в репозиторий не записывается.
-# PR: одно событие, когда все обязательные проверки текущего head завершены
-#   (задачи CI и Secret scan, плюс контексты из правил ветки, если API их отдал).
-#   Повторный suite того же завершения не шлёт второе событие. Чужой sha пропускается.
-#   Cursor Automations обязательными проверками не являются.
+# PR: workflow_run по «CI» и «Secret scan» (check_suite от GitHub Actions не приходит).
+#   Одно событие, когда все обязательные проверки текущего открытого head завершены.
+#   Шлёт только suite этого запуска, если в нём самая поздняя обязательная проверка.
+#   main и устаревший head не шлют. Cursor Automations обязательными проверками не являются.
 # main: одно событие, когда завершился «Deploy to dev» (result и deployed_sha).
 # Если секрета нет в момент отправки, job завершается с ошибкой.
 # Ответ не 2xx завершает job с ошибкой.
@@ -14,10 +14,9 @@ name: Notify orchestrator
 on:
   workflow_run:
     workflows:
+      - CI
+      - Secret scan
       - Deploy to dev
-    types:
-      - completed
-  check_suite:
     types:
       - completed
 
@@ -27,16 +26,15 @@ permissions:
   checks: read
   pull-requests: read
 
-# Для PR группа на head sha, чтобы два suite не отправили webhook параллельно.
-# Для деплоя группа на id запуска: каждое завершение «Deploy to dev» отдельно.
+# CI и Secret scan одного head в одной группе. Деплой отдельно, по id запуска.
 concurrency:
-  group: notify-${{ github.event_name }}-${{ github.event.check_suite.head_sha }}-${{ github.event.workflow_run.id }}
+  group: ${{ github.event.workflow_run.name == 'Deploy to dev' && format('notify-deploy-{0}', github.event.workflow_run.id) || format('notify-pr-{0}', github.event.workflow_run.head_sha) }}
   cancel-in-progress: false
 
 jobs:
   pr-checks:
     name: Проверки PR
-    if: github.event_name == 'check_suite'
+    if: github.event.workflow_run.name == 'CI' || github.event.workflow_run.name == 'Secret scan'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,11 +46,15 @@ jobs:
           WEBHOOK_KEY: ${{ secrets.GROK_BOT_CICD_WEBHOOK_KEY }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SHA: ${{ github.event.check_suite.head_sha }}
-          SUITE_ID: ${{ github.event.check_suite.id }}
-          PR_NUM: ${{ github.event.check_suite.pull_requests[0].number }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          SUITE_ID: ${{ github.event.workflow_run.check_suite_id }}
+          PR_NUM: ${{ github.event.workflow_run.pull_requests[0].number }}
         run: |
           set -euo pipefail
+          if [ -z "${SUITE_ID}" ]; then
+            echo "skip: no check suite"
+            exit 0
+          fi
           if [ -z "${PR_NUM}" ]; then
             PR_NUM=$(gh api "repos/${GH_REPO}/commits/${SHA}/pulls" --jq '.[0].number // empty')
           fi

@@ -27,7 +27,9 @@ body:
     id: chto
     attributes:
       label: Что сделать
-      description: Конкретные шаги или ожидаемое поведение
+      description: Конкретные шаги или ожидаемое поведение. Строка «Размер» заполняется в аналитике.
+      value: |
+        Размер: <Малая | Крупная>
     validations:
       required: true
   - type: textarea

@@ -24,6 +24,6 @@ While CI is red, do not merge. Who fixes:
 Ask the owner only to merge despite red CI, or when the failure is a breaking change, a peer conflict or outside the task. A later green run uses the normal merge gates.
 
 ## Other rules
-- Depth of review by risk: trivial (docs, typos, trivial config) and normal code = CI + first-line Automations + orchestrator full review; risky (infra, CI, Docker/nginx, auth, data and migrations, secrets handling, runtime or network dependencies) = same plus escalated security review ([review and merge](../lifecycle/10-review-and-merge.md#3-escalation-review)).
+- Depth of review follows [escalation review](../lifecycle/10-review-and-merge.md#3-escalation-review). No second risk list here.
 - First-line review is Cursor Automations ([automations](automations.md)); dependency PRs: [dependencies](dependencies.md).
 - Servers: read logs and status freely; any change, manual deploy or rollback needs the owner's yes, configs backed up first.

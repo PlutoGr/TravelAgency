@@ -26,20 +26,23 @@ On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting o
 - «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is open.
 
 ## 3. Escalation review
-This list is the only definition of Крупная ([feature analytics](06-feature-analytics.md#size)). A feature or bug-feature recorded Малая does not run this review: the orchestrator's full review is enough. A feature or bug-feature recorded Крупная runs this review, because the size was this list. A non-product PR runs it when any bullet holds. In chat for a trivial diff, otherwise a cloud agent with the [reviewer brief](../briefs/reviewer.md). The bullets:
-- an automation left a blocker or a validated finding the agent could not close;
-- the PR is risky (auth, secrets, payments, infra, migrations, public API contracts, runtime or network dependencies);
-- the diff is large or crosses services;
-- the Feature or Epic page changed in «Архитектура» or «Решения» for this work;
-- the orchestrator or the owner asks for it.
-When this review does not run, Automations plus the agent's ready state plus the orchestrator's full review are enough. When it runs, the verdict is posted as a Russian GitHub review or comment ([review verdict](../templates/github/review-verdict.md)) with the head sha.
+The only list. Other files point here and do not copy it. Writing this feature's own «Архитектура» or «Решения» is not a trigger.
+
+Record `Размер` at analytics ([size](06-feature-analytics.md#size)) from what is already visible. Крупная when any holds:
+- the work touches auth, secrets, payments, infra, migrations, public API contracts, or runtime or network dependencies;
+- the work crosses services;
+- the owner asks for the larger route.
+
+Otherwise Малая.
+
+At review, a recorded Крупная feature or bug-feature runs this review. A recorded Малая feature or bug-feature runs it only when, on this head, an automation left a blocker or a validated finding the agent could not close, or the diff is large. That does not change `Размер` or the column route. A non-product PR runs it when any Крупная bullet holds, or an automation left a blocker, or the diff is large. In chat for a trivial diff, otherwise a cloud agent with the [reviewer brief](../briefs/reviewer.md). When this review does not run, Automations plus the agent's ready state plus the orchestrator's full review are enough. When it runs, the verdict is posted as a Russian GitHub review or comment ([review verdict](../templates/github/review-verdict.md)) with the head sha.
 
 ## 4. Merge
 - Only the orchestrator merges, squash, title per [commits](../elements/git/commits.md) with ` (#NN)`.
 - Authorized in-scope work merges without a separate yes; ask first only for the cases in [orchestrator §6](../orchestrator.md#6-powers-act-and-report-vs-ask-first).
 - One PR at a time: the next merge waits until the previous «Deploy to dev» is green. Exception: the one repair PR while the queue is stopped ([below](#repair-while-the-queue-is-stopped)).
 - Do not squash-merge while a run is in progress, a finding has no reply, or a reply only promises a fix.
-- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = `Deploy` and write the merge into the [Sha cell](../elements/memory.md#sha-cell). On green Deploy: a feature, a bug-feature, or a non-product issue whose criteria need a dev check continues at [Приёмка](11-deploy-and-acceptance.md); any other non-product issue keeps its column and closes from Разработка ([non-product work](non-product-work.md)). `Doc-`: Малая, publish the PR draft in this merge turn; Крупная, a docs-writer draft may start now ([Doc- after merge](12-docs-after-merge.md)), and that run goes only in `Agent` ([row lifecycle](../elements/memory.md#row-lifecycle)).
+- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = `Deploy` and write the merge into the [Sha cell](../elements/memory.md#sha-cell). On green Deploy: a feature, a bug-feature, or a non-product issue whose criteria need a dev check continues at [Приёмка](11-deploy-and-acceptance.md); any other non-product issue keeps its column and closes from Разработка ([non-product work](non-product-work.md)). `Doc-`: Малая publishes the PR draft in this merge turn. Крупная, and a PR with no `Размер`, follow [Doc- after merge](12-docs-after-merge.md). A docs-writer run, when that file starts one, goes only in `Agent` ([row lifecycle](../elements/memory.md#row-lifecycle)).
 
 ### Repair while the queue is stopped
 The single definition of the stopped queue; other files link here.

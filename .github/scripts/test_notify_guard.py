@@ -65,6 +65,15 @@ class PrDecision(unittest.TestCase):
         decision = guard.decide_pr(runs, [], self.sha, self.sha, 3)
         self.assertEqual(decision["reason"], "incomplete")
 
+    def test_workflow_run_check_suite_id_sends_once(self):
+        """CI and Secret scan are separate workflow_run suites. Only the later suite sends."""
+        runs = self._all()
+        earlier = guard.decide_pr(runs, [], self.sha, self.sha, 3)
+        later = guard.decide_pr(runs, [], self.sha, self.sha, 7)
+        self.assertEqual(earlier["reason"], "not-latest-suite")
+        self.assertEqual(later["action"], "send")
+        self.assertEqual(later["result"], "green")
+
     def test_green_only_from_latest_suite(self):
         runs = self._all()
         self.assertEqual(guard.decide_pr(runs, [], self.sha, self.sha, 3)["reason"], "not-latest-suite")

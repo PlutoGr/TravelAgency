@@ -23,7 +23,9 @@ body:
     id: chto
     attributes:
       label: Что сделать
-      description: Объём работ и границы
+      description: Объём работ и границы. Строка «Размер» заполняется в аналитике.
+      value: |
+        Размер: <Малая | Крупная>
     validations:
       required: true
   - type: textarea

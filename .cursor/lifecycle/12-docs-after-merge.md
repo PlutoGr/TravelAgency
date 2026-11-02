@@ -1,5 +1,5 @@
 # 12 Doc- after merge (before Готово)
-Not a column. The wiki is a separate repo. `Doc-` describes what works in `main`, so it is published only after merge and never describes unmerged code. Готово waits until every named page is current. When the PR says «вики не затронута», this stage does not apply and does not block Готово; do not invent a page.
+Not a column. The wiki is a separate repo. `Doc-` describes what works in `main`, so it is published only after merge and never describes unmerged code. Готово waits until every named page is current. When the PR says «вики не затронута», this stage does not apply and does not block Готово; do not invent a page. A PR with no `Размер` (non-product, including infra and settings) follows the Крупная after-merge draft; if that PR already contains the draft text, publish it in the merge turn with no docs writer.
 
 ## Малая
 The developer writes the draft in the PR «Документация»: the page name and the draft text. Review checks that text together with the code. There is no docs-writer run and no wiki edit before merge.

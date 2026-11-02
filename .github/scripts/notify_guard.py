@@ -65,8 +65,9 @@ def _winner(latest):
 def decide_pr(check_runs, extra, sha, pr_head, suite_id):
     """skip, либо send с полями result и failed_checks.
 
-    Одно событие на завершение обязательного набора: шлёт только check suite,
-    в котором лежит самая поздняя обязательная проверка. Чужой sha пропускается.
+    suite_id это check_suite_id запуска «CI» или «Secret scan».
+    Одно событие на завершение: шлёт только suite с самой поздней
+    обязательной проверкой. Чужой sha пропускается.
     """
     if not sha or sha != pr_head:
         return {"action": "skip", "reason": "superseded"}
