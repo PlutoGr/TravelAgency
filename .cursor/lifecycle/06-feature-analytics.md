@@ -14,4 +14,4 @@ Product WHY and WHAT for one feature (or bug-feature). No solution design.
 
 No services, API paths, storage, migrations or contracts. A bug-feature covers its product change only and adds no unrelated fields.
 
-**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. Then set `статус: архитектура` ([feature Архитектура](07-feature-architecture.md)).
+**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. Then set `статус: архитектура` ([feature Архитектура](07-feature-architecture.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура and Разбиение.

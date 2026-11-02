@@ -14,11 +14,16 @@ Use this principle for any situation the rules do not cover explicitly. When the
 Development is a **finite-state machine**. Board columns are the states. The issue's `статус:*` label is the state.
 
 1. **Enter a state:** the orchestrator alone sets `статус:*` (and the board Status to match) when taking an issue or advancing it. Entering a column triggers that stage's actions: fill the page section from its template, launch a cloud agent when the stage needs one, or fill a thin section yourself when the stage is short (for example a tiny backlog fix).
-2. **Do the stage:** a cloud agent (or the orchestrator for thin work) produces the deliverable. The issue stays in that column until the deliverable is accepted.
+2. **Do the stage:** a cloud agent (or the orchestrator for thin work) produces the deliverable. The issue stays in that column until the deliverable is accepted, and on an [owner stage approval](#owner-stage-approval) column until the owner approves that stage.
 3. **Review:** the orchestrator alone reviews every deliverable against the stage bar. Accept, steer, redo or dismiss ([deliverable review](templates/agents/deliverable-review.md)). Never advance because the agent said it was done.
-4. **Advance:** only after acceptance does the orchestrator move the issue to the next column. No script, automation or cloud agent changes `статус:*` or the board Status.
+4. **Advance:** only after acceptance, and on an owner stage-approval column only after the owner's yes, does the orchestrator move the issue to the next column. No script, automation or cloud agent changes `статус:*` or the board Status.
 5. **No skip:** every product state on the route is entered. A short stage is still entered and filled (thin analytics written by the orchestrator is fine; leaving the section empty is not).
 6. **No hang:** every wait (cloud agent, CI/Automations, Deploy, owner answer, another issue) is recorded in durable state ([memory](elements/memory.md)) so work resumes after token loss or compaction. Board and GitHub remain the source of truth for columns and backlog.
+
+### Owner stage approval
+Epic columns Бизнес-анализ, Архитектура and Разбиение leave only after the owner approves the stage in chat. Feature and bug-feature columns, including Аналитика, Архитектура, Тест-кейсы, Разработка and Приёмка, advance when the orchestrator accepts the stage. Epic Демо keeps the existing [epic demo](lifecycle/13-epic-acceptance.md). This rule adds no second ask there.
+
+When the orchestrator has accepted an epic deliverable on one of those three columns and the Russian wiki section is published or ready, it sends the owner a short Russian digest: the issue link, the wiki link or links, and one or two paragraphs of what was decided and what stays out. In that same turn it sets the row's `Question` to the stage-approval token ([Question](elements/memory.md#question)) and leaves the label and the board Status unchanged. Owner yes clears that `Question` and the column then advances as the stage exit already says. Owner no, or a request to edit the section, keeps the column and the `Question`; the section is reworked, published again, and the digest is sent again. The stage-advance comment is posted in the yes turn, with the column change. This gate adds no column.
 
 Stages, columns and gates: [lifecycle](lifecycle/README.md). Who sets labels: [board](elements/board/README.md).
 
@@ -37,15 +42,16 @@ Turn the owner's goals into shipped, documented, accepted increments on the dev 
 Keep the product moving toward the roadmap ([elements/roadmap.md](elements/roadmap.md)) and the product themes ([project.md](project.md#product-themes)). Finish the current epic, including its bug-features, before the next one; stop for the owner demo after each epic ([lifecycle/13-epic-acceptance.md](lifecycle/13-epic-acceptance.md)).
 
 ### 5.2 Full lifecycle (FSM)
-Own every state from intake to release: [lifecycle/README.md](lifecycle/README.md). Each stage has entry criteria, actors, outputs and an exit gate. The orchestrator enforces each gate, records the verification ([status comments](templates/github/status-comments.md)), and alone advances the label.
+Own every state from intake to release: [lifecycle/README.md](lifecycle/README.md). Each stage has entry criteria, actors, outputs and an exit gate. The orchestrator enforces each gate, including [owner stage approval](#owner-stage-approval), records the verification ([status comments](templates/github/status-comments.md)), and alone advances the label.
 
 ### 5.3 Communication with the owner
 - Russian, short, with links. A message is a result, a blocker, or the one decision needed with options and a recommendation. No acknowledgements or status pings.
 - Templates: [owner question](templates/owner/owner-question.md), [escalation](templates/owner/escalation.md), [merge notice](templates/owner/merge-notice.md), [epic demo](templates/owner/epic-demo.md), [weekly audit report](templates/owner/weekly-audit-report.md).
-- An owner answer given anywhere closes that question everywhere, and only the row's `Question` it answers ([Question](elements/memory.md#question)): record it on the issue and in «Решения» ([decisions log](elements/wiki/decisions-log.md)), clear that `Question` in [memory](elements/memory.md), re-evaluate the row (perform the pending transition if its condition still holds), then continue the stage.
+- The ask before a gated column change is the [owner stage approval](#owner-stage-approval) digest: the issue link, the wiki link or links, and one or two paragraphs of what was decided and what stays out.
+- An owner answer given anywhere closes that question everywhere, and only the row's `Question` it answers ([Question](elements/memory.md#question)): record it on the issue and in «Решения» ([decisions log](elements/wiki/decisions-log.md)), clear that `Question` in [memory](elements/memory.md), re-evaluate the row (perform the pending transition if its condition still holds), then continue the stage. A stage-approval token clears only on yes ([owner stage approval](#owner-stage-approval)).
 
 ### 5.4 Documentation
-Wiki per [elements/wiki/README.md](elements/wiki/README.md): Epic and Feature pages during work, `Doc-` after merge to `main` ([lifecycle/12-docs-after-merge.md](lifecycle/12-docs-after-merge.md)), `Plan-` for vision and roadmap. The orchestrator is the only wiki publisher. Accepted section text is published in the same turn it is accepted.
+Wiki per [elements/wiki/README.md](elements/wiki/README.md): Epic and Feature pages during work, `Doc-` after merge to `main` ([lifecycle/12-docs-after-merge.md](lifecycle/12-docs-after-merge.md)), `Plan-` for vision and roadmap. The orchestrator is the only wiki publisher. Accepted section text is published in the same turn it is accepted. On an [owner stage approval](#owner-stage-approval) column the label waits for the owner's yes.
 
 ### 5.5 Templates
 Every artifact is created from its template ([templates/README.md](templates/README.md)). An off-template open artifact is brought to its template when it is next taken or edited ([in-flight items](lifecycle/README.md#gates)).

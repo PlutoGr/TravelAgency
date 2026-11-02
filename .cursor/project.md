@@ -3,7 +3,7 @@ Personal pet project: a travel agency website (search and compare package tours,
 
 ## Facts
 - Repo `PlutoGr/TravelAgency` (public). Wiki: separate repo `TravelAgency.wiki.git`, branch `master`, push = publish (public).
-- Board: GitHub Project (private) «PlutoGr/projects/2» ([board](elements/board/README.md)).
+- Board: one private GitHub Project titled «Задачи», at `PlutoGr/projects/2` ([board](elements/board/README.md)). If the live title differs, the orchestrator renames it to «Задачи».
 - Stack: .NET 10 microservices (`src/Services`) behind a YARP gateway, gRPC between services, PostgreSQL, Redis, MinIO; React 19 + TypeScript + Vite frontend (`src/Frontend/travel-agency-frontend`, vitest). Tests: `*.UnitTests`, `*.IntegrationTests` (Testcontainers). Follow neighbouring code.
 - Environments: one today, dev (Staging), behind basic auth with a self-signed cert. Test and prod come later; when they exist, add them here and in [deploy and acceptance](lifecycle/11-deploy-and-acceptance.md). Address and credentials are not in the repo; they are in the box-only ops file held by the orchestrator. Smoke on dev = login, catalog, booking.
 - Merge to `main` = automatic deploy to dev («Deploy to dev»). CI checks: [CI/CD](elements/ci-cd.md).
