@@ -77,8 +77,8 @@ public class AuthResponseTransformProviderTests
             await t;
     }
 
-    private static readonly DateTime SampleAccessExpiresAt = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
-    private static readonly DateTime SampleRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
+    private static readonly DateTime SampleAccessExpiresAt = DateTime.UtcNow.AddHours(1);
+    private static readonly DateTime SampleRefreshExpiresAt = DateTime.UtcNow.AddDays(30);
 
     private static string TokenJson(
         string accessToken = "access-123",

@@ -49,9 +49,9 @@ public sealed class MockBackendServer : IAsyncDisposable
     /// <summary>
     /// Срок refresh-токена, который мок отдаёт в JSON как refreshExpiresAt.
     /// </summary>
-    public static readonly DateTime AuthAccessExpiresAt = new(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
+    public static readonly DateTime AuthAccessExpiresAt = DateTime.UtcNow.AddHours(1);
 
-    public static readonly DateTime AuthRefreshExpiresAt = new(2026, 12, 1, 15, 30, 0, DateTimeKind.Utc);
+    public static readonly DateTime AuthRefreshExpiresAt = DateTime.UtcNow.AddDays(30);
 
     /// <summary>
     /// Starts a mock backend on a random port. Returns 200 for any path and echoes
