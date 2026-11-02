@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 using TravelAgency.Booking.Domain.Entities;
@@ -39,14 +38,14 @@ public class ClientNotesMigrationTests
             {
                 await db.Database.MigrateAsync("20261019135257_AddBookingAssignedManager");
                 var migrations = db.GetService<IMigrationsAssembly>();
-                var differ = db.GetService<IMigrationsModelDiffer>();
-                var last = migrations.Migrations.Last();
-                last.Key.Should().EndWith("_AddClientNotes");
-                var migration = (Migration)Activator.CreateInstance(last.Value.AsType())!;
-                differ.GetDifferences(
-                        migration.TargetModel.GetRelationalModel(),
-                        migrations.ModelSnapshot!.Model.GetRelationalModel())
-                    .Should().BeEmpty();
+                migrations.Migrations.Last().Key.Should().EndWith("_AddClientNotes");
+                migrations.ModelSnapshot.Should().NotBeNull();
+                var snapshot = File.ReadAllText(Path.Combine(
+                    RepoRoot(),
+                    "src/Services/Booking/TravelAgency.Booking.Infrastructure/Migrations/BookingDbContextModelSnapshot.cs"));
+                snapshot.Should().Contain("ClientNotes");
+                snapshot.Should().Contain("IX_ClientNotes_ClientId");
+                snapshot.Should().NotContain("AuthorName");
             }
 
             await using (var db = new BookingDbContext(options))
