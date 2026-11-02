@@ -13,7 +13,7 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 | `статус: в работе` | В работе | epic only: children in flight |
 | `статус: разработка` | Разработка | feature, including bug-feature; non-product while its PR is open; includes PR review and the wait for Deploy |
 | `статус: приёмка` | Приёмка | feature, including bug-feature; non-product when dev acceptance applies; on dev after Deploy green |
-| `статус: на ревью` | На ревью | owner decision; epic owner acceptance |
+| `статус: на ревью` | На ревью | epic owner demo only (not mid-stage questions) |
 | `статус: готово` | Готово | closed after acceptance or as not planned |
 | `статус: удержание` | Удержание | paused |
 
