@@ -23,7 +23,7 @@ Only the orchestrator publishes. Cloud agents return text: [analyst](../../brief
 - Code names (classes, fields, routes, commands) as in code. Dates `2026-10-17`. No «Обновлено» line (history shows dates).
 - File names Latin, English, words joined by hyphens: `Doc-Booking-Request.md` (Cyrillic breaks links). The Russian title is only the first line `# <русский заголовок>`. Links without `.md`: `[text](Doc-Booking-Request)`, anchors `[text](Doc-Booking-Request#section)`.
 - No status line as the source of truth: the stage is the issue label. «сделано» or «отменено» are content marks.
-- Page templates live only in this package ([templates/wiki](../../templates/README.md#wiki-pages)); the wiki holds no template pages. A page that does not match its current template is brought to it when next edited.
+- Page templates live only in this package ([templates/wiki](../../templates/README.md#wiki-pages)); the wiki holds no template pages. An open page that does not match its current template is brought to it when next edited (drop a status line, drop epic «Тест-кейсы», roadmap order only in «Порядок»); closed pages are left alone.
 
 ## Lifecycle
 - Shipped: `Doc-` (and ADR) written after merge; the source page marked «сделано» with links. Cancelled: «отменено» with the reason.

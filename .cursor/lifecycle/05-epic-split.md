@@ -6,7 +6,12 @@
 **Section «Разбиение»** on the `Epic-` page: a feature list, one line for why each feature exists, in delivery order with dependencies. Children are features or bug-features only; no subtask, no mini-feature, no other child type.
 
 **Orchestrator after acceptance**
-1. For each line: a `Feature-<Name>` page ([feature page template](../templates/wiki/feature-page.md)) and a child issue ([feature issue](../templates/github/feature-issue.md)) linked to the epic, `статус: очередь`.
+1. For each line: a `Feature-<Name>` page ([feature page template](../templates/wiki/feature-page.md)) and a child issue ([feature issue](../templates/github/feature-issue.md)), `статус: очередь`, then the GitHub sub-issue link:
+   ```bash
+   child_id=$(gh api repos/PlutoGr/TravelAgency/issues/<child NN> --jq .id)
+   gh api -X POST repos/PlutoGr/TravelAgency/issues/<epic NN>/sub_issues -F sub_issue_id="$child_id"
+   ```
+   Write the child's issue number into its «Разбиение» line.
 2. Set contiguous low «Приоритет» on the children ([queue priority](../elements/board/queue-priority.md)).
 3. Sidebar entries for the new pages.
 

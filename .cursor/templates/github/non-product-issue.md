@@ -1,7 +1,7 @@
 # Non-product issue
-Labels: `documentation`, `question` or `enhancement` (infra), plus `статус: очередь`. No wiki page. Rules: [non-product work](../../lifecycle/non-product-work.md).
+Labels: `documentation`, `question` or `enhancement` (infra, urgent fix), plus `статус: очередь`. No wiki page. Rules: [non-product work](../../lifecycle/non-product-work.md).
 
-Title: `документация(процесс): …`, `инфраструктура(ci): …` and similar ([commit](commit.md)).
+Title: `документация(процесс): …`, `инфраструктура(ci): …`, `исправление(<сервис>): …` for an urgent fix, and similar ([commit](commit.md)).
 
 ```markdown
 ## Зачем

@@ -7,4 +7,4 @@ A business goal. Route: [lifecycle stages 03-05 and 13](../../lifecycle/README.m
 - **Children:** features and bug-features only.
 - **Order:** the current product epic ([definition](../board/queue-priority.md#current-epic-first)) is finished, including its bug-features, before the next roadmap epic, unless the owner confirmed a parallel set. After Готово: owner demo and epic pick ([13](../../lifecycle/13-epic-acceptance.md), [02](../../lifecycle/02-roadmap.md)).
 - **Standing bugs epic:** an ordinary epic with the same columns and short text that says why this class of work exists; holds only unrelated discoveries. `тип: бэклог` is not a third route.
-- **Close:** only after owner acceptance (or not planned), together with `статус: готово`.
+- **Close:** only after owner acceptance (or not planned), by the [close procedure](../board/columns/done.md).

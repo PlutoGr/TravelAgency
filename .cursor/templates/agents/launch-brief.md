@@ -1,5 +1,5 @@
 # Launch brief (cloud agent prompt)
-Every cloud launch prompt is filled from this template, in English, about 15-30 lines. Rules: [cloud agents](../../elements/cloud-agents.md).
+Every cloud launch prompt is filled from this template, in English. Keep the instructions short (about 15-30 lines); the Read list may be as long as the touchpoints need. Rules: [cloud agents](../../elements/cloud-agents.md).
 
 ```markdown
 Role: read and follow `.cursor/briefs/<role>.md` (you are the <role> described there) and `.cursor/rules/00-core.mdc`, `.cursor/rules/security.mdc`.

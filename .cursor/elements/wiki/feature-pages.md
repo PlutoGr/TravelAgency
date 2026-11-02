@@ -10,5 +10,6 @@
 
 - «Полное ТЗ» = «Бизнес и сценарии» (column Аналитика) + «Архитектура» + «Тест-кейсы», no empty «Выбрано» for this slice.
 - Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, set На ревью and name the column to restore. No status line. No «Разбиение» or subtask table (no subtasks).
+- One page per open issue; a shared page is split when either issue is next taken.
 - A tiny fix inside an open feature adds no new section; it may extend the test cases.
 - «сделано» with links (`Doc-`, ADR, PRs) is added in the same step as the close ([done](../board/columns/done.md)).

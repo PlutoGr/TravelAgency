@@ -42,4 +42,4 @@ Acceptance on dev is not a cloud launch: the orchestrator has dev access ([stage
 - Final report: [agent report](../templates/agents/agent-report.md).
 
 ## Acceptance
-The orchestrator owns the result as if written by hand: [deliverable review](../templates/agents/deliverable-review.md) → accept, steer (`reply` to the same agent with a concrete fix ask and wait for the new head), redo (cancel, fix the brief, relaunch), or dismiss (cancel and archive). Do not leave an orphan agent or PR. Failures and timeouts: [never stall](../orchestrator.md#7-never-stall).
+The orchestrator owns the result as if written by hand: [deliverable review](../templates/agents/deliverable-review.md) → accept, steer (`reply` to the same agent with a concrete fix ask and wait for the new head), redo (cancel, fix the brief, relaunch), or dismiss (cancel and archive). Accepted section text is published in the same turn. Do not leave an orphan agent or PR. Failures and timeouts: [never stall](../orchestrator.md#7-never-stall).

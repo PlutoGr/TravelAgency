@@ -1,7 +1,7 @@
 # 08 Test cases (column Тест-кейсы)
 Before development, always.
 
-**Entry:** feature architecture accepted ([07](07-feature-architecture.md)).
+**Entry:** feature architecture accepted ([07](07-feature-architecture.md)) and no «Решения» row for this slice has an empty «Выбрано» ([decisions log](../elements/wiki/decisions-log.md)).
 
 **Who:** one cloud agent with the [test designer brief](../briefs/test-designer.md); the orchestrator reviews and publishes.
 

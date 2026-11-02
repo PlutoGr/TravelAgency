@@ -1,5 +1,5 @@
 # 10 Review and merge (still column Разработка)
-Code review is not column На ревью. На ревью is only an owner decision.
+Code review is not column На ревью. На ревью is only an owner decision. A fix PR during Приёмка goes through this stage too, and the issue keeps `статус: приёмка`.
 
 **Entry:** the cloud agent reported a ready PR ([09](09-development.md)).
 
@@ -12,7 +12,7 @@ Code review is not column На ревью. На ревью is only an owner deci
 ## 2. First line, every PR
 - Wait until CI and Cursor Automations have finished; an in-progress run is not the review ([automations](../elements/automations.md)).
 - Read every finding (PR review, Find vulnerabilities, Bugbot, CI triage if CI was red), including medium and lower.
-- Green CI ([CI/CD](../elements/ci-cd.md)). While CI is red, do not merge: steer a fix. Ask the owner only to merge despite red CI, or when the failure is a breaking change, a peer conflict or outside the task. A later green run uses the normal gates.
+- Green CI and «Secret scan» ([CI/CD](../elements/ci-cd.md)). While CI is red, do not merge: classify and act per [red run](../elements/ci-cd.md#red-run).
 - The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge.
 - The branch is linked or the close workflow can match the PR, and «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is open; do not call `addCloseIssueReferences`.
 
@@ -32,7 +32,7 @@ Otherwise automations plus green CI are enough; do not require this pass on ever
 - Only the orchestrator merges, squash, title per [commits](../elements/git/commits.md) with ` (#NN)`.
 - Authorized in-scope work merges without a separate yes; ask first only for the cases in [orchestrator §5](../orchestrator.md#5-powers-act-and-report-vs-ask-first).
 - One PR at a time: the next merge waits until the previous «Deploy to dev» is green.
-- Do not squash-merge while a run is in progress, a finding has no reply, or a reply only promises a fix.
-- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = Deploy in the [pipeline note](../elements/pipeline-note.md); continue at [11](11-deploy-and-acceptance.md). Read `TA: Doc- after merge` ([12](12-docs-after-merge.md)).
+- Do not squash-merge while a run is in progress (including «Secret scan» for the head sha), a finding has no reply, or a reply only promises a fix.
+- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = Deploy with the merge sha in the [pipeline note](../elements/pipeline-note.md); continue at [11](11-deploy-and-acceptance.md). Read `TA: Doc- after merge` ([12](12-docs-after-merge.md)).
 
-**Exit gate:** merged with every gate recorded; the issue stays Разработка until Deploy to dev is green.
+**Exit gate:** merged with every gate recorded; the issue stays Разработка (or Приёмка for a fix during acceptance) until Deploy to dev is green.

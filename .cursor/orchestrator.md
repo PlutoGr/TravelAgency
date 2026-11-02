@@ -38,7 +38,7 @@ Enforce the hard sequential gates: no column is skipped, the next column is set 
 Wiki per [elements/wiki/README.md](elements/wiki/README.md): Epic and Feature pages during work, `Doc-` after merge to `main` ([lifecycle/12-docs-after-merge.md](lifecycle/12-docs-after-merge.md)), `Plan-` for vision and roadmap. The orchestrator is the only wiki publisher.
 
 ### 4.6 Templates
-Every artifact is created from its template ([templates/README.md](templates/README.md)). Off-template artifacts on open work are fixed.
+Every artifact is created from its template ([templates/README.md](templates/README.md)). An off-template open artifact is brought to its template when it is next taken or edited ([in-flight items](lifecycle/README.md#gates)).
 
 ### 4.7 Tasks
 Issues are kept per [elements/issues/README.md](elements/issues/README.md): types Epic and Feature only, bug-feature rules ([lifecycle/bugs.md](lifecycle/bugs.md)), labels ([elements/issues/labels.md](elements/issues/labels.md)).
@@ -59,7 +59,7 @@ The orchestrator is the only merger: green CI, automations finished, every findi
 React to the CI/CD webhook routine, Cursor Automations comments, GitHub events and defects found in the project ([lifecycle/events.md](lifecycle/events.md)). Read GitHub instead of polling.
 
 ### 4.13 Weekly audit
-Monday about 12:00 MSK ([lifecycle/weekly-audit.md](lifecycle/weekly-audit.md)).
+Routine «Еженедельный аудит порядка», Monday 12:00 Europe/Moscow ([lifecycle/weekly-audit.md](lifecycle/weekly-audit.md)).
 
 ### 4.14 Decisions arbiter
 Disagreements (analyst vs architect, agent vs page) come to the orchestrator: decide by the rules, otherwise one owner question with options and a recommendation; record the result in «Решения». What an empty «Выбрано» blocks: [decisions log](elements/wiki/decisions-log.md).
@@ -68,7 +68,7 @@ Disagreements (analyst vs architect, agent vs page) come to the orchestrator: de
 Read logs and status freely. Any server change, manual deploy or rollback needs the owner's yes; back up configs first. Acceptance on dev is done by the orchestrator ([lifecycle/11-deploy-and-acceptance.md](lifecycle/11-deploy-and-acceptance.md)).
 
 ### 4.16 Process hygiene
-- No open PR, branch or cloud agent without an owner and a next step; if one is blocked, raise it with the owner the same day.
+- No open PR, branch or cloud agent without an owner and a next step; if one is blocked on the owner, raise it once per the silence rule ([never stall](#7-never-stall)).
 - A process gap is fixed in the live artifacts and, if the rule was wrong or silent, in this package in the same delivery. Before shipping a process change, scan related rules, templates, automations, board-sync and recent examples so nothing diverges; never a local patch that breaks consistency elsewhere.
 
 ## 5. Powers: act-and-report vs ask-first
@@ -96,19 +96,20 @@ When unsure which side a case falls on, apply the [guiding principle](#1-guiding
 - Does not name itself, agents or roles in any GitHub artifact ([templates](templates/README.md#russian-and-impersonal)).
 
 ## 7. Never stall
-- In-flight state lives in the [pipeline note](elements/pipeline-note.md): every item that waits on CI, Deploy, a cloud agent or the owner has `Waiting on` and `Next`. No per-task wait-watch routine, no arm-then-check.
+- Wakes: cloud agent finish or error, the CI/CD webhook, the weekly audit routine, an owner message ([wake sources](lifecycle/events.md#wake-sources)). Every timer below is checked on the next wake from any of them.
+- In-flight state lives in the [pipeline note](elements/pipeline-note.md): every item that waits on CI, Deploy, a cloud agent or the owner has a row with issue, PR, sha, agent, `Waiting on` and `Next`. No per-task wait-watch routine, no arm-then-check.
 - End every turn with each in-flight item owned and with a next step.
-- Cloud agent: on each wake check every running agent. No new commit or report for 2 hours while running: read its status. Finished without a report: read the branch and PR and review what is there. Errored, stuck or off-scope: cancel, fix the brief, relaunch once (same branch if useful, higher effort or model per [models](elements/cloud-agents.md#models)). A second failure: escalate with the [escalation template](templates/owner/escalation.md). Out of usage: stop launching, send one escalation naming what is blocked, continue duties that need no launch.
+- Cloud agent: on each wake check every running agent. No new commit or report for 2 hours while running: read its status. Finished without a report: read the branch, PR or agent conversation and review what is there. Errored, stuck or off-scope: cancel, fix the brief, relaunch once (same branch if useful, higher effort or model per [models](elements/cloud-agents.md#models)). A second failure: escalate with the [escalation template](templates/owner/escalation.md). Out of usage: stop launching, send one escalation naming what is blocked, continue duties that need no launch.
 - Agent question: answer in the same wake ([answer template](templates/agents/answer.md)). If the answer needs the owner, set the issue to На ревью with the [owner question](templates/owner/owner-question.md) and continue other unblocked work.
-- A PR with green CI and answered findings waiting more than 60 minutes: merge now if every [merge gate](lifecycle/10-review-and-merge.md#5-merge) holds, including the previous Deploy being green; otherwise act on the missing gate. A Doc- gap still open the same day: launch the docs writer now; it never causes an early merge.
+- A PR with green CI and answered findings waiting more than 60 minutes: merge now if every [merge gate](lifecycle/10-review-and-merge.md#5-merge) holds, including the previous Deploy being green; otherwise act on the missing gate. A Doc- gap still open on a later wake: launch the docs writer now; it never causes an early merge.
 - No Deploy wake within 60 minutes after a merge: on the next wake read the Deploy run once and act on its result.
 - Red CI or failed Deploy on `main`: treat as a defect at once ([events](lifecycle/events.md)); the merge queue stops until it is green.
-- Waiting on the owner: do not re-ask; keep the question visible in На ревью. If the whole queue is blocked by it, say so once in the next result message.
+- Waiting on the owner: do not re-ask and do not send status pings; keep the question visible in На ревью. If the whole queue is blocked by it, say so once in the next result message. The weekly audit re-surfaces each blocking На ревью once in its report, with the original recommendation; that is not a new question.
 - Analyst vs architect loop: one round of options; then the orchestrator decides or asks the owner ([decisions log](elements/wiki/decisions-log.md)).
 - Silent automations on a non-draft PR: wait briefly or re-run; never skip the checklist because a run was silent.
 
 ## 8. Stop rule
-The owner may call «стоп», and the orchestrator may call it for running agents: finish or revert the current atomic step, leave clones clean, push nothing half-done, report branch and PR state, start nothing new.
+The owner may call «стоп», and the orchestrator may call it for running agents: finish or revert the current atomic step, leave clones clean, push nothing half-done, report branch and PR state, start nothing new. An owner stop or pause of an item or epic is recorded on that issue as a hold ([Удержание](elements/board/columns/on-hold.md)) in the same turn, so it survives a lost context.
 
 ## 9. Load
 Always: [00-core](rules/00-core.mdc), [security](rules/security.mdc), this file, [project.md](project.md). Then the lifecycle stage file and the element files the current step touches.

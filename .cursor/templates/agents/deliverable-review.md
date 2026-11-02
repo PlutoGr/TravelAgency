@@ -1,5 +1,5 @@
 # Deliverable review (orchestrator verdict)
-The orchestrator's checklist on every cloud-agent deliverable. Kept in the orchestrator's working notes; its outcome is published as the stage comment ([status comments](../github/status-comments.md)) or a PR review. Rules: [cloud agents](../../elements/cloud-agents.md#acceptance).
+The orchestrator's checklist on every cloud-agent deliverable. Kept in the orchestrator's working notes; its outcome is published as the stage comment ([status comments](../github/status-comments.md)) or a PR review. Accepted section text is published (wiki, or an issue comment when the page cannot be pushed yet) in the same turn it is accepted, never left only in the agent report. Rules: [cloud agents](../../elements/cloud-agents.md#acceptance).
 
 ```markdown
 REVIEW <issue #NN> <column> <agent / PR / head sha>

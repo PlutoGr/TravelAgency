@@ -1,5 +1,5 @@
 # Labels
-Created in the repo before first use. Only the orchestrator sets them.
+Created in the repo before first use by the orchestrator, who alone sets them; the matching Status options on the board are project settings (ask the owner first, [board](../board/README.md)). Label descriptions on GitHub follow the «Applies to» column; outdated ones are updated in the docs-and-tasks phase.
 
 ## Status labels (one per open issue)
 | Label | Column | Applies to |

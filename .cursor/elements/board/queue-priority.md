@@ -1,5 +1,5 @@
 # Queue priority (field «Приоритет»)
-Canonical method for ranking Очередь (1 = next). Set only by the orchestrator. `board-sync` never invents numbers: it sorts by the field, clears it when a card leaves Очередь, and orders Готово by newest closed.
+Canonical method for ranking Очередь (1 = next). Set only by the orchestrator. `board-sync` never invents numbers: it sorts by the field, clears it when a card leaves Очередь by its single label or by closing, and orders Готово by newest closed.
 
 ## Layers
 1. Roadmap (`Plan-Roadmap`) sets the coarse sequence ([roadmap](../roadmap.md)).
@@ -7,14 +7,14 @@ Canonical method for ranking Очередь (1 = next). Set only by the orchestr
 3. «Приоритет» on Очередь cards ranks concrete tasks.
 
 ## Current epic first
-The current product epic is the one the owner confirmed at epic pick ([02](../../lifecycle/02-roadmap.md)); with a confirmed parallel set, each epic of the set. The standing bugs epic is never the current product epic. An epic in На ревью generates no new queue numbers except for the gap features just sent back to Очередь. Its open Очередь children get contiguous low numbers, ordered by dependency and delivery logic; a confirmed parallel set is interleaved the same way; all ahead of the standing bugs epic and the backlog. Dependabot and non-product issues already in flight are not the next roadmap epic. The owner may set an explicit order; that is an instruction, not a standing rule that the bugs epic outranks the current epic.
+The current product epic is the one the owner confirmed at epic pick ([02](../../lifecycle/02-roadmap.md)); with a confirmed parallel set, each epic of the set. The standing bugs epic is never the current product epic. An epic in На ревью generates no new queue numbers except for the gap features just sent back to Очередь. A paused epic (Удержание) generates none: its children have no «Приоритет» until the recorded owner resume ([Удержание](columns/on-hold.md)). Its open Очередь children get contiguous low numbers, ordered by dependency and delivery logic; a confirmed parallel set is interleaved the same way; all ahead of the standing bugs epic and the backlog. Dependabot and non-product issues already in flight are not the next roadmap epic. The owner may set an explicit order; that is an instruction, not a standing rule that the bugs epic outranks the current epic.
 
 ## Outside the epic order
 - Non-product work (Dependabot, infra, process docs) follows «Приоритет» without an epic pick.
-- Red CI or a failed Deploy on `main`, and a validated security vulnerability, are fixed first without waiting for the epic order ([events](../../lifecycle/events.md)).
+- Red CI or a failed Deploy on `main`, and a validated security vulnerability, are fixed first as an [urgent fix](../../lifecycle/non-product-work.md#urgent-fix), without waiting for the epic order.
 
 ## When to refresh
-1. On every new issue filed or accepted: set «Приоритет» at once; adjust neighbours only as needed, not a full reshuffle.
+1. On every new issue filed or accepted: set «Приоритет» at once; adjust neighbours only as needed, not a full reshuffle. Every Очередь card except paused-epic children has a number; the weekly audit sets missing ones, so an old card without a number never outranks new work by issue number alone.
 2. After an epic pick: set epic and child numbers.
 3. On demand when the owner asks (including a one-shot catch-up).
 4. Weekly audit: Готово newest-first, Очередь top correct; fix cheap mismatches.

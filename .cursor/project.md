@@ -10,6 +10,9 @@ Personal pet project: a travel agency website (search and compare package tours,
 - Repo wins over any description; [commit](templates/github/commit.md) and [PR](templates/github/pull-request.md) templates (mirrored by `.github/pull_request_template.md`) win on format conflicts.
 - Team rules (secrets, merge order and the rest) live in this package, never in the wiki. Private ops facts are in `/home/box/shared/travelagency/OPS.md`.
 
+## Standing bugs epic
+The standing bugs epic is one named issue: not named yet (owner question open). Until the owner names it, an unrelated bug goes to Очередь as a bug-feature (label `bug`) with no parent epic and «Приоритет» set; the orchestrator asks the owner once which issue is the standing bugs epic. No other parent is invented.
+
 ## Product themes
 Coarse product focus (not the «Приоритет» field): 1. Bugs and UX. 2. Profiles. 3. Chat. 4. Aggregation. The orchestrator orders work within this; changing the theme order needs the owner. Queue numbers: [queue priority](elements/board/queue-priority.md).
 

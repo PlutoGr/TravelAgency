@@ -9,4 +9,4 @@
 - Business part unclear: do not rewrite it; options go to «Решения». Every important choice is one row. An impactful «how» not already authorized goes to the owner via the orchestrator. Once the row has «Выбрано», or the owner already put this task in work, a matching PR needs no second yes at merge.
 - Name the parent epic's architecture choices this feature relies on.
 
-**Exit gate:** architecture visible and consistent with the epic architecture; every choice logged. Then set `статус: тест-кейсы` ([08](08-test-cases.md)).
+**Exit gate:** architecture visible and consistent with the epic architecture; every choice logged; no row for this slice with an empty «Выбрано». Then set `статус: тест-кейсы` ([08](08-test-cases.md)).

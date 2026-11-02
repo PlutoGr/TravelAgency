@@ -1,5 +1,5 @@
 # Bug-feature issue
-Labels: `bug`, `статус: очередь`. Sub-issue of the current epic or of the standing bugs epic. Rules: [bug-feature](../../elements/issues/bug-feature.md). Only for a substantial change (field, screen, business rule).
+Labels: `bug`, `статус: очередь`. Sub-issue of the current epic or of the standing bugs epic (no parent while that epic is not named, [project](../../project.md#standing-bugs-epic)). Rules: [bug-feature](../../elements/issues/bug-feature.md). Only for a substantial change (field, screen, business rule).
 
 Title: `исправление(<сервис>): <что исправляется кратко>`.
 

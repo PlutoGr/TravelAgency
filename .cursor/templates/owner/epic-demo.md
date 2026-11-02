@@ -1,12 +1,12 @@
 # Epic demo (chat, Russian)
-Sent when every child is Готово; the epic is in На ревью. Rules: [stage 13](../../lifecycle/13-epic-acceptance.md).
+Sent when every child is Готово and the epic is in На ревью, or as an interim demo when the owner asks (then say «промежуточный показ» in the first line). Rules: [stage 13](../../lifecycle/13-epic-acceptance.md).
 
 ```markdown
 Эпик готов к приёмке: <Epic-<Name>> (#NN).
 Проблема и выбранная история: <из «Бизнес и сценарии»>.
 Что сделано:
 - <фича> (#NN): <результат>; документация <Doc-…>.
-Как проверить на dev: <шаги по выбранной истории>.
+Как проверить на dev: <шаги по выбранной истории>. Доступ к dev: файл доступа на боксе <путь из ops-файла>; пароли в сообщение не пишутся.
 Не входило (не-цели): <список>.
 Известные ограничения и баги вне эпика: <список или «нет»>.
 Прошу принять эпик или назвать пробелы. Следующий эпик предложу после приёмки.

@@ -3,7 +3,7 @@ Product WHY and WHAT for one feature (or bug-feature). No solution design.
 
 **Entry:** feature taken from Очередь in priority order. Set `статус: аналитика` with the take comment; if this is the epic's first child leaving Очередь, set the epic to `статус: в работе`.
 
-**Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes.
+**Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes. Exception: a gap the owner worded at the epic demo is recorded as the accepted analysis without a launch ([13](13-epic-acceptance.md)).
 
 **Section «Бизнес и сценарии»** on the `Feature-` page ([feature page template](../templates/wiki/feature-page.md)):
 1. Inherit the epic's chosen user story. Restate the epic goal only when this feature changes it.

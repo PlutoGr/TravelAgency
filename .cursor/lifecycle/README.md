@@ -32,7 +32,8 @@ File numbers only order the files and may appear in link text. Prose names a sta
 | 13 | Epic completion and owner demo | В работе → На ревью → Готово (epic) | orchestrator, owner accepts | [13-epic-acceptance.md](13-epic-acceptance.md) |
 
 ## Gates
-- Hard and sequential. No column is skipped on a product epic or feature, including small features and bug-features. There is no shorter product route.
+- Hard and sequential. No column is skipped on a product epic or feature, including small features and bug-features. There is no shorter product route; an [urgent fix](non-product-work.md#urgent-fix) is non-product work, not a product route.
+- **In-flight items (rules first):** an item already in work when this rule set took effect keeps its current column; the current columns and templates apply from its next transition. An epic that already has children stays in В работе and is not walked back (epic #92 stays as it is). Old issues and wiki pages are brought to the current templates in a later docs-and-tasks phase, not by walking items back.
 - A column is entered only when the previous deliverable is visible (wiki section, test cases, PR, green Deploy) and the orchestrator accepted it.
 - Recorded verification: on every advance the orchestrator posts the stage comment ([status comments](../templates/github/status-comments.md)) naming what was checked and the new column, then sets the label. The [deliverable review](../templates/agents/deliverable-review.md) is the internal checklist behind that comment.
 - A cloud agent never changes `статус:*`, the board or the wiki.
@@ -40,5 +41,5 @@ File numbers only order the files and may appear in link text. Prose names a sta
 - Test cases come before development.
 - Every feature stays aimed at its epic's problem. A drift is a rewrite, not a new goal.
 - Disagreement (analyst vs architect, agent vs page): options go to «Решения»; the orchestrator decides by the rules, otherwise the owner ([decisions log](../elements/wiki/decisions-log.md)).
-- Order: finish the current epic, including bug-features spawned by its features, before the next roadmap epic. Unrelated bugs go to the standing bugs epic and do not block. After an epic is done: STOP for the owner demo.
+- Order: finish the current epic, including bug-features spawned by its features, before the next roadmap epic. Unrelated bugs go to the standing bugs epic ([project](../project.md#standing-bugs-epic)) and do not block. After an epic is done: STOP for the owner demo.
 - Closed work gets no new documents.

@@ -1,5 +1,5 @@
 # Cursor Automations
-Active project automations post GitHub comments as `cursor`. They are the first-line review while the issue stays in Разработка. They do not notify the orchestrator chat, do not approve or merge, do not write wiki pages, move cards or change `статус:*`, and do not replace the columns, Приёмка or Doc- after merge. Private URLs and dashboard notes: box-only ops file.
+Active project automations post GitHub comments as `cursor`. They are the first-line review while the issue stays in Разработка. They do not wake the orchestrator ([wake sources](../lifecycle/events.md#wake-sources)), do not approve or merge, do not write wiki pages, move cards or change `статус:*`, and do not replace the columns, Приёмка or Doc- after merge. Private URLs and dashboard notes: box-only ops file.
 
 ## Inventory (keep Active)
 | Automation | When | Gate |
