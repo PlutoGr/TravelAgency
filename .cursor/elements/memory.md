@@ -12,16 +12,16 @@ One table (or short lists) with:
 | Stage / column | always | current `статус:*` (FSM state), or `Dependabot` / PR label when Issue is `-` |
 | PR | when a PR exists | number and URL |
 | Sha | when waiting on CI/Deploy | head sha before merge, merge sha after |
-| Agent | while a cloud agent run is live | agent id; cleared on that run's finish or error wake |
+| Agent | while a cloud agent run is live | agent id; the only place a live run is stored; cleared on that run's finish or error wake, which keeps any external wait in `Waiting on` |
 | Waiting on | always | `agent` \| `CI+Automations` \| `Deploy` \| `owner` \| `issue #NN` \| `none` |
 | Next | always | the next concrete step (never empty) |
 | Pause / why | when paused | why paused and what resumes it (owner answer, resume word) |
 
 `Waiting on` values:
-- `agent`: a live cloud agent run owns the step.
+- `agent`: a live cloud agent run is the wait (its deliverable is the next step). A run launched while the row waits on `Deploy`, `issue #NN` or `owner` (for example a `Doc-` draft after merge) is recorded only in `Agent`; `Waiting on` keeps the external wait. On that run's finish, clear `Agent` and keep the external wait.
 - `CI+Automations`: checks or Automations still running on a PR no live agent watches (Dependabot).
-- `Deploy`: merged, waiting for a green «Deploy to dev» whose commit contains the merge sha ([Deploy wait](../lifecycle/events.md#deploy-wait)).
-- `owner`: an owner question or the epic demo is open; re-asked only on memory-refresh and the Monday audit.
+- `Deploy`: merged, waiting for a green «Deploy to dev» whose deployed sha (not the run head) contains the merge sha ([Deploy wait](../lifecycle/events.md#deploy-wait)).
+- `owner`: an owner question or the epic demo is open (re-asked only on memory-refresh and the Monday audit), or an owner hold ([Удержание](board/columns/on-hold.md)) waits for the resume word (not re-asked).
 - `issue #NN`: parked until issue #NN is Готово; `Next` = resume the parked step (for example acceptance of the parent). Resumed by the [close procedure](board/columns/done.md) of #NN; the never-stall loop does not execute it.
 - `none`: the `Next` step is actionable by the orchestrator now. Never use `none` for a wait.
 
@@ -33,7 +33,7 @@ Also allowed as short bullets under the table: active agents list, open owner qu
 
 ## Update rules
 - **Write** when an item is taken, advanced, paused, waiting on CI/Automations/Deploy/owner, when an agent is launched or finishes, when the owner answers, and when a wait clears. Always write both `Next` and `Waiting on`.
-- **Prune** when an issue closes, a pause ends, an agent is dismissed, or a wait is done. Do not accumulate history; closed items leave the file.
+- **Prune** when an issue closes, a pause ends, an agent is dismissed, or a wait is done; a row with `Waiting on` = `Deploy` stays until the green Deploy containing its merge, even after its issue is closed, and is pruned only then. Do not accumulate history; closed items leave the file. A reopened issue gets a row again in the reopen turn, in the column its close comment names ([done](board/columns/done.md)).
 - **Read** on every wake, before new work, on the weekday memory-refresh routine (`travelagency-memory-refresh`), and at the weekly audit.
 - A CI/CD safety-net wake is matched to rows by sha and agent ([events](../lifecycle/events.md#wake-sources)).
 

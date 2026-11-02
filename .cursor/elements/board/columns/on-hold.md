@@ -1,7 +1,8 @@
 # Удержание (`статус: удержание`)
 - **Applies to:** all. Not part of any product sequence. Used for a **long hold of the work stream** (owner stop of an item or epic), not for an ordinary owner question.
-- **Enter:** with the [hold comment](../../../templates/github/status-comments.md) saying why, what resumes it and which column to restore. Hold only by label. Record the pause in [memory](../../memory.md) in the same turn.
+- **Enter:** with the [hold comment](../../../templates/github/status-comments.md) saying why, what resumes it and which column to restore. Hold only by label. Record the pause in [memory](../../memory.md) in the same turn: `Waiting on` = `owner`, `Next` = restore the column named in the hold comment after the resume word, Pause/why = the hold reason. Such a row is not `none`, so the never-stall loop does not perform it; a hold is not an owner question and is not re-asked by the silence policy.
 - **Pausing an epic:** `статус: удержание` on the epic; clear «Приоритет» on its Очередь children; cancel every child cloud agent; move every open in-flight child (any column after Очередь) to Удержание, each with its own restore column named in its own hold comment. The epic's hold comment lists the paused children. Nothing resumes without a recorded owner resume.
 - **Owner question during a stage:** do **not** use this column. Keep the issue in its current column, record `Waiting on` = owner in memory, ask the owner ([silence policy](../../../orchestrator.md#8-never-stall)).
 - **Leave:** to the recorded column, or Очередь with «Приоритет»; an owner-paused item only after the recorded owner resume.
+- **Resuming an epic:** the turn that restores the epic also restores each child listed in the epic hold comment to the column recorded in that child's hold comment, and sets «Приоритет» again on the epic's Очередь children ([queue priority](../queue-priority.md)).
 - **Who moves:** orchestrator.

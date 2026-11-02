@@ -12,7 +12,7 @@ Every GitHub and wiki artifact made from these templates: Russian; says what was
 | [bug-feature-issue](github/bug-feature-issue.md) | bug-feature issue | [bug-feature](../elements/issues/bug-feature.md) |
 | [non-product-issue](github/non-product-issue.md) | process, infra, question issue | [non-product work](../lifecycle/non-product-work.md) |
 | [issue-comment](github/issue-comment.md) | any substantial issue or PR comment | [issues](../elements/issues/README.md) |
-| [status-comments](github/status-comments.md) | take, stage advance, owner question, decision, hold | [columns](../elements/board/columns/README.md) |
+| [status-comments](github/status-comments.md) | take, stage advance, owner question, decision, close, hold | [columns](../elements/board/columns/README.md) |
 | [acceptance-comment](github/acceptance-comment.md) | Приёмка result | [stage 11](../lifecycle/11-deploy-and-acceptance.md) |
 | [commit](github/commit.md) | commit and squash title | [commits](../elements/git/commits.md) |
 | [branch-name](github/branch-name.md) | branch | [branches](../elements/git/branches.md) |

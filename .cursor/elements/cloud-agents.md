@@ -20,7 +20,7 @@ Acceptance on dev is not a cloud launch: the orchestrator has dev access ([stage
 2. Create the branch for code work ([branches](git/branches.md)).
 3. Repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number.
 4. Prompt in English from the [launch brief template](../templates/agents/launch-brief.md): role brief link, issue, column, goal and acceptance, page links, architecture context, minimal stack touchpoints, boundaries, deliverable, report format. The agent reads this repo's `.cursor/` files the brief links; do not paste the whole rule set or unrelated guides.
-5. Record the agent in [memory](memory.md) (`Waiting on` = agent).
+5. Record the run id in the row's `Agent` field in [memory](memory.md). Set `Waiting on` = `agent` only when the agent is the wait; an external wait already on the row (`Deploy`, `issue #NN`, `owner`) stays in `Waiting on`.
 
 ## Models
 - Default Grok, medium effort. Low for mechanical edits; high for multi-file work, auth or security; extra-high for hard work, including a review diff of about 150 lines or more.
@@ -42,4 +42,4 @@ Acceptance on dev is not a cloud launch: the orchestrator has dev access ([stage
 - Final report: [agent report](../templates/agents/agent-report.md) (for code: state each part of the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)).
 
 ## Acceptance
-The orchestrator owns the result as if written by hand: [deliverable review](../templates/agents/deliverable-review.md) → accept, steer (`reply` to the same agent with a concrete fix ask and wait for the new ready report), redo (cancel, fix the brief, relaunch), or dismiss (cancel and archive). For a PR: **full review** after the agent reports ready ([stage 10](../lifecycle/10-review-and-merge.md)). Accepted section text is published in the same turn. Do not leave an orphan agent or PR. Failures and timeouts: [never stall](../orchestrator.md#8-never-stall).
+The orchestrator owns the result as if written by hand: [deliverable review](../templates/agents/deliverable-review.md) → accept, steer (`reply` to the same agent with a concrete fix ask; in the same turn `Agent` = the run, `Waiting on` = `agent`, `Next` = wait for the new ready report), redo (cancel, fix the brief, relaunch), or dismiss (cancel and archive). For a PR: **full review** after the agent reports ready ([stage 10](../lifecycle/10-review-and-merge.md)). Accepted section text is published in the same turn. Do not leave an orphan agent or PR. Failures and timeouts: [never stall](../orchestrator.md#8-never-stall).

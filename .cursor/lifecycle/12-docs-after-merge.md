@@ -1,5 +1,5 @@
 # 12 Doc- after merge (before Готово)
-Not a column. `Doc-` describes what works in `main`, so the wiki publishes only what is in `main`: the text is drafted after merge, never before, and may be drafted while the issue is still in Разработка (waiting for Deploy) or Приёмка.
+Not a column. `Doc-` describes what works in `main`, so the wiki publishes only what is in `main`: the text is drafted after merge, never before, and may be drafted while the issue is still in Разработка (waiting for Deploy) or Приёмка. The drafting run is recorded in [memory](../elements/memory.md) only in `Agent`; `Waiting on` keeps the external wait (`Deploy`, `issue #NN`, `owner`) and is `agent` only when the draft is the remaining wait.
 
 **Entry:** the merged PR named a `Doc-` page in «Документация»; or `TA: Doc- after merge` reported a gap. When the PR says «вики не затронута», this stage does not apply and does not block Готово; do not invent a page.
 

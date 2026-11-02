@@ -3,6 +3,8 @@
 #   GROK_BOT_CICD_WEBHOOK_KEY  : полное значение заголовка Authorization из панели routine
 #     (схема может уже входить в значение). Значение секрета в репозиторий не записывается.
 # Если секрета нет, job завершается с ошибкой: пропущенное уведомление должно быть видно.
+# deployed_sha: для «Deploy to dev» коммит, который реально развёрнут (артефакт deployed-sha запуска;
+#   при откате это rollback_sha). Если артефакта нет: для push это head_sha, иначе пусто (оркестратор читает запуск сам).
 # Значение conclusion=cancelled означает, что запуск вытеснен более новым; оркестратор его не обрабатывает.
 # Ответ не 2xx завершает job с ошибкой.
 name: Notify orchestrator
@@ -36,6 +38,8 @@ jobs:
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           EVENT: ${{ github.event.workflow_run.event }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
@@ -45,15 +49,25 @@ jobs:
           # Хвостовой перевод строки в секрете не входит в значение заголовка.
           WEBHOOK_KEY=${WEBHOOK_KEY//$'\r'/}
           WEBHOOK_KEY=${WEBHOOK_KEY//$'\n'/}
+          deployed_sha=""
+          if [ "$WORKFLOW" = "Deploy to dev" ]; then
+            if gh run download "$RUN_ID" -n deployed-sha -D /tmp/deployed-sha >/dev/null 2>&1; then
+              deployed_sha=$(tr -d '[:space:]' < /tmp/deployed-sha/deployed-sha.txt)
+            elif [ "$EVENT" = "push" ]; then
+              deployed_sha="$SHA"
+            fi
+            if ! echo "$deployed_sha" | grep -Eq '^[0-9a-f]{40}$'; then deployed_sha=""; fi
+          fi
           payload=$(jq -n \
             --arg workflow "$WORKFLOW" \
             --arg conclusion "$CONCLUSION" \
             --arg sha "$SHA" \
+            --arg deployed_sha "$deployed_sha" \
             --arg branch "$BRANCH" \
             --arg url "$RUN_URL" \
             --arg event "$EVENT" \
             --arg run_id "$RUN_ID" \
-            '{source:"github-actions",workflow:$workflow,conclusion:$conclusion,sha:$sha,branch:$branch,html_url:$url,event:$event,run_id:$run_id}')
+            '{source:"github-actions",workflow:$workflow,conclusion:$conclusion,sha:$sha,deployed_sha:$deployed_sha,branch:$branch,html_url:$url,event:$event,run_id:$run_id}')
           # Секрет целиком является значением заголовка Authorization.
           code=$(curl -sS -o /tmp/cicd-ping.out -w "%{http_code}" -X POST "$WEBHOOK_URL" \
             -H "Content-Type: application/json" \
