@@ -14,6 +14,6 @@ Read from general to detailed:
 | 4 | [templates/](templates/README.md) | Every template as a separate file. Other files link here instead of inlining |
 | 4 | [briefs/](briefs/README.md) | Role briefs for cloud agents (who the agent is, bar, boundaries, deliverable) |
 
-Precedence on conflict: the repo state wins over any description; within this package the more specific file wins (template > element > lifecycle stage > orchestrator), except that [00-core](rules/00-core.mdc), [security](rules/security.mdc) and the owner-approval list in [orchestrator.md](orchestrator.md#5-powers-act-and-report-vs-ask-first) always win. A conflict found is itself a defect: fix it ([orchestrator.md](orchestrator.md#1-guiding-principle)).
+Precedence on conflict: the repo state wins over any description; within this package the more specific file wins (template > element > lifecycle stage > orchestrator), except that [00-core](rules/00-core.mdc), [security](rules/security.mdc) and the owner-approval list in [orchestrator.md](orchestrator.md#6-powers-act-and-report-vs-ask-first) always win. A conflict found is itself a defect: fix it ([orchestrator.md](orchestrator.md#1-guiding-principle)).
 
 Not committed (see `.gitignore`): `mcp.json`, `*.env`, chats, caches.

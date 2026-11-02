@@ -1,7 +1,7 @@
 # Dependencies (Dependabot)
 Dependabot PRs have no issue and keep default branch names; commit prefixes per [commits](git/commits.md).
 
-- **npm and NuGet** (minor, patch and major; majors are separate PRs, groups are minor/patch only): squash-merge without a separate owner yes when CI is green, automations finished, findings answered, and nothing needs clarification. A peer conflict, red CI or an unclear breaking change needs clarification: do not merge; notify the owner or act per [red run](ci-cd.md#red-run). After every merge, notify the owner what was merged ([merge notice](../templates/owner/merge-notice.md)).
+- A safety-net CI wake on a `dependabot/*` branch wakes the orchestrator ([events](../lifecycle/events.md)). Record the PR in [memory](memory.md).
+- **npm and NuGet** (minor, patch and major; majors are separate PRs, groups are minor/patch only): after CI and Automations finish, the orchestrator does a **full review** and may squash-merge without a separate owner yes when everything is green and clear. A peer conflict, red CI or an unclear breaking change: do not merge; open or take a [backlog](../project.md#standing-backlog) item through the FSM, or decline the PR with a reason, or ask the owner. After every merge, notify the owner ([merge notice](../templates/owner/merge-notice.md)).
 - **docker and github-actions** (including grouped updates that may contain majors): owner «да» before merge, because merge deploys to dev with SSH secrets and CI does not validate image or action supply chain the way app build and tests do.
 - Merge order rules apply (one at a time, green Deploy between).
-- A green CI wake on a `dependabot/*` branch starts these gates even without a pipeline row ([events](../lifecycle/events.md)); record the PR in the pipeline note when it starts waiting.

@@ -8,7 +8,7 @@ Keep `Plan-Roadmap` true and choose what comes next. Element rules: [roadmap](..
 **Steps**
 1. Re-read `Plan-Roadmap`, `Plan-Product-Vision`, the candidate epics' «Архитектура», «Связи с другими эпиками» and related `Doc-` pages, so the next set stays coherent (a consistency check, not a rewrite).
 2. Propose the next epic, or a parallel set when dependency or efficiency warrants it ([owner question](../templates/owner/owner-question.md)).
-3. After the owner confirms: set epic «Приоритет» to the agreed sequence; raise that epic's open Очередь children to contiguous low numbers; for a confirmed parallel set interleave their children, still ahead of the standing bugs epic and the backlog.
+3. After the owner confirms: set epic «Приоритет» to the agreed sequence; raise that epic's open Очередь children to contiguous low numbers; for a confirmed parallel set interleave their children, still ahead of standing-backlog children.
 4. Update `Plan-Roadmap` («Сейчас», open epics) when reality changed ([plan pages](../elements/wiki/plan-pages.md)).
 
 **Output:** confirmed next epic or set, priorities set, roadmap page current.

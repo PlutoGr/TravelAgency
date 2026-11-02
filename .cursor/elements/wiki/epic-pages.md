@@ -9,6 +9,6 @@
 | «Решения» | whenever a question is open | [decisions log](decisions-log.md) |
 | «Разбиение» | Разбиение | [stage 05](../../lifecycle/05-epic-split.md) |
 
-- Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, set На ревью and name the column to restore. No status line. No «Тест-кейсы» section.
+- Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, pause in place (same column) and record it in [memory](../memory.md). No status line. No «Тест-кейсы» section.
 - Not a screen specification; does not unlock feature code. No child analysis pages: the child is a Feature.
 - «сделано» with links is added in the same step as the close after owner acceptance ([done](../board/columns/done.md)).

@@ -1,5 +1,5 @@
 # Merge notice (chat, Russian)
-After every merge (including Dependabot). Several merges of one wake go in one message. Rules: [stage 10](../../lifecycle/10-review-and-merge.md#5-merge).
+After every merge (including Dependabot). Several merges of one wake go in one message. Rules: [stage 10](../../lifecycle/10-review-and-merge.md#4-merge).
 
 ```markdown
 Слито: <PR #NN «заголовок»> (<ссылка>), задача #NN.

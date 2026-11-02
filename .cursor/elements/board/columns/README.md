@@ -2,8 +2,8 @@
 Each column = one `статус:*` label = one route stage. The orchestrator moves every item (sets the label and posts the [stage comment](../../../templates/github/status-comments.md)); `board-sync` moves the card.
 
 Epic: Очередь → Бизнес-анализ → Архитектура → Разбиение → В работе → На ревью → Готово (+ Удержание).
-Feature and bug-feature: Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово (+ На ревью, Удержание).
-Non-product issue: Очередь → Разработка → (Приёмка) → Готово (+ На ревью) ([non-product work](../../../lifecycle/non-product-work.md)).
+Feature and bug-feature: Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово (+ Удержание; На ревью only if owner must accept that slice before Готово).
+Non-product issue: Очередь → Разработка → (Приёмка) → Готово ([non-product work](../../../lifecycle/non-product-work.md)). Owner questions: pause in place.
 
 | Column | Label | Applies to | File |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Non-product issue: Очередь → Разработка → (Приёмка) 
 | В работе | `статус: в работе` | epic only | [in-progress.md](in-progress.md) |
 | Разработка | `статус: разработка` | feature, including bug-feature; non-product | [development.md](development.md) |
 | Приёмка | `статус: приёмка` | feature, including bug-feature; non-product when dev acceptance applies | [acceptance.md](acceptance.md) |
-| На ревью | `статус: на ревью` | all (owner decision); epic owner acceptance | [on-review.md](on-review.md) |
+| На ревью | `статус: на ревью` | epic owner demo (not mid-stage questions) | [on-review.md](on-review.md) |
 | Готово | `статус: готово` | all | [done.md](done.md) |
 | Удержание | `статус: удержание` | all | [on-hold.md](on-hold.md) |
 

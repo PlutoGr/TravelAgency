@@ -9,8 +9,8 @@
 - A typo, or a 500 caused by a typo, inside this feature is fixed here; no new issue ([bugs](bugs.md)).
 - Deviation needed: stop and raise a [question](../templates/agents/question.md) with a proposed «Решения» row. Do not code around the page. If the architecture prevents a clean, secure solution, raise an architecture-change question instead of hacking.
 - PR per [pull requests](../elements/git/pull-requests.md): «Задача» `#NN` only, never `closes`/`fix`/`fixes`; «Документация» names the `Doc-` page to write after merge or «вики не затронута»; no wiki edit in the PR. Commits per [commits](../elements/git/commits.md).
-- The agent marks the PR ready when CI is green and reports with the [agent report](../templates/agents/agent-report.md).
+- The agent watches CI and Cursor Automations, fixes red CI that belongs to this PR, answers bot findings, and only then marks the PR ready and reports with the [agent report](../templates/agents/agent-report.md) ([stage 10 §1](10-review-and-merge.md#1-cloud-agent-until-ready)).
 
-**Output:** a ready PR with green CI.
+**Output:** a PR ready for orchestrator review (CI green, Automations finished, findings answered).
 
-**Exit gate:** PR open into `main`, CI green, agent report posted, «Документация» and «Задача» set; the label stays `статус: разработка` (the column continues through [10](10-review-and-merge.md) and [11](11-deploy-and-acceptance.md)).
+**Exit gate:** PR open into `main`, agent reported ready, «Документация» and «Задача» set; the label stays `статус: разработка` (orchestrator full review and merge in [10](10-review-and-merge.md), then [11](11-deploy-and-acceptance.md)).

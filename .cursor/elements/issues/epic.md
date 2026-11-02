@@ -6,5 +6,5 @@ A business goal. Route: [lifecycle stages 03-05 and 13](../../lifecycle/README.m
 - **Page:** `Epic-<Name>` with sections «Связи с другими эпиками», «Бизнес и сценарии», «Архитектура», «Решения» (when a question is open), «Разбиение» ([epic pages](../wiki/epic-pages.md)). No «Тест-кейсы».
 - **Children:** features and bug-features only.
 - **Order:** the current product epic ([definition](../board/queue-priority.md#current-epic-first)) is finished, including its bug-features, before the next roadmap epic, unless the owner confirmed a parallel set. After Готово: owner demo and epic pick ([13](../../lifecycle/13-epic-acceptance.md), [02](../../lifecycle/02-roadmap.md)).
-- **Standing bugs epic:** an ordinary epic with the same columns and short text that says why this class of work exists; holds only unrelated discoveries. `тип: бэклог` is not a third route.
+- **Standing backlog:** issue #8 holds unrelated bugs and tiny features ([project](../../project.md#standing-backlog)); not a third route. `тип: бэклог` on #8 is legacy until the docs phase.
 - **Close:** only after owner acceptance (or not planned), by the [close procedure](../board/columns/done.md).

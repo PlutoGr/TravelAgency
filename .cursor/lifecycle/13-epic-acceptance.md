@@ -7,10 +7,10 @@
 1. STOP taking new roadmap work. Set the epic `статус: на ревью`.
 2. Send the owner the [epic demo](../templates/owner/epic-demo.md): what shipped (features, `Doc-` and wiki links), how to check on dev, and the checklist: the problem, the chosen user story and the non-goals from «Бизнес и сценарии». Closed children are not enough.
 3. Owner pass: close the epic by the [close procedure](../elements/board/columns/done.md) and mark the `Epic-` page «сделано» in the same step (a content mark, not a status). Then epic pick ([02](02-roadmap.md)).
-4. Owner finds gaps: set the epic back to `статус: в работе`. Related gaps become features or bug-features under this epic, in Очередь with priority. When the owner worded the gap, that text goes into the new feature's «Бизнес и сценарии» and «Решения» as accepted analysis: the feature still passes Аналитика (stage comment citing the owner's words), without an analyst launch, and continues at Архитектура. Unrelated discoveries go to the standing bugs epic. Repeat this stage after they are done.
+4. Owner finds gaps: set the epic back to `статус: в работе`. Related gaps become features or bug-features under this epic, in Очередь with priority. The owner's wording is input to Аналитика, not a skip: the new feature still enters Аналитика; evaluate the proposed fix versus alternatives and bring options if needed. Unrelated discoveries go to the [standing backlog](../project.md#standing-backlog). Repeat this stage after they are done.
 
 **Interim demo:** the owner may ask for a demo before every child is Готово. Send the [epic demo](../templates/owner/epic-demo.md) marked interim; the epic keeps its column and is not closed; record what the owner decided on the epic issue.
 
-The standing bugs epic uses the same columns but never blocks on this stage: it waits in Очередь when it has no open children and reaches На ревью only when the owner asks to close it ([В работе](../elements/board/columns/in-progress.md)).
+The standing backlog (#8) is not closed by child Готово; it stays open as the catch-all ([В работе](../elements/board/columns/in-progress.md) does not apply to it as a product epic).
 
 **Exit gate:** recorded owner acceptance («**Итог:** решено: ...» on the epic issue).

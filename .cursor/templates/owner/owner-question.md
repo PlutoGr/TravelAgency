@@ -1,5 +1,5 @@
 # Owner question (chat, Russian)
-One decision per message, with options and a recommendation. If it concerns an issue, the issue goes to На ревью with the matching [status comment](../github/status-comments.md). Rules: [orchestrator §5](../../orchestrator.md#5-powers-act-and-report-vs-ask-first).
+One decision per message, with options and a recommendation. If it concerns an issue, the issue **stays in its column**; post the owner-question [status comment](../github/status-comments.md) and record a pause in [memory](../../elements/memory.md). Rules: [orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first), [silence policy](../../orchestrator.md#8-never-stall).
 
 ```markdown
 Нужно решение: <вопрос одной фразой> (<ссылка на issue или страницу>).

@@ -13,6 +13,6 @@ Product WHY and WHAT, enough to choose architecture and to split features. Not a
 5. Chosen user story, and why it is the best fit for us.
 6. Non-goals.
 
-No services, API paths, storage, migrations, contracts, field catalog or screen layout. The standing bugs epic uses the same section; it may be short but still says why this class of work exists.
+No services, API paths, storage, migrations, contracts, field catalog or screen layout. A backlog child uses the same section; it may be short but still says why this fix exists.
 
 **Exit gate:** all six blocks visible, analogues named, more than one option on a continuum, the chosen story says why it is best, no field catalog and no services. Open questions sit in «Решения». Then set `статус: архитектура` ([04](04-epic-architecture.md)).

@@ -10,7 +10,7 @@ Every GitHub and wiki artifact made from these templates: Russian; says what was
 | [epic-issue](github/epic-issue.md) | epic issue | [epic](../elements/issues/epic.md) |
 | [feature-issue](github/feature-issue.md) | feature issue | [feature](../elements/issues/feature.md) |
 | [bug-feature-issue](github/bug-feature-issue.md) | bug-feature issue | [bug-feature](../elements/issues/bug-feature.md) |
-| [non-product-issue](github/non-product-issue.md) | process, infra, question, urgent fix issue | [non-product work](../lifecycle/non-product-work.md) |
+| [non-product-issue](github/non-product-issue.md) | process, infra, question issue | [non-product work](../lifecycle/non-product-work.md) |
 | [issue-comment](github/issue-comment.md) | any substantial issue or PR comment | [issues](../elements/issues/README.md) |
 | [status-comments](github/status-comments.md) | take, stage advance, owner question, decision, hold | [columns](../elements/board/columns/README.md) |
 | [acceptance-comment](github/acceptance-comment.md) | Приёмка result | [stage 11](../lifecycle/11-deploy-and-acceptance.md) |
@@ -45,8 +45,8 @@ Every GitHub and wiki artifact made from these templates: Russian; says what was
 ## Owner (Russian chat)
 | Template | Used for | Rules |
 |---|---|---|
-| [owner-question](owner/owner-question.md) | one decision with options | [orchestrator §5](../orchestrator.md#5-powers-act-and-report-vs-ask-first) |
-| [escalation](owner/escalation.md) | blocked work, failures | [orchestrator §7](../orchestrator.md#7-never-stall) |
+| [owner-question](owner/owner-question.md) | one decision with options | [orchestrator §6](../orchestrator.md#6-powers-act-and-report-vs-ask-first) |
+| [escalation](owner/escalation.md) | blocked work, failures | [orchestrator §8](../orchestrator.md#8-never-stall) |
 | [merge-notice](owner/merge-notice.md) | after a merge | [stage 10](../lifecycle/10-review-and-merge.md) |
 | [epic-demo](owner/epic-demo.md) | epic acceptance | [stage 13](../lifecycle/13-epic-acceptance.md) |
 | [weekly-audit-report](owner/weekly-audit-report.md) | weekly audit result | [weekly audit](../lifecycle/weekly-audit.md) |

@@ -12,9 +12,9 @@ Active project automations post GitHub comments as `cursor`. They are the first-
 | `TA: Weekly vuln scan` | Monday 09:00 MSK | weekly: read run history; open issues if needed |
 
 ## Handling
-- Before merge: wait until CI and automations have finished, read every finding including medium and lower, reply on each thread ([review replies](../templates/github/review-replies.md), [review and merge](../lifecycle/10-review-and-merge.md#3-findings-reply-before-merge)). A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
+- Before merge: wait until CI and automations have finished, read every finding including medium and lower, reply on each thread ([review replies](../templates/github/review-replies.md), [review and merge](../lifecycle/10-review-and-merge.md#1-cloud-agent-until-ready)). A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
 - Do not merge while a blocker is open (format, Doc- line, red CI, a validated security or bug finding without a finished reply).
-- Do not re-do the same checklist in a second pass; escalate only per [escalation review](../lifecycle/10-review-and-merge.md#4-escalation-review).
+- Do not re-do the same checklist in a second pass; escalate only per [escalation review](../lifecycle/10-review-and-merge.md#3-escalation-review).
 - After merge: `TA: Doc- after merge` per [Doc- after merge](../lifecycle/12-docs-after-merge.md).
 - Weekly: [weekly audit](../lifecycle/weekly-audit.md) item 5.
 - Adding, removing or reconfiguring an automation is a repo-settings change: owner's yes.

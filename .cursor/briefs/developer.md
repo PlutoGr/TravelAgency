@@ -10,7 +10,7 @@ The `Feature-` page (all sections), the parent epic «Архитектура», 
 
 ## Bar
 - Start only when «Полное ТЗ» holds («Бизнес и сценарии», «Архитектура», «Тест-кейсы»; no empty «Выбрано» for this slice).
-- Write the automated tests marked on the page first, or in the same TDD cycle; then the code. CI green (build, tests, gitleaks).
+- Write the automated tests marked on the page first, or in the same TDD cycle; then the code. Watch CI and Automations; fix red CI that belongs to this PR; answer bot findings; only then report ready (build, tests, gitleaks/Secret scan green).
 - Implement «Архитектура» exactly; add no field, control or block Аналитика did not justify; stay on the epic's problem.
 - Minimal diff, no drive-by refactor, no libraries "just in case".
 - Commits and PR per templates; «Задача» `#NN` only; «Документация» names the `Doc-` page or «вики не затронута».
@@ -23,4 +23,4 @@ The `Feature-` page (all sections), the parent epic «Архитектура», 
 A deviation from the page is needed, the page is ambiguous, or the architecture blocks a clean or secure solution: stop that part and raise a [question](../templates/agents/question.md) with a proposed «Решения» row. Do not code around the page.
 
 ## Deliverable and report
-A regular PR into `main` from the branch in the launch, marked ready when CI is green; [agent report](../templates/agents/agent-report.md) with PR URL, head sha, what changed, tests, open doubts.
+A regular PR into `main` from the branch in the launch, marked ready only when CI, Secret scan and Automations are finished and findings are answered; [agent report](../templates/agents/agent-report.md) with PR URL, head sha, what changed, tests, Automations status, open doubts.

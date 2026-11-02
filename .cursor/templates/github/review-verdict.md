@@ -1,5 +1,5 @@
 # Review verdict (escalated review)
-Posted as a GitHub review or comment by the orchestrator. Rules: [stage 10](../../lifecycle/10-review-and-merge.md#4-escalation-review).
+Posted as a GitHub review or comment by the orchestrator. Rules: [stage 10](../../lifecycle/10-review-and-merge.md#3-escalation-review).
 
 ```markdown
 **Итог:** <можно сливать | нужны изменения | нужна строка «Решения»>.

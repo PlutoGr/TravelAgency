@@ -10,7 +10,7 @@ Turn an owner ask, a found defect or a roadmap item into a correctly typed, temp
 2. Classify:
    - a new business goal → Epic ([epic](../elements/issues/epic.md));
    - a demonstrable result inside an existing epic → Feature under that epic ([feature](../elements/issues/feature.md));
-   - a defect → [bugs.md](bugs.md) (tiny fix inside the open feature, bug-feature of the current epic, or the standing bugs epic);
+   - a defect → [bugs.md](bugs.md) (tiny fix inside the open feature, bug-feature of the current epic, or the [standing backlog](../project.md#standing-backlog));
    - process docs, infra, a question → [non-product-work.md](non-product-work.md).
 3. Check duplicates and the roadmap. If the ask changes the roadmap or product scope, confirm with the owner and update [roadmap](02-roadmap.md).
 4. Create the issue from its template (`статус: очередь` only) and, for an epic or feature, the wiki page from its template ([epic page](../templates/wiki/epic-page.md), [feature page](../templates/wiki/feature-page.md)) with a sidebar entry.

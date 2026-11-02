@@ -6,7 +6,7 @@ Two product types. A column is not a type. No subtask, no mini-feature, no third
 
 | Type | What | Artifact | Rules |
 |---|---|---|---|
-| Epic | business goal, including the standing bugs epic | `Epic-<Name>` page + parent issue (`тип: родительская`, field «Тип» = «Эпик») | [epic.md](epic.md) |
+| Epic | business goal | `Epic-<Name>` page + parent issue (`тип: родительская`, field «Тип» = «Эпик») | [epic.md](epic.md) |
 | Feature | demonstrable result, including a small feature and a bug-feature | `Feature-<Name>` page + child issue linked to its epic | [feature.md](feature.md), [bug-feature.md](bug-feature.md) |
 
 Non-product issues (process, infra, questions) are not a type of product work: [non-product work](../../lifecycle/non-product-work.md). The roadmap orders epics and is not a task type ([roadmap](../roadmap.md)).
