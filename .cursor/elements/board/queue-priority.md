@@ -11,7 +11,7 @@ The current product epic is the one the owner confirmed at epic pick ([02](../..
 
 ## Outside the epic order
 - Non-product work (Dependabot, infra, process docs) follows «Приоритет» without an epic pick.
-- Red CI or a failed Deploy on `main`: the repair is opened or taken in the wake that sees it, ahead of the current epic's children, through the FSM (thin stages OK) via the [standing backlog](../../project.md#standing-backlog) or the current epic when it belongs there ([bugs](../../lifecycle/bugs.md), [repair](../../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)).
+- A failed Deploy on `main`: the repair is opened or taken in the wake that sees it, ahead of the current epic's children, through the FSM (thin stages OK) via the [standing backlog](../../project.md#standing-backlog) or the current epic when it belongs there ([bugs](../../lifecycle/bugs.md), [repair](../../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)).
 - A validated security vulnerability is taken promptly through the FSM (thin stages OK) the same way, without jumping product epics out of order.
 
 ## When to refresh

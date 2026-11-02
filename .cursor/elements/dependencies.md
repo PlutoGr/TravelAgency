@@ -1,7 +1,7 @@
 # Dependencies (Dependabot)
 Dependabot PRs have no issue and keep default branch names; commit prefixes per [commits](git/commits.md).
 
-- A safety-net CI wake on a `dependabot/*` branch wakes the orchestrator ([events](../lifecycle/events.md)). Record the PR in [memory](memory.md): row `Issue` = `-`, `Stage` = `Dependabot`, `PR` = number, `Sha` = head sha, `Waiting on` = `CI+Automations`, `Next` = check Automations, then full review.
+- A green safety-net CI wake on a `dependabot/*` branch wakes the orchestrator ([events](../lifecycle/events.md)). Red CI follows the unowned-red path (backlog item, [bugs](../lifecycle/bugs.md)); the PR gets a review row only once its CI is green. Record the PR in [memory](memory.md): row `Issue` = `-`, `Stage` = `Dependabot`, `PR` = number, `Sha` = head sha, `Waiting on` = `CI+Automations`, `Next` = check Automations, then full review.
 - The CI wake **stays in the turn** and polls Automations for up to 15 minutes. Done in time: switch the row to `Waiting on` = `none`, `Next` = full review, and review in that turn.
 - Not done in time: leave the row as `CI+Automations`. On the next weekday memory-refresh, Monday audit, or any later CI wake for that PR, check Automations again; once done, switch to `Waiting on` = `none`, `Next` = full review, and review in that wake. **Never merge before that switch.**
 - After merge: the row gets `Waiting on` = `Deploy` with the merge sha; prune it on green Deploy.

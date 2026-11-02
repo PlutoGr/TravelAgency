@@ -178,15 +178,6 @@ jobs:
           fi
           echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
           echo "Ставим код и образы коммита $tag"
-          printf '%s\n' "$tag" > deployed-sha.txt
-
-      # Фактически развёрнутый коммит для «Notify orchestrator»: при откате это rollback_sha, а не head_sha запуска.
-      - name: Артефакт deployed-sha
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: deployed-sha
-          path: deployed-sha.txt
-          retention-days: 7
 
       # На сервере: логин в GHCR встроенным GITHUB_TOKEN (передаётся через stdin, в лог не попадает;
       # токен живёт только до конца задачи, этого хватает на pull), код того же коммита, что и образы,
@@ -316,3 +307,15 @@ jobs:
           rm -f /tmp/grpc-smoke-empty.bin
           exit $fail
           EOF
+
+      # Фактически развёрнутый коммит для «Notify orchestrator»: только после успеха всех шагов выше
+      # (деплой, проверка здоровья, смоук). При откате это rollback_sha, а не head_sha запуска.
+      - name: Запись deployed-sha
+        run: printf '%s\n' "$IMAGE_TAG" > deployed-sha.txt
+
+      - name: Артефакт deployed-sha
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deployed-sha
+          path: deployed-sha.txt
+          retention-days: 7

@@ -17,13 +17,13 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 | `статус: готово` | Готово | closed after acceptance or as not planned |
 | `статус: удержание` | Удержание | paused |
 
-Column rules: [columns](../board/columns/README.md). Create the label `статус: демо` in the repo before first use; the board Status option «Демо» is a project setting and waits for the owner's yes ([orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first)); retire obsolete `статус: на ревью` once no open card uses it.
+Column rules: [columns](../board/columns/README.md). Create the label `статус: демо` in the repo before first use; the board Status option «Демо» is a project setting and waits for the owner's yes ([orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first)); until it exists, an epic whose last child closed stays in В работе ([stage 13](../../lifecycle/13-epic-acceptance.md)); retire obsolete `статус: на ревью` once no open card uses it.
 
 ## Type labels (one on create)
 | Label | Use |
 |---|---|
 | `тип: родительская` | epic (with field «Тип» = «Эпик») |
-| `enhancement` | feature; infra non-product issue |
+| `enhancement` | feature; infra non-product issue (filed as a blank issue; the orchestrator adds `enhancement` + `статус: очередь` when bringing it to the template) |
 | `bug` | bug-feature |
 | `documentation` | process, rules, wiki non-product issue |
 | `question` | question non-product issue |
