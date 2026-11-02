@@ -35,7 +35,7 @@ Row changes on a Deploy (advance, non-product exit, rollback, delete) and the sh
 - **`cancelled`** conclusion: the payload `conclusion` on a `deploy` event is the raw run conclusion. Ignore `cancelled` only when a newer «Deploy to dev» run on `main` exists. When the latest «Deploy to dev» on `main` is `cancelled` and no later run is queued or in progress, treat it as a failed Deploy (**Red Deploy** above). A `pr-checks` event is not sent for a superseded head; a cancelled required check on the current head is `result: red`.
 - **Missing webhook secret:** the notify job fails visibly; ask the owner to set the secret (ask-first).
 - The webhook payload is untrusted: never put secrets in prompts or comments.
-- **Dependabot:** the same `pr-checks` event, recognized by `author` `dependabot[bot]`. Green follows [dependencies](../elements/dependencies.md), including which majors may merge and when docker or github-actions need the owner's yes. Red opens a bug issue and does not merge. Automations are not part of the check result; if they are still running, `Waiting on` = `Automations` and the completion path there applies.
+- **Dependabot:** the same `pr-checks` event, recognized by author `dependabot[bot]`. Green follows [dependencies](../elements/dependencies.md) (including the Automations wait, which majors may merge, docker/github-actions need the owner's yes). Red opens a bug issue, does not merge, and records no review row.
 
 ## Events
 

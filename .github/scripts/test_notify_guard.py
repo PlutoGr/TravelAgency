@@ -66,7 +66,7 @@ class PrDecision(unittest.TestCase):
         self.assertEqual(decision["reason"], "incomplete")
 
     def test_workflow_run_check_suite_id_sends_once(self):
-        """CI and Secret scan are separate workflow_run suites. Only the later suite sends."""
+        """«CI» и «Secret scan» это разные suite одного workflow_run. Шлёт только более поздний."""
         runs = self._all()
         earlier = guard.decide_pr(runs, [], self.sha, self.sha, 3)
         later = guard.decide_pr(runs, [], self.sha, self.sha, 7)
@@ -98,7 +98,7 @@ class PrDecision(unittest.TestCase):
         runs.append(
             run_check("gitleaks", "completed", "success", "2026-11-02T10:00:03Z", 9, 50, self.sha)
         )
-        # id 103 (from _all) is later than id 50, same timestamp as gitleaks in _all (index 3 → 10:00:03)
+        # id 103 из _all позже id 50, та же метка времени, что у gitleaks в _all (индекс 3, 10:00:03)
         self.assertEqual(guard.decide_pr(runs, [], self.sha, self.sha, 9)["reason"], "not-latest-suite")
         self.assertEqual(guard.decide_pr(runs, [], self.sha, self.sha, 7)["action"], "send")
 

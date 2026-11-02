@@ -1,5 +1,5 @@
 # 09 Development (column Разработка)
-**Entry:** «Полное ТЗ» holds ([Тест-кейсы](08-test-cases.md)). Do not enter, and do not keep coding, while it fails.
+**Entry:** «Полное ТЗ» holds when «Бизнес и сценарии», «Архитектура» and «Тест-кейсы» are visible. Крупная gets there through [Тест-кейсы](08-test-cases.md). Малая gets there in the [Архитектура](07-feature-architecture.md) move. Do not enter, and do not keep coding, while a section is missing.
 
 **Who:** one cloud agent and one PR: [developer brief](../briefs/developer.md) for application code and its tests; [devops brief](../briefs/devops.md) for workflows, Docker, nginx and deploy files. Launch per [cloud agents](../elements/cloud-agents.md) with the [launch brief](../templates/agents/launch-brief.md).
 
