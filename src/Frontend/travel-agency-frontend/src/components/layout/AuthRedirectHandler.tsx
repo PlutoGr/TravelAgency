@@ -16,9 +16,10 @@ export default function AuthRedirectHandler() {
   const openAuthModal = useUIStore((s) => s.openAuthModal);
 
   useEffect(() => {
-    if (searchParams.get('auth') !== 'login') return;
+    const auth = searchParams.get('auth');
+    if (auth !== 'login' && auth !== 'forgot') return;
 
-    openAuthModal('login');
+    openAuthModal(auth);
     const next = new URLSearchParams(searchParams);
     next.delete('auth');
     const qs = next.toString();

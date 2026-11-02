@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { requestPasswordReset } from '@/api/account';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { Modal, Tabs, Input, Button } from '@/components/ui';
+import { ACCOUNT_TEXT, accountFailureText, isEmailShape } from '@/domain/accountLinks';
 import { AUTH_FORM_TEXT, authFormError } from '@/domain/authFormErrors';
 import { readReturnToParam, resolveReturnTo } from '@/utils/safeReturnTo';
 
@@ -21,6 +23,8 @@ export default function AuthModal() {
   const { isAuthModalOpen, authModalTab, closeAuthModal, dismissAuthModal, openAuthModal } =
     useUIStore();
   const { login, register, isLoading } = useAuthStore();
+  const [carriedEmail, setCarriedEmail] = useState('');
+  const [loginKey, setLoginKey] = useState(0);
 
   function followReturnTo() {
     if (returnToRaw == null) return;
@@ -30,6 +34,20 @@ export default function AuthModal() {
   function finishAuth() {
     closeAuthModal();
     followReturnTo();
+  }
+
+  if (authModalTab === 'forgot') {
+    return (
+      <Modal isOpen={isAuthModalOpen} onClose={dismissAuthModal} size="sm">
+        <ForgotPasswordForm
+          onBack={(email) => {
+            setCarriedEmail(email.trim());
+            setLoginKey((value) => value + 1);
+            openAuthModal('login');
+          }}
+        />
+      </Modal>
+    );
   }
 
   return (
@@ -50,7 +68,10 @@ export default function AuthModal() {
               transition={{ duration: 0.2 }}
             >
               <LoginForm
+                key={loginKey}
+                initialEmail={carriedEmail}
                 isLoading={isLoading}
+                onForgot={() => openAuthModal('forgot')}
                 onSubmit={async (email, password) => {
                   await login(email, password);
                   toast.success('Добро пожаловать!');
@@ -83,13 +104,17 @@ export default function AuthModal() {
 }
 
 function LoginForm({
+  initialEmail,
   isLoading,
+  onForgot,
   onSubmit,
 }: {
+  initialEmail: string;
   isLoading: boolean;
+  onForgot: () => void;
   onSubmit: (email: string, password: string) => Promise<void>;
 }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [formError, setFormError] = useState<string | undefined>();
@@ -141,12 +166,71 @@ function LoginForm({
         autoComplete="current-password"
         error={passwordError}
       />
+      <button type="button" className="self-start text-sm text-primary" onClick={onForgot}>
+        Забыли пароль?
+      </button>
       <Button type="submit" fullWidth isLoading={isLoading} className="mt-2">
         Войти
       </Button>
       {formError && (
         <p role="alert" className="-mt-2 text-sm text-red-500">
           {formError}
+        </p>
+      )}
+    </form>
+  );
+}
+
+function ForgotPasswordForm({ onBack }: { onBack: (email: string) => void }) {
+  const [email, setEmail] = useState('');
+  const [fieldError, setFieldError] = useState<string | undefined>();
+  const [notice, setNotice] = useState<string | undefined>();
+  const [failure, setFailure] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setFieldError(undefined);
+    setFailure(undefined);
+    if (!isEmailShape(email)) {
+      setFieldError(ACCOUNT_TEXT.emailInvalid);
+      return;
+    }
+    setNotice(undefined);
+    setBusy(true);
+    try {
+      const data = await requestPasswordReset(email);
+      setNotice(data.message || ACCOUNT_TEXT.resetSent);
+    } catch (err) {
+      setFailure(accountFailureText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <h2 className="font-heading text-xl font-bold text-dark">Восстановление пароля</h2>
+      <p className="text-sm text-warm-gray">Укажите почту учётной записи</p>
+      <Input
+        label="Email"
+        type="email"
+        icon={Mail}
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        autoComplete="email"
+        error={fieldError}
+      />
+      <Button type="submit" fullWidth isLoading={busy}>
+        Отправить ссылку
+      </Button>
+      <button type="button" className="text-sm text-primary" onClick={() => onBack(email)}>
+        Вернуться ко входу
+      </button>
+      {notice && <p className="text-sm text-dark">{notice}</p>}
+      {failure && (
+        <p role="alert" className="text-sm text-red-500">
+          {failure}
         </p>
       )}
     </form>

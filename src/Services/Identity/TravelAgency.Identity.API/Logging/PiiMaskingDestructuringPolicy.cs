@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Serilog.Core;
 using Serilog.Events;
+using TravelAgency.Identity.API.Controllers;
 using TravelAgency.Identity.Application.DTOs;
+using TravelAgency.Identity.Application.Features.Auth.Account;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Login;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Register;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
@@ -56,7 +58,40 @@ public sealed class PiiMaskingDestructuringPolicy : IDestructuringPolicy
             return true;
         }
 
+        if (value is PasswordResetRequestBody resetRequest)
+            return Mask(out result, ("Email", MaskEmail(resetRequest.Email)));
+        if (value is RequestPasswordResetCommand resetCommand)
+            return Mask(out result, ("Email", MaskEmail(resetCommand.Email)));
+        if (value is TokenBody tokenBody)
+            return Mask(out result, ("Token", PasswordRedacted));
+        if (value is InspectPasswordResetCommand inspectCommand)
+            return Mask(out result, ("Token", PasswordRedacted));
+        if (value is CancelEmailChangeCommand cancelCommand)
+            return Mask(out result, ("Token", PasswordRedacted));
+        if (value is CompletePasswordResetBody completeBody)
+            return Mask(out result, ("Token", PasswordRedacted), ("Password", PasswordRedacted), ("PasswordConfirm", PasswordRedacted));
+        if (value is CompletePasswordResetCommand completeCommand)
+            return Mask(out result, ("Token", PasswordRedacted), ("Password", PasswordRedacted), ("PasswordConfirm", PasswordRedacted));
+        if (value is ChangePasswordBody changeBody)
+            return Mask(out result, ("CurrentPassword", PasswordRedacted), ("NewPassword", PasswordRedacted), ("PasswordConfirm", PasswordRedacted));
+        if (value is ChangePasswordCommand changeCommand)
+            return Mask(out result, ("CurrentPassword", PasswordRedacted), ("NewPassword", PasswordRedacted), ("PasswordConfirm", PasswordRedacted));
+        if (value is ChangeEmailBody emailBody)
+            return Mask(out result, ("Email", MaskEmail(emailBody.Email)), ("CurrentPassword", PasswordRedacted));
+        if (value is RequestEmailChangeCommand emailCommand)
+            return Mask(out result, ("Email", MaskEmail(emailCommand.Email)), ("CurrentPassword", PasswordRedacted));
+        if (value is ConfirmEmailBody confirmBody)
+            return Mask(out result, ("Token", PasswordRedacted), ("RefreshToken", PasswordRedacted));
+        if (value is ConfirmEmailChangeCommand confirmCommand)
+            return Mask(out result, ("Token", PasswordRedacted), ("RefreshToken", PasswordRedacted));
+
         return false;
+    }
+
+    private static bool Mask(out LogEventPropertyValue result, params (string Name, string Value)[] fields)
+    {
+        result = new StructureValue(fields.Select(field => new LogEventProperty(field.Name, new ScalarValue(field.Value))));
+        return true;
     }
 
     private static StructureValue CreateLoginRequestStructure(LoginRequest request)

@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using TravelAgency.Identity.API.Extensions;
+using TravelAgency.Shared.Contracts.Auth;
 using TravelAgency.Identity.API.Middleware;
 using TravelAgency.Identity.Infrastructure.Extensions;
 using TravelAgency.Identity.Infrastructure.GrpcServices;
@@ -41,6 +42,22 @@ public partial class Program
         builder.Services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                var path = context.HttpContext.Request.Path.Value?.TrimEnd('/') ?? "";
+                if (path.Equals("/identity/password-resets/request", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status200OK;
+                    context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+                    context.HttpContext.Response.Headers.CacheControl = "no-store";
+                    await context.HttpContext.Response.WriteAsJsonAsync(
+                        new { message = AccountLinkMessages.PasswordResetRequested },
+                        cancellationToken);
+                    return;
+                }
+
+                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            };
             var permitLimit = builder.Configuration.GetValue<int?>("RateLimit:PermitLimit")
                 ?? (builder.Environment.EnvironmentName.Equals("Testing", StringComparison.OrdinalIgnoreCase)
                     ? 1000

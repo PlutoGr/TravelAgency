@@ -46,6 +46,9 @@ const ManagerClientsPage = lazy(() => import('@/pages/ManagerClientsPage'));
 const ManagerClientCardPage = lazy(() => import('@/pages/ManagerClientCardPage'));
 
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+const NewPasswordPage = lazy(() => import('@/pages/account/NewPasswordPage'));
+const ConfirmEmailPage = lazy(() => import('@/pages/account/ConfirmEmailPage'));
+const CancelEmailPage = lazy(() => import('@/pages/account/CancelEmailPage'));
 
 function managerRouteElement(path: string): ReactElement | null {
   switch (path) {
@@ -114,6 +117,9 @@ export function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path="tours" element={<TourCatalogPage />} />
           <Route path="tours/:id" element={<TourDetailPage />} />
+          <Route path="account/password/new" element={<NewPasswordPage />} />
+          <Route path="account/email/confirm" element={<ConfirmEmailPage />} />
+          <Route path="account/email/cancel" element={<CancelEmailPage />} />
         </Route>
 
         {/* Client Dashboard */}

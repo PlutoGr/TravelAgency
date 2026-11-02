@@ -29,10 +29,41 @@ public sealed class AuthRouteSettings
     public string LogoutPath { get; set; } = "/api/v1/auth/logout";
 
     /// <summary>
-    /// Paths that return tokens on success (login, register, refresh).
+    /// Подтверждение почты: в тело дописывается refreshToken из cookie.
+    /// </summary>
+    public string EmailConfirmationPath { get; set; } = "/api/v1/auth/email-confirmations";
+
+    public string PasswordResetRequestPath { get; set; } = "/api/v1/auth/password-resets/request";
+
+    /// <summary>
+    /// Новые пути среза, которые делят предел auth со входом. Сравнение по префиксу без учёта регистра.
+    /// </summary>
+    public string[] AuthLimitPaths { get; set; } =
+    [
+        "/api/v1/auth/password-resets",
+        "/api/v1/auth/me/password",
+        "/api/v1/auth/me/email",
+        "/api/v1/auth/email-confirmations",
+        "/api/v1/auth/email-cancellations"
+    ];
+
+    /// <summary>
+    /// Paths that return tokens on success (login, register, refresh, смена пароля в настройках).
     /// Compared with HttpContext.Request.Path after ASP.NET decoded percent-encoding,
     /// dropping "." segments and a trailing slash, without regard to case.
     /// </summary>
     public string[] TokenResponsePaths { get; set; } =
-        ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh"];
+        ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/auth/me/password"];
+
+    public bool IsAuthRateLimited(string path)
+    {
+        if (TokenResponsePaths.Any(item => path.StartsWith(item.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)))
+            return true;
+        if (path.Equals(LogoutPath, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return AuthLimitPaths.Any(item => path.StartsWith(item.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
+    }
+
+    public bool IsPasswordResetRequest(string path) =>
+        path.TrimEnd('/').Equals(PasswordResetRequestPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
 }

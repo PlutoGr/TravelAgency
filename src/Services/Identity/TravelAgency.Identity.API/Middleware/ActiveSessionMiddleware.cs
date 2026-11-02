@@ -26,8 +26,26 @@ public sealed class ActiveSessionMiddleware(RequestDelegate next)
         }
 
         var user = await users.GetByIdAsync(userId, context.RequestAborted);
-        if (user is not null
-            && (user.IsBlocked || user.SessionVersion != TravelAgency.Shared.Contracts.Authorization.SessionRevocationNames.ReadVersion(context.User)))
+        if (user is null)
+        {
+            await next(context);
+            return;
+        }
+
+        var stale = user.SessionVersion != TravelAgency.Shared.Contracts.Authorization.SessionRevocationNames.ReadVersion(context.User);
+        if (SessionRevocationPaths.IsEmailChange(context.Request.Path.Value))
+        {
+            if (user.IsBlocked || !stale)
+            {
+                await next(context);
+                return;
+            }
+
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        if (user.IsBlocked || stale)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;

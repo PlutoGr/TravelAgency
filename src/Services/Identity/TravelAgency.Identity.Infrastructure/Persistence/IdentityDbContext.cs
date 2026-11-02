@@ -11,6 +11,8 @@ public class IdentityDbContext : DbContext, IUnitOfWork
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
     public DbSet<SiteSettingsAudit> SiteSettingsAudits => Set<SiteSettingsAudit>();
     public DbSet<UserAdminAudit> UserAdminAudits => Set<UserAdminAudit>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailChangeRequest> EmailChangeRequests => Set<EmailChangeRequest>();
 
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
 

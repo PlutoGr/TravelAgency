@@ -12,6 +12,7 @@ export const AUTH_FORM_TEXT = {
 
 /** Коды правил пароля Identity. Любой из них даёт одну и ту же фразу под полем. */
 const PASSWORD_RULE_CODES = new Set([
+  'PasswordRule',
   'PasswordTooShort',
   'PasswordTooLong',
   'PasswordRequiresDigit',

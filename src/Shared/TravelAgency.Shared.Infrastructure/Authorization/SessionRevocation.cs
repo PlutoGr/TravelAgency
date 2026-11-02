@@ -119,11 +119,27 @@ public static class SessionRevocationPaths
             || Matches(path, "/identity/register")
             || Matches(path, "/identity/refresh")
             || Matches(path, "/identity/logout")
+            || Matches(path, "/identity/password-resets")
+            || Matches(path, "/identity/email-confirmations")
+            || Matches(path, "/identity/email-cancellations")
             || Matches(path, "/api/v1/auth/login")
             || Matches(path, "/api/v1/auth/register")
             || Matches(path, "/api/v1/auth/refresh")
-            || Matches(path, "/api/v1/auth/logout");
+            || Matches(path, "/api/v1/auth/logout")
+            || Matches(path, "/api/v1/auth/password-resets")
+            || Matches(path, "/api/v1/auth/email-confirmations")
+            || Matches(path, "/api/v1/auth/email-cancellations");
     }
+
+    /// <summary>
+    /// Смена почты на шлюзе пропускается и при отозванной, и при заблокированной сессии.
+    /// Дальше решает Identity.
+    /// </summary>
+    public static bool IsEmailChange(string? path) =>
+        EqualsPath(path, "/identity/me/email") || EqualsPath(path, "/api/v1/auth/me/email");
+
+    private static bool EqualsPath(string? path, string expected) =>
+        string.Equals(path?.TrimEnd('/'), expected, StringComparison.OrdinalIgnoreCase);
 
     private static bool Matches(string path, string prefix) =>
         path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
@@ -137,7 +153,8 @@ public sealed class SessionRevocationMiddleware(
     public async Task InvokeAsync(HttpContext context, ISessionRevocationStore store)
     {
         if (context.User.Identity?.IsAuthenticated != true
-            || SessionRevocationPaths.IsCredentialExchange(context.Request.Path.Value))
+            || SessionRevocationPaths.IsCredentialExchange(context.Request.Path.Value)
+            || SessionRevocationPaths.IsEmailChange(context.Request.Path.Value))
         {
             await next(context);
             return;

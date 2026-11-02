@@ -42,6 +42,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     public FakeAvatarMediaClient AvatarMedia { get; } = new();
 
+    public CapturingAccountMail Mail { get; } = new();
+
     /// <summary>
     /// Журнал Serilog этого хоста. Запись включается на время проверки, что тело карточки не логируется.
     /// </summary>
@@ -91,6 +93,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IAvatarMediaClient>();
             services.AddSingleton<IAvatarMediaClient>(AvatarMedia);
+            services.RemoveAll<IAccountMailSender>();
+            services.AddSingleton<IAccountMailSender>(Mail);
 
             services.RemoveAll<IUserAdminLock>();
             services.AddScoped<UserAdminLock>();
@@ -139,6 +143,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:Redis"] = string.Empty,
                 ["LockoutSettings:LockoutThreshold"] = "3",
                 ["RateLimit:PermitLimit"] = RateLimitPermit.ToString(),
+                ["AccountLinks:PublicBaseUrl"] = "https://travelagency.example",
+                ["AccountLinks:PasswordResetLifetime"] = "01:00:00",
+                ["AccountLinks:EmailChangeLifetime"] = "1.00:00:00",
                 ["ASPNETCORE_RUN_MIGRATIONS"] = "false",
                 ["ASPNETCORE_SEED_DATA"] = "false"
             };

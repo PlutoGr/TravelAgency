@@ -89,6 +89,15 @@ public class User
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void ChangeEmail(string normalizedEmail)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+            throw new IdentityDomainException("Email cannot be empty.");
+
+        Email = normalizedEmail;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void MarkLoggedIn(DateTime utcNow)
     {
         LastLoginAt = utcNow;

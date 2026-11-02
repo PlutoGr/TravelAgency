@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Transforms;
 using Yarp.ReverseProxy.Transforms.Builder;
 using TravelAgency.Gateway.Configuration;
+using TravelAgency.Shared.Contracts.Auth;
 
 namespace TravelAgency.Gateway.Transforms;
 
@@ -56,6 +57,18 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
         var status = transformContext.ProxyResponse?.StatusCode;
         var path = NormalizeRequestPath(transformContext.HttpContext.Request);
         var isLogout = path.Equals(NormalizePath(_authRouteSettings.LogoutPath), StringComparison.OrdinalIgnoreCase);
+
+        if (status == HttpStatusCode.TooManyRequests && _authRouteSettings.IsPasswordResetRequest(path))
+        {
+            if (transformContext.ProxyResponse?.Content is not null)
+            {
+                await using var discarded = await transformContext.ProxyResponse.Content.ReadAsStreamAsync(transformContext.CancellationToken);
+                await discarded.CopyToAsync(Stream.Null, transformContext.CancellationToken);
+            }
+
+            await WriteNeutralResetAsync(transformContext);
+            return;
+        }
 
         if (isLogout && status is HttpStatusCode.NoContent or HttpStatusCode.Unauthorized)
         {
@@ -148,6 +161,19 @@ internal sealed class AuthResponseTransformProvider : ITransformProvider
     /// The transform has to read the upstream stream to look for token fields.
     /// A safe body is written back, otherwise YARP would copy an already consumed stream.
     /// </summary>
+    private static async ValueTask WriteNeutralResetAsync(ResponseTransformContext transformContext)
+    {
+        transformContext.SuppressResponseBody = true;
+        var response = transformContext.HttpContext.Response;
+        response.StatusCode = StatusCodes.Status200OK;
+        response.ContentType = "application/json; charset=utf-8";
+        response.Headers.CacheControl = "no-store";
+        var payload = JsonSerializer.Serialize(new { message = AccountLinkMessages.PasswordResetRequested });
+        var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+        response.ContentLength = bytes.Length;
+        await response.Body.WriteAsync(bytes, transformContext.CancellationToken);
+    }
+
     private static async ValueTask CopyUpstreamBodyAsync(ResponseTransformContext transformContext, string body)
     {
         transformContext.SuppressResponseBody = true;

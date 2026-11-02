@@ -3,6 +3,7 @@ using StackExchange.Redis;
 using System.Threading.RateLimiting;
 using TravelAgency.Gateway.Configuration;
 using TravelAgency.Gateway.RateLimiting;
+using TravelAgency.Shared.Contracts.Auth;
 
 namespace TravelAgency.Gateway.Extensions;
 
@@ -31,6 +32,24 @@ public static class RateLimitingExtensions
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                var http = context.HttpContext;
+                var settings = http.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<AuthRouteSettings>>().Value;
+                var path = http.Request.Path.Value ?? "";
+                if (settings.IsPasswordResetRequest(path))
+                {
+                    http.Response.StatusCode = StatusCodes.Status200OK;
+                    http.Response.ContentType = "application/json; charset=utf-8";
+                    http.Response.Headers.CacheControl = "no-store";
+                    await http.Response.WriteAsJsonAsync(
+                        new { message = AccountLinkMessages.PasswordResetRequested },
+                        cancellationToken);
+                    return;
+                }
+
+                http.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            };
 
             options.AddFixedWindowLimiter("fixed", opt =>
             {
@@ -52,8 +71,7 @@ public static class RateLimitingExtensions
             {
                 var path = context.Request.Path.Value ?? "";
                 var authSettings = context.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<AuthRouteSettings>>().Value;
-                var isAuth = authSettings.TokenResponsePaths.Any(p => path.StartsWith(p.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
-                    || path.Equals(authSettings.LogoutPath, StringComparison.OrdinalIgnoreCase);
+                var isAuth = authSettings.IsAuthRateLimited(path);
 
                 var partitionKey = context.Connection.RemoteIpAddress?.ToString()
                     ?? context.Request.Headers.Host.ToString()
