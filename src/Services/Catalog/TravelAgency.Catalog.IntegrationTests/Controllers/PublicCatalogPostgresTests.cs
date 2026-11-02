@@ -38,6 +38,19 @@ public sealed class PublicCatalogPostgresCollection : ICollectionFixture<PublicC
 public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
 {
     public DateTime Now { get; } = DateTime.UtcNow;
+
+    /// <summary>Конец базового дня, как прежний вылет 31 октября в 23:30.</summary>
+    public DateOnly EndOfDayDate { get; }
+
+    /// <summary>Полночь следующих суток, как прежний вылет 1 ноября в 00:00.</summary>
+    public DateOnly NextMidnightDate { get; }
+
+    /// <summary>Вечер более позднего дня, как прежний вылет 15 ноября в 21:15.</summary>
+    public DateOnly LaterEveningDate { get; }
+
+    /// <summary>Полночь после этого вечера, как прежний вылет 16 ноября в 00:00.</summary>
+    public DateOnly AfterLaterDate { get; }
+
     public Guid DirectionId { get; } = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public Guid ManagerId { get; } = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
@@ -63,6 +76,15 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
 
     private WebApplication? _app;
     private TestServer? _server;
+
+    public PublicCatalogPostgresFixture()
+    {
+        // Несколько суток впереди Now: 23:30 базового дня строго позже Now в любой час суток.
+        EndOfDayDate = DateOnly.FromDateTime(Now).AddDays(7);
+        NextMidnightDate = EndOfDayDate.AddDays(1);
+        LaterEveningDate = EndOfDayDate.AddDays(15);
+        AfterLaterDate = LaterEveningDate.AddDays(1);
+    }
 
     public async Task InitializeAsync()
     {
@@ -173,16 +195,16 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
         var target = Published("Цель снятия", "UnpublishLand", TourType.City, null, 300m, 12, null, 3);
         var oct31 = Published(
             "DateOct31", "PublicCatalogDates", TourType.Beach, null, 110m, 0, null, 3,
-            new DateTime(2026, 10, 31, 23, 30, 0, DateTimeKind.Utc));
+            Utc(EndOfDayDate, 23, 30));
         var nov1 = Published(
             "DateNov1", "PublicCatalogDates", TourType.Beach, null, 120m, 0, null, 3,
-            new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc));
+            Utc(NextMidnightDate, 0, 0));
         var nov15 = Published(
             "DateNov15", "PublicCatalogDates", TourType.Beach, null, 130m, 0, null, 3,
-            new DateTime(2026, 11, 15, 21, 15, 0, DateTimeKind.Utc));
+            Utc(LaterEveningDate, 21, 15));
         var nov16 = Published(
             "DateNov16", "PublicCatalogDates", TourType.Beach, null, 140m, 0, null, 3,
-            new DateTime(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc));
+            Utc(AfterLaterDate, 0, 0));
 
         LowId = low.Tour.Id;
         MidId = mid.Tour.Id;
@@ -243,6 +265,9 @@ public sealed class PublicCatalogPostgresFixture : IAsyncLifetime
         tour.Publish(Now, 1600);
         return (tour, coverId);
     }
+
+    private static DateTime Utc(DateOnly day, int hour, int minute) =>
+        new(day.Year, day.Month, day.Day, hour, minute, 0, DateTimeKind.Utc);
 }
 
 [Collection(nameof(PublicCatalogPostgresCollection))]
@@ -297,7 +322,8 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
     [Fact]
     public async Task List_DateWithoutZone_IncludesDepartureCalendarDay()
     {
-        var page = await ReadListAsync("/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01");
+        var from = Day(fixture.NextMidnightDate);
+        var page = await ReadListAsync($"/catalog/tours?country=publiccatalogdates&dateFrom={from}");
 
         page.Items.Select(item => item.Id).Should().BeEquivalentTo(
             [fixture.DateNov1Id, fixture.DateNov15Id, fixture.DateNov16Id]);
@@ -307,12 +333,15 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
     [Fact]
     public async Task List_DateWithZ_UsesTheSameCalendarDay()
     {
-        var plain = await ReadListAsync("/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01&dateTo=2026-11-15");
+        var from = Day(fixture.NextMidnightDate);
+        var to = Day(fixture.LaterEveningDate);
+        var plain = await ReadListAsync(
+            $"/catalog/tours?country=publiccatalogdates&dateFrom={from}&dateTo={to}");
         var midnight = await ReadListAsync(
-            "/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01T00:00:00Z&dateTo=2026-11-15T00:00:00Z");
-        // Время внутри дня не отрезает вылет: 12:00 и 18:00 остаются календарными днями 1 и 15 ноября.
+            $"/catalog/tours?country=publiccatalogdates&dateFrom={from}T00:00:00Z&dateTo={to}T00:00:00Z");
+        // Время внутри дня не отрезает вылет: 12:00 и 18:00 остаются теми же календарными днями.
         var insideDay = await ReadListAsync(
-            "/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-01T12:00:00Z&dateTo=2026-11-15T18:00:00Z");
+            $"/catalog/tours?country=publiccatalogdates&dateFrom={from}T12:00:00Z&dateTo={to}T18:00:00Z");
 
         var expected = new[] { fixture.DateNov1Id, fixture.DateNov15Id };
         plain.Items.Select(item => item.Id).Should().BeEquivalentTo(expected);
@@ -325,8 +354,9 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
     [Fact]
     public async Task List_DateTo_IncludesDepartureLaterThatDay_AndExcludesNextMidnight()
     {
+        var day = Day(fixture.LaterEveningDate);
         var page = await ReadListAsync(
-            "/catalog/tours?country=publiccatalogdates&dateFrom=2026-11-15&dateTo=2026-11-15");
+            $"/catalog/tours?country=publiccatalogdates&dateFrom={day}&dateTo={day}");
 
         page.Items.Select(item => item.Id).Should().Equal(fixture.DateNov15Id);
     }
@@ -335,7 +365,7 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
     public async Task List_WhenDateFromIsAfterDateTo_Returns400Validation_WithoutDatabaseText()
     {
         var response = await GetAsync(
-            "/catalog/tours?dateFrom=2026-12-01&dateTo=2026-11-01");
+            $"/catalog/tours?dateFrom={Day(fixture.AfterLaterDate)}&dateTo={Day(fixture.EndOfDayDate)}");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var json = await response.Content.ReadAsStringAsync();
@@ -477,6 +507,9 @@ public sealed class PublicCatalogPostgresTests(PublicCatalogPostgresFixture fixt
         response.StatusCode.Should().Be(HttpStatusCode.PreconditionRequired);
         (await fixture.StatusOfAsync(fixture.UnpublishTargetId)).Should().Be(TourStatus.Published);
     }
+
+    private static string Day(DateOnly date) =>
+        date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private async Task<PagedResult<TourSummaryDto>> ReadListAsync(string url)
     {
