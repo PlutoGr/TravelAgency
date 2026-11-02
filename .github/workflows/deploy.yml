@@ -189,6 +189,12 @@ jobs:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Запоминаем коммит на сервере до смены, чтобы health/smoke могли вернуть его
+          prev=$(ssh "deploy@$DEV_HOST" 'git -C /opt/travelagency rev-parse HEAD')
+          if ! echo "$prev" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Не удалось прочитать текущий коммит на сервере"; exit 1
+          fi
+          echo "PREV_SHA=$prev" >> "$GITHUB_ENV"
           echo "$REGISTRY_TOKEN" | ssh "deploy@$DEV_HOST" \
             "docker login ghcr.io -u '$REGISTRY_USER' --password-stdin"
           ssh "deploy@$DEV_HOST" "IMAGE_TAG=$IMAGE_TAG bash -s" <<'EOF'
@@ -224,6 +230,8 @@ jobs:
             | grep -v -E ":(latest|$IMAGE_TAG)\$" | xargs -r docker rmi >/dev/null 2>&1 || true
           docker image prune -f
           EOF
+          # Новые образы уже подняты: при провале health/smoke вернём PREV_SHA
+          echo "SERVER_AT_NEW=1" >> "$GITHUB_ENV"
 
       # Проверка здоровья. Домен читаем из SITE_DOMAIN на сервере. Режим зависит от того, выпущен ли
       # сертификат Let's Encrypt. Проверка идёт от пользователя deploy, а /etc/letsencrypt/live закрыт (700 root):
@@ -306,6 +314,27 @@ jobs:
           done
           rm -f /tmp/grpc-smoke-empty.bin
           exit $fail
+          EOF
+
+      # Если health или smoke упали после успешного compose up — код и образы нового коммита
+      # уже на сервере. Вернуть предыдущий коммит и поднять его образы (как при сбое pull).
+      - name: Вернуть сервер при провале health/smoke
+        if: failure() && env.SERVER_AT_NEW == '1'
+        run: |
+          echo "Возврат сервера на $PREV_SHA после провала проверки"
+          ssh "deploy@$DEV_HOST" "IMAGE_TAG=$PREV_SHA bash -s" <<'EOF'
+          set -e
+          export IMAGE_TAG
+          cd /opt/travelagency
+          git fetch origin
+          if ! git cat-file -e "$IMAGE_TAG^{commit}" 2>/dev/null; then
+            git fetch origin "$IMAGE_TAG" || true
+          fi
+          git reset --keep "$IMAGE_TAG"
+          cd docker
+          docker compose pull
+          docker compose up -d
+          echo "Код на сервере снова: $(git -C /opt/travelagency log -1 --format='%h %s')"
           EOF
 
       # Фактически развёрнутый коммит для «Notify orchestrator»: только после успеха всех шагов выше

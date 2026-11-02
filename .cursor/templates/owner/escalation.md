@@ -1,5 +1,5 @@
 # Escalation (chat, Russian)
-When work is blocked and the rules give no way forward: an agent failed twice, usage ran out, a server or CI failure needs an owner action, a security incident. Rules: [orchestrator §8](../../orchestrator.md#8-never-stall).
+When work is blocked and the rules give no way forward: an agent failed twice, usage ran out, a server or CI failure needs an owner action, a security incident. Rules: [orchestrator §8](../../orchestrator.md#8-never-stall). On send: clear `Agent`, set memory `Waiting on` = `none`, `Next` = resume after the owner answer, `Question` = this ask (`<ask> (asked: chat)`); a global usage block uses one `Issue` = `-` row ([memory](../../elements/memory.md#row-lifecycle)).
 
 ```markdown
 Блокер: <что стоит> (<ссылки>).
