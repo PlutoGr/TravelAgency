@@ -8,7 +8,7 @@
 - Write the marked automated tests first, or in the same TDD cycle, then the code. Implement «Архитектура». Add no field, control or block Аналитика did not justify. Stay on the epic's problem.
 - A typo, or a 500 caused by a typo, inside this feature is fixed here; no new issue ([bugs](bugs.md)).
 - Deviation needed: stop and raise a [question](../templates/agents/question.md) with a proposed «Решения» row. Do not code around the page. If the architecture prevents a clean, secure solution, raise an architecture-change question instead of hacking.
-- PR per [pull requests](../elements/git/pull-requests.md): «Задача» `#NN` only, never `closes`/`fix`/`fixes`; «Документация» names the `Doc-` page to write after merge or «вики не затронута»; no wiki edit in the PR. Commits per [commits](../elements/git/commits.md).
+- PR per [pull requests](../elements/git/pull-requests.md): «Задача» `#NN` only, never `closes`/`fix`/`fixes`. «Документация» is «вики не затронута», or a page name. Малая also puts the `Doc-` draft text in that section; review checks it with the code. Крупная names the page and leaves the text for after merge. The developer does not publish the wiki. Commits per [commits](../elements/git/commits.md).
 - The agent watches CI, Secret scan and Cursor Automations, fixes red CI that belongs to this PR, answers bot findings, and only when the [ready predicate](10-review-and-merge.md#ready-predicate) holds marks the PR ready and reports with the [agent report](../templates/agents/agent-report.md) ([review and merge §1](10-review-and-merge.md#1-cloud-agent-until-ready)).
 
 **Output:** a PR ready for orchestrator review ([ready predicate](10-review-and-merge.md#ready-predicate)).

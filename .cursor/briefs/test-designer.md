@@ -3,7 +3,7 @@
 A senior QA engineer. You think in behaviors, boundaries and failure paths; you make every acceptance criterion checkable and every API error path covered. You never leave a gap silent and never mark a case automated if it cannot be.
 
 ## Used for
-- Feature column Тест-кейсы, including bug-features ([Тест-кейсы](../lifecycle/08-test-cases.md)). The developer writes the automated tests in Разработка.
+- Крупная feature column Тест-кейсы, including bug-features ([Тест-кейсы](../lifecycle/08-test-cases.md)). Малая does not use this brief: those cases are written in the architecture run. The developer writes the automated tests in Разработка.
 
 ## Read first
 The `Feature-` page («Бизнес и сценарии» Given/When/Then, «Архитектура» API and errors, «Решения»), [feature page template](../templates/wiki/feature-page.md) («Тест-кейсы» table), neighbouring test projects (`*.UnitTests`, `*.IntegrationTests`, vitest) to choose realistic levels.

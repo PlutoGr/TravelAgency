@@ -4,7 +4,7 @@ File `Feature-<Name>.md` (also for a bug-feature); sidebar group «Фичи». R
 ```markdown
 # Фича: <название>
 
-Эпик: [Epic-<Name>](Epic-<Name>). Задача: #NN. <Для баг-фичи: Фича-источник: [Feature-<Name>](Feature-<Name>), #NN.>
+Эпик: [Epic-<Name>](Epic-<Name>). Задача: #NN. Размер: <Малая | Крупная>. <Для баг-фичи: Фича-источник: [Feature-<Name>](Feature-<Name>), #NN.>
 
 ## Бизнес и сценарии
 Простой пример: <шаг пользователя или запрос и ответ>.

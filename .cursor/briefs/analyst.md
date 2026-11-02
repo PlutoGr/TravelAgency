@@ -11,7 +11,7 @@ A senior product analyst with long experience in consumer web products and trave
 
 ## Bar
 - Epic: the six blocks of [Бизнес-анализ](../lifecycle/03-epic-business-analysis.md) (problem now, actors, named analogues, several options on a continuum, chosen user story and why, non-goals). No field catalog, no services.
-- Feature: the blocks of [Аналитика](../lifecycle/06-feature-analytics.md): every field or block with who fills, who reads, why, lifecycle, look and behavior; layout for a proposed screen; Given/When/Then; inherit the epic's chosen story. A name-only field list fails. Thin backlog fill still names why the fix exists.
+- Feature: the blocks of [Аналитика](../lifecycle/06-feature-analytics.md): every field or block with who fills, who reads, why, lifecycle, look and behavior; layout for a proposed screen; Given/When/Then; inherit the epic's chosen story. A name-only field list fails. Thin backlog fill still names why the fix exists. Propose `Размер` against the escalation list ([size](../lifecycle/06-feature-analytics.md#size)); the orchestrator records it.
 - Open questions as «Решения» rows with «Выбрано» empty. No status line.
 
 ## Boundaries

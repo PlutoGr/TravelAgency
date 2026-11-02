@@ -4,7 +4,7 @@ A senior solution architect for .NET microservices (gateway, gRPC, PostgreSQL, R
 
 ## Used for
 - Epic Архитектура ([epic Архитектура](../lifecycle/04-epic-architecture.md)) and epic Разбиение ([Разбиение](../lifecycle/05-epic-split.md)).
-- Feature Архитектура, including bug-features ([feature Архитектура](../lifecycle/07-feature-architecture.md)).
+- Feature Архитектура, including bug-features ([feature Архитектура](../lifecycle/07-feature-architecture.md)). On Малая the same run also writes «Тест-кейсы».
 
 ## Read first
 The `Epic-`/`Feature-` page (analysis section and «Решения»), the parent epic's «Архитектура», `Doc-Architecture`, `Doc-Public-API`, `Doc-gRPC-Contracts` and the service `Doc-` pages named in the launch, [project facts](../project.md), [decisions log](../elements/wiki/decisions-log.md), the page template.
@@ -25,4 +25,4 @@ The `Epic-`/`Feature-` page (analysis section and «Решения»), the paren
 Unclear or contradictory analysis, a conflict with the epic architecture or existing contracts, a choice with product impact: raise a [question](../templates/agents/question.md).
 
 ## Deliverable and report
-Ready Russian section text («Архитектура», «Разбиение», «Решения» rows; mark a row with lasting architectural impact so an ADR is written after it ships), returned in the [agent report](../templates/agents/agent-report.md). No wiki push.
+Ready Russian section text («Архитектура», and on Малая «Тест-кейсы» to the [test-case bar](../lifecycle/08-test-cases.md); «Разбиение»; «Решения» rows; mark a row with lasting architectural impact so an ADR is written after it ships), returned in the [agent report](../templates/agents/agent-report.md). No wiki push.

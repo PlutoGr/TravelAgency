@@ -1,0 +1,168 @@
+# Один webhook routine «TravelAgency CI/CD». Секреты репозитория, без новых имён:
+#   GROK_BOT_CICD_WEBHOOK_URL  : URL webhook
+#   GROK_BOT_CICD_WEBHOOK_KEY  : полное значение заголовка Authorization
+#     (схема может уже входить в значение). Значение секрета в репозиторий не записывается.
+# PR: одно событие, когда все обязательные проверки текущего head завершены
+#   (задачи CI и Secret scan, плюс контексты из правил ветки, если API их отдал).
+#   Повторный suite того же завершения не шлёт второе событие. Чужой sha пропускается.
+#   Cursor Automations обязательными проверками не являются.
+# main: одно событие, когда завершился «Deploy to dev» (result и deployed_sha).
+# Если секрета нет в момент отправки, job завершается с ошибкой.
+# Ответ не 2xx завершает job с ошибкой.
+name: Notify orchestrator
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy to dev
+    types:
+      - completed
+  check_suite:
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+
+# Для PR группа на head sha, чтобы два suite не отправили webhook параллельно.
+# Для деплоя группа на id запуска: каждое завершение «Deploy to dev» отдельно.
+concurrency:
+  group: notify-${{ github.event_name }}-${{ github.event.check_suite.head_sha }}-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  pr-checks:
+    name: Проверки PR
+    if: github.event_name == 'check_suite'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Решить и отправить webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.GROK_BOT_CICD_WEBHOOK_URL }}
+          WEBHOOK_KEY: ${{ secrets.GROK_BOT_CICD_WEBHOOK_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.event.check_suite.head_sha }}
+          SUITE_ID: ${{ github.event.check_suite.id }}
+          PR_NUM: ${{ github.event.check_suite.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUM}" ]; then
+            PR_NUM=$(gh api "repos/${GH_REPO}/commits/${SHA}/pulls" --jq '.[0].number // empty')
+          fi
+          if [ -z "${PR_NUM}" ]; then
+            echo "skip: no pull request"
+            exit 0
+          fi
+          pr_json=$(gh api "repos/${GH_REPO}/pulls/${PR_NUM}")
+          state=$(echo "$pr_json" | jq -r '.state')
+          pr_head=$(echo "$pr_json" | jq -r '.head.sha')
+          base=$(echo "$pr_json" | jq -r '.base.ref')
+          if [ "$state" != "open" ] || [ "$pr_head" != "$SHA" ]; then
+            echo "skip: not the open head"
+            exit 0
+          fi
+          checks=$(gh api --paginate "repos/${GH_REPO}/commits/${SHA}/check-runs?per_page=100" --jq '.check_runs[]' | jq -s '.')
+          extra='[]'
+          if rules=$(gh api "repos/${GH_REPO}/rules/branches/${base}" 2>/dev/null); then
+            from_rules=$(echo "$rules" | jq -c '[.[] | select(.type=="required_status_checks") | .parameters.required_status_checks[]?.context] | map(select(. != null))')
+            extra=$(jq -nc --argjson a "$extra" --argjson b "$from_rules" '$a + $b')
+          fi
+          if protection=$(gh api "repos/${GH_REPO}/branches/${base}/protection/required_status_checks" 2>/dev/null); then
+            from_protection=$(echo "$protection" | jq -c '.contexts // []')
+            extra=$(jq -nc --argjson a "$extra" --argjson b "$from_protection" '$a + $b')
+          fi
+          input=$(jq -n \
+            --arg sha "$SHA" \
+            --arg pr_head "$pr_head" \
+            --argjson suite "$SUITE_ID" \
+            --argjson pr "$PR_NUM" \
+            --arg branch "$(echo "$pr_json" | jq -r '.head.ref')" \
+            --arg author "$(echo "$pr_json" | jq -r '.user.login')" \
+            --arg url "$(echo "$pr_json" | jq -r '.html_url')" \
+            --argjson checks "$checks" \
+            --argjson extra "$extra" \
+            '{sha:$sha,pr_head:$pr_head,suite_id:$suite,pr:$pr,branch:$branch,author:$author,html_url:$url,checks:$checks,extra:$extra}')
+          decision=$(echo "$input" | python3 .github/scripts/notify_guard.py pr)
+          action=$(echo "$decision" | jq -r '.action')
+          if [ "$action" != "send" ]; then
+            echo "skip: $(echo "$decision" | jq -r '.reason')"
+            exit 0
+          fi
+          if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
+            echo "::error::Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY не заданы: уведомление не отправлено."
+            exit 1
+          fi
+          WEBHOOK_KEY=${WEBHOOK_KEY//$'\r'/}
+          WEBHOOK_KEY=${WEBHOOK_KEY//$'\n'/}
+          payload=$(echo "$decision" | jq -c '.payload')
+          code=$(curl -sS -o /tmp/cicd-ping.out -w "%{http_code}" -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: $WEBHOOK_KEY" \
+            -d "$payload" || true)
+          echo "HTTP $code"
+          head -c 500 /tmp/cicd-ping.out || true
+          case "$code" in
+            2*) exit 0 ;;
+            *) echo "Webhook не принял уведомление (HTTP $code)"; exit 1 ;;
+          esac
+
+  deploy:
+    name: Деплой main
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Deploy to dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Отправить webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.GROK_BOT_CICD_WEBHOOK_URL }}
+          WEBHOOK_KEY: ${{ secrets.GROK_BOT_CICD_WEBHOOK_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
+            echo "::error::Секреты GROK_BOT_CICD_WEBHOOK_URL / GROK_BOT_CICD_WEBHOOK_KEY не заданы: уведомление не отправлено."
+            exit 1
+          fi
+          WEBHOOK_KEY=${WEBHOOK_KEY//$'\r'/}
+          WEBHOOK_KEY=${WEBHOOK_KEY//$'\n'/}
+          deployed_sha=""
+          if [ "$CONCLUSION" = "success" ]; then
+            if gh run download "$RUN_ID" -n deployed-sha -D /tmp/deployed-sha >/dev/null 2>&1; then
+              deployed_sha=$(tr -d '[:space:]' < /tmp/deployed-sha/deployed-sha.txt)
+            fi
+          fi
+          input=$(jq -n \
+            --arg conclusion "$CONCLUSION" \
+            --arg sha "$SHA" \
+            --arg deployed_sha "$deployed_sha" \
+            --arg branch "$BRANCH" \
+            --arg run_id "$RUN_ID" \
+            --arg url "$RUN_URL" \
+            '{conclusion:$conclusion,sha:$sha,deployed_sha:$deployed_sha,branch:$branch,run_id:$run_id,html_url:$url}')
+          decision=$(echo "$input" | python3 .github/scripts/notify_guard.py deploy)
+          payload=$(echo "$decision" | jq -c '.payload')
+          code=$(curl -sS -o /tmp/cicd-ping.out -w "%{http_code}" -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: $WEBHOOK_KEY" \
+            -d "$payload" || true)
+          echo "HTTP $code"
+          head -c 500 /tmp/cicd-ping.out || true
+          case "$code" in
+            2*) exit 0 ;;
+            *) echo "Webhook не принял уведомление (HTTP $code)"; exit 1 ;;
+          esac

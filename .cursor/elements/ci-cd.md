@@ -6,19 +6,19 @@ Responsible: the orchestrator (reads results, merges, reacts). The cloud agent t
 | `ci.yml` «CI»: `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `Скрипт чипа PR` | every PR (not push to `main`) | merge gate: must be green |
 | `gitleaks.yml` «Secret scan» | PR and push to `main` | merge gate: must be green |
 | `deploy.yml` «Deploy to dev» | push to `main` (= merge), manual with rollback sha | automatic deploy to dev; the next merge waits until it is green, except the one repair PR for a failed Deploy on `main` ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)); a successful run uploads artifact `deployed-sha` (the commit it deployed, kept 90 days; memory [`Last deploy:`](memory.md#what-it-holds) records it) after its last step; manual run or rollback needs the owner's yes |
-| `notify-cicd.yml` «Notify orchestrator» | after «CI», «Deploy to dev» and «Secret scan» runs | **safety-net** wake for routine «TravelAgency CI/CD» ([events](../lifecycle/events.md#wake-sources)); the payload carries `deployed_sha` for Deploy ([Deploy wait](../lifecycle/events.md#deploy-wait)); fails visibly when its secret is missing |
+| `notify.yml` «Notify orchestrator» | one `pr-checks` event when required checks on the PR head have completed; one `deploy` event when «Deploy to dev» completes | meaningful wake for routine «TravelAgency CI/CD» ([events](../lifecycle/events.md#webhook-payload)); secrets `GROK_BOT_CICD_WEBHOOK_URL` and `GROK_BOT_CICD_WEBHOOK_KEY`; fails visibly when a send has no secret |
 | `link-closed-by.yml` «Link PR on issue close» | issue closed | sets the PR chip after close ([done](board/columns/done.md)) |
 
 Board hygiene / `board-sync` / `board_order` are deleted; the orchestrator alone sets labels and Status (hygiene deleted / orchestrator-only).
 
 - Merge = deploy: one PR at a time; while a failed Deploy on `main` stops the queue, only its repair PR ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)).
 - Do not merge while «CI» or «Secret scan» for the head sha is still running or red.
-- Primary path to review: the cloud agent reports ready ([ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)); the safety-net wake confirms or catches misses.
+- Primary path to review: the cloud agent reports ready ([ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)). A webhook is acted on only when it matches `Waiting on`, or it is a Dependabot `pr-checks` event, or it is `deploy` ([webhook match](../lifecycle/events.md#webhook-match)). A `pr-checks` event that does not match exits without logging.
 
 ## Red run
 While CI is red, do not merge. Who fixes:
 - **Feature / backlog PR with a cloud agent:** that agent classifies and fixes (flake: one rerun; in-feature failure: fix; fixture/upstream: fix or question).
-- **Dependabot or unowned red PR CI:** orchestrator opens or takes a [backlog](../project.md#standing-backlog) item in the wake that sees it and runs the FSM (thin stages OK) ([bugs](../lifecycle/bugs.md)); red PR CI never stops the queue.
+- **Dependabot red `pr-checks`:** open a bug issue from the bug template ([dependencies](dependencies.md), [bugs](../lifecycle/bugs.md)). A green Dependabot PR follows that file, including which majors may merge and when docker or github-actions need the owner's yes. Red PR checks never stop the queue.
 - **Failed or orphan-cancelled Deploy on `main`:** follows the [repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped) choice: one re-run, or one repair item whose PR is the only merge while the queue is stopped.
 
 Ask the owner only to merge despite red CI, or when the failure is a breaking change, a peer conflict or outside the task. A later green run uses the normal merge gates.

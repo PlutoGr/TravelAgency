@@ -14,4 +14,9 @@ Product WHY and WHAT for one feature (or bug-feature). No solution design.
 
 No services, API paths, storage, migrations or contracts. A bug-feature covers its product change only and adds no unrelated fields.
 
-**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. Then set `статус: архитектура` ([feature Архитектура](07-feature-architecture.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура and Разбиение.
+## Size
+Recorded at this exit, on the issue and on the Feature page, as `Размер: Малая` or `Размер: Крупная`. Крупная when the work matches the escalation triggers ([review §3](10-review-and-merge.md#3-escalation-review)); otherwise Малая. That list is the only test; do not keep a second one. An item already past this exit is not sized and keeps the full route ([in-flight](README.md#gates)).
+
+Малая then uses one architecture-and-test-cases step, the orchestrator's full review only, and a `Doc-` draft in the PR published right after merge. Крупная keeps separate Архитектура and Тест-кейсы, escalation review, and a `Doc-` draft after merge. Both reach Готово only when every named `Doc-` page is current, or the PR says «вики не затронута».
+
+**Exit gate:** a developer cannot invent a field or block this section did not justify. Every item has who fills, who reads, why, lifecycle, look and behavior; a proposed screen has layout; Given/When/Then present. A name-only field list fails. The size line is filled. Then set `статус: архитектура` ([feature Архитектура](07-feature-architecture.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура and Разбиение.

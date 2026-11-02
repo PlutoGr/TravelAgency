@@ -1,7 +1,7 @@
 # 08 Test cases (column Тест-кейсы)
-Before development, always.
+Before development, always. Крупная only. Малая writes this section inside Архитектура and does not enter this column ([feature Архитектура](07-feature-architecture.md)).
 
-**Entry:** feature architecture accepted ([feature Архитектура](07-feature-architecture.md)) and no «Решения» row for this slice has an empty «Выбрано» ([decisions log](../elements/wiki/decisions-log.md)).
+**Entry:** Крупная feature architecture accepted ([feature Архитектура](07-feature-architecture.md)) and no «Решения» row for this slice has an empty «Выбрано» ([decisions log](../elements/wiki/decisions-log.md)). The test designer refuses the column for Малая.
 
 **Who:** one cloud agent with the [test designer brief](../briefs/test-designer.md); the orchestrator reviews and publishes.
 
