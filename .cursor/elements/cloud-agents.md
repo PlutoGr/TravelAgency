@@ -16,7 +16,7 @@ Cursor cloud agents do every repo-bound methodology stage: analysis text, archit
 Acceptance on dev is not a cloud launch: the orchestrator has dev access ([stage 11](../lifecycle/11-deploy-and-acceptance.md)).
 
 ## Launch
-1. Check that no branch, PR or agent already exists for the issue (`gh pr list`, `git ls-remote`). One issue, one agent.
+1. Check that no branch, PR or agent already exists for the issue (`gh pr list`, `git ls-remote`). One issue, one agent: a live run on the issue (for example a `Doc-` draft during Приёмка) is finished or cancelled before another is launched, so the `Agent` id is never overwritten.
 2. Create the branch for code work ([branches](git/branches.md)).
 3. Repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number.
 4. Prompt in English from the [launch brief template](../templates/agents/launch-brief.md): role brief link, issue, column, goal and acceptance, page links, architecture context, minimal stack touchpoints, boundaries, deliverable, report format. The agent reads this repo's `.cursor/` files the brief links; do not paste the whole rule set or unrelated guides.
@@ -36,7 +36,7 @@ Acceptance on dev is not a cloud launch: the orchestrator has dev access ([stage
 - Open anything other than a regular PR into `main` when the result is code.
 
 ## During the run
-- A blocking doubt is raised to the orchestrator with the [question template](../templates/agents/question.md) (in the PR, the report, or the agent thread) and the run ends with `RESULT blocked` so the orchestrator wakes. Do not leave the run open waiting for an answer. Every question blocks; there is no «continue meanwhile». The orchestrator answers in that wake with the [answer template](../templates/agents/answer.md) as a reply to the same cloud agent, which resumes the run (owner-needed: pause in place, then the same reply once the owner answers). The agent does not guess around a gap in the page.
+- A blocking doubt is raised to the orchestrator with the [question template](../templates/agents/question.md) (in the PR, the report, or the agent thread) and the run ends with `RESULT blocked` so the orchestrator wakes. Do not leave the run open waiting for an answer. Every question blocks; there is no «continue meanwhile». The orchestrator answers in that wake with the [answer template](../templates/agents/answer.md) as a reply to the same cloud agent, which resumes the run (owner-needed: pause in place with the blocked agent id kept in memory Pause/why while `Waiting on` = `owner`, then the same reply once the owner answers; the id is cleared once the reply is sent or the run relaunched). The agent does not guess around a gap in the page.
 - Text deliverables (analysis, architecture, split, test cases, `Doc-`) are returned as ready Russian section text, not a wiki push.
 - **Code deliverables (Разработка):** the agent opens the PR, watches CI, Secret scan and Cursor Automations, fixes red CI that belongs to the PR, answers or marks every bot finding, and only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds marks the PR ready and reports. Until that report, the agent owns the PR; the orchestrator does not merge early.
 - Final report: [agent report](../templates/agents/agent-report.md) (for code: state each part of the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)).

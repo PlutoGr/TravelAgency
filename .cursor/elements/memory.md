@@ -11,17 +11,17 @@ One table (or short lists) with:
 | Issue | always for a row | `#NN`, or `-` for a Dependabot / unowned PR row |
 | Stage / column | always | current `статус:*` (FSM state), or `Dependabot` / PR label when Issue is `-` |
 | PR | when a PR exists | number and URL |
-| Sha | when waiting on CI/Deploy, and through Приёмка | head sha before merge, merge sha after; the merge sha that entered Приёмка stays on the row through Приёмка until close (a fix merge during Приёмка is added next to it), for the [rollback check](../lifecycle/events.md#deploy-wait) |
+| Sha | when waiting on CI/Deploy, and through Приёмка | head sha before merge, merge sha after; the entry merge sha (that entered Приёмка) stays on the row until close for the [rollback check](../lifecycle/events.md#deploy-wait) only; a fix merge during Приёмка is added next to it and is the sha the Deploy wait and catch-up match (with that fix PR's `mergedAt`) |
 | Agent | while a cloud agent run is live | agent id; the only place a live run is stored; cleared on that run's finish or error wake, which keeps any external wait in `Waiting on` |
 | Waiting on | always | `agent` \| `CI+Automations` \| `Deploy` \| `owner` \| `issue #NN` \| `none` |
 | Next | always | the next concrete step (never empty) |
-| Pause / why | when paused | why paused and what resumes it (owner answer, resume word) |
+| Pause / why | when paused | why paused and what resumes it (owner answer, resume word); when an agent ended `RESULT blocked` on an owner-needed question, also `agent <id>` so the reply goes to that run; cleared once the reply is sent or the run is relaunched |
 
 `Waiting on` values:
 - `agent`: a live cloud agent run is the wait (its deliverable is the next step). A run launched while the row waits on `Deploy`, `issue #NN` or `owner` (for example a `Doc-` draft after merge) is recorded only in `Agent`; `Waiting on` keeps the external wait. On that run's finish, clear `Agent` and keep the external wait.
 - `CI+Automations`: Automations still running after green CI on a PR no live agent watches (Dependabot). Red CI is not this wait; it follows the unowned-red path.
 - `Deploy`: merged, waiting for a green «Deploy to dev» whose deployed sha (not the run head) contains the merge sha ([Deploy wait](../lifecycle/events.md#deploy-wait)). Only a feature, bug-feature, non-product or Dependabot row waits on Deploy; never put an epic on `Waiting on` = `Deploy`.
-- `owner`: an owner question or the epic demo is open (re-asked only on memory-refresh and the Monday audit), or an owner hold ([Удержание](board/columns/on-hold.md)) waits for the resume word (not re-asked).
+- `owner`: an owner question, the epic demo or the request to create Status «Демо» is open (re-asked only on memory-refresh and the Monday audit), or an owner hold ([Удержание](board/columns/on-hold.md)) waits for the resume word (not re-asked).
 - `issue #NN`: parked until issue #NN is Готово; `Next` = resume the parked step (for example acceptance of the parent). Resumed by the [close procedure](board/columns/done.md) of #NN; the never-stall loop does not execute it.
 - `none`: the `Next` step is actionable by the orchestrator now. Never use `none` for a wait.
 
@@ -33,7 +33,7 @@ Also allowed as short bullets under the table: active agents list, open owner qu
 
 ## Update rules
 - **Write** when an item is taken, advanced, paused, waiting on CI/Automations/Deploy/owner, when an agent is launched or finishes, when the owner answers, and when a wait clears. Always write both `Next` and `Waiting on`.
-- **Prune** when an issue closes, a pause ends, an agent is dismissed, or a wait is done; a row with `Waiting on` = `Deploy` stays until the green Deploy containing its merge, even after its issue is closed, and is pruned only then. Do not accumulate history; closed items leave the file. A reopened issue gets a row again in the reopen turn, in the column its close comment names ([done](board/columns/done.md)).
+- **Prune** (delete a row) only when its issue is closed and no Deploy wait remains, or when a `Deploy` row is consumed by the green Deploy that contains its merge and the close or hand-off (Приёмка, criteria check, Dependabot done) is recorded. A Deploy row stays until that green Deploy even after its issue is closed. When a pause ends, an agent is dismissed or a wait clears on an open issue, rewrite `Waiting on` and `Next` and keep the row. Do not accumulate history; closed items leave the file. A reopened issue gets a row again in the reopen turn, in the column its close comment names ([done](board/columns/done.md)).
 - **Read** on every wake, before new work, on the weekday memory-refresh routine (`travelagency-memory-refresh`), and at the weekly audit.
 - A CI/CD safety-net wake is matched to rows by sha and agent ([events](../lifecycle/events.md#wake-sources)).
 

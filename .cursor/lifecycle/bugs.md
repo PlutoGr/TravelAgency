@@ -6,7 +6,7 @@ There is no separate bug type. Decide by size and relation. Every product item w
 | Typo, or a 500 caused by a typo, inside an open feature | that feature, no new issue, no new page | fixed in Разработка or Приёмка of that feature; extend its test cases if a regression check is needed |
 | Substantial change (field, screen, business rule) caused by a feature of the current epic | bug-feature under the current epic | full feature route ([06](06-feature-analytics.md) to [12](12-docs-after-merge.md)), label `bug` |
 | Unrelated bug or tiny feature that does not belong to a product epic | child of the [standing backlog](../project.md#standing-backlog) (#8) | same feature route (thin stages OK), label `bug` or `enhancement` |
-| Failed Deploy on `main` | backlog item (or under current epic if it clearly belongs there) | FSM; open or take in the wake that sees the failure, ahead of epic children; thin analytics OK; its PR is the one merge allowed while the queue is stopped ([repair](10-review-and-merge.md#repair-while-the-queue-is-stopped)) |
+| Failed Deploy on `main` (or `cancelled` with no later run) | backlog item, or one re-run when nothing is broken (or under current epic if it clearly belongs there) | FSM; open or take in the wake that sees the failure, ahead of epic children; thin analytics OK; its PR is the one merge allowed while the queue is stopped ([repair](10-review-and-merge.md#repair-while-the-queue-is-stopped)) |
 | Unowned Dependabot red CI | backlog item | FSM; thin analytics OK; the queue is not stopped |
 | Validated security vulnerability | backlog or current epic as fits | same FSM, thin analytics filled quickly by the orchestrator; no special shortcut column |
 

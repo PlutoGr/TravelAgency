@@ -18,7 +18,7 @@ Board hygiene / `board-sync` / `board_order` are deleted; the orchestrator alone
 ## Red run
 While CI is red, do not merge. Who fixes:
 - **Feature / backlog PR with a cloud agent:** that agent classifies and fixes (flake: one rerun; in-feature failure: fix; fixture/upstream: fix or question).
-- **Dependabot or unowned red CI / failed Deploy on `main`:** orchestrator opens or takes a [backlog](../project.md#standing-backlog) item in the wake that sees it and runs the FSM (thin stages OK) ([bugs](../lifecycle/bugs.md)); red PR CI never stops the queue; for a failed Deploy on `main` its PR is the one merge allowed while the queue is stopped ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)).
+- **Dependabot or unowned red CI / failed or orphan-cancelled Deploy on `main`:** orchestrator opens or takes a [backlog](../project.md#standing-backlog) item in the wake that sees it and runs the FSM (thin stages OK) ([bugs](../lifecycle/bugs.md)); red PR CI never stops the queue; for a failed Deploy on `main` its PR is the one merge allowed while the queue is stopped ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)).
 
 Ask the owner only to merge despite red CI, or when the failure is a breaking change, a peer conflict or outside the task. A later green run uses the normal merge gates.
 
