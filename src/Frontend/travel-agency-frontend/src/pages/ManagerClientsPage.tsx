@@ -217,15 +217,15 @@ export default function ManagerClientsPage() {
                       ) : null}
                     </div>
 
-                    {client.phone ? (
-                      <div className="flex items-center gap-4 border-t border-sand px-5 py-2.5 text-xs text-dark sm:hidden">
+                    <div className="flex items-center gap-4 border-t border-sand px-5 py-2.5 text-xs text-dark sm:hidden">
+                      {client.phone ? (
                         <a href={`tel:${client.phone}`} className="flex items-center gap-1">
                           <Phone size={12} />
                           {client.phone}
                         </a>
-                        <span className="text-warm-gray">{bookingCountLabel(client.bookingCount)}</span>
-                      </div>
-                    ) : null}
+                      ) : null}
+                      <span className="text-warm-gray">{bookingCountLabel(client.bookingCount)}</span>
+                    </div>
 
                     <AnimatePresence>
                       {isExpanded && (

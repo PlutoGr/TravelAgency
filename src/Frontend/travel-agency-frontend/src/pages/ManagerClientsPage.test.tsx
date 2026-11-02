@@ -76,7 +76,9 @@ describe('ManagerClientsPage', () => {
       '/api/v1/media/files/file-1/a256',
     );
     expect(screen.getAllByRole('link', { name: '+79991234567' }).every((link) => link.getAttribute('href') === 'tel:+79991234567')).toBe(true);
-    expect(screen.getAllByText('2 заявки').length).toBeGreaterThan(0);
+    const narrowWithPhone = document.querySelector('.sm\\:hidden');
+    expect(narrowWithPhone).toHaveTextContent('2 заявки');
+    expect(narrowWithPhone?.querySelector('a')).toHaveAttribute('href', 'tel:+79991234567');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(getClientList).toHaveBeenCalled();
 
@@ -99,6 +101,9 @@ describe('ManagerClientsPage', () => {
     expect(await screen.findByText('Анна Соколова')).toBeInTheDocument();
     expect(screen.queryByText('—')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /7999/ })).not.toBeInTheDocument();
+    const narrowWithoutPhone = document.querySelector('.sm\\:hidden');
+    expect(narrowWithoutPhone).toHaveTextContent('2 заявки');
+    expect(narrowWithoutPhone?.querySelector('a')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: /Анна Соколова/ }));
     expect(await screen.findByText('Солнечная Греция')).toBeInTheDocument();
