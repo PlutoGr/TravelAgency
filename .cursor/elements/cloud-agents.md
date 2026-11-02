@@ -6,8 +6,8 @@ Cursor cloud agents do every repo-bound methodology stage: analysis text, archit
 |---|---|
 | Epic Бизнес-анализ, feature Аналитика | [analyst](../briefs/analyst.md) |
 | Epic Архитектура, epic Разбиение, feature Архитектура | [architect](../briefs/architect.md) |
-| Тест-кейсы, automated tests, bug reproduction | [test designer](../briefs/test-designer.md) |
-| Application code and its tests (Разработка) | [developer](../briefs/developer.md) |
+| Тест-кейсы | [test designer](../briefs/test-designer.md) |
+| Application code and its automated tests (Разработка) | [developer](../briefs/developer.md) |
 | Workflows, Docker, nginx, deploy files | [devops](../briefs/devops.md) |
 | Escalated PR review, overlap check | [reviewer](../briefs/reviewer.md) |
 | `Doc-` and ADR text after merge | [docs writer](../briefs/docs-writer.md) |

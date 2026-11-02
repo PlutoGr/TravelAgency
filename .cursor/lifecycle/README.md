@@ -7,13 +7,13 @@ Owner idea / roadmap
   → 01 Intake and discussion → 02 Roadmap upkeep
   → Epic:    Очередь → Бизнес-анализ (03) → Архитектура (04) → Разбиение (05) → В работе → На ревью (13) → Готово
                                                               ↓ one Feature per split line
-  → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → Готово (12 first)
+  → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → Doc- text (12) → Готово
   → Epic done → STOP: owner demo (13) → next epic pick (02)
 ```
 Interrupts: На ревью (owner must decide; on an epic also owner acceptance) and Удержание (paused). Bugs: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md).
 
 ## Stages
-File numbers only order the files. Always name a stage by its column, never by a number.
+File numbers only order the files and may appear in link text. Prose names a stage by its column, never by a number.
 
 | # | Stage | Column (item) | Done by (brief) | File |
 |---|---|---|---|---|

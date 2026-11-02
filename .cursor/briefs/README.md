@@ -5,7 +5,7 @@ A brief defines who a cloud agent is for one launch. It is not a separate bot. E
 |---|---|
 | [analyst.md](analyst.md) | senior product analyst: epic Бизнес-анализ, feature Аналитика |
 | [architect.md](architect.md) | senior solution architect: epic Архитектура and Разбиение, feature Архитектура |
-| [test-designer.md](test-designer.md) | senior QA engineer: Тест-кейсы, automated tests, reproductions |
+| [test-designer.md](test-designer.md) | senior QA engineer: Тест-кейсы |
 | [developer.md](developer.md) | senior full-stack developer: application code and tests |
 | [devops.md](devops.md) | senior DevOps engineer: CI, Docker, nginx, deploy files |
 | [reviewer.md](reviewer.md) | senior code and security reviewer: escalated PR review |

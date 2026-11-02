@@ -1,5 +1,5 @@
 # Feature page
-File `Feature-<Name>.md` (also for a bug-feature); sidebar group «Фичи». Rules: [feature pages](../../elements/wiki/feature-pages.md). Fill only the section of the current column; no status line.
+File `Feature-<Name>.md` (also for a bug-feature); sidebar group «Фичи». Rules: [feature pages](../../elements/wiki/feature-pages.md). Fill the current column's section plus «Решения» rows when a question is open; no status line.
 
 ```markdown
 # Фича: <название>
@@ -36,4 +36,4 @@ File `Feature-<Name>.md` (also for a bug-feature); sidebar group «Фичи». R
 |---|---|---|---|---|---|
 | ТК-1 | ... | ... | ... | unit / integration / e2e / ручная на dev | да / нет |
 ```
-After Готово add at the top: `Сделано: <ссылки на Doc-, ADR, PR>.`
+In the same step as the close ([done](../../elements/board/columns/done.md)) add at the top: `Сделано: <ссылки на Doc-, ADR, PR>.`

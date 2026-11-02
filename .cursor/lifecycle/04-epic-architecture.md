@@ -9,4 +9,4 @@
 - Every important choice is one «Решения» row ([decisions log](../elements/wiki/decisions-log.md)). An impactful «how» that is not already authorized goes to the owner via the orchestrator.
 - Fill «Связи с другими эпиками» (depends on, parallel with, why) when known.
 
-**Exit gate:** architecture text visible, every choice logged, no empty «Выбрано» that blocks the split. Then set `статус: разбиение` ([05](05-epic-split.md)).
+**Exit gate:** architecture text visible, every choice logged, no empty «Выбрано» the split depends on ([decisions log](../elements/wiki/decisions-log.md)). Then set `статус: разбиение` ([05](05-epic-split.md)).

@@ -37,6 +37,8 @@ body:
       description: Проверяемые условия (можно чеклистом)
       value: |
         - [ ] 
+        - [ ] Регрессионный тест-кейс добавлен и пройден на dev
+        - [ ] Страница `Doc-`, названная в PR, обновлена после слияния (или «вики не затронута»)
     validations:
       required: true
   - type: textarea
@@ -46,4 +48,4 @@ body:
       description: Эпик, фича-источник, связанные issues, PR, страница вики
       placeholder: "#NN (фича-источник), Epic-…, Feature-…"
     validations:
-      required: false
+      required: true

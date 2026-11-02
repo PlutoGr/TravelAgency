@@ -11,7 +11,7 @@ Responsible: the orchestrator (reads results, merges, reacts). Workflow edits go
 | `link-closed-by.yml` «Link PR on issue close» | issue closed | sets the PR chip after close ([done](board/columns/done.md)) |
 
 - Merge = deploy: one PR at a time.
-- Red CI: no merge; red CI is an ask-before-merge case. Read only failing lines.
+- While CI is red, do not merge: steer a fix (read only failing lines). Ask the owner only to merge despite red CI, or when the failure is a breaking change, a peer conflict or outside the task. A later green run uses the normal merge gates.
 - Depth of review by risk: trivial (docs, typos, trivial config) and normal code = CI + first-line review; risky (infra, CI, Docker/nginx, auth, data and migrations, secrets handling, runtime or network dependencies) = CI + first-line review + escalated security review ([review and merge](../lifecycle/10-review-and-merge.md#4-escalation-review)).
 - First-line review is Cursor Automations ([automations](automations.md)); dependency PRs: [dependencies](dependencies.md).
 - Servers: read logs and status freely; any change, manual deploy or rollback needs the owner's yes, configs backed up first.

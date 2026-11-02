@@ -20,10 +20,9 @@ The `Epic-`/`Feature-` page (analysis section and «Решения»), the paren
 ## Boundaries
 - Add no field, screen or block the analysis omitted; do not redesign layout; do not rewrite the business part (options go to «Решения»).
 - No architecture section for a typo fix inside an open feature; no third issue type.
-- Application code only when the launch asks for a skeleton or contract, and only via a PR.
 
 ## When blocked
 Unclear or contradictory analysis, a conflict with the epic architecture or existing contracts, a choice with product impact: raise a [question](../templates/agents/question.md).
 
 ## Deliverable and report
-Ready Russian section text («Архитектура», «Разбиение», «Решения» rows, ADR draft when a lasting decision is made), returned in the [agent report](../templates/agents/agent-report.md). No wiki push.
+Ready Russian section text («Архитектура», «Разбиение», «Решения» rows; mark a row with lasting architectural impact so an ADR is written after it ships), returned in the [agent report](../templates/agents/agent-report.md). No wiki push.

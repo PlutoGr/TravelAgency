@@ -15,14 +15,14 @@ Separate public repo `TravelAgency.wiki.git`, branch `master`; push = publish. P
 No other page kinds. Sidebar groups: «Действующая документация» (Doc-), «Фичи» (Epic- and Feature-), «Планы» (Plan-).
 
 ## Who writes
-Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, ADR draft), [test designer](../../briefs/test-designer.md) (feature «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (`Doc-` and ADR after merge). Other text arrives via the issue or the PR.
+Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, «Решения» rows), [test designer](../../briefs/test-designer.md) (feature «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (`Doc-` and `Doc-ADR-NNN-<Name>` after the change ships). Other text arrives via the issue or the PR.
 
 ## Writing
 - Russian, impersonal: what the system does («Gateway отвечает 404»), not who decided. No personal names, roles, agents or AI as actors; no customer company names. Cursor Automations may be named when needed.
 - Simple example first (a request and response, a user step), then details. Public sources (for example Tourvisor) may be cited. Links to `#81`, `PR #82` are welcome.
 - No em dash: period, colon, comma or parentheses.
 - Code names (classes, fields, routes, commands) as in code. Dates `2026-10-17`. No «Обновлено» line (history shows dates).
-- File names Latin `Doc-Название-Через-Дефис.md` (Cyrillic breaks links); first line `# <русский заголовок>`; links `[текст](Имя-Файла)` without `.md`, anchors `[текст](Имя-Файла#якорь)`.
+- File names Latin, English, words joined by hyphens: `Doc-Booking-Request.md` (Cyrillic breaks links). The Russian title is only the first line `# <русский заголовок>`. Links without `.md`: `[text](Doc-Booking-Request)`, anchors `[text](Doc-Booking-Request#section)`.
 - No status line as the source of truth: the stage is the issue label. «сделано» or «отменено» are content marks.
 - Templates live in this repo ([templates/wiki](../../templates/README.md#wiki-pages)). The wiki pages `Epic-Template` and `Feature-Template` are legacy copies and must not be used as the bar; a page following an old template (status line, subtasks, epic test cases) is brought to the current template when next edited.
 

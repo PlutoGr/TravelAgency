@@ -12,12 +12,12 @@ Code review is not column На ревью. На ревью is only an owner deci
 ## 2. First line, every PR
 - Wait until CI and Cursor Automations have finished; an in-progress run is not the review ([automations](../elements/automations.md)).
 - Read every finding (PR review, Find vulnerabilities, Bugbot, CI triage if CI was red), including medium and lower.
-- Green CI ([CI/CD](../elements/ci-cd.md)). Red CI: ask the owner before merge.
+- Green CI ([CI/CD](../elements/ci-cd.md)). While CI is red, do not merge: steer a fix. Ask the owner only to merge despite red CI, or when the failure is a breaking change, a peer conflict or outside the task. A later green run uses the normal gates.
 - The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge.
 - The branch is linked or the close workflow can match the PR, and «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is open; do not call `addCloseIssueReferences`.
 
 ## 3. Findings: reply before merge
-Every open finding gets a reply on its thread ([review replies](../templates/github/review-replies.md)). «Будет исправлено» is not finished: fix, push, then reply «исправлено» with the head sha. «Нужно решение владельца» blocks merge: `статус: на ревью`, the comment names Разработка to restore. Leave each thread clearly finished and resolved when the UI allows. Do not re-do a checklist the automations already covered.
+Every open finding gets a reply on its thread ([review replies](../templates/github/review-replies.md)). «Будет исправлено» is not finished: fix, push, then reply «исправлено» with the head sha. A finding reply «нужно решение владельца» is the trigger; the owner-question [status comment](../templates/github/status-comments.md) (same phrase) with `статус: на ревью` naming Разработка to restore is the record. It blocks merge until the owner decides. Leave each thread clearly finished and resolved when the UI allows. Do not re-do a checklist the automations already covered.
 
 ## 4. Escalation review
 Run a dedicated review (in chat for a trivial diff, otherwise a cloud agent with the [reviewer brief](../briefs/reviewer.md)) when any holds:

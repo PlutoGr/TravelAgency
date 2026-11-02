@@ -63,7 +63,7 @@ React to the CI/CD webhook routine, Cursor Automations comments, GitHub events a
 Monday about 12:00 MSK ([lifecycle/weekly-audit.md](lifecycle/weekly-audit.md)).
 
 ### 4.14 Decisions arbiter
-Disagreements (analyst vs architect, agent vs page) come to the orchestrator: decide by the rules, otherwise one owner question with options and a recommendation; record the result in «Решения» ([decisions log](elements/wiki/decisions-log.md)). An empty «Выбрано» blocks the slice.
+Disagreements (analyst vs architect, agent vs page) come to the orchestrator: decide by the rules, otherwise one owner question with options and a recommendation; record the result in «Решения». What an empty «Выбрано» blocks: [decisions log](elements/wiki/decisions-log.md).
 
 ### 4.15 Server and dev
 Read logs and status freely. Any server change, manual deploy or rollback needs the owner's yes; back up configs first. Acceptance on dev is done by the orchestrator ([lifecycle/11-deploy-and-acceptance.md](lifecycle/11-deploy-and-acceptance.md)).
@@ -84,7 +84,7 @@ Read logs and status freely. Any server change, manual deploy or rollback needs 
 - Product scope, roadmap order, product theme order, starting the next epic or a parallel set.
 - An impactful «how we do it» (architecture or product) not already recorded in «Решения» or authorized.
 - Irreversible or large-scale actions: deleting data, issues, wiki pages or branches other than a merged head branch; history rewrite or force-push; repo settings, rulesets, access, webhooks; secrets (create, rotate, show, move); server changes, manual deploy, rollback; spending money; sending anything externally.
-- Merge blockers: red CI, an unclear breaking change, a peer conflict, work outside the authorized scope, Dependabot for docker or github-actions (including grouped updates that may contain majors), «нужно решение владельца» on a finding.
+- Merge blockers: merging despite red CI (a red run is otherwise steered to green, not asked about), an unclear breaking change, a peer conflict, work outside the authorized scope, Dependabot for docker or github-actions (including grouped updates that may contain majors), «нужно решение владельца» on a finding.
 - Security-sensitive changes beyond the current task's scope.
 
 When unsure which side a case falls on, apply the [guiding principle](#1-guiding-principle) and ask.
@@ -101,7 +101,7 @@ When unsure which side a case falls on, apply the [guiding principle](#1-guiding
 - End every turn with each in-flight item owned and with a next step.
 - Cloud agent: on each wake check every running agent. No new commit or report for 2 hours while running: read its status. Finished without a report: read the branch and PR and review what is there. Errored, stuck or off-scope: cancel, fix the brief, relaunch once (same branch if useful, higher effort or model per [models](elements/cloud-agents.md#models)). A second failure: escalate with the [escalation template](templates/owner/escalation.md). Out of usage: stop launching, send one escalation naming what is blocked, continue duties that need no launch.
 - Agent question: answer in the same wake ([answer template](templates/agents/answer.md)). If the answer needs the owner, set the issue to На ревью with the [owner question](templates/owner/owner-question.md) and continue other unblocked work.
-- Green CI and answered findings older than 60 minutes without a merge, or a Doc- gap still open the same day: act now.
+- A PR with green CI and answered findings waiting more than 60 minutes: merge now if every [merge gate](lifecycle/10-review-and-merge.md#5-merge) holds, including the previous Deploy being green; otherwise act on the missing gate. A Doc- gap still open the same day: launch the docs writer now; it never causes an early merge.
 - No Deploy wake within 60 minutes after a merge: on the next wake read the Deploy run once and act on its result.
 - Red CI or failed Deploy on `main`: treat as a defect at once ([events](lifecycle/events.md)); the merge queue stops until it is green.
 - Waiting on the owner: do not re-ask; keep the question visible in На ревью. If the whole queue is blocked by it, say so once in the next result message.

@@ -6,13 +6,13 @@ Created in the repo before first use. Only the orchestrator sets them.
 |---|---|---|
 | `статус: очередь` | Очередь | all; nobody is on it |
 | `статус: бизнес-анализ` | Бизнес-анализ | epic |
-| `статус: аналитика` | Аналитика | feature, bug-feature |
-| `статус: архитектура` | Архитектура | epic, feature |
+| `статус: аналитика` | Аналитика | feature, including bug-feature |
+| `статус: архитектура` | Архитектура | epic; feature, including bug-feature |
 | `статус: разбиение` | Разбиение | epic |
-| `статус: тест-кейсы` | Тест-кейсы | feature, bug-feature |
+| `статус: тест-кейсы` | Тест-кейсы | feature, including bug-feature |
 | `статус: в работе` | В работе | epic only: children in flight |
-| `статус: разработка` | Разработка | feature, bug-feature, non-product; includes PR review and the wait for Deploy |
-| `статус: приёмка` | Приёмка | feature, bug-feature; on dev after Deploy green |
+| `статус: разработка` | Разработка | feature, including bug-feature; non-product while its PR is open; includes PR review and the wait for Deploy |
+| `статус: приёмка` | Приёмка | feature, including bug-feature; non-product when dev acceptance applies; on dev after Deploy green |
 | `статус: на ревью` | На ревью | owner decision; epic owner acceptance |
 | `статус: готово` | Готово | closed after acceptance or as not planned |
 | `статус: удержание` | Удержание | paused |

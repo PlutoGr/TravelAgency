@@ -11,4 +11,6 @@
 - PR per [pull requests](../elements/git/pull-requests.md): «Задача» `#NN` only, never `closes`/`fix`/`fixes`; «Документация» names the `Doc-` page to write after merge or «вики не затронута»; no wiki edit in the PR. Commits per [commits](../elements/git/commits.md).
 - The agent marks the PR ready when CI is green and reports with the [agent report](../templates/agents/agent-report.md).
 
-**Output:** a ready PR with green CI. The column stays Разработка through review, merge and the wait for Deploy ([10](10-review-and-merge.md), [11](11-deploy-and-acceptance.md)).
+**Output:** a ready PR with green CI.
+
+**Exit gate:** PR open into `main`, CI green, agent report posted, «Документация» and «Задача» set; the label stays `статус: разработка` (the column continues through [10](10-review-and-merge.md) and [11](11-deploy-and-acceptance.md)).

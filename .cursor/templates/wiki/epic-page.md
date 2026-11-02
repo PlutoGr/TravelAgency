@@ -1,5 +1,5 @@
 # Epic page
-File `Epic-<Name>.md`; sidebar group «Фичи». Rules: [epic pages](../../elements/wiki/epic-pages.md). Fill only the section of the current column; no status line.
+File `Epic-<Name>.md`; sidebar group «Фичи». Rules: [epic pages](../../elements/wiki/epic-pages.md). Fill the current column's section plus «Решения» rows when a question is open; no status line.
 
 ```markdown
 # Эпик: <название>
@@ -38,4 +38,4 @@ File `Epic-<Name>.md`; sidebar group «Фичи». Rules: [epic pages](../../ele
 |---|---|---|---|
 | <название> | <одна строка> | [Feature-<Name>](Feature-<Name>) | #NN |
 ```
-After owner acceptance add at the top: `Сделано: <ссылки на Doc-, PR>.`
+In the same step as the close after owner acceptance ([done](../../elements/board/columns/done.md)) add at the top: `Сделано: <ссылки на Doc-, PR>.`
