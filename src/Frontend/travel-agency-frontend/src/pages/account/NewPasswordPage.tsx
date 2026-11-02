@@ -25,7 +25,10 @@ export default function NewPasswordPage() {
     let cancelled = false;
     inspectPasswordReset(token)
       .then((data) => {
-        if (!cancelled) setPhase(data.outcome === 'ready' ? 'ready' : 'invalid');
+        if (!cancelled) {
+          setError(undefined);
+          setPhase(data.outcome === 'ready' ? 'ready' : 'invalid');
+        }
       })
       .catch((err) => {
         if (!cancelled) {

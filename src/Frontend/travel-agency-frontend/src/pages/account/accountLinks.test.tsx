@@ -260,6 +260,7 @@ describe('ТК-2 новый пароль', () => {
     post.mockResolvedValueOnce({ data: { outcome: 'ready' } });
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
     expect(await screen.findByRole('button', { name: 'Задать пароль' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(post).toHaveBeenLastCalledWith('/auth/password-resets/inspect', { token: 'secret-value' });
   });
 });

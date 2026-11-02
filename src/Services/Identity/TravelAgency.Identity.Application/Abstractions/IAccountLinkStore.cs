@@ -13,7 +13,7 @@ public interface IAccountLinkStore
 {
     Task<PasswordResetToken?> FindPasswordResetAsync(string tokenHash, CancellationToken cancellationToken = default);
 
-    Task ReplacePasswordResetAsync(Guid userId, PasswordResetToken created, CancellationToken cancellationToken = default);
+    Task<bool> ReplacePasswordResetAsync(Guid userId, PasswordResetToken created, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Одно условное гашение: новый хеш, версия сессии и отзыв всех refresh в одной транзакции.
@@ -29,7 +29,7 @@ public interface IAccountLinkStore
 
     Task<EmailChangeRequest?> FindEmailChangeByCancelAsync(string tokenHash, CancellationToken cancellationToken = default);
 
-    Task ReplaceEmailChangeAsync(Guid userId, EmailChangeRequest? created, CancellationToken cancellationToken = default);
+    Task<bool> ReplaceEmailChangeAsync(Guid userId, EmailChangeRequest? created, CancellationToken cancellationToken = default);
 
     Task<EmailChangeConsumption> TryConsumeEmailConfirmationAsync(
         Guid requestId,

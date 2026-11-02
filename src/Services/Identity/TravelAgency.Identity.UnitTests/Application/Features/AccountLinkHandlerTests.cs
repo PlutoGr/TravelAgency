@@ -51,9 +51,9 @@ public class AccountLinkHandlerTests
             .ReturnsAsync(0);
         _mail.OnCall = () => _trace.Add("port");
         _store.Setup(store => store.ReplacePasswordResetAsync(It.IsAny<Guid>(), It.IsAny<PasswordResetToken>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
         _store.Setup(store => store.ReplaceEmailChangeAsync(It.IsAny<Guid>(), It.IsAny<EmailChangeRequest?>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
         _sessions.Setup(store => store.SetAsync(It.IsAny<Guid>(), It.IsAny<long>(), It.IsAny<bool>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _sessions.Setup(store => store.PublishAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -130,7 +130,7 @@ public class AccountLinkHandlerTests
         _users.Setup(repo => repo.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _store.Setup(store => store.ReplacePasswordResetAsync(user.Id, It.IsAny<PasswordResetToken>(), It.IsAny<CancellationToken>()))
             .Callback<Guid, PasswordResetToken, CancellationToken>((_, token, _) => created = token)
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
         await ResetHandler().Handle(new RequestPasswordResetCommand(user.Email), CancellationToken.None);
         created.Should().NotBeNull();
         created!.ExpiresAt.Should().Be(Now.UtcDateTime.AddHours(1));
@@ -305,7 +305,7 @@ public class AccountLinkHandlerTests
         EmailChangeRequest? created = null;
         _store.Setup(store => store.ReplaceEmailChangeAsync(user.Id, It.IsAny<EmailChangeRequest?>(), It.IsAny<CancellationToken>()))
             .Callback<Guid, EmailChangeRequest?, CancellationToken>((_, request, _) => created = request)
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
         var sent = await EmailHandler().Handle(new RequestEmailChangeCommand("other@example.com", "Password1"), CancellationToken.None);
         sent.Message.Should().Be(AccountLinkMessages.EmailChangeRequested);
         created.Should().NotBeNull();

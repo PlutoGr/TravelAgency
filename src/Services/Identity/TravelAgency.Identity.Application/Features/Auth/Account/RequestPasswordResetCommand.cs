@@ -47,11 +47,13 @@ public sealed class RequestPasswordResetCommandHandler(
                     user!.Id,
                     secret,
                     clock.GetUtcNow().UtcDateTime.Add(links.Value.PasswordResetLifetime));
-                await store.ReplacePasswordResetAsync(user.Id, created, cancellationToken);
-                logger.LogInformation(
-                    "Ссылка восстановления {UserId} {PasswordResetId}",
-                    user.Id,
-                    created.Id);
+                if (await store.ReplacePasswordResetAsync(user.Id, created, cancellationToken))
+                {
+                    logger.LogInformation(
+                        "Ссылка восстановления {UserId} {PasswordResetId}",
+                        user.Id,
+                        created.Id);
+                }
             }
         }
         else

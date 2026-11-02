@@ -85,8 +85,8 @@ public sealed class RequestEmailChangeCommandHandler(
                     confirmSecret,
                     cancelSecret,
                     clock.GetUtcNow().UtcDateTime.Add(links.Value.EmailChangeLifetime));
-                await store.ReplaceEmailChangeAsync(user.Id, created, cancellationToken);
-                logger.LogInformation("Запрошена смена адреса {UserId} {EmailChangeId}", user.Id, created.Id);
+                if (await store.ReplaceEmailChangeAsync(user.Id, created, cancellationToken))
+                    logger.LogInformation("Запрошена смена адреса {UserId} {EmailChangeId}", user.Id, created.Id);
             }
         }
 

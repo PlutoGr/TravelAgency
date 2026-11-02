@@ -10,26 +10,16 @@ public sealed class AccountLinkStore(IdentityDbContext db) : IAccountLinkStore
     public Task<PasswordResetToken?> FindPasswordResetAsync(string tokenHash, CancellationToken cancellationToken = default) =>
         db.PasswordResetTokens.FirstOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);
 
-    public async Task ReplacePasswordResetAsync(Guid userId, PasswordResetToken created, CancellationToken cancellationToken = default)
-    {
-        var now = DateTime.UtcNow;
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        await db.PasswordResetTokens
-            .Where(token => token.UserId == userId && token.ConsumedAt == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.ConsumedAt, now), cancellationToken);
-        DetachResets(userId);
-        db.PasswordResetTokens.Add(created);
-        try
+    public Task<bool> ReplacePasswordResetAsync(Guid userId, PasswordResetToken created, CancellationToken cancellationToken = default) =>
+        ReplaceOnceAsync(created, async () =>
         {
-            await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            db.Entry(created).State = EntityState.Detached;
-            await transaction.RollbackAsync(cancellationToken);
-        }
-    }
+            var now = DateTime.UtcNow;
+            await db.PasswordResetTokens
+                .Where(token => token.UserId == userId && token.ConsumedAt == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.ConsumedAt, now), cancellationToken);
+            DetachResets(userId);
+            db.PasswordResetTokens.Add(created);
+        }, cancellationToken);
 
     public async Task<bool> TryConsumePasswordResetAsync(
         Guid tokenId,
@@ -63,27 +53,42 @@ public sealed class AccountLinkStore(IdentityDbContext db) : IAccountLinkStore
     public Task<EmailChangeRequest?> FindEmailChangeByCancelAsync(string tokenHash, CancellationToken cancellationToken = default) =>
         db.EmailChangeRequests.FirstOrDefaultAsync(request => request.CancelTokenHash == tokenHash, cancellationToken);
 
-    public async Task ReplaceEmailChangeAsync(Guid userId, EmailChangeRequest? created, CancellationToken cancellationToken = default)
-    {
-        var now = DateTime.UtcNow;
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        await db.EmailChangeRequests
-            .Where(request => request.UserId == userId && request.ConsumedAt == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(request => request.ConsumedAt, now), cancellationToken);
-        DetachEmailChanges(userId);
-        if (created is not null)
-            db.EmailChangeRequests.Add(created);
-        try
+    public Task<bool> ReplaceEmailChangeAsync(Guid userId, EmailChangeRequest? created, CancellationToken cancellationToken = default) =>
+        ReplaceOnceAsync(created, async () =>
         {
-            await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
+            var now = DateTime.UtcNow;
+            await db.EmailChangeRequests
+                .Where(request => request.UserId == userId && request.ConsumedAt == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(request => request.ConsumedAt, now), cancellationToken);
+            DetachEmailChanges(userId);
             if (created is not null)
-                db.Entry(created).State = EntityState.Detached;
-            await transaction.RollbackAsync(cancellationToken);
+                db.EmailChangeRequests.Add(created);
+        }, cancellationToken);
+
+    /// <summary>
+    /// Вторая попытка гасит строку, которую успел записать параллельный запрос, и сохраняет уже отправленную ссылку.
+    /// </summary>
+    private async Task<bool> ReplaceOnceAsync(object? created, Func<Task> stage, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await stage();
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            }
+            catch (DbUpdateException)
+            {
+                if (created is not null)
+                    db.Entry(created).State = EntityState.Detached;
+                await transaction.RollbackAsync(cancellationToken);
+            }
         }
+
+        return false;
     }
 
     public async Task<EmailChangeConsumption> TryConsumeEmailConfirmationAsync(
