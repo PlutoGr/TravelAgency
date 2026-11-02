@@ -15,7 +15,7 @@ Stage advance:
 **Дальше:** <следующая работа>.
 ```
 
-Owner question (issue **stays** in the current column; pause in [memory](../../elements/memory.md)):
+Owner question (issue **stays** in the current column; `Question` in [memory](../../elements/memory.md#question)):
 ```markdown
 **Итог:** нужно решение владельца; колонка «<колонка>» без смены.
 **Подробно:** <вопрос>; варианты: <А>, <Б>; рекомендация: <вариант и почему>.

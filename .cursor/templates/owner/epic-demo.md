@@ -1,5 +1,5 @@
 # Epic demo (chat, Russian)
-Sent when every child is Готово and the epic is in Демо, or as an interim demo when the owner asks (then say «промежуточный показ» in the first line). Rules: [stage 13](../../lifecycle/13-epic-acceptance.md).
+Sent when every child is Готово and the epic is in Демо, or as an interim demo when the owner asks (then say «промежуточный показ» in the first line). Rules: [epic demo](../../lifecycle/13-epic-acceptance.md).
 
 ```markdown
 Эпик готов к приёмке: <Epic-<Name>> (#NN).

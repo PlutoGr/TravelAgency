@@ -1,9 +1,9 @@
 # Columns
-Each column = one `статус:*` label = one route stage. The orchestrator moves every item: in one step it sets the `статус:*` label, sets the board Status field to the same column name, and posts the [stage comment](../../../templates/github/status-comments.md). No workflow or script moves columns, Status, or «Приоритет» (board hygiene deleted / orchestrator-only).
+Each column = one `статус:*` label = one route stage. The orchestrator moves every item: in one step it sets the `статус:*` label (removing every other `статус:*` label), sets the board Status field to the same column name, and posts the [stage comment](../../../templates/github/status-comments.md). No workflow or script moves columns, Status, or «Приоритет» (board hygiene deleted / orchestrator-only).
 
 Epic: Очередь → Бизнес-анализ → Архитектура → Разбиение → В работе → Демо → Готово (+ Удержание).
 Feature and bug-feature: Очередь → Аналитика → Архитектура → Тест-кейсы → Разработка → Приёмка → Готово (+ Удержание). Features do not use Демо.
-Non-product issue: Очередь → Разработка → (Приёмка) → Готово ([non-product work](../../../lifecycle/non-product-work.md)). Owner questions: pause in place (same column).
+Non-product issue: Очередь → Разработка → (Приёмка) → Готово ([non-product work](../../../lifecycle/non-product-work.md)). Owner questions: pause in place (same column) with the memory `Question` ([Question](../../memory.md#question)).
 
 | Column | Label | Applies to | File |
 |---|---|---|---|

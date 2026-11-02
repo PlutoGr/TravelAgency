@@ -1,7 +1,7 @@
 # 01 Intake and discussion with the owner
 Turn an owner ask, a found defect or a roadmap item into a correctly typed, templated issue in Очередь.
 
-**Entry:** the owner writes an idea or request; or a defect is found ([events](events.md)); or the roadmap names the next goal ([02](02-roadmap.md)).
+**Entry:** the owner writes an idea or request; or a defect is found ([events](events.md)); or the roadmap names the next goal ([epic pick](02-roadmap.md)).
 
 **Who:** the orchestrator, with the owner in Russian.
 
@@ -14,7 +14,7 @@ Turn an owner ask, a found defect or a roadmap item into a correctly typed, temp
    - process docs, infra, a question → [non-product-work.md](non-product-work.md).
 3. Check duplicates and the roadmap. If the ask changes the roadmap or product scope, confirm with the owner and update [roadmap](02-roadmap.md).
 4. Create the issue from its template (`статус: очередь` only) and, for an epic or feature, the wiki page from its template ([epic page](../templates/wiki/epic-page.md), [feature page](../templates/wiki/feature-page.md)) with a sidebar entry. **Same turn:** add the Project card if it is missing and set board Status = Очередь. Project Status has no default ([board](../elements/board/README.md)).
-5. Set «Приоритет» at once ([queue priority](../elements/board/queue-priority.md)).
+5. Set «Приоритет» at once ([queue priority](../elements/board/queue-priority.md)), except a child of an epic in Удержание, which stays unnumbered.
 6. Confirm to the owner in one line with the issue link, only if the owner asked for it.
 
 **Foreign-filed issues:** anyone may file via `.github/ISSUE_TEMPLATE/`. On the next owner message or weekly audit, bring each new foreign issue to its template, exactly one `статус:*`, Status = Очередь, and «Приоритет».

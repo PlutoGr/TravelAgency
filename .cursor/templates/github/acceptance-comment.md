@@ -1,5 +1,5 @@
 # Acceptance comment
-One comment per acceptance run on dev. Rules: [stage 11](../../lifecycle/11-deploy-and-acceptance.md).
+One comment per acceptance run on dev. Rules: [Приёмка](../../lifecycle/11-deploy-and-acceptance.md).
 
 ```markdown
 **Итог:** приёмка на dev пройдена | не пройдена.

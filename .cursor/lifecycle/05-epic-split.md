@@ -1,5 +1,5 @@
 # 05 Epic split (column Разбиение)
-**Entry:** epic architecture accepted ([04](04-epic-architecture.md)).
+**Entry:** epic architecture accepted ([epic Архитектура](04-epic-architecture.md)).
 
 **Who:** one cloud agent with the [architect brief](../briefs/architect.md); the orchestrator reviews, publishes, creates the child issues and pages.
 
@@ -15,4 +15,4 @@
 2. Set contiguous low «Приоритет» on the children ([queue priority](../elements/board/queue-priority.md)).
 3. Sidebar entries for the new pages.
 
-**Exit gate:** every line has a page and an issue. In the same turn that accepts the split deliverable, take the first child (that child into Аналитика, the epic to `статус: в работе`) when nothing blocks it. Only when something blocks it, write memory `Next` = take #NN with `Waiting on` = what blocks it, which is only `owner` or `issue #NN`; the epic stays in Разбиение until that child is taken. When the block clears (owner answer, or the close of that issue by the [close procedure](../elements/board/columns/done.md)), set `Waiting on` = `none`, `Next` = take #NN, and take it in that turn. An epic row never waits on `agent`, `CI+Automations` or `Deploy`. When the first child leaves Очередь, set the epic to `статус: в работе` ([column В работе](../elements/board/columns/in-progress.md)) with memory `Waiting on` = `children` ([vocabulary](../elements/memory.md#waiting-on-values)); no script infers this from children.
+**Exit gate:** every line has a page and an issue. In the same turn that accepts the split deliverable, take the first child (that child into Аналитика, the epic to `статус: в работе`) when nothing blocks it; the epic row gets `Waiting on` = `children` ([vocabulary](../elements/memory.md#waiting-on-values)). When the first child is blocked: an owner question goes in the epic's `Question` ([Question](../elements/memory.md#question)); a blocking issue goes on the child's own row (`Waiting on` = `issue #NN`, `Next` = take the child), and the epic row waits on `children` in Разбиение. When the block clears (answer turn, or the close of that issue by the [close procedure](../elements/board/columns/done.md)), take the child in that turn. Any take of a child (including one created by an interim demo remark) moves the epic to `статус: в работе` in the same turn with `Waiting on` = `children` ([column В работе](../elements/board/columns/in-progress.md)); a blocked child stays in Очередь with its own wait. An epic row never waits on `agent`, `CI+Automations` or `Deploy`; no script infers the epic column from children.

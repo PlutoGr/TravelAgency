@@ -1,7 +1,7 @@
 # 03 Epic business analysis (column Бизнес-анализ)
 Product WHY and WHAT, enough to choose architecture and to split features. Not a screen specification; it does not unlock feature code.
 
-**Entry:** epic in Очередь taken in the agreed order ([02](02-roadmap.md)). Set `статус: бизнес-анализ` with the take comment ([status comments](../templates/github/status-comments.md)).
+**Entry:** epic in Очередь taken in the agreed order ([epic pick](02-roadmap.md)). Set `статус: бизнес-анализ` with the take comment ([status comments](../templates/github/status-comments.md)).
 
 **Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes.
 
@@ -15,4 +15,4 @@ Product WHY and WHAT, enough to choose architecture and to split features. Not a
 
 No services, API paths, storage, migrations, contracts, field catalog or screen layout.
 
-**Exit gate:** all six blocks visible, analogues named, more than one option on a continuum, the chosen story says why it is best, no field catalog and no services. Open questions sit in «Решения». A choice only the owner can make: keep `статус: бизнес-анализ`, record a pause in [memory](../elements/memory.md), ask the owner; do not advance until answered. Then set `статус: архитектура` ([04](04-epic-architecture.md)).
+**Exit gate:** all six blocks visible, analogues named, more than one option on a continuum, the chosen story says why it is best, no field catalog and no services. Open questions sit in «Решения». A choice only the owner can make: keep `статус: бизнес-анализ`, record the `Question` in [memory](../elements/memory.md#question), ask the owner; do not advance until answered. Then set `статус: архитектура` ([epic Архитектура](04-epic-architecture.md)).

@@ -3,7 +3,7 @@
 A technical writer who documents only what the code in `main` actually does. Simple example first, then details; every claim traceable to code; plain impersonal Russian.
 
 ## Used for
-`Doc-` and ADR text after merge ([stage 12](../lifecycle/12-docs-after-merge.md)), and fixing gaps reported by `TA: Doc- after merge`.
+`Doc-` and ADR text after merge ([Doc- after merge](../lifecycle/12-docs-after-merge.md)), and fixing gaps reported by `TA: Doc- after merge`.
 
 ## Read first
 The merged PR and its diff, the named `Doc-` page, [Doc- pages](../elements/wiki/doc-pages.md), [doc page](../templates/wiki/doc-page.md) and [ADR](../templates/wiki/adr-page.md) templates, [wiki writing rules](../elements/wiki/README.md#writing).

@@ -3,11 +3,11 @@
 
 | Section | Filled in column | Bar |
 |---|---|---|
-| «Связи с другими эпиками» | Бизнес-анализ or Архитектура | [stage 04](../../lifecycle/04-epic-architecture.md) |
-| «Бизнес и сценарии» | Бизнес-анализ | [stage 03](../../lifecycle/03-epic-business-analysis.md) |
-| «Архитектура» | Архитектура | [stage 04](../../lifecycle/04-epic-architecture.md) |
+| «Связи с другими эпиками» | Бизнес-анализ or Архитектура | [epic Архитектура](../../lifecycle/04-epic-architecture.md) |
+| «Бизнес и сценарии» | Бизнес-анализ | [Бизнес-анализ](../../lifecycle/03-epic-business-analysis.md) |
+| «Архитектура» | Архитектура | [epic Архитектура](../../lifecycle/04-epic-architecture.md) |
 | «Решения» | whenever a question is open | [decisions log](decisions-log.md) |
-| «Разбиение» | Разбиение | [stage 05](../../lifecycle/05-epic-split.md) |
+| «Разбиение» | Разбиение | [Разбиение](../../lifecycle/05-epic-split.md) |
 
 - Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, pause in place (same column) and record it in [memory](../memory.md). No status line. No «Тест-кейсы» section.
 - Not a screen specification; does not unlock feature code. No child analysis pages: the child is a Feature.
