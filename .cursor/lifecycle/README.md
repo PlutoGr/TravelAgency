@@ -7,7 +7,7 @@ Owner idea / roadmap
   → 01 Intake and discussion → 02 Roadmap upkeep
   → Epic:    Очередь → Бизнес-анализ (03) → Архитектура (04) → Разбиение (05) → В работе → Демо (13) → Готово
                                                               ↓ one Feature per split line
-  → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → Doc- text (12) → Готово
+  → Feature: Очередь → Аналитика (06) → Архитектура (07) → Тест-кейсы (08) → Разработка (09, 10) → Приёмка (11) → `Doc-` (12) → Готово
   → Epic done → STOP: owner demo in Демо (13) → next epic pick (02)
 ```
 Interrupts: Удержание (long work-stream pause). Owner questions: pause in place (same column) + [memory](../elements/memory.md). Демо = epic owner demo only ([13](13-epic-acceptance.md)); features never use Демо. Per-transition deliverable review stays an FSM rule (not a column). Bugs and backlog: [bugs.md](bugs.md). Process, infra and question issues: [non-product-work.md](non-product-work.md). Continuous duties: [events.md](events.md), [weekly-audit.md](weekly-audit.md), [memory](../elements/memory.md).
@@ -28,7 +28,7 @@ File numbers only order the files and may appear in link text. Prose names a sta
 | 09 | Development | Разработка (feature) | [developer](../briefs/developer.md) or [devops](../briefs/devops.md) | [09-development.md](09-development.md) |
 | 10 | Review and merge | Разработка (feature) | automations, orchestrator; [reviewer](../briefs/reviewer.md) on escalation | [10-review-and-merge.md](10-review-and-merge.md) |
 | 11 | Deploy and acceptance on dev | Разработка → Приёмка (feature) | orchestrator (dev access) | [11-deploy-and-acceptance.md](11-deploy-and-acceptance.md) |
-| 12 | `Doc-` after merge | Приёмка, before Готово | [docs writer](../briefs/docs-writer.md), orchestrator publishes | [12-docs-after-merge.md](12-docs-after-merge.md) |
+| 12 | `Doc-` after merge (only when the PR named a page) | Разработка after merge or Приёмка, before Готово | [docs writer](../briefs/docs-writer.md), orchestrator publishes | [12-docs-after-merge.md](12-docs-after-merge.md) |
 | 13 | Epic completion and owner demo | В работе → Демо → Готово (epic) | orchestrator, owner accepts | [13-epic-acceptance.md](13-epic-acceptance.md) |
 
 ## Gates

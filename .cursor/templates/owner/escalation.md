@@ -1,5 +1,5 @@
 # Escalation (chat, Russian)
-When work is blocked and the rules give no way forward: an agent failed twice, usage ran out, a server or CI failure needs an owner action, a security incident. Rules: [orchestrator §7](../../orchestrator.md#8-never-stall).
+When work is blocked and the rules give no way forward: an agent failed twice, usage ran out, a server or CI failure needs an owner action, a security incident. Rules: [orchestrator §8](../../orchestrator.md#8-never-stall).
 
 ```markdown
 Блокер: <что стоит> (<ссылки>).

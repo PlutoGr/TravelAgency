@@ -16,9 +16,10 @@ One table (or short lists) with:
 | Waiting on | always | `agent` \| `CI+Automations` \| `Deploy` \| `owner` \| `none` |
 | Next | always | the next concrete step (never empty) |
 | Pause / why | when paused | why paused and what resumes it (owner answer, resume word) |
-| Notes | optional | one line |
 
-Map an “orchestrator review” wait to `Waiting on` = `none` and `Next` = full review (do not invent a sixth enum value).
+Map an “orchestrator review” wait to `Waiting on` = `none` and `Next` = full review (do not invent a sixth enum value). Use that shape only when the review can start now: a Dependabot PR whose Automations are still running stays `Waiting on` = `CI+Automations` ([dependencies](dependencies.md)).
+
+Dependabot row `Issue` = `-`, `Stage` = `Dependabot`, `PR` = number, `Sha` = head sha, `Waiting on` = `CI+Automations` with `Next` = check Automations, then full review; after the switch `none` with `Next` = full review; after merge `Deploy` with the merge sha.
 
 Also allowed as short bullets under the table: active agents list, open owner questions (issue + question text), paused epics.
 

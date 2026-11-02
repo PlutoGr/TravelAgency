@@ -15,4 +15,4 @@
 2. Set contiguous low «Приоритет» on the children ([queue priority](../elements/board/queue-priority.md)).
 3. Sidebar entries for the new pages.
 
-**Exit gate:** every line has a page and an issue. In the same turn that accepts the split deliverable, either take the first child (set that child into Аналитика and the epic to `статус: в работе`) or write memory `Next` = take #NN with `Waiting on` = `none`. When the first child leaves Очередь, set the epic to `статус: в работе` ([column В работе](../elements/board/columns/in-progress.md)); no script infers this from children.
+**Exit gate:** every line has a page and an issue. In the same turn that accepts the split deliverable, take the first child (that child into Аналитика, the epic to `статус: в работе`) when nothing blocks it. Only when something blocks it, write memory `Next` = take #NN with `Waiting on` = what blocks it (`owner`, `agent`, `CI+Automations` or `Deploy`). When the first child leaves Очередь, set the epic to `статус: в работе` ([column В работе](../elements/board/columns/in-progress.md)); no script infers this from children.

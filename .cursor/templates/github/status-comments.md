@@ -1,5 +1,5 @@
 # Status comments
-Posted by the orchestrator on every transition, then the label is set. This is the recorded gate verification. Rules: [columns](../../elements/board/columns/README.md).
+Posted by the orchestrator on every transition. In the same turn: the comment text first, then label and board Status; for Готово the issue close is last. This is the recorded gate verification. Rules: [columns](../../elements/board/columns/README.md).
 
 Take from Очередь:
 ```markdown

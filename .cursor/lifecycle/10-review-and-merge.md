@@ -8,8 +8,10 @@ Code review is not a board column and is not Демо. Демо is only the epic
 ## 1. Cloud agent until ready
 - Watch CI and Automations on the PR; fix red CI that belongs to this PR (flake: one rerun; in-feature failure: fix; expired fixture / upstream digest: fix in this PR if it blocks this work, else raise a question).
 - Reply on every finding thread ([review replies](../templates/github/review-replies.md)). «Будет исправлено» is not finished: fix, push, then «исправлено» with the head sha.
-- A finding that needs the owner: raise a [question](../templates/agents/question.md); the orchestrator pauses the issue in place (same column) via [memory](../elements/memory.md) until answered: do not advance and do not ask the agent to keep coding past the blocker.
-- When all checks are green and findings are finished: post the agent report that the PR is ready. In memory set `Waiting on` = `none` and `Next` = full review.
+- A finding that needs the owner: raise a [question](../templates/agents/question.md) and end the run with `RESULT blocked`; the orchestrator pauses the issue in place (same column) via [memory](../elements/memory.md) until answered: do not advance and do not ask the agent to keep coding past the blocker.
+- When all checks are green and findings are finished: post the agent report that the PR is ready and finish the run.
+
+On that finish wake the orchestrator writes memory `Waiting on` = `none`, `Next` = full review, and starts the full review in the same wake.
 
 ## 2. Full orchestrator review
 - Strip Cursor PR-body markers (`CURSOR_AGENT_PR_BODY`, artifact links) and the «Open in Cursor» footer (`gh pr edit --body-file`).
@@ -34,9 +36,9 @@ Otherwise Automations plus the agent's ready state plus the orchestrator's full 
 - Authorized in-scope work merges without a separate yes; ask first only for the cases in [orchestrator §6](../orchestrator.md#6-powers-act-and-report-vs-ask-first).
 - One PR at a time: the next merge waits until the previous «Deploy to dev» is green.
 - Do not squash-merge while a run is in progress, a finding has no reply, or a reply only promises a fix.
-- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = Deploy with the merge sha in [memory](../elements/memory.md); continue at [11](11-deploy-and-acceptance.md). Read `TA: Doc- after merge` ([12](12-docs-after-merge.md)).
+- After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = Deploy with the merge sha in [memory](../elements/memory.md). On green Deploy: a feature, a bug-feature, or a non-product issue whose criteria need a dev check continues at [11](11-deploy-and-acceptance.md); any other non-product issue keeps its column and closes from Разработка ([non-product work](non-product-work.md)). Read `TA: Doc- after merge`; when a `Doc-` page was named, its draft may start now ([12](12-docs-after-merge.md)).
 
-**Exit gate:** merged with every gate recorded; the issue stays Разработка (or Приёмка for a fix during acceptance) until Deploy to dev is green.
+**Exit gate:** merged with every gate recorded; the issue stays Разработка (or Приёмка for a fix during acceptance) until Deploy to dev is green; then Приёмка ([11](11-deploy-and-acceptance.md)) only for items that need a dev check.
 
 ## Safety-net wakes
 A CI/Deploy/Secret-scan wake while an agent owns the PR is expected → sleep after never-stall checks and confirming memory. A wake with no owner, a second branch, or Dependabot → act per [events](events.md).

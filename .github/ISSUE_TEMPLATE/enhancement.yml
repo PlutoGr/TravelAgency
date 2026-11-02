@@ -43,4 +43,4 @@ body:
       label: Связи
       description: Эпик, issues, PR, вики
     validations:
-      required: false
+      required: true
