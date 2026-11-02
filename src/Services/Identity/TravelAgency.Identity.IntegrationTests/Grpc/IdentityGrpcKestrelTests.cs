@@ -80,4 +80,46 @@ public sealed class IdentityGrpcKestrelTests : IClassFixture<IdentityGrpcKestrel
         status.Should().NotBe("16");
         status.Should().Be("3");
     }
+
+    [Fact]
+    public async Task GetUserPhone_MatchesStoredPhone_AndLeavesSummaryWithoutPhone()
+    {
+        using var channel = GrpcChannel.ForAddress(_fixture.GrpcAddress);
+        var client = new IdentityGrpc.IdentityGrpcClient(channel);
+        var headers = new Metadata { { "x-internal-auth", IdentityGrpcKestrelFixture.ServiceToken } };
+
+        var stored = await client.GetUserPhoneAsync(
+            new GetUserPhoneRequest { UserId = Guid.NewGuid().ToString() },
+            headers);
+        stored.Phone.Should().Be("+79991234567");
+        stored.UserId.Should().NotBeNullOrWhiteSpace();
+
+        var empty = await client.GetUserPhoneAsync(
+            new GetUserPhoneRequest { UserId = IdentityGrpcKestrelFixture.EmptyPhoneId.ToString() },
+            headers);
+        empty.Phone.Should().BeEmpty();
+
+        var missing = client.GetUserPhoneAsync(
+            new GetUserPhoneRequest { UserId = IdentityGrpcKestrelFixture.MissingId.ToString() },
+            headers);
+        var notFound = await Assert.ThrowsAsync<RpcException>(async () => await missing.ResponseAsync);
+        notFound.StatusCode.Should().Be(StatusCode.NotFound);
+
+        var anonymous = client.GetUserPhoneAsync(new GetUserPhoneRequest { UserId = Guid.NewGuid().ToString() });
+        var denied = await Assert.ThrowsAsync<RpcException>(async () => await anonymous.ResponseAsync);
+        denied.StatusCode.Should().Be(StatusCode.Unauthenticated);
+
+        var summary = await client.GetUserSummaryAsync(
+            new GetUserSummaryRequest { UserId = Guid.NewGuid().ToString() },
+            headers);
+        summary.Email.Should().Be("grpc-live@test.com");
+        summary.DisplayName.Should().Be("Live Probe");
+        summary.ToString().Should().NotContain("+79991234567");
+        summary.ToString().Should().NotContain("phone");
+
+        var (status, version) = await GrpcPortProbe.PostAsync(
+            $"{_fixture.GrpcAddress}/identity.IdentityGrpc/GetUserPhone");
+        version.Should().Be(HttpVersion.Version20);
+        status.Should().Be("16");
+    }
 }

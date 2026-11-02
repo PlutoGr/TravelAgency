@@ -15,6 +15,10 @@ public sealed class IdentityGrpcKestrelFixture : IAsyncLifetime
 {
     public const string ServiceToken = "test-internal-token";
 
+    public static readonly Guid EmptyPhoneId = Guid.Parse("00000000-0000-0000-0000-0000000000e1");
+
+    public static readonly Guid MissingId = Guid.Parse("00000000-0000-0000-0000-000000000404");
+
     private readonly KestrelLoopbackListeners _listeners = new();
 
     private WebApplication? _app;
@@ -79,8 +83,14 @@ public sealed class IdentityGrpcKestrelFixture : IAsyncLifetime
 
     private sealed class FixedGrpcUserRepository : IUserRepository
     {
-        public Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-            Task.FromResult<User?>(User.Create("grpc-live@test.com", "hash", "Live", "Probe", null));
+        public Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        {
+            if (id == MissingId)
+                return Task.FromResult<User?>(null);
+
+            var phone = id == EmptyPhoneId ? null : "+79991234567";
+            return Task.FromResult<User?>(User.Create("grpc-live@test.com", "hash", "Live", "Probe", phone));
+        }
 
         public Task<User?> GetByEmailAsync(string email, CancellationToken ct = default) =>
             Task.FromResult<User?>(null);

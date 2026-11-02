@@ -1,5 +1,6 @@
 using Grpc.Core;
 using TravelAgency.Contracts.Grpc.Identity;
+using TravelAgency.Identity.Application.DTOs;
 using TravelAgency.Identity.Application.Features.Profile;
 using TravelAgency.Identity.Domain.Entities;
 using TravelAgency.Identity.Domain.Enums;
@@ -47,6 +48,53 @@ public class IdentityGrpcServiceTests
         response.ToString().Should().NotContain("+79995550001");
         response.ToString().Should().NotContain("city");
         response.ToString().Should().NotContain("about");
+        response.ToString().Should().NotContain("phone");
+    }
+
+    [Fact]
+    public async Task GetUserPhone_ReturnsStoredPhone_EmptyStringWhenMissing_NotFoundWhenUnknown()
+    {
+        var withPhone = User.Create(
+            "anna@example.com", "hash", "Анна", "Соколова", "+79991234567", UserRole.Client);
+        var withoutPhone = User.Create(
+            "empty@example.com", "hash", "Анна", "Соколова", null, UserRole.Client);
+        var repository = new Mock<IUserRepository>();
+        repository
+            .Setup(repo => repo.GetByIdAsync(withPhone.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(withPhone);
+        repository
+            .Setup(repo => repo.GetByIdAsync(withoutPhone.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(withoutPhone);
+        repository
+            .Setup(repo => repo.GetByIdAsync(It.Is<Guid>(id => id != withPhone.Id && id != withoutPhone.Id), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var service = new IdentityGrpcService(repository.Object);
+
+        var stored = await service.GetUserPhone(
+            new GetUserPhoneRequest { UserId = withPhone.Id.ToString() },
+            new TestServerCallContext());
+        stored.UserId.Should().Be(withPhone.Id.ToString());
+        stored.Phone.Should().Be("+79991234567");
+
+        var empty = await service.GetUserPhone(
+            new GetUserPhoneRequest { UserId = withoutPhone.Id.ToString() },
+            new TestServerCallContext());
+        empty.Phone.Should().BeEmpty();
+
+        var missing = async () => await service.GetUserPhone(
+            new GetUserPhoneRequest { UserId = Guid.NewGuid().ToString() },
+            new TestServerCallContext());
+        var notFound = await missing.Should().ThrowAsync<RpcException>();
+        notFound.Which.StatusCode.Should().Be(StatusCode.NotFound);
+
+        UserSummaryResponse.Descriptor.Fields.InDeclarationOrder()
+            .Select(field => field.JsonName)
+            .Should().NotContain("phone");
+        typeof(ManagerPublicCardDto).GetProperties().Select(property => property.Name)
+            .Should().BeEquivalentTo("Id", "DisplayName", "AvatarUrl");
+        typeof(ManagerPublicCardDto).GetProperty("Phone").Should().BeNull();
+        typeof(ManagerPublicCardDto).GetProperty("Email").Should().BeNull();
     }
 
     private sealed class TestServerCallContext : ServerCallContext

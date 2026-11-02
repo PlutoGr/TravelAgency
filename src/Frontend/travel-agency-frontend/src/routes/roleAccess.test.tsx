@@ -48,6 +48,10 @@ vi.mock('@/pages/ManagerClientsPage', () => ({
   default: () => createElement('h1', null, 'Клиенты менеджера'),
 }));
 
+vi.mock('@/pages/ManagerClientCardPage', () => ({
+  default: () => createElement('h1', null, 'Карточка клиента'),
+}));
+
 vi.mock('@/api/adminUsers', () => ({
   getAdminUsers: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }),
   getAdminUser: vi.fn(),
@@ -84,6 +88,7 @@ const MANAGER_PAGE_TITLES: Record<string, string> = {
   '/manager/tours/new': 'Мастер тура',
   '/manager/tours/tour-1': 'Мастер тура',
   '/manager/clients': 'Клиенты менеджера',
+  '/manager/clients/11111111-1111-1111-1111-111111111111': 'Карточка клиента',
 };
 
 function person(role: User['role']): User {
@@ -191,6 +196,27 @@ describe('role access', () => {
     render(<Guard url="/admin" allowed="admin" title="Раздел админа" />);
     expect(screen.getByRole('heading', { name: 'Главная страница' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Раздел админа' })).not.toBeInTheDocument();
+  });
+
+  it('guest and client do not open the client card', async () => {
+    const cardUrl = '/manager/clients/11111111-1111-1111-1111-111111111111';
+
+    signIn(null);
+    const guestView = renderAt(cardUrl);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Главная страница' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('heading', { name: 'Карточка клиента' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('location').textContent).toContain('auth=login');
+    guestView.unmount();
+
+    signIn('client');
+    renderAt(cardUrl);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Главная страница' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('heading', { name: 'Карточка клиента' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('/');
   });
 
   it('client cannot open a manager route or the admin section', async () => {

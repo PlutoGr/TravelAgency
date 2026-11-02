@@ -43,6 +43,7 @@ const ManagerBookingDetailPage = lazy(() => import('@/pages/ManagerBookingDetail
 const ManagerToursPage = lazy(() => import('@/pages/ManagerToursPage'));
 const TourWizardPage = lazy(() => import('@/pages/TourWizardPage'));
 const ManagerClientsPage = lazy(() => import('@/pages/ManagerClientsPage'));
+const ManagerClientCardPage = lazy(() => import('@/pages/ManagerClientCardPage'));
 
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
@@ -61,6 +62,8 @@ function managerRouteElement(path: string): ReactElement | null {
       return <ManagerToursPage />;
     case 'manager/clients':
       return <ManagerClientsPage />;
+    case 'manager/clients/:id':
+      return <ManagerClientCardPage />;
     default:
       return null;
   }

@@ -139,19 +139,24 @@ function withUnavailableTours(bookings: Booking[]): Booking[] {
   }));
 }
 
+/** Тот же разбор каталога, что у списка заявок: отказ каталога не прячет уже загруженные строки. */
+export async function catalogToursById(ids: string[]): Promise<Map<string, Tour>> {
+  const unique = ids.filter(Boolean);
+  if (unique.length === 0) return new Map();
+
+  try {
+    const cards = await getTourCards(unique);
+    return new Map(cards.map((tour) => [tour.id, tour]));
+  } catch {
+    return new Map();
+  }
+}
+
 async function withCatalogTours(bookings: Booking[]): Promise<Booking[]> {
   const ids = bookings.map((booking) => booking.tourId).filter(Boolean);
   if (ids.length === 0) return withUnavailableTours(bookings);
 
-  // Каталог вторичен: его отказ не должен прятать уже загруженные брони.
-  let cards: Tour[] = [];
-  try {
-    cards = await getTourCards(ids);
-  } catch {
-    return withUnavailableTours(bookings);
-  }
-
-  const byId = new Map(cards.map((tour) => [tour.id, tour]));
+  const byId = await catalogToursById(ids);
   return bookings.map((booking) => ({
     ...booking,
     tour: byId.get(booking.tourId) ?? unavailableTour(booking.tourId || 'unknown'),
