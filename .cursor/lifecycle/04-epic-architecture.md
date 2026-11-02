@@ -9,4 +9,4 @@
 - Every important choice is one «Решения» row ([decisions log](../elements/wiki/decisions-log.md)). An impactful «how» that is not already authorized goes to the owner via the orchestrator.
 - Fill «Связи с другими эпиками» (depends on, parallel with, why) when known.
 
-**Exit gate:** architecture text visible, every choice logged, no empty «Выбрано» the split depends on ([decisions log](../elements/wiki/decisions-log.md)). Then set `статус: разбиение` ([Разбиение](05-epic-split.md)).
+**Exit gate:** architecture text visible, every choice logged, no empty «Выбрано» the split depends on ([decisions log](../elements/wiki/decisions-log.md)). When that bar holds and no owner `Question` is still open, publish the section (or leave it ready) and ask for [owner stage approval](../orchestrator.md#owner-stage-approval): `Question` = `approve epic architecture #NN`. On yes, clear that `Question` and set `статус: разбиение` ([Разбиение](05-epic-split.md)). On no or edits, stay on `статус: архитектура`, keep that `Question`, rework, and ask again.

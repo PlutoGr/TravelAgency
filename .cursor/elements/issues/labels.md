@@ -17,7 +17,7 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 | `статус: готово` | Готово | closed after acceptance or as not planned |
 | `статус: удержание` | Удержание | paused |
 
-Column rules: [columns](../board/columns/README.md). Create the label `статус: демо` in the repo before first use; the board Status option «Демо» is a project setting and waits for the owner's yes ([orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first)); until it exists, an epic whose last child closed stays in В работе ([epic demo](../../lifecycle/13-epic-acceptance.md)); retire obsolete `статус: на ревью` once no open card uses it.
+Column rules: [columns](../board/columns/README.md). Set only a label whose «Applies to» includes the issue. An epic never gets `статус: аналитика`, `статус: тест-кейсы`, `статус: разработка` or `статус: приёмка`. A feature or bug-feature never gets `статус: бизнес-анализ`, `статус: разбиение`, `статус: в работе` or `статус: демо`. Create the label `статус: демо` in the repo before first use; the board Status option «Демо» is a project setting and waits for the owner's yes ([orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first)); until it exists, an epic whose last child closed stays in В работе ([epic demo](../../lifecycle/13-epic-acceptance.md)); retire obsolete `статус: на ревью` once no open card uses it.
 
 ## Type labels (one on create)
 | Label | Use |
