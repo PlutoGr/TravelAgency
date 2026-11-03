@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import { Button, Modal } from '@/components/ui';
 import {
   circleScreenPx,
@@ -61,6 +61,8 @@ export default function AvatarCropDialog({
   onSave,
 }: AvatarCropDialogProps) {
   const previewRef = useRef<HTMLDivElement>(null);
+  const unbindWheel = useRef<(() => void) | null>(null);
+  const imageRef = useRef(image);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ x: number; y: number; circle: Circle } | null>(null);
   const lock = useRef(false);
@@ -76,9 +78,43 @@ export default function AvatarCropDialog({
   const lockedRef = useRef(locked);
 
   useLayoutEffect(() => {
+    imageRef.current = image;
     circleRef.current = circle;
     lockedRef.current = locked;
-  }, [circle, locked]);
+  }, [circle, image, locked]);
+
+  const setPreviewNode = useCallback((node: HTMLDivElement | null) => {
+    unbindWheel.current?.();
+    unbindWheel.current = null;
+    previewRef.current = node;
+    if (!node) return;
+    const onWheel = (event: WheelEvent) => {
+      const current = imageRef.current;
+      const widthPx = node.clientWidth;
+      const rect = node.getBoundingClientRect();
+      if (!pointerOverCropCircle(event.clientX - rect.left, event.clientY - rect.top, widthPx)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (lockedRef.current) return;
+      const frame = circleRef.current;
+      const stepped = stepWheelDiameter(
+        frame,
+        wheelAcc.current,
+        event.deltaY,
+        event.deltaMode,
+        current.width,
+        current.height,
+      );
+      wheelAcc.current = stepped.accumulator;
+      if (drag.current) {
+        drag.current = { x: event.clientX, y: event.clientY, circle: stepped.circle };
+      }
+      circleRef.current = stepped.circle;
+      setCircle(stepped.circle);
+    };
+    node.addEventListener('wheel', onWheel, { passive: false });
+    unbindWheel.current = () => node.removeEventListener('wheel', onWheel);
+  }, []);
   const maxD = Math.min(image.width, image.height);
   const minD = lowerDiameter(image.width, image.height);
   const span = maxD - minD;
@@ -120,36 +156,6 @@ export default function AvatarCropDialog({
     const close = dialog?.querySelector('button[aria-label="Закрыть"]');
     if (close instanceof HTMLButtonElement) close.disabled = locked;
   }, [locked]);
-
-  useEffect(() => {
-    const node = previewRef.current;
-    if (!node) return;
-    const onWheel = (event: WheelEvent) => {
-      const widthPx = node.clientWidth;
-      const rect = node.getBoundingClientRect();
-      if (!pointerOverCropCircle(event.clientX - rect.left, event.clientY - rect.top, widthPx)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (lockedRef.current) return;
-      const current = circleRef.current;
-      const stepped = stepWheelDiameter(
-        current,
-        wheelAcc.current,
-        event.deltaY,
-        event.deltaMode,
-        image.width,
-        image.height,
-      );
-      wheelAcc.current = stepped.accumulator;
-      if (drag.current) {
-        drag.current = { x: event.clientX, y: event.clientY, circle: stepped.circle };
-      }
-      circleRef.current = stepped.circle;
-      setCircle(stepped.circle);
-    };
-    node.addEventListener('wheel', onWheel, { passive: false });
-    return () => node.removeEventListener('wheel', onWheel);
-  }, [image.height, image.width]);
 
   useEffect(() => {
     const dialog = cropDialog();
@@ -251,7 +257,7 @@ export default function AvatarCropDialog({
       onClose={locked ? () => {} : onCancel}
     >
       <div
-        ref={previewRef}
+        ref={setPreviewNode}
         data-testid="avatar-crop-preview"
         className={`relative aspect-square w-full touch-none overflow-hidden bg-sand ${grabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
         onPointerDown={onPointerDown}
