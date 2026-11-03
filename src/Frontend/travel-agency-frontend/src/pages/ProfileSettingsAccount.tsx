@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Button, Input } from '@/components/ui';
 import { changePassword, requestEmailChange } from '@/api/account';
 import { ACCOUNT_TEXT, accountFailureText, isEmailShape } from '@/domain/accountLinks';
 import { PASSWORD_HINT } from '@/domain/profileForm';
+
+type AccountFormProps = {
+  onSucceeded: (message: string) => void;
+  onBusy: (busy: boolean) => void;
+};
 
 function passwordProblem(password: string): string | undefined {
   if (password.length < 8 || password.length > 128) return ACCOUNT_TEXT.passwordRule;
@@ -12,18 +18,18 @@ function passwordProblem(password: string): string | undefined {
   return undefined;
 }
 
-export function ProfilePasswordBlock() {
+export function ProfilePasswordForm({ onSucceeded, onBusy }: AccountFormProps) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | undefined>();
-  const [notice, setNotice] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busyRef.current) return;
     setError(undefined);
-    setNotice(undefined);
     if (!current || !next || !confirm) {
       setError(ACCOUNT_TEXT.fillAll);
       return;
@@ -38,24 +44,25 @@ export function ProfilePasswordBlock() {
       return;
     }
 
+    busyRef.current = true;
     setBusy(true);
+    onBusy(true);
+    let succeeded = false;
     try {
       await changePassword(current, next, confirm);
-      setCurrent('');
-      setNext('');
-      setConfirm('');
-      setNotice(ACCOUNT_TEXT.passwordChanged);
+      succeeded = true;
+      onSucceeded(ACCOUNT_TEXT.passwordChanged);
     } catch (err) {
-      setNotice(undefined);
       setError(accountFailureText(err));
     } finally {
-      setBusy(false);
+      busyRef.current = false;
+      onBusy(false);
+      if (!succeeded) setBusy(false);
     }
   }
 
   return (
-    <form role="region" className="space-y-4" aria-label="Пароль" onSubmit={submit}>
-      <h2 className="font-heading text-lg font-semibold text-dark">Пароль</h2>
+    <form className="space-y-4" onSubmit={submit}>
       <Input
         id="settings-current-password"
         label="Текущий пароль"
@@ -89,7 +96,6 @@ export function ProfilePasswordBlock() {
       <Button type="submit" isLoading={busy}>
         Сменить пароль
       </Button>
-      {notice && <p className="text-sm text-dark">{notice}</p>}
       {error && (
         <p role="alert" className="text-sm text-red-500">
           {error}
@@ -99,39 +105,46 @@ export function ProfilePasswordBlock() {
   );
 }
 
-export function ProfileEmailBlock({ currentEmail }: { currentEmail: string }) {
+export function ProfileEmailForm({
+  currentEmail,
+  onSucceeded,
+  onBusy,
+}: AccountFormProps & { currentEmail: string }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | undefined>();
-  const [notice, setNotice] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busyRef.current) return;
     setError(undefined);
-    setNotice(undefined);
     if (!isEmailShape(email)) {
       setError(ACCOUNT_TEXT.emailInvalid);
       return;
     }
 
+    busyRef.current = true;
     setBusy(true);
+    onBusy(true);
+    let succeeded = false;
     try {
       const data = await requestEmailChange(email, password);
-      setEmail('');
-      setPassword('');
-      setNotice(data.message || ACCOUNT_TEXT.emailSent);
+      succeeded = true;
+      onSucceeded(data.message || ACCOUNT_TEXT.emailSent);
     } catch (err) {
       setError(accountFailureText(err));
     } finally {
-      setBusy(false);
+      busyRef.current = false;
+      onBusy(false);
+      if (!succeeded) setBusy(false);
     }
   }
 
   return (
-    <form role="region" className="space-y-4" aria-label="Email" onSubmit={submit}>
-      <h2 className="font-heading text-lg font-semibold text-dark">Email</h2>
-      <Input id="settings-current-email" label="Текущий email" value={currentEmail} disabled />
+    <form className="space-y-4" onSubmit={submit}>
+      <p className="text-sm text-dark">{currentEmail}</p>
       <Input
         id="settings-new-email"
         label="Новый email"
@@ -151,7 +164,6 @@ export function ProfileEmailBlock({ currentEmail }: { currentEmail: string }) {
       <Button type="submit" isLoading={busy}>
         Сменить email
       </Button>
-      {notice && <p className="text-sm text-dark">{notice}</p>}
       {error && (
         <p role="alert" className="text-sm text-red-500">
           {error}

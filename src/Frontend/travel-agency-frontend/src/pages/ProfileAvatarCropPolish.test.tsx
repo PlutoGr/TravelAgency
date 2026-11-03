@@ -552,7 +552,6 @@ describe('Avatar crop polish', () => {
 
     try {
       renderShell();
-      fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Мария' } });
       fireEvent.click(screen.getByRole('button', { name: 'Изменить положение фото' }));
       const node = await screen.findByRole('dialog', { name: 'Обрезка фото' });
       fireEvent.change(sliderOf(node), { target: { value: '128' } });
@@ -563,7 +562,8 @@ describe('Avatar crop polish', () => {
       expect(deleteAvatar).not.toHaveBeenCalled();
       expect(updateProfile).not.toHaveBeenCalled();
       expect(getMe).not.toHaveBeenCalled();
-      expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+      expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Анна Смирнова').length).toBeGreaterThan(0);
       expect(useAuthStore.getState().user?.avatar).toBe(NEXT);
       for (const image of screen.getAllByRole('img', { name: 'Анна Смирнова' })) {
         expect(image).toHaveAttribute('src', NEXT);
@@ -574,7 +574,7 @@ describe('Avatar crop polish', () => {
       expect(urls).toEqual([MEDIA, NEXT]);
       expect(sliderOf(again)).toHaveValue('0');
       expect(sliderOf(again)).toHaveAttribute('max', '192');
-      expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+      expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument();
     } finally {
       apiClient.defaults.adapter = original;
     }
@@ -593,7 +593,6 @@ describe('Avatar crop polish', () => {
     const deleteAvatar = vi.spyOn(authApi, 'deleteAvatar');
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
     renderProfile();
-    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Мария' } });
 
     const closers = [
       () => fireEvent.click(screen.getByRole('button', { name: 'Отмена' })),
@@ -617,7 +616,8 @@ describe('Avatar crop polish', () => {
       expect(deleteAvatar).not.toHaveBeenCalled();
       expect(updateProfile).not.toHaveBeenCalled();
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
-      expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+      expect(screen.getByText('Анна Смирнова')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument();
     }
     expect(fetchMock).toHaveBeenCalledTimes(closers.length);
   });
@@ -720,8 +720,9 @@ describe('Avatar crop polish', () => {
       isLoading: false,
     });
     const view = renderProfile('/dashboard/profile?tab=settings');
-    expect(screen.queryByRole('button', { name: 'Изменить положение фото' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Изменить положение фото' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Обрезка фото' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     view.unmount();
 
     const manager = renderPage(

@@ -1,6 +1,5 @@
 import { useLocation } from 'react-router-dom';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { User as UserIcon } from 'lucide-react';
@@ -11,7 +10,7 @@ import { apiClient, setAuthSessionHandler } from '@/api/client';
 import { clearSessionSignal, markSessionPresent } from '@/api/sessionSignal';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
-import { AVATAR_MAX_BYTES, PASSWORD_HINT } from '@/domain/profileForm';
+import { AVATAR_MAX_BYTES } from '@/domain/profileForm';
 import { useAuthStore } from '@/store/authStore';
 import { renderPage } from '@/test/render';
 import { clearAvatarDraws, installAvatarCanvas, setAvatarToBlob } from '@/test/avatarCanvas';
@@ -73,6 +72,10 @@ function renderShell(path = '/dashboard/profile') {
     </>,
     path,
   );
+}
+
+function openPersonal() {
+  fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
 }
 
 function setField(label: string, value: string) {
@@ -175,6 +178,7 @@ describe('ProfilePage', () => {
     const getMe = vi.spyOn(authApi, 'getMe');
     renderShell();
 
+    openPersonal();
     setField('Имя', '  Мария  ');
     setField('Фамилия', '  Ковалева  ');
     setField('Телефон', '+79991234567');
@@ -201,7 +205,7 @@ describe('ProfilePage', () => {
     });
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
-    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument());
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
       lastName: 'Ковалева',
@@ -217,6 +221,7 @@ describe('ProfilePage', () => {
       phone: '',
     });
     renderProfile();
+    openPersonal();
     setField('Телефон', '   ');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
@@ -227,14 +232,19 @@ describe('ProfilePage', () => {
       phone: '',
     });
     await waitFor(() => {
-      expect(screen.getByLabelText('Телефон')).toHaveValue('');
-      expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument();
     });
+    const personal = screen.getByRole('region', { name: 'Личные данные' });
+    expect(within(personal).getByText('Телефон')).toBeInTheDocument();
+    expect(within(personal).queryByText('+79990001122')).not.toBeInTheDocument();
+    expect(within(personal).queryByText('не указано')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
   });
 
   it('ТК-4 blocks save when the name or last name is empty or longer than 100 characters', () => {
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
     renderProfile();
+    openPersonal();
 
     setField('Имя', '   ');
     setField('Фамилия', 'Смирнова');
@@ -263,6 +273,7 @@ describe('ProfilePage', () => {
   it('ТК-5 blocks a phone that is not E.164', () => {
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
     renderProfile();
+    openPersonal();
 
     for (const phone of ['89991234567', '+7 999 123-45-67']) {
       setField('Телефон', phone);
@@ -289,6 +300,7 @@ describe('ProfilePage', () => {
       },
     });
     renderProfile();
+    openPersonal();
     setField('Имя', 'Анна');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
@@ -308,6 +320,7 @@ describe('ProfilePage', () => {
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
     updateProfile.mockRejectedValueOnce(new Error('network'));
     renderProfile();
+    openPersonal();
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -421,16 +434,12 @@ describe('ProfilePage', () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('keeps unsaved card edits when avatar upload or delete returns another profile', async () => {
+  it('keeps the saved name when avatar upload or delete returns another profile', async () => {
     const uploadGate = deferred<User>();
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockReturnValue(uploadGate.promise);
     const deleteAvatar = vi.spyOn(authApi, 'deleteAvatar');
-    const updateProfile = vi.spyOn(authApi, 'updateProfile');
     renderShell();
 
-    setField('Имя', 'Мария');
-    setField('Фамилия', 'Ковалева');
-    setField('Телефон', '+79991112233');
     await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
@@ -443,9 +452,7 @@ describe('ProfilePage', () => {
     });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Заменить' })).toBeEnabled());
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
+    expect(screen.queryByText('Старое Имя')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     for (const image of screen.getAllByRole('img', { name: 'Анна Смирнова' })) {
       expect(image).toHaveAttribute('src', MEDIA);
@@ -470,9 +477,7 @@ describe('ProfilePage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Загрузить фото' })).toBeEnabled());
     expect(screen.queryByRole('img', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
     expect(screen.getAllByText('АС').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
+    expect(screen.queryByText('Старое Имя')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Анна',
@@ -481,85 +486,54 @@ describe('ProfilePage', () => {
     });
     expect(useAuthStore.getState().user?.avatar).toBeUndefined();
 
-    updateProfile.mockResolvedValue({
-      ...user,
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(updateProfile).toHaveBeenCalledWith({
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-    });
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Мария Ковалева' })).toBeInTheDocument());
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
+    openPersonal();
+    expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
+    expect(screen.getByLabelText('Фамилия')).toHaveValue('Смирнова');
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+79990001122');
   });
 
-  it('keeps the edited card and the newer avatar when save and avatar overlap', async () => {
+  it('does not open the crop while personal data is saving', async () => {
     const saveGate = deferred<User>();
-    const uploadGate = deferred<User>();
     const updateProfile = vi.spyOn(authApi, 'updateProfile').mockReturnValue(saveGate.promise);
-    const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockReturnValue(uploadGate.promise);
+    const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar');
+    useAuthStore.setState({
+      user: { ...user, avatar: MEDIA },
+      isAuthenticated: true,
+      isLoading: false,
+    });
     renderProfile();
 
+    openPersonal();
     setField('Имя', 'Мария');
-    setField('Фамилия', 'Ковалева');
-    setField('Телефон', '+79991112233');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
-
     await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-    expect(uploadAvatar).toHaveBeenCalledTimes(1);
-
-    uploadGate.resolve({
-      ...user,
-      firstName: 'Анна',
-      lastName: 'Смирнова',
-      phone: '+79990001122',
-      avatar: MEDIA,
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA),
-    );
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
-    expect(useAuthStore.getState().user).toMatchObject({
-      firstName: 'Анна',
-      lastName: 'Смирнова',
-      avatar: MEDIA,
-    });
+    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    expect(uploadAvatar).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Обрезка фото' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Личные данные' })).toBeInTheDocument();
 
     saveGate.resolve({
       ...user,
       firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-      avatar: undefined,
+      lastName: 'Смирнова',
+      phone: '+79990001122',
+      avatar: MEDIA,
     });
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument());
+    expect(screen.getByRole('img', { name: 'Мария Смирнова' })).toHaveAttribute('src', MEDIA);
     expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', MEDIA);
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
+      lastName: 'Смирнова',
+      phone: '+79990001122',
       avatar: MEDIA,
     });
 
     const lateAvatar = deferred<User>();
     uploadAvatar.mockReturnValue(lateAvatar.promise);
     await chooseAndSave(imageFile('next.png', 'image/png'));
-    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
     lateAvatar.resolve({
       ...user,
       firstName: 'Анна',
@@ -569,38 +543,31 @@ describe('ProfilePage', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', `${MEDIA}-2`),
+      expect(screen.getByRole('img', { name: 'Мария Смирнова' })).toHaveAttribute('src', `${MEDIA}-2`),
     );
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
+      lastName: 'Смирнова',
+      phone: '+79990001122',
       avatar: `${MEDIA}-2`,
     });
   });
 
-  it('keeps the draft while the crop is open and applies it after the photo is saved', async () => {
+  it('does not open personal data while the crop is open', async () => {
     const uploadGate = deferred<User>();
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
-      ...user,
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-      avatar: MEDIA,
-    });
+    const updateProfile = vi.spyOn(authApi, 'updateProfile');
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockReturnValue(uploadGate.promise);
     renderProfile();
 
-    setField('Имя', 'Мария');
-    setField('Фамилия', 'Ковалева');
-    setField('Телефон', '+79991112233');
-    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
-
-    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: (name) => name === 'Сохранить' }));
+    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    expect(await screen.findByRole('dialog', { name: 'Обрезка фото' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument();
     expect(updateProfile).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить фото' }));
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
     uploadGate.resolve({
       ...user,
       firstName: 'Старое',
@@ -611,24 +578,11 @@ describe('ProfilePage', () => {
     await waitFor(() =>
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA),
     );
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
+    expect(screen.queryByText('Старое Имя')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Анна',
       lastName: 'Смирнова',
       phone: '+79990001122',
-      avatar: MEDIA,
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
-    expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', MEDIA);
-    expect(useAuthStore.getState().user).toMatchObject({
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
       avatar: MEDIA,
     });
   });
@@ -756,41 +710,20 @@ describe('ProfilePage', () => {
     }
   });
 
-  it('ТК-17 opens settings from the query and returns to the card without it', async () => {
-    const view = renderProfile('/dashboard/profile?tab=settings');
+  it('shows the same screen for the old settings address', () => {
+    renderProfile('/dashboard/profile?tab=settings');
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(crumbs).getByText('Личный кабинет')).toBeInTheDocument();
     expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Пароль' })).getByLabelText('Текущий пароль')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Профиль' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('Настройки')).not.toBeInTheDocument();
+    expect(screen.queryByText('Смена адреса - на вкладке «Настройки».')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Вход в аккаунт' })).toHaveTextContent(user.email);
     expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile?tab=settings');
-
-    await userEvent.click(screen.getByRole('button', { name: 'Профиль' }));
-    await waitFor(() => {
-      expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
-    });
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
-    expect(within(crumbs).getByText('Профиль')).toBeInTheDocument();
-    view.unmount();
-
-    renderProfile('/dashboard/profile');
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.queryByLabelText('Текущий пароль')).not.toBeInTheDocument();
-    expect(screen.getByTestId('location').textContent).not.toContain(user.id);
-  });
-
-  it('ТК-18 keeps the password block active', async () => {
-    renderProfile('/dashboard/profile?tab=settings');
-    const password = screen.getByRole('region', { name: 'Пароль' });
-
-    expect(within(password).getByLabelText('Текущий пароль')).toBeEnabled();
-    expect(within(password).getByLabelText('Новый пароль')).toBeEnabled();
-    expect(within(password).getByLabelText('Повторите пароль')).toBeEnabled();
-    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeEnabled();
-    expect(within(password).queryByText('Появится позже')).not.toBeInTheDocument();
-    expect(within(password).getByText(PASSWORD_HINT)).toBeInTheDocument();
-    expect(within(password).getByLabelText('Новый пароль')).toHaveAccessibleDescription(PASSWORD_HINT);
-    expect(within(password).queryByRole('link', { name: 'Забыли пароль?' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
   });
 
   
@@ -808,6 +741,7 @@ describe('ProfilePage', () => {
     signIn(managerUser);
     const updateProfile = vi.spyOn(authApi, 'updateProfile');
     renderProfile();
+    openPersonal();
     setField('Телефон', '89991234567');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
@@ -823,16 +757,12 @@ describe('ProfilePage', () => {
   
   
   
-  it('профиль менеджера ТК-16: смена пароля активна', async () => {
+  it('показывает кнопку карточки менеджера на том же экране', () => {
     signIn(managerUser);
     renderProfile('/dashboard/profile?tab=settings');
-    const password = screen.getByRole('region', { name: 'Пароль' });
-
-    expect(within(password).getByLabelText('Текущий пароль')).toBeEnabled();
-    expect(within(password).getByRole('button', { name: 'Сменить пароль' })).toBeEnabled();
-    expect(within(password).queryByText('Появится позже')).not.toBeInTheDocument();
-    expect(within(password).getByText(PASSWORD_HINT)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Как меня видит клиент' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Как меня видит клиент' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.queryByText('Появится позже')).not.toBeInTheDocument();
   });
 
   
@@ -869,12 +799,13 @@ describe('ProfilePage session', () => {
       throw httpError(config, 404);
     };
     renderProfile();
+    openPersonal();
     setField('Телефон', '   ');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
-    await waitFor(() => expect(screen.getByLabelText('Телефон')).toHaveValue(''));
+    await waitFor(() => expect(useAuthStore.getState().user).toMatchObject({ phone: '' }));
+    await waitFor(() => expect(screen.queryByLabelText('Телефон')).not.toBeInTheDocument());
     expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
-    expect(useAuthStore.getState().user).toMatchObject({ phone: '' });
   });
 
   it('ТК-15 retries a profile save after refresh and treats the second 200 as success', async () => {
@@ -899,13 +830,14 @@ describe('ProfilePage session', () => {
     };
 
     renderProfile();
+    openPersonal();
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
     expect(refresh).toBe(1);
     expect(patches).toBe(2);
     expect(useAuthStore.getState().user).toMatchObject({ firstName: 'Мария' });
-    expect(screen.getByRole('heading', { name: 'Мария Ковалева' })).toBeInTheDocument();
+    expect(screen.getByText('Мария Ковалева')).toBeInTheDocument();
   });
 
   it('ТК-15 retries an avatar upload after refresh', async () => {
@@ -955,6 +887,7 @@ describe('ProfilePage session', () => {
     };
 
     renderProfile();
+    openPersonal();
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(useAuthStore.getState().user).toBeNull());
@@ -992,6 +925,7 @@ describe('ProfilePage session', () => {
 
     renderProfile('/dashboard/profile');
     expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
+    openPersonal();
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
     await waitFor(() => expect(calls).toContain('patch /auth/me'));
     await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
@@ -1025,6 +959,7 @@ describe('ProfilePage session', () => {
     };
 
     renderProfile();
+    openPersonal();
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(useAuthStore.getState().user).toBeNull());

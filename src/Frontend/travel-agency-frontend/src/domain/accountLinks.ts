@@ -25,7 +25,6 @@ export const ACCOUNT_TEXT = {
   linkInvalid: 'Ссылка устарела или уже использована.',
   emailCancelled: 'Смена почты отменена. Адрес входа остался прежним.',
   passwordChanged: 'Пароль изменён',
-  emailHint: 'Смена адреса - на вкладке «Настройки».',
 } as const;
 
 const CODE_TEXT: Record<string, string> = {
