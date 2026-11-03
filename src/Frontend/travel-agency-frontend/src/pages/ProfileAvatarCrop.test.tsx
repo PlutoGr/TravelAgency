@@ -110,10 +110,6 @@ function encodeDraws() {
   return avatarDraws().filter((draw) => draw.args.length >= 8);
 }
 
-function formSaveButton() {
-  return screen.getByRole('button', { name: (name) => name === 'Сохранить' });
-}
-
 async function openCrop(file: File) {
   chooseFile(file);
   return screen.findByRole('dialog', { name: 'Обрезка фото' });
@@ -248,7 +244,6 @@ describe('Profile avatar crop', () => {
 
     try {
       renderShell();
-      fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Мария' } });
       const dialog = await openCrop(jpegFile());
       const preview = within(dialog).getByTestId('avatar-crop-preview');
       Object.defineProperty(preview, 'clientWidth', { configurable: true, value: 320 });
@@ -266,7 +261,8 @@ describe('Profile avatar crop', () => {
       expect(getMe).not.toHaveBeenCalled();
       expect(toast.success).not.toHaveBeenCalled();
       expect(useAuthStore.getState().user?.avatar).toBe(MEDIA);
-      expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+      expect(screen.getAllByText('Анна Смирнова').length).toBeGreaterThan(0);
+      expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument();
       for (const image of screen.getAllByRole('img', { name: 'Анна Смирнова' })) {
         expect(image).toHaveAttribute('src', MEDIA);
       }
@@ -295,7 +291,6 @@ describe('Profile avatar crop', () => {
       isLoading: false,
     });
     renderProfile();
-    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Мария' } });
     const file = jpegFile();
 
     const closers = [
@@ -318,11 +313,13 @@ describe('Profile avatar crop', () => {
       expect(uploadAvatar).not.toHaveBeenCalled();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
-      expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
+      expect(screen.getByText('Анна Смирнова')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument();
     }
 
     const dialog = await openCrop(file);
-    fireEvent.click(formSaveButton());
+    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Удалить фото' }));
     chooseFile(jpegFile('other.jpg'));
     expect(updateProfile).not.toHaveBeenCalled();
@@ -638,10 +635,9 @@ describe('Profile avatar crop', () => {
 
   it('ТК-15 does not mount the crop on settings or on someone else card', async () => {
     const view = renderProfile('/dashboard/profile?tab=settings');
-    expect(screen.queryByRole('button', { name: 'Загрузить фото' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Заменить' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Загрузить фото' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Обрезка фото' })).not.toBeInTheDocument();
-    expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     view.unmount();
 
     const manager = renderPage(

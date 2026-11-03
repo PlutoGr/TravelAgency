@@ -1,15 +1,13 @@
-import { useCallback, useRef, useState, type ChangeEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
-import { Avatar, Button, Card, Input, Tabs } from '@/components/ui';
+import { Avatar, Button, Input, Modal } from '@/components/ui';
 import AvatarCropDialog from '@/components/profile/AvatarCropDialog';
 import ManagerShortCard from '@/components/booking/ManagerShortCard';
 import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
 import { getManagerCard } from '@/api/managerCard';
 import { authFormError } from '@/domain/authFormErrors';
-import { ACCOUNT_TEXT } from '@/domain/accountLinks';
 import { inspectAvatarFile, loadStraight, type AvatarBitmap } from '@/domain/avatarCrop';
 import {
   AVATAR_ACCEPT,
@@ -20,7 +18,7 @@ import {
   type ProfileField,
   type ProfileFieldErrors,
 } from '@/domain/profileForm';
-import { ProfileEmailBlock, ProfilePasswordBlock } from './ProfileSettingsAccount';
+import { ProfileEmailForm, ProfilePasswordForm } from './ProfileSettingsAccount';
 import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types';
 
@@ -29,34 +27,22 @@ const BREADCRUMBS = [
   { label: 'Профиль' },
 ];
 
-const TABS = [
-  { id: 'profile', label: 'Профиль' },
-  { id: 'settings', label: 'Настройки' },
-];
+const PASSWORD_MASK = '••••••••';
 
 function formFrom(person: User | null) {
   return {
     firstName: person?.firstName ?? '',
     lastName: person?.lastName ?? '',
     phone: person?.phone ?? '',
-    email: person?.email ?? '',
   };
-}
-
-function cardSnapshot(person: User | null): string | null {
-  if (!person) return null;
-  return [person.id, person.firstName, person.lastName, person.phone, person.email].join('\u0000');
 }
 
 export default function ProfilePage() {
   const storeUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const isStaff = storeUser?.role === 'manager' || storeUser?.role === 'admin';
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get('tab') === 'settings' ? 'settings' : 'profile';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [formSource, setFormSource] = useState(storeUser);
   const [form, setForm] = useState(() => formFrom(storeUser));
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
   const [formError, setFormError] = useState<string | undefined>();
@@ -66,20 +52,66 @@ export default function ProfilePage() {
   const [crop, setCrop] = useState<{ token: number; image: AvatarBitmap } | null>(null);
   const [cropSaving, setCropSaving] = useState(false);
   const [cropError, setCropError] = useState<string | undefined>();
+  const [personalOpen, setPersonalOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [clientViewOpen, setClientViewOpen] = useState(false);
+  const [accountNotice, setAccountNotice] = useState<string | undefined>();
   const loadSavedCard = useCallback((id: string) => getManagerCard(id), []);
   // Поколение запросов аватара: устаревший ответ загрузки или удаления не применяется.
   const avatarRevision = useRef(0);
   const readGeneration = useRef(0);
+  const savingRef = useRef(false);
+  const accountBusyRef = useRef(false);
 
-  if (storeUser !== formSource) {
-    const cardChanged = cardSnapshot(storeUser) !== cardSnapshot(formSource);
-    setFormSource(storeUser);
-    if (cardChanged) setForm(formFrom(storeUser));
+  const dialogOpen = personalOpen || emailOpen || passwordOpen || clientViewOpen;
+  const windowBusy = dialogOpen || crop !== null || avatarBusy || isSaving || accountBusyRef.current;
+
+  function setAccountBusy(busy: boolean) {
+    accountBusyRef.current = busy;
   }
 
-  function selectTab(id: string) {
-    setSearchParams(id === 'settings' ? { tab: 'settings' } : {}, { replace: true });
+  function closePersonal() {
+    if (savingRef.current) return;
+    setPersonalOpen(false);
+    setFieldErrors({});
+    setFormError(undefined);
+  }
+
+  function closeEmail() {
+    if (accountBusyRef.current) return;
+    setEmailOpen(false);
+  }
+
+  function closePassword() {
+    if (accountBusyRef.current) return;
+    setPasswordOpen(false);
+  }
+
+  function openPersonal() {
+    if (windowBusy) return;
+    const person = useAuthStore.getState().user;
+    setForm(formFrom(person));
+    setFieldErrors({});
+    setFormError(undefined);
+    setPersonalOpen(true);
+  }
+
+  function openEmail() {
+    if (windowBusy) return;
+    setAccountNotice(undefined);
+    setEmailOpen(true);
+  }
+
+  function openPassword() {
+    if (windowBusy) return;
+    setAccountNotice(undefined);
+    setPasswordOpen(true);
+  }
+
+  function openClientView() {
+    if (!isStaff || windowBusy) return;
+    setClientViewOpen(true);
   }
 
   function handleChange(field: ProfileField, value: string) {
@@ -93,13 +125,15 @@ export default function ProfilePage() {
     setCropError(undefined);
   }
 
-  async function handleSave() {
-    if (crop) return;
+  async function handleSave(event?: FormEvent) {
+    event?.preventDefault();
+    if (savingRef.current || crop) return;
     setFormError(undefined);
     const { payload, errors } = profileCardPayload(form);
     setFieldErrors(errors);
     if (!payload) return;
 
+    savingRef.current = true;
     setIsSaving(true);
     const avatarAtSave = useAuthStore.getState().user?.avatar;
     try {
@@ -110,6 +144,7 @@ export default function ProfilePage() {
           ? { ...updated, avatar: current.avatar }
           : updated,
       );
+      setPersonalOpen(false);
       toast.success('Профиль успешно обновлён');
     } catch (err) {
       const serverFields = profileProblemFields(err);
@@ -123,12 +158,13 @@ export default function ProfilePage() {
         setFormError(authFormError(err, 'profile').text);
       }
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   }
 
   function openFilePicker() {
-    if (avatarBusy || crop) return;
+    if (avatarBusy || crop || dialogOpen || isSaving) return;
     fileInputRef.current?.click();
   }
 
@@ -141,7 +177,7 @@ export default function ProfilePage() {
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file || crop) return;
+    if (!file || crop || dialogOpen || isSaving) return;
 
     const generation = ++readGeneration.current;
     setAvatarBusy(true);
@@ -187,7 +223,7 @@ export default function ProfilePage() {
 
   async function handleReframe() {
     const url = useAuthStore.getState().user?.avatar;
-    if (!url || avatarBusy || crop) return;
+    if (!url || avatarBusy || crop || dialogOpen || isSaving) return;
     const generation = ++readGeneration.current;
     setAvatarBusy(true);
     try {
@@ -212,7 +248,7 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteAvatar() {
-    if (crop || avatarBusy) return;
+    if (crop || avatarBusy || dialogOpen || isSaving) return;
     setAvatarError(undefined);
     setAvatarBusy(true);
     const revision = ++avatarRevision.current;
@@ -237,7 +273,7 @@ export default function ProfilePage() {
   }
 
   const fullName = `${storeUser.firstName} ${storeUser.lastName}`;
-  const photoLocked = avatarBusy || crop !== null;
+  const photoLocked = avatarBusy || crop !== null || dialogOpen || isSaving;
 
   return (
     <PageTransition>
@@ -246,15 +282,13 @@ export default function ProfilePage() {
 
         <h1 className="font-heading text-2xl font-bold text-dark">Профиль</h1>
 
-        <Tabs tabs={TABS} activeTab={tab} onChange={selectTab} />
-
-        {tab === 'profile' ? (
-          <Card className="mx-auto max-w-2xl p-6 sm:p-8">
-            <div className="mb-8 flex items-center gap-5">
+        <div className="flex flex-wrap items-start justify-start gap-6">
+          <section aria-label="Личные данные" className="max-w-full shrink-0 rounded-[16px] bg-white p-6 shadow-card">
+            <h2 className="font-heading text-lg font-semibold text-dark">Личные данные</h2>
+            <div className="mt-6 flex items-start gap-5">
               <Avatar src={storeUser.avatar} name={fullName} size="xl" />
               <div>
-                <h2 className="font-heading text-lg font-semibold text-dark">{fullName}</h2>
-                <p className="text-sm text-warm-gray">{storeUser.email}</p>
+                <p className="font-heading text-lg font-semibold text-dark">{fullName}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {storeUser.avatar ? (
                     <>
@@ -303,90 +337,136 @@ export default function ProfilePage() {
                     {avatarError}
                   </p>
                 )}
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-warm-gray">Телефон</p>
+                  {storeUser.phone ? <p className="mt-1 text-sm text-dark">{storeUser.phone}</p> : null}
+                </div>
+                <div className="mt-4 flex flex-col items-start gap-2">
+                  <Button type="button" onClick={openPersonal}>
+                    Редактировать
+                  </Button>
+                  {isStaff && (
+                    <Button type="button" onClick={openClientView}>
+                      Как меня видит клиент
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
+          </section>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={AVATAR_ACCEPT}
-              className="hidden"
-              tabIndex={-1}
-              aria-hidden="true"
-              disabled={crop !== null}
-              onChange={handleFile}
-            />
-
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input
-                  label="Имя"
-                  value={form.firstName}
-                  onChange={(event) => handleChange('firstName', event.target.value)}
-                  error={fieldErrors.firstName}
-                />
-                <Input
-                  label="Фамилия"
-                  value={form.lastName}
-                  onChange={(event) => handleChange('lastName', event.target.value)}
-                  error={fieldErrors.lastName}
-                />
-              </div>
-
-              <Input
-                label="Телефон"
-                value={form.phone}
-                onChange={(event) => handleChange('phone', event.target.value)}
-                error={fieldErrors.phone}
-              />
-
+          <section aria-label="Вход в аккаунт" className="max-w-full shrink-0 rounded-[16px] bg-white p-6 shadow-card">
+            <h2 className="font-heading text-lg font-semibold text-dark">Вход в аккаунт</h2>
+            <div className="mt-6 space-y-5">
               <div>
-                <Input label="Email" value={form.email} disabled />
-                <p className="mt-1.5 text-xs text-warm-gray">{ACCOUNT_TEXT.emailHint}</p>
-              </div>
-
-              {isStaff && (
-                <div>
-                  <Button type="button" onClick={() => setClientViewOpen(true)}>
-                    Как меня видит клиент
+                <p className="text-xs font-medium text-warm-gray">Email</p>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-dark">{storeUser.email}</p>
+                  <Button type="button" size="sm" variant="secondary" onClick={openEmail}>
+                    Сменить email
                   </Button>
                 </div>
-              )}
-              {clientViewOpen && isStaff && (
-                <ManagerShortCard
-                  userId={storeUser.id}
-                  onClose={() => setClientViewOpen(false)}
-                  loadCard={loadSavedCard}
-                />
-              )}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-warm-gray">Пароль</p>
+                <p className="mt-1 text-sm tracking-widest text-dark">{PASSWORD_MASK}</p>
+                <p className="mt-1 text-xs text-warm-gray">Длина не показана.</p>
+                <div className="mt-3">
+                  <Button type="button" size="sm" variant="secondary" onClick={openPassword}>
+                    Сменить пароль
+                  </Button>
+                </div>
+              </div>
+              {accountNotice && <p className="text-sm text-dark">{accountNotice}</p>}
             </div>
+          </section>
+        </div>
 
-            <div className="mt-8 flex justify-end">
-              <Button onClick={handleSave} isLoading={isSaving}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={AVATAR_ACCEPT}
+          className="hidden"
+          tabIndex={-1}
+          aria-hidden="true"
+          disabled={crop !== null || dialogOpen || isSaving}
+          onChange={handleFile}
+        />
+
+        <Modal isOpen={personalOpen} onClose={closePersonal} title="Личные данные" dialogLabel="Личные данные">
+          <form className="space-y-4" onSubmit={handleSave}>
+            <Input
+              label="Имя"
+              value={form.firstName}
+              onChange={(event) => handleChange('firstName', event.target.value)}
+              error={fieldErrors.firstName}
+            />
+            <Input
+              label="Фамилия"
+              value={form.lastName}
+              onChange={(event) => handleChange('lastName', event.target.value)}
+              error={fieldErrors.lastName}
+            />
+            <Input
+              label="Телефон"
+              value={form.phone}
+              onChange={(event) => handleChange('phone', event.target.value)}
+              error={fieldErrors.phone}
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={closePersonal}>
+                Отмена
+              </Button>
+              <Button type="submit" isLoading={isSaving}>
                 Сохранить
               </Button>
             </div>
             {formError && (
-              <p role="alert" className="mt-4 text-sm text-red-500">
+              <p role="alert" className="text-sm text-red-500">
                 {formError}
               </p>
             )}
-            {crop && (
-              <AvatarCropDialog
-                key={crop.token}
-                image={crop.image}
-                saving={cropSaving}
-                error={cropError}
-                onCancel={closeCrop}
-                onSave={handleCropSave}
-              />
-            )}
-          </Card>
-        ) : (
-          <Card className="mx-auto max-w-2xl space-y-8 p-6 sm:p-8">
-            <ProfilePasswordBlock />
-            <ProfileEmailBlock currentEmail={storeUser.email} />
-          </Card>
+          </form>
+        </Modal>
+
+        <Modal isOpen={emailOpen} onClose={closeEmail} title="Сменить email" dialogLabel="Сменить email">
+          <ProfileEmailForm
+            currentEmail={storeUser.email}
+            onSucceeded={(message) => {
+              setEmailOpen(false);
+              setAccountNotice(message);
+            }}
+            onBusy={setAccountBusy}
+          />
+        </Modal>
+
+        <Modal isOpen={passwordOpen} onClose={closePassword} title="Сменить пароль" dialogLabel="Сменить пароль">
+          <ProfilePasswordForm
+            onSucceeded={(message) => {
+              setPasswordOpen(false);
+              setAccountNotice(message);
+            }}
+            onBusy={setAccountBusy}
+          />
+        </Modal>
+
+        {clientViewOpen && isStaff && (
+          <ManagerShortCard
+            userId={storeUser.id}
+            onClose={() => setClientViewOpen(false)}
+            loadCard={loadSavedCard}
+          />
+        )}
+
+        {crop && (
+          <AvatarCropDialog
+            key={crop.token}
+            image={crop.image}
+            saving={cropSaving}
+            error={cropError}
+            onCancel={closeCrop}
+            onSave={handleCropSave}
+          />
         )}
       </div>
     </PageTransition>
