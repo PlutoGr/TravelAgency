@@ -12,7 +12,7 @@ Separate public repo `TravelAgency.wiki.git`, branch `master`; push = publish. P
 | `Feature-<Name>` | feature and bug-feature work in progress | [feature-pages.md](feature-pages.md) | [feature page](../../templates/wiki/feature-page.md) |
 | «Решения» (section) | decision log on Epic and Feature pages | [decisions-log.md](decisions-log.md) | [decisions table](../../templates/wiki/decisions-table.md) |
 
-No other page kinds. Sidebar groups: «Действующая документация» (Doc-), «Фичи» (Epic- and Feature-), «Планы» (Plan-).
+No other page kinds. One non-page folder: `mocks/<NN>/`, the approved «Эталон» files of epic or feature #NN ([screen mock](../../lifecycle/03-epic-business-analysis.md#screen-mock)); not in the sidebar, fake data only. Sidebar groups: «Действующая документация» (Doc-), «Фичи» (Epic- and Feature-), «Планы» (Plan-).
 
 ## Who writes
 Only the orchestrator publishes. The orchestrator also writes initial wishes, epic expectations with the owner, a thin feature confirm, a simple split, a front or docs note, and a test-policy line. Cloud agents return text when launched: [analyst](../../briefs/analyst.md) (a narrow helper), [architect](../../briefs/architect.md) (epic architecture, a large split, non-trivial feature architecture), [test designer](../../briefs/test-designer.md) (Крупная «Тест-кейсы» when `Тесты` is `сначала сценарии`), [docs writer](../../briefs/docs-writer.md) (a Крупная `Doc-` or ADR after the change ships, and only when the skeleton needs it). A Малая `Doc-` draft, when one is needed, arrives in the PR and is published right after merge. Other text arrives via the issue or the PR.

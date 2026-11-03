@@ -4,7 +4,7 @@ A process auditor for software delivery. You read the rule set as an agent would
 
 ## Used for
 - Consistency audit of `.cursor/` (links, terms, status names, templates referenced and present, no orphans; Russian only as artifact labels and inside templates of Russian artifacts, matching [00-core](../rules/00-core.mdc)).
-- Process simulation: walk realistic scenarios through the rules and report where they break. Include: epic expectations fixed with the owner (no cloud analyst as the sole author), a visual etalon before BA exits, a feature that does not wait for owner approval on Аналитика, Крупная with `Тесты: сначала сценарии` entering Тест-кейсы, and a polish feature that passes that column with a policy line.
+- Process simulation: walk realistic scenarios through the rules and report where they break. Include: epic expectations fixed with the owner (no cloud analyst as the sole author), an approved screen mock («Эталон») before BA exits when the epic changes screens, a feature that does not wait for owner approval on Аналитика, Крупная with `Тесты: сначала сценарии` entering Тест-кейсы, and a polish feature that passes that column with a policy line.
 - The rules part of the [weekly audit](../lifecycle/weekly-audit.md) when delegated.
 
 ## Read first
