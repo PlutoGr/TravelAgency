@@ -1,18 +1,15 @@
 # 03 Epic business analysis (column Бизнес-анализ)
-Product WHY and WHAT, enough to choose architecture and to split features. Not a screen specification; it does not unlock feature code.
+Fix what the owner wants on the exit of this epic. Objectivity: why, what is realistic now, what is later, what is a stub, what we refuse. Not a field catalog and not permission to start feature code.
 
-**Entry:** epic in Очередь taken in the agreed order ([epic pick](02-roadmap.md)). Set `статус: бизнес-анализ` with the take comment ([status comments](../templates/github/status-comments.md)).
+**Entry:** epic in Очередь taken in the agreed order ([epic pick](02-roadmap.md)). Set `статус: бизнес-анализ` with the take comment ([status comments](../templates/github/status-comments.md)). Intake already recorded changeable initial wishes on the page ([intake](01-intake.md)).
 
-**Who:** one cloud agent with the [analyst brief](../briefs/analyst.md); the orchestrator reviews and publishes.
+**Who:** the orchestrator with the owner, live, in Russian. That dialogue is the work. A cloud analyst is not the default author. A cloud agent is only a narrow helper (peer-pattern notes, or a quick static HTML/CSS mock) under a short brief ([analyst](../briefs/analyst.md)). It does not receive a dump of the methodology and it does not own the section.
 
-**Section «Бизнес и сценарии»** on the `Epic-` page ([epic page template](../templates/wiki/epic-page.md)), all blocks visible:
-1. Problem now: what hurts, what already works (name the `Doc-` pages), what must not break.
-2. Actors: roles and when they care (not tokens or JWT).
-3. Named analogues: each comparable product or pattern, what it does, why it fits or does not. "Like other sites" with no name is not evidence.
-4. Several solution options on a continuum: more than one, ordered along one axis (for example smaller change to larger change).
-5. Chosen user story, and why it is the best fit for us.
-6. Non-goals.
+**Page** ([epic page template](../templates/wiki/epic-page.md)):
+- «Исходные пожелания» stays the intake sketch. It is not the exit truth. Edit it when the owner changes the wish.
+- «Ожидания»: the result on the exit; what is realistic now, later, a stub, or refused; «Не делаем»; for a visual epic, «Эталон». Keep a problem note or a non-goal only when the next stages need it. Do not require the old six blocks (named analogues, a continuum of options, a chosen-story essay). A legacy page that still has «Бизнес и сценарии» is read as «Ожидания» until the later docs phase.
+- Open choices sit in «Решения».
 
-No services, API paths, storage, migrations, contracts, field catalog or screen layout.
+**Visual:** before this column is left, a visual epic has a static HTML/CSS (or similar) mock of the target look. No backend. The owner iterates. The approved mock's path or link is «Эталон». A helper may scaffold the mock; the orchestrator records the reference.
 
-**Exit gate:** all six blocks visible, analogues named, more than one option on a continuum, the chosen story says why it is best, no field catalog and no services. Open questions sit in «Решения». A choice only the owner can make: keep `статус: бизнес-анализ`, record the `Question` in [memory](../elements/memory.md#question), ask the owner; do not advance until answered. When the bar holds and no owner choice is still open, publish the section (or leave it ready) and ask for [owner stage approval](../orchestrator.md#owner-stage-approval): `Question` = `approve BA #NN`. On yes, clear that `Question` and set `статус: архитектура` ([epic Архитектура](04-epic-architecture.md)). On no or edits, stay on `статус: бизнес-анализ`, keep that `Question`, rework, and ask again.
+**Exit gate:** «Ожидания» states the exit result, what is out, and, when the epic is visual, the etalon reference. No field catalog and no services. A choice only the owner can make stays in this column with a normal `Question` until answered. When the bar holds, publish (or leave ready) and ask for [owner stage approval](../orchestrator.md#owner-stage-approval): `Question` = `approve BA #NN`. The live dialogue is that gate; the token records the yes. On yes, clear that `Question` and set `статус: архитектура` ([epic Архитектура](04-epic-architecture.md)). On no or edits, stay, keep that `Question`, rework, and ask again.

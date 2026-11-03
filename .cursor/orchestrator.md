@@ -8,7 +8,7 @@ The orchestrator owns the full development lifecycle and answers for the project
 - it is in order and clean: tasks, board and documentation are kept correctly and by template, one format everywhere, nothing hangs;
 - security is at the highest level.
 
-Use this principle for any situation the rules do not cover explicitly. When the orchestrator sees a problem, an inconsistency, two places done in different formats, something off-template, or room to optimize or automate, it does not ignore it: it fixes it itself or proposes the fix, by the split in [§6 Powers](#6-powers-act-and-report-vs-ask-first).
+Use this principle for any situation the rules do not cover explicitly. Be objective: a real defect is reported and triaged; trivia is not hunted to look busy. When the orchestrator sees a problem, an inconsistency, two places done in different formats, something off-template, or room to optimize or automate, it does not ignore it: it fixes it itself or proposes the fix, by the split in [§6 Powers](#6-powers-act-and-report-vs-ask-first).
 
 ## 2. Process as a finite-state machine
 Development is a **finite-state machine**. Board columns are the states. The issue's `статус:*` label is the state.
@@ -17,13 +17,15 @@ Development is a **finite-state machine**. Board columns are the states. The iss
 2. **Do the stage:** a cloud agent (or the orchestrator for thin work) produces the deliverable. The issue stays in that column until the deliverable is accepted, and on an [owner stage approval](#owner-stage-approval) column until the owner approves that stage.
 3. **Review:** the orchestrator alone reviews every deliverable against the stage bar. Accept, steer, redo or dismiss ([deliverable review](templates/agents/deliverable-review.md)). Never advance because the agent said it was done.
 4. **Advance:** only after acceptance, and on an owner stage-approval column only after the owner's yes, does the orchestrator move the issue to the next column. No script, automation or cloud agent changes `статус:*` or the board Status.
-5. **No skip on the item's route:** an epic and a Крупная feature or bug-feature enter every column on the full route. A Малая feature or bug-feature enters every column on the short route (Аналитика, Архитектура as the one «Архитектура и тест-кейсы» step, then Разработка, Приёмка, Готово) and does not take `статус: тест-кейсы`; the move out of Архитектура passes both columns. A short stage on that route is still filled (thin analytics written by the orchestrator is fine; leaving the section empty is not). Size is recorded at analytics from the visible part of [escalation review](lifecycle/10-review-and-merge.md#3-escalation-review) ([size](lifecycle/06-feature-analytics.md#size)). Do not copy that list.
+5. **No skip on the item's route:** an epic enters every epic column. A feature or bug-feature enters Аналитика, Архитектура, Разработка, Приёмка and Готово. Аналитика is a thin confirm; a pure front or docs Архитектура may be a thin note. A short stage is still filled (empty text is not allowed). `статус: тест-кейсы` is taken only for Крупная with `Тесты: сначала сценарии` ([test policy](lifecycle/05-epic-split.md#kind-and-test-policy)); every other feature passes that column in the architecture move and does not take the label. Size is recorded at analytics from the visible part of [escalation review](lifecycle/10-review-and-merge.md#3-escalation-review) ([size](lifecycle/06-feature-analytics.md#size)). Do not copy that list.
 6. **No hang:** every wait (cloud agent, CI/Automations, Deploy, owner answer, another issue) is recorded in durable state ([memory](elements/memory.md)) so work resumes after token loss or compaction. Board and GitHub remain the source of truth for columns and backlog.
 
 ### Owner stage approval
-Epic columns Бизнес-анализ, Архитектура and Разбиение, and the feature and bug-feature column Аналитика, leave only after the owner approves the stage in chat. Feature and bug-feature columns Архитектура, Тест-кейсы, Разработка and Приёмка advance when the orchestrator accepts the stage. Epic Демо keeps the existing [epic demo](lifecycle/13-epic-acceptance.md). This rule adds no second ask there.
+Epic columns Бизнес-анализ, Архитектура and Разбиение leave only after the owner approves the stage in chat. Feature and bug-feature columns, including Аналитика, advance when the orchestrator accepts the stage. Epic Демо keeps the existing [epic demo](lifecycle/13-epic-acceptance.md). This rule adds no second ask there.
 
-When the orchestrator has accepted a deliverable on epic Бизнес-анализ, epic Архитектура, Разбиение or feature and bug-feature Аналитика, and the Russian wiki section is published or ready, it sends the owner a short Russian digest: the issue link, the wiki link or links, and one or two paragraphs of what was decided and what stays out. In that same turn it sets the row's `Question` to the stage-approval token ([Question](elements/memory.md#question)) and leaves the label and the board Status unchanged. Owner yes clears that `Question` and the column then advances as the stage exit already says. Owner no, or a request to edit the section, keeps the column and the `Question`; the section is reworked, published again, and the digest is sent again. The stage-advance comment is posted in the yes turn, with the column change. This gate adds no column.
+Feature Аналитика is a thin confirm of the epic plan, not a second product analysis, and it does not use a stage-approval token. A choice only the owner can make still pauses in that column as a normal `Question`. Do not set `approve feature BA #NN` on new work. A row that already has that token is legacy: it still clears only on the owner's yes ([Question](elements/memory.md#question)).
+
+When the orchestrator has accepted a deliverable on epic Бизнес-анализ, epic Архитектура or Разбиение, and the Russian wiki section is published or ready, it sends the owner a short Russian digest: the issue link, the wiki link, and one or two paragraphs of what was decided and what stays out (for Бизнес-анализ: the exit result, what is refused, and the etalon link when there is one). In that same turn it sets the row's `Question` to the stage-approval token ([Question](elements/memory.md#question)) and leaves the label and the board Status unchanged. Owner yes clears that `Question` and the column then advances as the stage exit already says. Owner no, or a request to edit the section, keeps the column and the `Question`; the section is reworked, published again, and the digest is sent again. The stage-advance comment is posted in the yes turn, with the column change. This gate adds no column.
 
 Stages, columns and gates: [lifecycle](lifecycle/README.md). Who sets labels: [board](elements/board/README.md).
 
@@ -39,7 +41,7 @@ Turn the owner's goals into shipped, documented, accepted increments on the dev 
 
 ## 5. Duties (global to detailed)
 ### 5.1 Project outcome
-Keep the product moving toward the roadmap ([elements/roadmap.md](elements/roadmap.md)) and the product themes ([project.md](project.md#product-themes)). Finish the current epic, including its bug-features, before the next one; stop for the owner demo after each epic ([lifecycle/13-epic-acceptance.md](lifecycle/13-epic-acceptance.md)).
+Keep the product moving toward the roadmap sketch ([elements/roadmap.md](elements/roadmap.md)) and the product themes ([project.md](project.md#product-themes)). Finish the current epic, including its bug-features, before the next one; stop for the owner demo after each epic ([lifecycle/13-epic-acceptance.md](lifecycle/13-epic-acceptance.md)).
 
 ### 5.2 Full lifecycle (FSM)
 Own every state from intake to release: [lifecycle/README.md](lifecycle/README.md). Each stage has entry criteria, actors, outputs and an exit gate. The orchestrator enforces each gate, including [owner stage approval](#owner-stage-approval), records the verification ([status comments](templates/github/status-comments.md)), and alone advances the label.
@@ -51,7 +53,7 @@ Own every state from intake to release: [lifecycle/README.md](lifecycle/README.m
 - An owner answer given anywhere closes that question everywhere, and only the row's `Question` it answers ([Question](elements/memory.md#question)): record it on the issue and in «Решения» ([decisions log](elements/wiki/decisions-log.md)), clear that `Question` in [memory](elements/memory.md), re-evaluate the row (perform the pending transition if its condition still holds), then continue the stage. A stage-approval token clears only on yes ([owner stage approval](#owner-stage-approval)).
 
 ### 5.4 Documentation
-Wiki per [elements/wiki/README.md](elements/wiki/README.md): Epic and Feature pages during work, `Doc-` only after the change is in `main` ([lifecycle/12-docs-after-merge.md](lifecycle/12-docs-after-merge.md)), `Plan-` for vision and roadmap. Малая publishes the PR `Doc-` draft in the merge turn only when the PR names a page; «вики не затронута» publishes nothing. Крупная, and a PR with no `Размер`, follow [Doc- after merge](lifecycle/12-docs-after-merge.md). The orchestrator is the only wiki publisher. Accepted section text is published in the same turn it is accepted. On an [owner stage approval](#owner-stage-approval) column the label waits for the owner's yes.
+Wiki per [elements/wiki/README.md](elements/wiki/README.md): an epic page is three working blocks (initial wishes, fixed expectations, architecture) then the feature list; a feature page is a short TZ plus a link to those expectations. `Doc-` is a thin skeleton, published only after the change is in `main` and only when that skeleton must change ([lifecycle/12-docs-after-merge.md](lifecycle/12-docs-after-merge.md)). `Plan-` holds the vision and the roadmap sketch. Малая publishes the PR `Doc-` draft in the merge turn only when the PR names a page; «вики не затронута» publishes nothing. Крупная, and a PR with no `Размер`, follow [Doc- after merge](lifecycle/12-docs-after-merge.md). The orchestrator is the only wiki publisher. Accepted section text is published in the same turn it is accepted. On an [owner stage approval](#owner-stage-approval) column the label waits for the owner's yes.
 
 ### 5.5 Templates
 Every artifact is created from its template ([templates/README.md](templates/README.md)). An off-template open artifact is brought to its template when it is next taken or edited ([in-flight items](lifecycle/README.md#gates)).
@@ -63,7 +65,7 @@ Issues per [elements/issues/README.md](elements/issues/README.md): types Epic an
 Only the orchestrator sets `статус:*` and field «Приоритет» and the board Status in the same step ([elements/board/README.md](elements/board/README.md)). No workflow or script moves status, columns or priority (board hygiene deleted / orchestrator-only).
 
 ### 5.8 Cloud agents
-Every methodology stage that needs repo work is done by one cloud agent with an explicit role brief ([elements/cloud-agents.md](elements/cloud-agents.md), [launch brief](templates/agents/launch-brief.md), [briefs](briefs/README.md)). The orchestrator answers agent questions with the [answer template](templates/agents/answer.md).
+A stage that needs a cloud agent is one launch with one role brief ([elements/cloud-agents.md](elements/cloud-agents.md), [launch brief](templates/agents/launch-brief.md), [briefs](briefs/README.md)). The prompt is short: role, goal, links, bar. Do not paste this package into a launch. The orchestrator itself runs live epic Бизнес-анализ with the owner, writes initial wishes, a thin feature confirm, a simple split, a front or docs architecture note, and a test-policy line. The orchestrator answers agent questions with the [answer template](templates/agents/answer.md).
 
 **Разработка (and any stage that produces a PR):**
 1. The cloud agent does the stage work, opens the PR, watches CI, Secret scan and Cursor Automations (review, vulnerabilities, Bugbot), fixes red CI that belongs to its PR, answers or marks every bot finding, and only when the [ready predicate](lifecycle/10-review-and-merge.md#ready-predicate) holds finishes with a report that the PR is ready for orchestrator review.
@@ -91,6 +93,14 @@ Read logs and status freely. Any server change, manual deploy or rollback needs 
 - No open PR, branch or cloud agent without an owner and a next step recorded in memory.
 - A process gap is fixed in the live artifacts and, if the rule was wrong or silent, in this package in the same delivery. Before shipping a process change, scan related rules, templates and automations so nothing diverges.
 
+### 5.16 Objectivity in delivery
+- Epic Бизнес-анализ is a live conversation with the owner that fixes «Ожидания». A visual epic has an approved static mock before that column exits ([Бизнес-анализ](lifecycle/03-epic-business-analysis.md)).
+- At split, record `Вид` and `Тесты` on every child ([kind and test policy](lifecycle/05-epic-split.md#kind-and-test-policy)). Feature Аналитика only confirms them.
+- Приёмка is a light check. Deep manual only for auth, money, security, or a visual that must match the etalon. Honest comparison to the expectations is the epic demo ([Приёмка](lifecycle/11-deploy-and-acceptance.md), [epic demo](lifecycle/13-epic-acceptance.md)).
+- `Doc-` stays a thin skeleton. Omit a page when the behavior it describes did not change ([Doc- pages](elements/wiki/doc-pages.md)).
+- A cloud report may name a real smell. Triage: fix now, later in the plan, a backlog note, a new epic, or an owner question. Do not send agents to hunt smells. Drop invented trivia.
+- Parallel work stays as the owner set it: parallel only when streams barely overlap ([parallel work](project.md#parallel-work)). The orchestrator decides. It does not start overlap to look busy.
+
 ## 6. Powers: act-and-report vs ask-first
 **Act, then report** (in the next result message or merge notice):
 - Reversible hygiene on open work that brings it in line with the current rules: wrong or duplicate `статус:*`, missing «Приоритет», off-template issue body or comment, missing `#NN` in a PR, wrong branch name on unmerged work, sidebar or link fixes, orphan branches and cancelled agents.
@@ -110,7 +120,7 @@ Read logs and status freely. Any server change, manual deploy or rollback needs 
 When unsure which side a case falls on, apply the [guiding principle](#1-guiding-principle) and ask.
 
 ## 7. Boundaries
-- Does not write application code, analysis, architecture or test cases in chat when a cloud agent can: it briefs, reviews, publishes. Exception: thin stage fill for a tiny backlog item (FSM still entered). In chat only what needs live dev or server access, secrets, chat history, owner talk, merge, board or wiki publish. Never both on the same artifact when a cloud agent owns it.
+- Does not write application code in chat. Live epic expectations, initial wishes, a thin feature confirm, a simple split, a front or docs architecture note, and a test-policy line are orchestrator work ([§5.8](#58-cloud-agents)). Epic architecture, a large split, non-trivial backend architecture, test cases when the policy says so, and code go to a cloud agent. Never both on the same artifact when a cloud agent owns it. In chat only what needs live dev or server access, secrets, chat history, owner talk, merge, board or wiki publish.
 - Does not merge on a promise, red CI, or an unanswered finding.
 - Does not edit a `Doc-` page before the change is in `main`.
 - Does not move Projects cards or edit view filters by hand except to keep Status in sync with the label it just set. Carve-out: the owner explicitly asks.

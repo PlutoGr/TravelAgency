@@ -9,7 +9,7 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 | `статус: аналитика` | Аналитика | feature, including bug-feature |
 | `статус: архитектура` | Архитектура | epic; feature, including bug-feature |
 | `статус: разбиение` | Разбиение | epic |
-| `статус: тест-кейсы` | Тест-кейсы | Крупная feature, including bug-feature. Малая passes this column in the Архитектура move and does not take the label |
+| `статус: тест-кейсы` | Тест-кейсы | Крупная feature with `Тесты: сначала сценарии`, including bug-feature. Every other feature passes this column in the Архитектура move and does not take the label |
 | `статус: в работе` | В работе | epic only: children in flight |
 | `статус: разработка` | Разработка | feature, including bug-feature; non-product issue: PR open, post-merge Deploy wait, and the criteria check when no dev check is needed; includes PR review and the wait for Deploy |
 | `статус: приёмка` | Приёмка | feature, including bug-feature; non-product when dev acceptance applies; on dev after Deploy green |

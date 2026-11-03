@@ -4,7 +4,7 @@ The orchestrator's checklist on every cloud-agent deliverable. Kept in the orche
 ```markdown
 REVIEW <issue #NN> <column> <agent / PR / head sha>
 Stage bar (from the lifecycle stage file): <each exit criterion: pass / fail>
-Scope: <inside issue and epic problem: yes / no; drive-by changes: none / list>
+Scope: <inside issue and epic expectations: yes / no; drive-by changes: none / list>
 Templates and formats: <pass / fixes needed>
 Public wording and secrets: <pass / fixes needed>
 Agent doubts and questions: <answered / open>

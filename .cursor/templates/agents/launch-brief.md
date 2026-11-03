@@ -29,5 +29,5 @@ Deliverable:
 
 Questions: if something blocks a correct result, stop, ask with `.cursor/templates/agents/question.md`, and end the run with `RESULT blocked` (do not stay open waiting for an answer).
 Report: `.cursor/templates/agents/agent-report.md`.
-Token thrift: minimal diff, no drive-by refactor, stop when acceptance holds.
+Token thrift: short brief only (this prompt). Minimal diff, no drive-by refactor, stop when acceptance holds. Report a real smell; do not hunt.
 ```

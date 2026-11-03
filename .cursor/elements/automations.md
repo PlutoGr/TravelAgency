@@ -20,6 +20,12 @@ Active project automations post GitHub comments as `cursor`. They are the first-
 
 A missing or disabled routine is a blocker: report it to the owner ([escalation](../templates/owner/escalation.md)); re-enabling or recreating it is the owner's yes.
 
+## Depth by size
+The inventory stays Active. Depth follows the feature. Do not disable a bot to go faster.
+- Крупная, or any change to auth, money, security, migrations or public contracts: read every finding and close it properly. Escalation review stays as in [review §3](../lifecycle/10-review-and-merge.md#3-escalation-review).
+- Малая polish (copy, visual, docs, `Тесты: без новых`, a small diff): still wait until automations finish. The [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) does not change. A non-blocking nit is one line «не блокирует» and is not re-dug. Do not launch a second reviewer for noise. A validated security or bug finding still blocks.
+- The orchestrator may defer non-blocking noise to a backlog note.
+
 ## Handling
 - Before merge: wait until CI and automations have finished, read every finding including medium and lower, reply on each thread ([review replies](../templates/github/review-replies.md), [review and merge](../lifecycle/10-review-and-merge.md#1-cloud-agent-until-ready)). A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
 - Do not merge while a blocker is open (format, Doc- line, red CI, a validated security or bug finding without a finished reply).

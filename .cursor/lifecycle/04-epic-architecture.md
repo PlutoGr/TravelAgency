@@ -1,12 +1,13 @@
 # 04 Epic architecture (column Архитектура)
-**Entry:** Бизнес-анализ passed its gate ([Бизнес-анализ](03-epic-business-analysis.md)).
+**Entry:** Бизнес-анализ passed its gate ([Бизнес-анализ](03-epic-business-analysis.md)). Inputs: fixed «Ожидания» (and «Эталон» when present), the thin `Doc-` skeleton, and code or git when the design needs them.
 
-**Who:** one cloud agent with the [architect brief](../briefs/architect.md); the orchestrator reviews and publishes.
+**Who:** one cloud agent with the [architect brief](../briefs/architect.md); the orchestrator reviews and publishes. The launch names the expectations, the etalon and the touchpoints. It does not paste the methodology.
 
-**Section «Архитектура»** on the `Epic-` page: services, boundaries, integration options and why the option was chosen. No field catalog and no screen layout.
-- Map only what Бизнес-анализ justified. Add no field, screen or block it omitted. Do not redesign product layout.
-- Business part unclear: do not rewrite it; options go to «Решения».
-- Every important choice is one «Решения» row ([decisions log](../elements/wiki/decisions-log.md)). An impactful «how» that is not already authorized goes to the owner via the orchestrator.
-- Fill «Связи с другими эпиками» (depends on, parallel with, why) when known.
+**Section «Архитектура»** on the `Epic-` page: one block. What changes, where, and how it connects. As-is to to-be at architecture level. No field catalog and no screen layout (the etalon holds the look).
+- A pure visual epic stays minimal, often a front-only touch list.
+- Do not invent several options for show. Map only what «Ожидания» justified.
+- Unrealistic or dangerous: stop. Leave «Выбрано» empty and say why. The orchestrator escalates to the owner. Do not paper over it.
+- Unclear expectations: do not rewrite «Ожидания»; send the epic back.
+- Every important choice is one «Решения» row ([decisions log](../elements/wiki/decisions-log.md)). Fill «Связи с другими эпиками» when known.
 
-**Exit gate:** architecture text visible, every choice logged, no empty «Выбрано» the split depends on ([decisions log](../elements/wiki/decisions-log.md)). When that bar holds and no owner `Question` is still open, publish the section (or leave it ready) and ask for [owner stage approval](../orchestrator.md#owner-stage-approval): `Question` = `approve epic architecture #NN`. On yes, clear that `Question` and set `статус: разбиение` ([Разбиение](05-epic-split.md)). On no or edits, stay on `статус: архитектура`, keep that `Question`, rework, and ask again.
+**Exit gate:** the one block is visible and a split can follow it; no empty «Выбрано» the split depends on. When that bar holds and no owner `Question` is still open, publish (or leave ready) and ask for [owner stage approval](../orchestrator.md#owner-stage-approval): `Question` = `approve epic architecture #NN`. On yes, clear that `Question` and set `статус: разбиение` ([Разбиение](05-epic-split.md)). On no or edits, stay on `статус: архитектура`, keep that `Question`, rework, and ask again.
