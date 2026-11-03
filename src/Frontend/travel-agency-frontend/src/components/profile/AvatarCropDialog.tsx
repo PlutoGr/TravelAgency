@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import { Button, Modal } from '@/components/ui';
 import {
   circleScreenPx,
@@ -7,7 +7,9 @@ import {
   initialCircle,
   lowerDiameter,
   panCircle,
+  pointerOverCropCircle,
   squareOf,
+  stepWheelDiameter,
   withDiameter,
   type AvatarBitmap,
   type Circle,
@@ -23,6 +25,22 @@ type AvatarCropDialogProps = {
 };
 
 const DIALOG_NAME = 'Обрезка фото';
+
+const SCALE_SLIDER = [
+  'mt-2 h-2 w-full cursor-pointer appearance-none rounded-full border-0 p-0 disabled:opacity-40',
+  '[&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:bg-transparent',
+  '[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none',
+  '[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-primary',
+  '[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer',
+  'hover:[&::-webkit-slider-thumb]:shadow-lg',
+  'focus:[&::-webkit-slider-thumb]:ring-2 focus:[&::-webkit-slider-thumb]:ring-primary/30',
+  '[&::-moz-range-track]:h-2 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:border-0 [&::-moz-range-track]:bg-transparent',
+  '[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:appearance-none',
+  '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-primary',
+  '[&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer',
+  'hover:[&::-moz-range-thumb]:shadow-lg',
+  'focus:[&::-moz-range-thumb]:ring-2 focus:[&::-moz-range-thumb]:ring-primary/30',
+].join(' ');
 
 function cropDialog(): HTMLElement | null {
   const node = document.querySelector(`[role="dialog"][aria-label="${DIALOG_NAME}"]`);
@@ -47,11 +65,20 @@ export default function AvatarCropDialog({
   const drag = useRef<{ x: number; y: number; circle: Circle } | null>(null);
   const lock = useRef(false);
   const alive = useRef(true);
+  const wheelAcc = useRef(0);
   const [circle, setCircle] = useState(() => initialCircle(image.width, image.height));
+  const circleRef = useRef(circle);
   const [previewPx, setPreviewPx] = useState(0);
   const [encoding, setEncoding] = useState(false);
+  const [grabbing, setGrabbing] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>();
   const locked = saving || encoding;
+  const lockedRef = useRef(locked);
+
+  useLayoutEffect(() => {
+    circleRef.current = circle;
+    lockedRef.current = locked;
+  }, [circle, locked]);
   const maxD = Math.min(image.width, image.height);
   const minD = lowerDiameter(image.width, image.height);
   const span = maxD - minD;
@@ -95,6 +122,36 @@ export default function AvatarCropDialog({
   }, [locked]);
 
   useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    const onWheel = (event: WheelEvent) => {
+      const widthPx = node.clientWidth;
+      const rect = node.getBoundingClientRect();
+      if (!pointerOverCropCircle(event.clientX - rect.left, event.clientY - rect.top, widthPx)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (lockedRef.current) return;
+      const current = circleRef.current;
+      const stepped = stepWheelDiameter(
+        current,
+        wheelAcc.current,
+        event.deltaY,
+        event.deltaMode,
+        image.width,
+        image.height,
+      );
+      wheelAcc.current = stepped.accumulator;
+      if (drag.current) {
+        drag.current = { x: event.clientX, y: event.clientY, circle: stepped.circle };
+      }
+      circleRef.current = stepped.circle;
+      setCircle(stepped.circle);
+    };
+    node.addEventListener('wheel', onWheel, { passive: false });
+    return () => node.removeEventListener('wheel', onWheel);
+  }, [image.height, image.width]);
+
+  useEffect(() => {
     const dialog = cropDialog();
     if (!dialog) return;
     dialog.tabIndex = -1;
@@ -128,6 +185,11 @@ export default function AvatarCropDialog({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [locked]);
 
+  function commitCircle(next: Circle) {
+    circleRef.current = next;
+    setCircle(next);
+  }
+
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if (locked) return;
     if (typeof event.currentTarget.setPointerCapture === 'function') {
@@ -137,14 +199,15 @@ export default function AvatarCropDialog({
         // В jsdom указатель не захватывается, сдвиг считается по clientX.
       }
     }
-    drag.current = { x: event.clientX, y: event.clientY, circle };
+    setGrabbing(true);
+    drag.current = { x: event.clientX, y: event.clientY, circle: circleRef.current };
   }
 
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
     const start = drag.current;
-    if (!start || locked) return;
+    if (!start || lockedRef.current) return;
     const width = previewRef.current?.clientWidth ?? previewPx;
-    setCircle(
+    commitCircle(
       panCircle(
         start.circle,
         event.clientX - start.x,
@@ -158,6 +221,7 @@ export default function AvatarCropDialog({
 
   function onPointerUp() {
     drag.current = null;
+    setGrabbing(false);
   }
 
   async function handleSave() {
@@ -189,7 +253,7 @@ export default function AvatarCropDialog({
       <div
         ref={previewRef}
         data-testid="avatar-crop-preview"
-        className="relative aspect-square w-full touch-none overflow-hidden bg-sand"
+        className={`relative aspect-square w-full touch-none overflow-hidden bg-sand ${grabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -207,11 +271,11 @@ export default function AvatarCropDialog({
         />
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-warm-white"
             style={{
               width: `calc(100% - ${CROP_PREVIEW_PAD * 2}px)`,
               height: `calc(100% - ${CROP_PREVIEW_PAD * 2}px)`,
-              boxShadow: '0 0 0 9999px rgba(20, 16, 12, 0.45)',
+              boxShadow: '0 0 0 1px #1A1A2E, 0 0 0 9999px rgba(20, 16, 12, 0.45)',
             }}
           />
         </div>
@@ -220,17 +284,20 @@ export default function AvatarCropDialog({
       <label className="mt-4 block text-sm text-dark">
         Масштаб
         <input
-          className="mt-2 w-full"
+          className={SCALE_SLIDER}
           type="range"
           min={0}
           max={span}
           step={1}
           value={sliderPos}
           disabled={locked}
+          style={{
+            background: `linear-gradient(to right, #2C5282 ${span === 0 ? 0 : (sliderPos / span) * 100}%, #F5F0E8 ${span === 0 ? 0 : (sliderPos / span) * 100}%)`,
+          }}
           onChange={(event) => {
             if (locked) return;
             const next = maxD - Number(event.target.value);
-            setCircle((prev) => withDiameter(prev, next, image.width, image.height));
+            commitCircle(withDiameter(circleRef.current, next, image.width, image.height));
           }}
         />
       </label>

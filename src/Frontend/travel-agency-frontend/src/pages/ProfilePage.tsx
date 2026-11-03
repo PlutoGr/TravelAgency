@@ -10,9 +10,10 @@ import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
 import { getManagerCard } from '@/api/managerCard';
 import { authFormError } from '@/domain/authFormErrors';
 import { ACCOUNT_TEXT } from '@/domain/accountLinks';
-import { inspectAvatarFile, type AvatarBitmap } from '@/domain/avatarCrop';
+import { inspectAvatarFile, loadStraight, type AvatarBitmap } from '@/domain/avatarCrop';
 import {
   AVATAR_ACCEPT,
+  AVATAR_OPEN_ERROR,
   avatarUploadMessage,
   profileCardPayload,
   profileProblemFields,
@@ -127,6 +128,7 @@ export default function ProfilePage() {
   }
 
   function openFilePicker() {
+    if (avatarBusy || crop) return;
     fileInputRef.current?.click();
   }
 
@@ -183,8 +185,34 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleReframe() {
+    const url = useAuthStore.getState().user?.avatar;
+    if (!url || avatarBusy || crop) return;
+    const generation = ++readGeneration.current;
+    setAvatarBusy(true);
+    try {
+      const response = await fetch(url, { credentials: 'same-origin' });
+      if (!response.ok) throw new Error('status');
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error('empty');
+      const image = await loadStraight(blob);
+      if (generation !== readGeneration.current) {
+        image.close?.();
+        return;
+      }
+      setAvatarError(undefined);
+      setCropError(undefined);
+      setCrop({ token: generation, image });
+    } catch {
+      if (generation !== readGeneration.current) return;
+      setAvatarError(AVATAR_OPEN_ERROR);
+    } finally {
+      if (generation === readGeneration.current) setAvatarBusy(false);
+    }
+  }
+
   async function handleDeleteAvatar() {
-    if (crop) return;
+    if (crop || avatarBusy) return;
     setAvatarError(undefined);
     setAvatarBusy(true);
     const revision = ++avatarRevision.current;
@@ -238,6 +266,15 @@ export default function ProfilePage() {
                         disabled={photoLocked}
                       >
                         Заменить
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleReframe}
+                        disabled={photoLocked}
+                      >
+                        Изменить положение фото
                       </Button>
                       <Button
                         type="button"

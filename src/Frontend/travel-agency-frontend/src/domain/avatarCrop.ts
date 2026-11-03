@@ -100,6 +100,40 @@ export function circleScreenPx(previewPx: number): number {
   return Math.max(previewPx - CROP_PREVIEW_PAD * 2, 0);
 }
 
+/** Шаг колеса над кругом: щелчок — одна десятая хода, дробь копится до целого пикселя. */
+export function stepWheelDiameter(
+  circle: Circle,
+  accumulator: number,
+  deltaY: number,
+  deltaMode: number,
+  width: number,
+  height: number,
+): { circle: Circle; accumulator: number } {
+  const travel = Math.max(0, Math.min(width, height) - lowerDiameter(width, height));
+  const click = travel === 0 ? 0 : Math.max(travel / 10, 1);
+  let increment = 0;
+  if (deltaY !== 0) {
+    if (deltaMode === 1) increment = deltaY * click;
+    else if (deltaMode === 2) increment = Math.sign(deltaY) * click;
+    else increment = (deltaY / 100) * click;
+  }
+  const summed = accumulator + increment;
+  const step = Math.trunc(summed);
+  const next = withDiameter(circle, circle.diameter + step, width, height);
+  let rest = summed - step;
+  if (next.diameter === lowerDiameter(width, height) && rest < 0) rest = 0;
+  if (next.diameter === Math.min(width, height) && rest > 0) rest = 0;
+  return { circle: next, accumulator: rest };
+}
+
+/** Указатель над кругом или его кольцом. Точка строго снаружи радиуса — вуаль. */
+export function pointerOverCropCircle(x: number, y: number, previewPx: number): boolean {
+  const radius = circleScreenPx(previewPx) / 2;
+  const dx = x - previewPx / 2;
+  const dy = y - previewPx / 2;
+  return dx * dx + dy * dy <= radius * radius;
+}
+
 export function panCircle(
   circle: Circle,
   dx: number,

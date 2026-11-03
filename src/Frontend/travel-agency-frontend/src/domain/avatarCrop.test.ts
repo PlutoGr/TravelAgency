@@ -7,7 +7,9 @@ import {
   loadStraight,
   lowerDiameter,
   panCircle,
+  pointerOverCropCircle,
   squareOf,
+  stepWheelDiameter,
   withDiameter,
   type AvatarBitmap,
 } from './avatarCrop';
@@ -284,5 +286,92 @@ describe('avatarUploadMessage', () => {
         },
       }),
     ).toBe('Не удалось загрузить аватар. Попробуйте ещё раз.');
+  });
+});
+
+describe('wheel over the crop circle', () => {
+  it('ТК-2, ТК-3 and ТК-6 step the same diameter and drop leftover past the limit', () => {
+    const width = 2000;
+    const height = 3000;
+    const start = initialCircle(width, height);
+    const up = stepWheelDiameter(start, 0, -1, 1, width, height);
+    expect(up.circle).toEqual({ diameter: 1807, cx: 1000, cy: 1500 });
+    expect(up.accumulator).toBeCloseTo(-0.6, 12);
+
+    const second = stepWheelDiameter(up.circle, up.accumulator, -1, 1, width, height);
+    expect(second.circle).toEqual({ diameter: 1613, cx: 1000, cy: 1500 });
+    expect(second.accumulator).toBeCloseTo(-0.2, 12);
+
+    const pixel = stepWheelDiameter(start, 0, -100, 0, width, height);
+    expect(pixel.circle.diameter).toBe(1807);
+    expect(pixel.accumulator).toBeCloseTo(-0.6, 12);
+    expect(pixel.circle.cy).toBe(1500);
+
+    const page = stepWheelDiameter(start, 0, -3, 2, width, height);
+    expect(page.circle.diameter).toBe(1807);
+    expect(page.accumulator).toBeCloseTo(-0.6, 12);
+
+    const capped = stepWheelDiameter(start, 0, 1, 1, width, height);
+    expect(capped.circle).toEqual(start);
+    expect(capped.accumulator).toBe(0);
+
+    const floor = withDiameter(start, 64, width, height);
+    const stuck = stepWheelDiameter(floor, 0, -1, 1, width, height);
+    expect(stuck.circle.diameter).toBe(64);
+    expect(stuck.accumulator).toBe(0);
+    expect(stuck.circle.cy).toBe(floor.cy);
+
+    const nudged = stepWheelDiameter({ diameter: 1000, cx: 1000, cy: 1500 }, 0, 1, 1, width, height);
+    expect(nudged.circle).toEqual({ diameter: 1193, cx: 1000, cy: 1500 });
+
+    const intoEdge = stepWheelDiameter({ diameter: 1900, cx: 1000, cy: 2500 }, 0, 1, 1, width, height);
+    expect(intoEdge.circle.diameter).toBe(2000);
+    expect(intoEdge.circle.cy).toBe(2000);
+    expect(intoEdge.accumulator).toBe(0);
+
+    let small = initialCircle(70, 70);
+    let acc = 0;
+    ({ circle: small, accumulator: acc } = stepWheelDiameter(small, acc, -1, 1, 70, 70));
+    expect(small.diameter).toBe(69);
+    expect(acc).toBe(0);
+    const jumped = stepWheelDiameter(initialCircle(70, 70), 0, -10000, 0, 70, 70);
+    expect(jumped.circle.diameter).toBe(64);
+    expect(jumped.accumulator).toBe(0);
+    while (small.diameter > 64) {
+      ({ circle: small, accumulator: acc } = stepWheelDiameter(small, acc, -1, 1, 70, 70));
+    }
+    expect(small.diameter).toBe(64);
+    const extra = stepWheelDiameter(small, acc, -1, 1, 70, 70);
+    expect(extra.circle.diameter).toBe(64);
+    expect(extra.accumulator).toBe(0);
+
+    const tiny = initialCircle(40, 80);
+    const idle = stepWheelDiameter(tiny, 0.4, -5, 1, 40, 80);
+    expect(idle.circle).toEqual(tiny);
+    expect(idle.accumulator).toBe(0);
+
+    let frame = start;
+    let rest = 0;
+    ({ circle: frame, accumulator: rest } = stepWheelDiameter(frame, rest, -10, 0, width, height));
+    expect(frame.diameter).toBe(1981);
+    expect(rest).toBeCloseTo(-0.36, 12);
+    ({ circle: frame, accumulator: rest } = stepWheelDiameter(frame, rest, -10, 0, width, height));
+    expect(frame.diameter).toBe(1962);
+    expect(rest).toBeCloseTo(-0.72, 12);
+    const sideways = stepWheelDiameter(frame, rest, 0, 0, width, height);
+    expect(sideways.circle).toEqual(frame);
+    expect(sideways.accumulator).toBeCloseTo(rest, 12);
+  });
+
+  it('ТК-4 counts the ring as inside and the veil as outside', () => {
+    const preview = 320;
+    const radius = circleScreenPx(preview) / 2;
+    const center = preview / 2;
+    expect(pointerOverCropCircle(center, center, preview)).toBe(true);
+    expect(pointerOverCropCircle(center + radius, center, preview)).toBe(true);
+    expect(pointerOverCropCircle(center + radius + 0.01, center, preview)).toBe(false);
+    expect(pointerOverCropCircle(10, 10, preview)).toBe(false);
+    expect(pointerOverCropCircle(0, 0, 0)).toBe(true);
+    expect(pointerOverCropCircle(1, 0, 0)).toBe(false);
   });
 });
