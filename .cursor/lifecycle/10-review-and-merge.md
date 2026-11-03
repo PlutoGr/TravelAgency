@@ -9,7 +9,7 @@ A PR is **ready** only when all four hold for its head sha: «CI» green, «Secr
 **Who:** Cursor Automations (first line, while the agent watches), the cloud agent (fixes until ready), the orchestrator (full review and merge), a cloud agent with the [reviewer brief](../briefs/reviewer.md) on escalation.
 
 ## 1. Cloud agent until ready
-- Watch CI and Automations on the PR; fix red CI that belongs to this PR (flake: one rerun; in-feature failure: fix; expired fixture / upstream digest: fix in this PR if it blocks this work, else raise a question).
+- Watch CI and Automations on the PR at the [depth of the feature](../elements/automations.md#depth-by-size); fix red CI that belongs to this PR (flake: one rerun; in-feature failure: fix; expired fixture / upstream digest: fix in this PR if it blocks this work, else raise a question).
 - Reply on every finding thread ([review replies](../templates/github/review-replies.md)). «Будет исправлено» is not finished: fix, push, then «исправлено» with the head sha.
 - A finding that needs the owner: raise a [question](../templates/agents/question.md) and end the run with `RESULT blocked`; the orchestrator pauses the issue in place (same column) with the memory [Question](../elements/memory.md#question) until answered: do not advance and do not ask the agent to keep coding past the blocker.
 - When the [ready predicate](#ready-predicate) holds: post the agent report that the PR is ready and finish the run.
@@ -19,7 +19,7 @@ On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting o
 ## 2. Full orchestrator review
 - Strip Cursor PR-body markers (`CURSOR_AGENT_PR_BODY`, artifact links) and the «Open in Cursor» footer (`gh pr edit --body-file`).
 - Re-read the issue, the agent's report and solution, the whole PR diff, every comment and fix.
-- Confirm every bot finding is answered, no critical defect remains, scope matches the page and the epic problem, formats and secrets pass ([PR](../elements/git/pull-requests.md), [security](../rules/security.mdc)).
+- Confirm every bot finding is answered, no critical defect remains, scope matches the page and the epic «Ожидания», formats and secrets pass ([PR](../elements/git/pull-requests.md), [security](../rules/security.mdc)).
 - Verdict: [deliverable review](../templates/agents/deliverable-review.md). A gap: reply to the same agent (steer) and, in the same turn, set `Agent` to the new run, `Waiting on` = `agent` (the agent is the wait here; [cloud agents](../elements/cloud-agents.md#acceptance)), `Next` = wait for the new ready report. Back to `none` and full review only on that finish.
 - Green CI and «Secret scan» ([CI/CD](../elements/ci-cd.md)). Do not merge while either is red or still running.
 - The PR names the `Doc-` page or «вики не затронута»; a missing line blocks merge. Малая that names a page also includes the draft text in «Документация»; a name without the draft blocks merge.

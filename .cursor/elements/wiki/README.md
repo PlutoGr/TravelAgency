@@ -15,7 +15,7 @@ Separate public repo `TravelAgency.wiki.git`, branch `master`; push = publish. P
 No other page kinds. Sidebar groups: «Действующая документация» (Doc-), «Фичи» (Epic- and Feature-), «Планы» (Plan-).
 
 ## Who writes
-Only the orchestrator publishes. Cloud agents return text: [analyst](../../briefs/analyst.md) (analysis sections), [architect](../../briefs/architect.md) (architecture, split, «Решения» rows; on Малая also «Тест-кейсы»), [test designer](../../briefs/test-designer.md) (Крупная «Тест-кейсы»), [docs writer](../../briefs/docs-writer.md) (Крупная `Doc-` and `Doc-ADR-NNN-<Name>` after the change ships). A Малая `Doc-` draft arrives in the PR and is published right after merge. Other text arrives via the issue or the PR.
+Only the orchestrator publishes. The orchestrator also writes initial wishes, epic expectations with the owner, a thin feature confirm, a simple split, a front or docs note, and a test-policy line. Cloud agents return text when launched: [analyst](../../briefs/analyst.md) (a narrow helper), [architect](../../briefs/architect.md) (epic architecture, a large split, non-trivial feature architecture), [test designer](../../briefs/test-designer.md) (Крупная «Тест-кейсы» when `Тесты` is `сначала сценарии`), [docs writer](../../briefs/docs-writer.md) (a Крупная `Doc-` or ADR after the change ships, and only when the skeleton needs it). A Малая `Doc-` draft, when one is needed, arrives in the PR and is published right after merge. Other text arrives via the issue or the PR.
 
 ## Writing
 - Russian and impersonal ([templates](../../templates/README.md#russian-and-impersonal)); no customer company names.
@@ -23,7 +23,7 @@ Only the orchestrator publishes. Cloud agents return text: [analyst](../../brief
 - Code names (classes, fields, routes, commands) as in code. Dates `2026-10-17`. No «Обновлено» line (history shows dates).
 - File names Latin, English, words joined by hyphens: `Doc-Booking-Request.md` (Cyrillic breaks links). The Russian title is only the first line `# <русский заголовок>`. Links without `.md`: `[text](Doc-Booking-Request)`, anchors `[text](Doc-Booking-Request#section)`.
 - No status line as the source of truth: the stage is the issue label. «сделано» or «отменено» are content marks.
-- Page templates live only in this package ([templates/wiki](../../templates/README.md#wiki-pages)); the wiki holds no template pages. An open page that does not match its current template is brought to it when next edited (drop a status line, drop epic «Тест-кейсы», roadmap order only in «Порядок»); closed pages are left alone.
+- Page templates live only in this package ([templates/wiki](../../templates/README.md#wiki-pages)); the wiki holds no template pages. An open page that does not match its current template is brought to it when that page is next edited for its own work (drop a status line, drop epic «Тест-кейсы», replace a six-block epic analysis with «Исходные пожелания» and «Ожидания», keep the roadmap a sketch). A methodology change does not by itself rewrite product `Epic-`, `Feature-` or `Doc-` pages. Closed pages are left alone.
 
 ## Lifecycle
 - Shipped: `Doc-` (and ADR) published after merge, never from unmerged code ([Doc- pages](doc-pages.md)); the source page marked «сделано» with links. Cancelled: «отменено» with the reason.

@@ -1,12 +1,12 @@
 # Cloud agents
-Cursor cloud agents do every repo-bound methodology stage: analysis text, architecture text, split, test cases, code and tests, CI and Docker edits, escalated review, `Doc-` drafts, rules audits. The orchestrator chat stays thin: full brief in, PR or short report out. The orchestrator itself does what needs the server, secrets, chat history, live owner talk, merge, board labels, wiki publish, or acceptance on dev. Never both on the same artifact. Cloud-first under the unified subscription (2026-10-28): no usage-mode matrix, no scheduled limits refresh.
+Cursor cloud agents do the repo-bound stages that need them: epic architecture, a large split, non-trivial feature architecture, test cases when the policy says so, code and tests, CI and Docker edits, escalated review, a `Doc-` draft when the skeleton must change, rules audits, and a narrow analysis helper. The orchestrator writes initial wishes, runs live epic expectations with the owner, a thin feature confirm, a simple split, a front or docs note, and the test-policy line. Launch prompts stay short: role, goal, links, bar. Do not paste the methodology into a launch. The orchestrator itself also does what needs the server, secrets, chat history, merge, board labels, wiki publish, or acceptance on dev. Never both on the same artifact. Cloud-first under the unified subscription (2026-10-28): no usage-mode matrix, no scheduled limits refresh.
 
 ## Which brief
 | Stage or job | Brief |
 |---|---|
-| Epic Бизнес-анализ, feature Аналитика | [analyst](../briefs/analyst.md) |
-| Epic Архитектура, epic Разбиение, feature Архитектура (Малая: also «Тест-кейсы» in that run) | [architect](../briefs/architect.md) |
-| Тест-кейсы (Крупная) | [test designer](../briefs/test-designer.md) |
+| Epic Бизнес-анализ helper (peer notes, mock scaffold); feature Аналитика helper only when asked | [analyst](../briefs/analyst.md) |
+| Epic Архитектура; epic Разбиение when large or tangled; feature Архитектура when non-trivial back | [architect](../briefs/architect.md) |
+| Тест-кейсы (Крупная and `Тесты: сначала сценарии`, or an item already in that column) | [test designer](../briefs/test-designer.md) |
 | Application code and its automated tests (Разработка) | [developer](../briefs/developer.md) |
 | Workflows, Docker, nginx, deploy files | [devops](../briefs/devops.md) |
 | Escalated PR review, overlap check | [reviewer](../briefs/reviewer.md) |
@@ -19,7 +19,7 @@ Acceptance on dev is not a cloud launch: the orchestrator has dev access ([Пр�
 1. Check that no branch, PR or agent already exists for the issue (`gh pr list`, `git ls-remote`). One issue, one agent: a live run on the issue (for example a `Doc-` draft during Приёмка) is finished or cancelled before another is launched ([row lifecycle](memory.md#row-lifecycle)).
 2. Create the branch for code work ([branches](git/branches.md)).
 3. Repo `https://github.com/PlutoGr/TravelAgency`, title with the issue number.
-4. Prompt in English from the [launch brief template](../templates/agents/launch-brief.md): role brief link, issue, column, goal and acceptance, page links, architecture context, minimal stack touchpoints, boundaries, deliverable, report format. The agent reads this repo's `.cursor/` files the brief links; do not paste the whole rule set or unrelated guides.
+4. Prompt in English from the [launch brief template](../templates/agents/launch-brief.md): role brief link, issue, column, goal and acceptance, page links, architecture context, minimal stack touchpoints, boundaries, deliverable, report format. The agent reads the `.cursor/` files the brief links. Do not paste the rule set, the lifecycle, or unrelated guides.
 5. Record the run id in the row's `Agent` field in [memory](memory.md) by the [row lifecycle](memory.md#row-lifecycle) (`Waiting on` = `agent` only when the agent is the wait).
 
 ## Models
@@ -31,14 +31,15 @@ Acceptance on dev is not a cloud launch: the orchestrator has dev access ([Пр�
 - Edit the wiki, the board, a label or a Projects field.
 - Secrets or server access.
 - `closes`/`fix`/`fixes`, `addCloseIssueReferences`, closedBy.
-- Leave the issue scope or the epic's problem.
+- Leave the issue scope or the epic's «Ожидания».
 - Talk to the owner.
 - Open anything other than a regular PR into `main` when the result is code.
 
 ## During the run
 - A blocking doubt is raised to the orchestrator with the [question template](../templates/agents/question.md) (in the PR, the report, or the agent thread) and the run ends with `RESULT blocked` so the orchestrator wakes. Do not leave the run open waiting for an answer. Every question blocks; there is no «continue meanwhile». The orchestrator answers in that wake with the [answer template](../templates/agents/answer.md) as a reply to the same cloud agent, which resumes the run (owner-needed: pause in place with the `Question` and the blocked agent id per the [row lifecycle](memory.md#row-lifecycle), then the same reply once the owner answers). The agent does not guess around a gap in the page.
-- Text deliverables (analysis, architecture, split, test cases, `Doc-`) are returned as ready Russian section text, not a wiki push.
-- **Code deliverables (Разработка):** the agent opens the PR, watches CI, Secret scan and Cursor Automations, fixes red CI that belongs to the PR, answers or marks every bot finding, and only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds marks the PR ready and reports. Until that report, the agent owns the PR; the orchestrator does not merge early.
+- A real defect, risk or smell outside the task is named in the report under Smells. Do not hunt for smells and do not invent them. Do not silently expand the task to fix one.
+- Text deliverables (architecture, a large split, test cases, a narrow analysis helper, `Doc-`) are returned as ready Russian section text, not a wiki push.
+- **Code deliverables (Разработка):** the agent opens the PR, watches CI, Secret scan and Cursor Automations at the [depth of the feature](automations.md#depth-by-size), fixes red CI that belongs to the PR, answers or marks every bot finding, and only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds marks the PR ready and reports. Until that report, the agent owns the PR; the orchestrator does not merge early.
 - Final report: [agent report](../templates/agents/agent-report.md) (for code: state each part of the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)).
 
 ## Acceptance
