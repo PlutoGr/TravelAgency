@@ -31,6 +31,32 @@ function photoSrc(url: string | undefined): string | undefined {
   return typeof url === 'string' && url.trim() !== '' ? url : undefined;
 }
 
+type PersonFace = { src?: string; name?: string };
+
+function trimmedName(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim();
+  return name === '' ? undefined : name;
+}
+
+function personFace(src: string | undefined, name: string | undefined): PersonFace {
+  const photo = photoSrc(src);
+  const label = trimmedName(name);
+  return {
+    ...(photo ? { src: photo } : {}),
+    ...(label ? { name: label } : {}),
+  };
+}
+
+function sameFace(prev: PersonFace | undefined, next: PersonFace): boolean {
+  return prev?.src === next.src && prev?.name === next.name;
+}
+
+function cardButtonName(who: 'manager' | 'client', name: string | undefined): string {
+  const title = who === 'manager' ? 'Карточка менеджера' : 'Карточка клиента';
+  return name ? `${title}, ${name}` : title;
+}
+
 type BubbleRead = 'session' | 'manager' | 'client' | 'none';
 
 function bubbleRead(
@@ -87,7 +113,7 @@ export default function ChatWindow({
   const [isSending, setIsSending] = useState(false);
   const [cardUserId, setCardUserId] = useState<string | null>(null);
   const [cardClientId, setCardClientId] = useState<string | null>(null);
-  const [otherAvatars, setOtherAvatars] = useState<Record<string, string | undefined>>({});
+  const [people, setPeople] = useState<Record<string, PersonFace>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useRef(new Map<string, Promise<ManagerPublicCard>>());
@@ -103,10 +129,10 @@ export default function ChatWindow({
   knownIds.current = new Set(messages.map((msg) => msg.id));
   viewerRef.current = { currentUserId, viewerIsClient, viewerKey };
 
-  const applyAvatar = useCallback((token: number, id: string, seq: number, url: string | undefined) => {
+  const applyPerson = useCallback((token: number, id: string, seq: number, src: string | undefined, name: string | undefined) => {
     if (alive.current !== token || avatarSeq.current.get(id) !== seq) return;
-    const src = photoSrc(url);
-    setOtherAvatars((prev) => (prev[id] === src ? prev : { ...prev, [id]: src }));
+    const next = personFace(src, name);
+    setPeople((prev) => (sameFace(prev[id], next) ? prev : { ...prev, [id]: next }));
   }, []);
 
   const trackManagerCard = useCallback((id: string, pending: Promise<ManagerPublicCard>) => {
@@ -115,15 +141,15 @@ export default function ChatWindow({
     const seq = (avatarSeq.current.get(id) ?? 0) + 1;
     avatarSeq.current.set(id, seq);
     pending.then(
-      (card) => applyAvatar(token, id, seq, card.avatarUrl),
+      (card) => applyPerson(token, id, seq, card.avatarUrl, card.displayName),
       () => {
         // Отклонённый промис из кэша убирается, чтобы следующее открытие повторило запрос.
         if (cards.current.get(id) === pending) cards.current.delete(id);
-        applyAvatar(token, id, seq, undefined);
+        applyPerson(token, id, seq, undefined, undefined);
       },
     );
     return pending;
-  }, [applyAvatar]);
+  }, [applyPerson]);
 
   const loadManagerCard = useCallback((id: string) => {
     const cached = cards.current.get(id);
@@ -136,10 +162,10 @@ export default function ChatWindow({
     const seq = (avatarSeq.current.get(id) ?? 0) + 1;
     avatarSeq.current.set(id, seq);
     getClientCard(id).then(
-      (card) => applyAvatar(token, id, seq, card.avatarUrl),
-      () => applyAvatar(token, id, seq, undefined),
+      (card) => applyPerson(token, id, seq, card.avatarUrl, card.displayName),
+      () => applyPerson(token, id, seq, undefined, undefined),
     );
-  }, [applyAvatar]);
+  }, [applyPerson]);
 
   const readPeople = useCallback((list: ChatMessage[], refresh: boolean) => {
     const { currentUserId: userId, viewerIsClient: clientViewer } = viewerRef.current;
@@ -180,7 +206,7 @@ export default function ChatWindow({
         alive.current += 1;
         cards.current = new Map();
         avatarSeq.current = new Map();
-        setOtherAvatars({});
+        setPeople({});
         lastViewerKey.current = viewerRef.current.viewerKey;
         readPeople(data, false);
         setMessages(data);
@@ -297,6 +323,7 @@ export default function ChatWindow({
   };
 
   const dateGroups = groupMessagesByDate(messages);
+  const ownName = currentUserName.trim();
 
   if (isLoading) {
     return (
@@ -340,12 +367,24 @@ export default function ChatWindow({
                   const openManagerCard =
                     (msg.senderRole === 'manager' || msg.senderRole === 'admin') && !isOwn;
                   const kind = bubbleRead(msg, currentUserId, viewerIsClient);
+                  const face = people[msg.senderId];
+                  const signature = msg.senderRole === 'system' || kind === 'none'
+                    ? undefined
+                    : kind === 'session'
+                      ? ownName || undefined
+                      : face?.name;
+                  const avatarName = msg.senderRole === 'system' ? msg.senderName : (signature ?? '');
                   const src = kind === 'session'
                     ? photoSrc(currentUserAvatar)
                     : kind === 'manager' || kind === 'client'
-                      ? otherAvatars[msg.senderId]
+                      ? face?.src
                       : undefined;
-                  const avatar = <Avatar name={msg.senderName} size="sm" src={src} />;
+                  const avatar = <Avatar name={avatarName} size="sm" src={src} />;
+                  const openCard = openClientCard ? 'client' as const : openManagerCard ? 'manager' as const : null;
+                  const openThisCard = () => {
+                    if (openClientCard) setCardClientId(msg.senderId);
+                    else setCardUserId(msg.senderId);
+                  };
                   return (
                     <motion.div
                       key={msg.id}
@@ -358,21 +397,12 @@ export default function ChatWindow({
                       )}
                     >
                       <div className="mt-1 shrink-0">
-                        {openClientCard ? (
+                        {openCard ? (
                           <button
                             type="button"
-                            className="rounded-full"
-                            aria-label={`Карточка клиента, ${msg.senderName}`}
-                            onClick={() => setCardClientId(msg.senderId)}
-                          >
-                            {avatar}
-                          </button>
-                        ) : openManagerCard ? (
-                          <button
-                            type="button"
-                            className="rounded-full"
-                            aria-label={`Карточка менеджера, ${msg.senderName}`}
-                            onClick={() => setCardUserId(msg.senderId)}
+                            className="cursor-pointer rounded-full"
+                            aria-label={cardButtonName(openCard, signature)}
+                            onClick={openThisCard}
                           >
                             {avatar}
                           </button>
@@ -387,14 +417,30 @@ export default function ChatWindow({
                           isOwn ? 'items-end' : 'items-start',
                         )}
                       >
-                        <p
-                          className={clsx(
-                            'text-xs font-medium',
-                            isOwn ? 'text-right text-primary' : 'text-warm-gray',
-                          )}
-                        >
-                          {msg.senderName}
-                        </p>
+                        {signature ? (
+                          openCard ? (
+                            <button
+                              type="button"
+                              className={clsx(
+                                'block w-full cursor-pointer text-xs font-medium',
+                                isOwn ? 'text-right text-primary' : 'text-warm-gray',
+                              )}
+                              aria-label={cardButtonName(openCard, signature)}
+                              onClick={openThisCard}
+                            >
+                              {signature}
+                            </button>
+                          ) : (
+                            <p
+                              className={clsx(
+                                'text-xs font-medium',
+                                isOwn ? 'text-right text-primary' : 'text-warm-gray',
+                              )}
+                            >
+                              {signature}
+                            </p>
+                          )
+                        ) : null}
 
                         <div
                           className={clsx(

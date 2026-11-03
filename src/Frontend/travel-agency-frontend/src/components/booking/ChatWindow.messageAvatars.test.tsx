@@ -123,7 +123,7 @@ describe('ChatWindow message avatars', () => {
     ];
     renderChat('client', feed);
 
-    const button = await screen.findByRole('button', { name: 'Карточка менеджера, Марина Иванова' });
+    const [button] = await screen.findAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' });
     expect(await within(button).findByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
     expect(screen.getByText('Здравствуйте')).not.toHaveTextContent(MARINA_PHOTO);
     expect(feed[0]).not.toHaveProperty('avatarUrl');
@@ -143,7 +143,7 @@ describe('ChatWindow message avatars', () => {
         message({ id: 'anna', senderId: ANNA, senderName: 'Анна Соколова', senderRole: 'client', text: 'Добрый день' }),
       ]);
 
-      const button = await screen.findByRole('button', { name: 'Карточка клиента, Анна Соколова' });
+      const [button] = await screen.findAllByRole('button', { name: 'Карточка клиента, Анна Соколова' });
       expect(await within(button).findByRole('img', { name: 'Анна Соколова' })).toHaveAttribute('src', ANNA_PHOTO);
       expect(callsFor(vi.mocked(getManagerCard), ANNA)).toBe(0);
 
@@ -180,7 +180,7 @@ describe('ChatWindow message avatars', () => {
       expect(screen.queryByText(/не указано/i)).not.toBeInTheDocument();
       if (role === 'client') {
         expect(getClientCard).not.toHaveBeenCalled();
-        expect(within(list).getByText('А')).toBeInTheDocument();
+        expect(within(list).queryByText('А')).not.toBeInTheDocument();
       } else {
         await waitFor(() => expect(getClientCard).toHaveBeenCalledWith(ANNA));
         expect(within(list).getByText('А')).toBeInTheDocument();
@@ -213,18 +213,19 @@ describe('ChatWindow message avatars', () => {
       expect(await within(list).findByRole('img', { name: 'Илья Петров' })).toHaveAttribute('src', SELF_PHOTO);
       expect(within(list).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
       expect(within(list).getByRole('img', { name: 'Админ Сергеев' })).toHaveAttribute('src', ADMIN_PHOTO);
-      expect(within(list).getByText('А')).toBeInTheDocument();
       expect(within(list).queryByRole('img', { name: 'Анна' })).not.toBeInTheDocument();
 
-      expect(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Карточка менеджера, Админ Сергеев' })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' })).toHaveLength(2);
+      expect(screen.getAllByRole('button', { name: 'Карточка менеджера, Админ Сергеев' })).toHaveLength(2);
       expect(screen.queryByRole('button', { name: /Карточка менеджера, Илья Петров/ })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Карточка менеджера, Анна/ })).not.toBeInTheDocument();
       if (role === 'client') {
+        expect(within(list).queryByText('А')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Карточка клиента/ })).not.toBeInTheDocument();
         expect(getClientCard).not.toHaveBeenCalled();
       } else {
-        expect(screen.getByRole('button', { name: 'Карточка клиента, Анна' })).toBeInTheDocument();
+        expect(within(list).getByText('А')).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: 'Карточка клиента, Анна' })).toHaveLength(2);
         expect(getClientCard).toHaveBeenCalledWith(ANNA);
       }
     },
@@ -364,7 +365,8 @@ describe('ChatWindow message avatars', () => {
     const list = await screen.findByTestId('chat-message-list');
     expect(await within(list).findByRole('img', { name: 'Анна Соколова' })).toHaveAttribute('src', ANNA_PHOTO);
     await waitFor(() => expect(getManagerCard).toHaveBeenCalledWith(MARINA));
-    expect(within(list).getByText('МИ')).toBeInTheDocument();
+    expect(within(list).queryByText('МИ')).not.toBeInTheDocument();
+    expect(within(list).queryByText('Марина Иванова')).not.toBeInTheDocument();
     expect(screen.queryByText('Не удалось открыть карточку.')).not.toBeInTheDocument();
     expect(errorSpy).not.toHaveBeenCalled();
 
@@ -547,7 +549,7 @@ describe('ChatWindow message avatars', () => {
     expect(within(list).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
     expect(within(list).queryByText('МИ')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    await user.click(screen.getAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' })[0]);
     const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
     expect(within(dialog).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
     expect(managerCalls).toBe(2);

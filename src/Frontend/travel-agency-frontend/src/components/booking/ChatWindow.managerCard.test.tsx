@@ -103,10 +103,9 @@ describe('ChatWindow manager card', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getMessages).mockResolvedValue(feed);
-    vi.mocked(getManagerCard).mockResolvedValue({
-      id: MARINA,
-      displayName: 'Марина Иванова',
-      avatarUrl: PHOTO,
+    vi.mocked(getManagerCard).mockImplementation(async (id: string) => {
+      if (id === 'admin-1') return { id, displayName: 'Админ' };
+      return { id, displayName: 'Марина Иванова', avatarUrl: PHOTO };
     });
     vi.mocked(getClientCard).mockResolvedValue({
       id: 'client-2',
@@ -124,10 +123,12 @@ describe('ChatWindow manager card', () => {
     const user = userEvent.setup();
     renderChat(role, path);
 
-    const managerButton = await screen.findByRole('button', {
+    const managerButtons = await screen.findAllByRole('button', {
       name: 'Карточка менеджера, Марина Иванова',
     });
-    expect(screen.getByRole('button', { name: 'Карточка менеджера, Админ' })).toBeInTheDocument();
+    expect(managerButtons).toHaveLength(2);
+    const managerButton = managerButtons[0];
+    expect(screen.getAllByRole('button', { name: 'Карточка менеджера, Админ' })).toHaveLength(2);
     expect(screen.queryByRole('button', { name: /Карточка менеджера, Илья/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Карточка менеджера, Система/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Карточка менеджера, Я/ })).not.toBeInTheDocument();
@@ -155,7 +156,7 @@ describe('ChatWindow manager card', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    await user.click(screen.getAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' })[0]);
     expect(await screen.findByRole('dialog', { name: 'Карточка менеджера' })).toBeInTheDocument();
     expect(getManagerCard).toHaveBeenCalledTimes(2);
 
@@ -185,21 +186,24 @@ describe('ChatWindow manager card', () => {
     renderChat('client', '/dashboard/bookings/booking-1');
 
     const managerButton = await screen.findByRole('button', {
-      name: 'Карточка менеджера, Марина Иванова',
+      name: (accessibleName) => accessibleName === 'Карточка менеджера',
     });
     await waitFor(() => expect(marinaCalls).toBe(1));
     await user.click(managerButton);
     rejectFirst(new Error('network'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось открыть карточку.');
     expect(marinaCalls).toBe(1);
-    expect(within(managerButton).getByText('МИ')).toBeInTheDocument();
+    expect(within(managerButton).queryByText('МИ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Марина Иванова')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Закрыть' }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    await user.click(screen.getByRole('button', {
+      name: (accessibleName) => accessibleName === 'Карточка менеджера',
+    }));
     const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
     expect(within(dialog).getByText('Марина Иванова')).toBeInTheDocument();
     expect(marinaCalls).toBe(2);
@@ -208,7 +212,7 @@ describe('ChatWindow manager card', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    await user.click(screen.getAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' })[0]);
     expect(await screen.findByRole('dialog', { name: 'Карточка менеджера' })).toBeInTheDocument();
     expect(marinaCalls).toBe(2);
   });
