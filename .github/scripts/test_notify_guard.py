@@ -88,6 +88,22 @@ class PrDecision(unittest.TestCase):
         self.assertEqual(sent["result"], "red")
         self.assertEqual(sent["failed_checks"], ["gitleaks"])
 
+    def test_skipped_build_jobs_count_as_green(self):
+        runs = self._all()
+        for run in runs:
+            if run["name"] in guard.SKIPPABLE:
+                run["conclusion"] = "skipped"
+        sent = guard.decide_pr(runs, [], self.sha, self.sha, 7)
+        self.assertEqual(sent["action"], "send")
+        self.assertEqual(sent["result"], "green")
+        self.assertEqual(sent["failed_checks"], [])
+
+    def test_skipped_other_required_is_red(self):
+        runs = self._all(conclusion="skipped")
+        sent = guard.decide_pr(runs, [], self.sha, self.sha, 7)
+        self.assertEqual(sent["result"], "red")
+        self.assertEqual(sent["failed_checks"], ["gitleaks"])
+
     def test_superseded_sha_skips(self):
         runs = self._all()
         decision = guard.decide_pr(runs, [], self.sha, "b" * 40, 7)

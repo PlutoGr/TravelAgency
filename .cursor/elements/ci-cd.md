@@ -3,7 +3,7 @@ Responsible: the orchestrator (reads results, merges, reacts). The cloud agent t
 
 | Workflow | When | Role |
 |---|---|---|
-| `ci.yml` «CI»: `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `Скрипт чипа PR` | every PR (not push to `main`) | merge gate: must be green |
+| `ci.yml` «CI»: `Изменения кода`, `.NET сборка и тесты`, `Фронтенд сборка и тесты`, `Скрипт чипа PR` | every PR (not push to `main`), manual run | merge gate: must be green; on a [docs-only PR](../lifecycle/10-review-and-merge.md#ready-predicate) the two build-and-test jobs are skipped (counts as success); a failed `Изменения кода` runs them; a manual run runs everything |
 | `gitleaks.yml` «Secret scan» | PR and push to `main` | merge gate: must be green |
 | `deploy.yml` «Deploy to dev» | push to `main` (= merge), manual with rollback sha | automatic deploy to dev; the next merge waits until it is green, except the one repair PR for a failed Deploy on `main` ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)); a successful run uploads artifact `deployed-sha` (the commit it deployed, kept 90 days; memory [`Last deploy:`](memory.md#what-it-holds) records it) after its last step; manual run or rollback needs the owner's yes |
 | `notify.yml` «Notify orchestrator» | one `pr-checks` event when required checks on a same-repo PR head have completed; one `deploy` event only for a `push` of «Deploy to dev» on this repository's `main` | meaningful wake for routine «TravelAgency CI/CD» ([events](../lifecycle/events.md#webhook-payload)); secrets `GROK_BOT_CICD_WEBHOOK_URL` and `GROK_BOT_CICD_WEBHOOK_KEY`; fails visibly when a send has no secret |
@@ -12,7 +12,7 @@ Responsible: the orchestrator (reads results, merges, reacts). The cloud agent t
 Board hygiene / `board-sync` / `board_order` are deleted; the orchestrator alone sets labels and Status (hygiene deleted / orchestrator-only).
 
 - Merge = deploy: one PR at a time; while a failed Deploy on `main` stops the queue, only its repair PR ([repair](../lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)).
-- Do not merge while «CI» or «Secret scan» for the head sha is still running or red.
+- Do not merge while «CI» or «Secret scan» for the head sha is still running or red. A docs-only PR needs no Automations wait ([ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)).
 - Primary path to review: the cloud agent reports ready ([ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate)). A webhook is acted on only when it matches `Waiting on`, or it is a Dependabot `pr-checks` event, or it is `deploy` ([webhook match](../lifecycle/events.md#webhook-match)). A `pr-checks` event that does not match exits without logging.
 
 ## Red run

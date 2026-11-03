@@ -75,7 +75,7 @@ A stage that needs a cloud agent is one launch with one role brief ([elements/cl
 Review every cloud-agent deliverable against the stage bar and decide: accept, steer, redo or dismiss. Record the verdict with the [deliverable review template](templates/agents/deliverable-review.md). Never redo delegated work in chat when a cloud agent can do it.
 
 ### 5.10 Merge gates
-The orchestrator is the only merger: green CI, Secret scan green, automations finished, every finding answered, escalation review when triggered, one PR at a time with green Deploy before the next; while the queue is stopped, only its one repair PR merges ([repair](lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)) ([lifecycle/10-review-and-merge.md](lifecycle/10-review-and-merge.md)).
+The orchestrator is the only merger: green CI, Secret scan green, automations finished (not for a docs-only PR), every finding answered, escalation review when triggered, one PR at a time with green Deploy before the next; while the queue is stopped, only its one repair PR merges ([repair](lifecycle/10-review-and-merge.md#repair-while-the-queue-is-stopped)) ([lifecycle/10-review-and-merge.md](lifecycle/10-review-and-merge.md)).
 
 ### 5.11 Events and CI/CD webhook
 React to wakes ([lifecycle/events.md](lifecycle/events.md)). Each webhook (routine «TravelAgency CI/CD») is one meaningful event. Match it to the issue's `Waiting on` ([webhook match](lifecycle/events.md#webhook-match)). If it does not match, exit without logging. A matching `deploy` event goes through the [Deploy wait](lifecycle/events.md#deploy-wait). A matching `pr-checks` event follows [dependencies](elements/dependencies.md). The cloud agent's ready report remains the review wake for a feature PR.

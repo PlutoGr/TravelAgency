@@ -13,6 +13,14 @@ DEFAULT_REQUIRED = (
     "gitleaks",
 )
 
+# Сборка и тесты «CI» пропускают себя на PR только с документацией
+# (ci.yml, задача changes). Пропуск этих двух задач засчитывается как успех,
+# как и для обязательных проверок в правилах ветки.
+SKIPPABLE = (
+    ".NET сборка и тесты",
+    "Фронтенд сборка и тесты",
+)
+
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -62,6 +70,13 @@ def _winner(latest):
     )
 
 
+def _passed(name, run):
+    conclusion = run.get("conclusion")
+    if conclusion == "success":
+        return True
+    return conclusion == "skipped" and name in SKIPPABLE
+
+
 def decide_pr(check_runs, extra, sha, pr_head, suite_id):
     """skip, либо send с полями result и failed_checks.
 
@@ -84,11 +99,7 @@ def decide_pr(check_runs, extra, sha, pr_head, suite_id):
     winner = _winner(latest)
     if _suite_id(winner) != trigger:
         return {"action": "skip", "reason": "not-latest-suite"}
-    failed = [
-        name
-        for name in names
-        if latest[name].get("conclusion") != "success"
-    ]
+    failed = [name for name in names if not _passed(name, latest[name])]
     return {
         "action": "send",
         "result": "red" if failed else "green",

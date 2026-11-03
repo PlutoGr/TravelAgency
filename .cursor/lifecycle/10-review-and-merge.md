@@ -4,6 +4,8 @@ Code review is not a board column and is not Демо. Демо is only the epic
 ## Ready predicate
 A PR is **ready** only when all four hold for its head sha: «CI» green, «Secret scan» green, Cursor Automations finished, every finding answered or marked (a reply that only promises a fix does not count). This is the one definition; every other file links here.
 
+**Docs-only PR** (decided by the changed files, never by the title or the body): every changed file is under `.cursor/` or root `docs/`, or is a `*.md` outside `src/` and `.github/`. Anything else is code, including every file under `src/` or `.github/`, package files, `global.json`, `*.sln`, Dockerfiles and deploy files ([`ci_changes.py`](../../.github/scripts/ci_changes.py) is the classifier; methodology text is a subset). A docs-only PR is ready when «CI» is green (build and tests skip themselves; a skip counts as success), «Secret scan» is green, and the orchestrator has read the full diff for consistency. It does not wait for Cursor Automations or Bugbot: `TA: PR review` and `TA: Find vulnerabilities` exit at once on it, and a late finding from any of them is read when convenient and fixed in a follow-up PR only if valid.
+
 **Entry:** the cloud agent reported the PR ready ([ready predicate](#ready-predicate)) and posted the [agent report](../templates/agents/agent-report.md). Until then the agent owns the PR ([cloud agents](../elements/cloud-agents.md), [orchestrator §5.8](../orchestrator.md#58-cloud-agents)).
 
 **Who:** Cursor Automations (first line, while the agent watches), the cloud agent (fixes until ready), the orchestrator (full review and merge), a cloud agent with the [reviewer brief](../briefs/reviewer.md) on escalation.
@@ -41,7 +43,7 @@ At review, a recorded Крупная feature or bug-feature runs this review. A 
 - Only the orchestrator merges, squash, title per [commits](../elements/git/commits.md) with ` (#NN)`.
 - Authorized in-scope work merges without a separate yes; ask first only for the cases in [orchestrator §6](../orchestrator.md#6-powers-act-and-report-vs-ask-first).
 - One PR at a time: the next merge waits until the previous «Deploy to dev» is green. Exception: the one repair PR while the queue is stopped ([below](#repair-while-the-queue-is-stopped)).
-- Do not squash-merge while a run is in progress, a finding has no reply, or a reply only promises a fix.
+- Do not squash-merge while a run is in progress (on a docs-only PR, Automations and Bugbot runs do not count), a finding has no reply, or a reply only promises a fix.
 - After merge: [merge notice](../templates/owner/merge-notice.md) to the owner; set `Waiting on` = `Deploy` and write the merge into the [Sha cell](../elements/memory.md#sha-cell). On green Deploy: a feature, a bug-feature, or a non-product issue whose criteria need a dev check continues at [Приёмка](11-deploy-and-acceptance.md); any other non-product issue keeps its column and closes from Разработка ([non-product work](non-product-work.md)). `Doc-`: Малая publishes the PR draft in the merge turn only when the PR names a page; «вики не затронута» publishes nothing. Крупная, and a PR with no `Размер`, follow [Doc- after merge](12-docs-after-merge.md). A docs-writer run, when that file starts one, goes only in `Agent` ([row lifecycle](../elements/memory.md#row-lifecycle)).
 
 ### Repair while the queue is stopped

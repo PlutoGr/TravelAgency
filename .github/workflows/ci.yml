@@ -1,6 +1,10 @@
 # =====================================================================
 # Проверка pull request: сборка и тесты .NET и фронтенда. Ничего не публикует и не деплоит.
 # Деплой на dev только из main (deploy.yml).
+# PR только с документацией (.cursor/**, *.md вне src/ и .github/, docs/**)
+# сборку и тесты не запускает: задачи пропускаются через if, имена не меняются,
+# пропуск засчитывается обязательной проверке как успех. Решение по списку
+# файлов, .github/scripts/ci_changes.py. Ручной запуск проверяет всё.
 # =====================================================================
 name: CI
 
@@ -17,8 +21,40 @@ permissions:
   contents: read
 
 jobs:
+  # Есть ли в PR код. Ошибка классификации не пропускает сборку: задачи ниже
+  # запускаются, если changes не завершился успехом.
+  changes:
+    name: Изменения кода
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Список файлов PR
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only --no-renames "${BASE_SHA}...${HEAD_SHA}" > "$RUNNER_TEMP/changed.txt"
+          code=$(python3 .github/scripts/ci_changes.py < "$RUNNER_TEMP/changed.txt")
+          echo "code=${code}"
+          echo "code=${code}" >> "$GITHUB_OUTPUT"
+
   dotnet:
     name: .NET сборка и тесты
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,6 +76,8 @@ jobs:
 
   frontend:
     name: Фронтенд сборка и тесты
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
     defaults:
       run:
