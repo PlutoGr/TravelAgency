@@ -285,10 +285,10 @@ export default function ProfilePage() {
         <div className="flex flex-wrap items-start justify-start gap-6">
           <section aria-label="Личные данные" className="max-w-full shrink-0 rounded-[16px] bg-white p-6 shadow-card">
             <h2 className="font-heading text-lg font-semibold text-dark">Личные данные</h2>
-            <div className="mt-6 flex items-start gap-5">
+            <div className="mt-6 flex min-w-0 flex-col items-start gap-5 sm:flex-row">
               <Avatar src={storeUser.avatar} name={fullName} size="xl" />
-              <div>
-                <p className="font-heading text-lg font-semibold text-dark">{fullName}</p>
+              <div className="min-w-0 w-full sm:w-auto sm:flex-1">
+                <p className="break-words font-heading text-lg font-semibold text-dark">{fullName}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {storeUser.avatar ? (
                     <>
@@ -296,6 +296,7 @@ export default function ProfilePage() {
                         type="button"
                         size="sm"
                         variant="secondary"
+                        className="shrink-0"
                         onClick={openFilePicker}
                         disabled={photoLocked}
                       >
@@ -305,6 +306,7 @@ export default function ProfilePage() {
                         type="button"
                         size="sm"
                         variant="secondary"
+                        className="shrink-0"
                         onClick={handleReframe}
                         disabled={photoLocked}
                       >
@@ -314,6 +316,7 @@ export default function ProfilePage() {
                         type="button"
                         size="sm"
                         variant="ghost"
+                        className="shrink-0"
                         onClick={handleDeleteAvatar}
                         disabled={photoLocked}
                       >
@@ -325,6 +328,7 @@ export default function ProfilePage() {
                       type="button"
                       size="sm"
                       variant="secondary"
+                      className="shrink-0"
                       onClick={openFilePicker}
                       disabled={photoLocked}
                     >

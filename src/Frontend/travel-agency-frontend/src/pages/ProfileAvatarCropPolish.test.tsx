@@ -437,6 +437,18 @@ describe('Avatar crop polish', () => {
       expect(replace.parentElement).toBe(move.parentElement);
       expect(move.parentElement?.className).toContain('flex-wrap');
       expect(move.parentElement?.className).toContain('gap-2');
+      expect(move.className).toContain('shrink-0');
+      const textColumn = move.parentElement?.parentElement;
+      expect(textColumn?.className).toContain('min-w-0');
+      const photoRow = textColumn?.parentElement;
+      expect(photoRow?.className).toContain('min-w-0');
+      expect(photoRow?.className).toContain('flex-col');
+      expect(photoRow?.className).toContain('sm:flex-row');
+      const personal = screen.getByRole('region', { name: 'Личные данные' });
+      const name = within(personal).getByText('Анна Смирнова');
+      expect(name.className).toContain('break-words');
+      expect(name.className).not.toContain('truncate');
+      expect(name.className).not.toContain('whitespace-nowrap');
       expect(replace.className).toContain('border-primary');
       expect(move.className).toContain('border-primary');
       expect(move.className).toContain('text-sm');

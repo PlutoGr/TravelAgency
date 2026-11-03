@@ -345,9 +345,9 @@ public class AccountLinkHandlerTests
         _store.Setup(store => store.FindEmailChangeByCancelAsync(LinkSecret.Hash("cancel"), It.IsAny<CancellationToken>())).ReturnsAsync(row);
         _users.Setup(repo => repo.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         _refresh.Setup(repo => repo.GetByTokenAsync("own-refresh", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RefreshToken.Create(user.Id, "own-refresh", Now.UtcDateTime.AddDays(1)));
+            .ReturnsAsync(RefreshToken.Create(user.Id, "own-refresh", DateTime.UtcNow.AddDays(1)));
         _refresh.Setup(repo => repo.GetByTokenAsync("foreign-refresh", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(RefreshToken.Create(other.Id, "foreign-refresh", Now.UtcDateTime.AddDays(1)));
+            .ReturnsAsync(RefreshToken.Create(other.Id, "foreign-refresh", DateTime.UtcNow.AddDays(1)));
         Guid? kept = Guid.Empty;
         _store.Setup(store => store.TryConsumeEmailConfirmationAsync(row.Id, user, row.NewEmail, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .Callback<Guid, User, string, Guid?, CancellationToken>((_, account, email, keep, _) =>
