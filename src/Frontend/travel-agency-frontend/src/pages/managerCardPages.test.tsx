@@ -254,7 +254,7 @@ describe('manager row on booking pages', () => {
         id: 'own',
         bookingId: String(booking.id),
         senderId: 'self-client',
-        senderName: 'Илья Петров',
+        senderName: 'ilya@example.com',
         senderRole: 'client',
         text: 'Я на месте',
         createdAt: '2026-04-02T08:00:00Z',
@@ -263,7 +263,7 @@ describe('manager row on booking pages', () => {
         id: 'marina',
         bookingId: String(booking.id),
         senderId: MANAGER_ID,
-        senderName: 'Марина Иванова',
+        senderName: 'marina@example.com',
         senderRole: 'manager',
         text: 'Здравствуйте',
         createdAt: '2026-04-02T08:01:00Z',
@@ -276,14 +276,17 @@ describe('manager row on booking pages', () => {
       <BookingDetailPage />,
     );
 
+    expect(await screen.findByRole('heading', { name: 'Чат с менеджером' })).toBeInTheDocument();
     const row = await screen.findByRole('button', { name: /Менеджер/ });
     const list = await screen.findByTestId('chat-message-list');
     expect(await within(row).findByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', photo);
     expect(await within(list).findByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', photo);
     expect(within(list).getByRole('img', { name: 'Илья Петров' })).toHaveAttribute('src', selfPhoto);
     expect(screen.getByText('Здравствуйте')).not.toHaveTextContent(photo);
+    expect(within(list).queryByText('ilya@example.com')).not.toBeInTheDocument();
+    expect(within(list).queryByText('marina@example.com')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    await user.click(screen.getAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' })[0]);
     const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
     expect(within(dialog).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', photo);
   });
@@ -327,7 +330,7 @@ describe('session avatar on the manager booking chat', () => {
         id: 'own',
         bookingId: String(booking.id),
         senderId: 'self-admin',
-        senderName: 'Админ Админов',
+        senderName: 'admin@example.com',
         senderRole: 'admin',
         text: 'Проверяю заявку',
         createdAt: '2026-04-02T08:00:00Z',
@@ -340,8 +343,10 @@ describe('session avatar on the manager booking chat', () => {
       <ManagerBookingDetailPage />,
     );
 
+    expect(await screen.findByRole('heading', { name: 'Чат с клиентом' })).toBeInTheDocument();
     const list = await screen.findByTestId('chat-message-list');
     expect(await within(list).findByRole('img', { name: 'Админ Админов' })).toHaveAttribute('src', selfPhoto);
+    expect(within(list).queryByText('admin@example.com')).not.toBeInTheDocument();
     expect(getManagerCard).not.toHaveBeenCalled();
   });
 });

@@ -87,7 +87,7 @@ export default function Header() {
         {/* Logo */}
         <Link
           to="/"
-          className="font-heading text-xl font-bold text-primary lg:text-2xl"
+          className="cursor-pointer font-heading text-xl font-bold text-primary lg:text-2xl"
           onClick={closeMobileMenu}
         >
           {siteName}
@@ -100,7 +100,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="font-medium text-dark/70 transition-colors hover:text-primary"
+                className="cursor-pointer font-medium text-dark/70 transition-colors hover:text-primary"
               >
                 {link.label}
               </Link>
@@ -108,7 +108,7 @@ export default function Header() {
               <button
                 key={link.href}
                 onClick={() => handleNavClick(link.href)}
-                className="font-medium text-dark/70 transition-colors hover:text-primary"
+                className="cursor-pointer font-medium text-dark/70 transition-colors hover:text-primary"
               >
                 {link.label}
               </button>
@@ -120,7 +120,7 @@ export default function Header() {
         <div className="hidden items-center gap-3 md:flex">
           {supportPhone ? (
             phoneIsCallable ? (
-              <a href={`tel:${supportPhone}`} className="text-sm font-medium text-dark/70 hover:text-primary">
+              <a href={`tel:${supportPhone}`} className="cursor-pointer text-sm font-medium text-dark/70 hover:text-primary">
                 {supportPhone}
               </a>
             ) : (
@@ -129,7 +129,7 @@ export default function Header() {
           ) : null}
           <Link
             to="/dashboard/favorites"
-            className="relative rounded-full p-2 text-dark/70 transition-colors hover:bg-sand hover:text-primary"
+            className="relative cursor-pointer rounded-full p-2 text-dark/70 transition-colors hover:bg-sand hover:text-primary"
           >
             <Heart size={20} />
             {favoriteCount > 0 && (
@@ -147,7 +147,7 @@ export default function Header() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-sand"
+                className="flex cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-sand"
               >
                 <Avatar name={fullName} src={user.avatar} size="sm" />
                 <span className="max-w-[120px] truncate text-sm font-medium text-dark">
@@ -253,7 +253,7 @@ export default function Header() {
         <div className="flex items-center gap-2 md:hidden">
           <Link
             to="/dashboard/favorites"
-            className="relative rounded-full p-2 text-dark/70"
+            className="relative cursor-pointer rounded-full p-2 text-dark/70"
           >
             <Heart size={20} />
             {favoriteCount > 0 && (
@@ -264,7 +264,7 @@ export default function Header() {
           </Link>
           <button
             onClick={toggleMobileMenu}
-            className="rounded-full p-2 text-dark/70 transition-colors hover:bg-sand"
+            className="cursor-pointer rounded-full p-2 text-dark/70 transition-colors hover:bg-sand"
           >
             {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
@@ -284,7 +284,7 @@ export default function Header() {
             <nav className="flex flex-col gap-2 p-6">
               {supportPhone ? (
                 phoneIsCallable ? (
-                  <a href={`tel:${supportPhone}`} className="rounded-xl px-4 py-3 text-lg font-medium text-primary">
+                  <a href={`tel:${supportPhone}`} className="cursor-pointer rounded-xl px-4 py-3 text-lg font-medium text-primary">
                     {supportPhone}
                   </a>
                 ) : (
@@ -297,7 +297,7 @@ export default function Header() {
                     key={link.href}
                     to={link.href}
                     onClick={closeMobileMenu}
-                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
+                    className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
                   >
                     {link.label}
                   </Link>
@@ -305,7 +305,7 @@ export default function Header() {
                   <button
                     key={link.href}
                     onClick={() => handleNavClick(link.href)}
-                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
+                    className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
                   >
                     {link.label}
                   </button>
@@ -328,7 +328,7 @@ export default function Header() {
                       navigate('/dashboard');
                       closeMobileMenu();
                     }}
-                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
+                    className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
                   >
                     Личный кабинет
                   </button>
@@ -337,7 +337,7 @@ export default function Header() {
                       navigate('/dashboard/bookings');
                       closeMobileMenu();
                     }}
-                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
+                    className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-dark transition-colors hover:bg-sand"
                   >
                     Мои бронирования
                   </button>
@@ -347,7 +347,7 @@ export default function Header() {
                         navigate('/manager');
                         closeMobileMenu();
                       }}
-                      className="rounded-xl px-4 py-3 text-left text-lg font-medium text-primary transition-colors hover:bg-sand"
+                      className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-primary transition-colors hover:bg-sand"
                     >
                       Панель менеджера
                     </button>
@@ -358,7 +358,7 @@ export default function Header() {
                         navigate('/admin');
                         closeMobileMenu();
                       }}
-                      className="rounded-xl px-4 py-3 text-left text-lg font-medium text-primary transition-colors hover:bg-sand"
+                      className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-primary transition-colors hover:bg-sand"
                     >
                       Администрирование
                     </button>
@@ -368,7 +368,7 @@ export default function Header() {
                       handleLogout();
                       closeMobileMenu();
                     }}
-                    className="rounded-xl px-4 py-3 text-left text-lg font-medium text-red-500 transition-colors hover:bg-red-50"
+                    className="cursor-pointer rounded-xl px-4 py-3 text-left text-lg font-medium text-red-500 transition-colors hover:bg-red-50"
                   >
                     Выход
                   </button>
@@ -407,7 +407,7 @@ function DropdownLink({
     <button
       onClick={onClick}
       className={clsx(
-        'flex w-full items-center gap-3 px-4 py-2 text-sm transition-colors',
+        'flex w-full cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors',
         danger
           ? 'text-red-500 hover:bg-red-50'
           : 'text-dark/80 hover:bg-sand hover:text-primary',
