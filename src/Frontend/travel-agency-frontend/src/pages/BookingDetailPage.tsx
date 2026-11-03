@@ -418,6 +418,7 @@ export default function BookingDetailPage() {
                     currentUserRole={
                       (user?.role as 'client' | 'manager') ?? 'client'
                     }
+                    currentUserAvatar={user?.avatar}
                   />
                 </div>
               </Card>

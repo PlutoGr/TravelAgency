@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { ChatMessage } from '@/types';
@@ -111,13 +111,21 @@ describe('ChatWindow client card', () => {
     renderChat('manager');
 
     const button = await screen.findByRole('button', { name: 'Карточка клиента, Анна Соколова' });
-    expect(within(button).getByText('АС')).toBeInTheDocument();
-    expect(within(button).queryByRole('img')).not.toBeInTheDocument();
+    await waitFor(() => expect(getClientCard).toHaveBeenCalledTimes(1));
+    expect(getClientCard).toHaveBeenCalledWith(ANNA);
+    expect(within(button).getByRole('img', { name: 'Анна Соколова' })).toHaveAttribute(
+      'src',
+      '/api/v1/media/files/file-1/a256',
+    );
+    expect(vi.mocked(getManagerCard).mock.calls.map((call) => call[0])).not.toContain(ANNA);
     await user.click(button);
 
     const dialog = await screen.findByRole('dialog', { name: 'Карточка клиента' });
-    expect(getClientCard).toHaveBeenCalledWith(ANNA);
-    expect(getClientCard).toHaveBeenCalledTimes(1);
+    expect(getClientCard).toHaveBeenCalledTimes(2);
+    expect(within(dialog).getByRole('img', { name: 'Анна Соколова' })).toHaveAttribute(
+      'src',
+      '/api/v1/media/files/file-1/a256',
+    );
     expect(dialog).not.toHaveTextContent('anna@example.com');
     expect(dialog).not.toHaveTextContent('просит вылет после 15 мая');
     expect(within(dialog).getByText('2 заявки')).toBeInTheDocument();

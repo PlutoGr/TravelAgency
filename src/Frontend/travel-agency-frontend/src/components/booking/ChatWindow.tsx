@@ -23,6 +23,26 @@ interface ChatWindowProps {
   currentUserId: string;
   currentUserName: string;
   currentUserRole: 'client' | 'manager' | 'admin';
+  /** Аватар сессии (`user.avatar` с `GET /api/v1/auth/me`). Отдельный запрос ради кружка не делается. */
+  currentUserAvatar?: string;
+}
+
+function photoSrc(url: string | undefined): string | undefined {
+  return typeof url === 'string' && url.trim() !== '' ? url : undefined;
+}
+
+type BubbleRead = 'session' | 'manager' | 'client' | 'none';
+
+function bubbleRead(
+  msg: Pick<ChatMessage, 'senderId' | 'senderRole'>,
+  currentUserId: string,
+  viewerIsClient: boolean,
+): BubbleRead {
+  if (msg.senderRole === 'system') return 'none';
+  if (msg.senderId === currentUserId) return 'session';
+  if (msg.senderRole === 'manager' || msg.senderRole === 'admin') return 'manager';
+  if (msg.senderRole === 'client' && !viewerIsClient) return 'client';
+  return 'none';
 }
 
 function formatMessageTime(dateStr: string): string {
@@ -59,6 +79,7 @@ export default function ChatWindow({
   currentUserId,
   currentUserName,
   currentUserRole,
+  currentUserAvatar,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -66,23 +87,76 @@ export default function ChatWindow({
   const [isSending, setIsSending] = useState(false);
   const [cardUserId, setCardUserId] = useState<string | null>(null);
   const [cardClientId, setCardClientId] = useState<string | null>(null);
+  const [otherAvatars, setOtherAvatars] = useState<Record<string, string | undefined>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useRef(new Map<string, Promise<ManagerPublicCard>>());
+  const alive = useRef(0);
+  const avatarSeq = useRef(new Map<string, number>());
+  const lastViewerKey = useRef<string | null>(null);
+  const messagesRef = useRef(messages);
+  const knownIds = useRef(new Set<string>());
+  const viewerIsClient = currentUserRole === 'client';
+  const viewerKey = `${bookingId}\0${currentUserId}\0${viewerIsClient ? '1' : '0'}`;
+  const viewerRef = useRef({ currentUserId, viewerIsClient, viewerKey });
+  messagesRef.current = messages;
+  knownIds.current = new Set(messages.map((msg) => msg.id));
+  viewerRef.current = { currentUserId, viewerIsClient, viewerKey };
+
+  const applyAvatar = useCallback((token: number, id: string, seq: number, url: string | undefined) => {
+    if (alive.current !== token || avatarSeq.current.get(id) !== seq) return;
+    const src = photoSrc(url);
+    setOtherAvatars((prev) => (prev[id] === src ? prev : { ...prev, [id]: src }));
+  }, []);
+
+  const trackManagerCard = useCallback((id: string, pending: Promise<ManagerPublicCard>) => {
+    cards.current.set(id, pending);
+    const token = alive.current;
+    const seq = (avatarSeq.current.get(id) ?? 0) + 1;
+    avatarSeq.current.set(id, seq);
+    pending.then(
+      (card) => applyAvatar(token, id, seq, card.avatarUrl),
+      () => {
+        // Отклонённый промис из кэша убирается, чтобы следующее открытие повторило запрос.
+        if (cards.current.get(id) === pending) cards.current.delete(id);
+        applyAvatar(token, id, seq, undefined);
+      },
+    );
+    return pending;
+  }, [applyAvatar]);
 
   const loadManagerCard = useCallback((id: string) => {
     const cached = cards.current.get(id);
     if (cached) return cached;
-    const pending = getManagerCard(id);
-    cards.current.set(id, pending);
-    // Отклонённый промис из кэша убирается, чтобы следующее открытие повторило запрос.
-    pending.catch(() => {
-      if (cards.current.get(id) === pending) {
-        cards.current.delete(id);
+    return trackManagerCard(id, getManagerCard(id));
+  }, [trackManagerCard]);
+
+  const readClientBubble = useCallback((id: string) => {
+    const token = alive.current;
+    const seq = (avatarSeq.current.get(id) ?? 0) + 1;
+    avatarSeq.current.set(id, seq);
+    getClientCard(id).then(
+      (card) => applyAvatar(token, id, seq, card.avatarUrl),
+      () => applyAvatar(token, id, seq, undefined),
+    );
+  }, [applyAvatar]);
+
+  const readPeople = useCallback((list: ChatMessage[], refresh: boolean) => {
+    const { currentUserId: userId, viewerIsClient: clientViewer } = viewerRef.current;
+    const seen = new Set<string>();
+    for (const msg of list) {
+      if (seen.has(msg.senderId)) continue;
+      const kind = bubbleRead(msg, userId, clientViewer);
+      if (kind === 'manager') {
+        seen.add(msg.senderId);
+        if (refresh) trackManagerCard(msg.senderId, getManagerCard(msg.senderId));
+        else loadManagerCard(msg.senderId);
+      } else if (kind === 'client') {
+        seen.add(msg.senderId);
+        readClientBubble(msg.senderId);
       }
-    });
-    return pending;
-  }, []);
+    }
+  }, [loadManagerCard, readClientBubble, trackManagerCard]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     requestAnimationFrame(() => {
@@ -101,11 +175,17 @@ export default function ChatWindow({
     setIsLoading(true);
     getMessages(bookingId)
       .then((data) => {
-        if (!cancelled) {
-          setMessages(data);
-          setIsLoading(false);
-          scrollToBottom('instant');
-        }
+        if (cancelled) return;
+        // Ответы, стартовавшие до истории, держат прежний token и после обнуления seq снова совпали бы с новым чтением.
+        alive.current += 1;
+        cards.current = new Map();
+        avatarSeq.current = new Map();
+        setOtherAvatars({});
+        lastViewerKey.current = viewerRef.current.viewerKey;
+        readPeople(data, false);
+        setMessages(data);
+        setIsLoading(false);
+        scrollToBottom('instant');
       })
       .catch(() => {
         if (!cancelled) {
@@ -115,11 +195,21 @@ export default function ChatWindow({
       });
     return () => {
       cancelled = true;
+      alive.current += 1;
+      lastViewerKey.current = null;
     };
-  }, [bookingId, scrollToBottom]);
+  }, [bookingId, readPeople, scrollToBottom]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (lastViewerKey.current === null || lastViewerKey.current === viewerKey) return;
+    lastViewerKey.current = viewerKey;
+    readPeople(messagesRef.current, false);
+  }, [isLoading, readPeople, viewerKey]);
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages(bookingId, (msg) => {
+      const seen = knownIds.current.has(msg.id);
       setMessages((prev) => {
         const replaceIdx = prev.findIndex(
           (m) =>
@@ -141,13 +231,14 @@ export default function ChatWindow({
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
       });
+      if (!seen) readPeople([msg], true);
       scrollToBottom();
     });
     return () => {
       unsubscribe();
       disconnectChat(bookingId);
     };
-  }, [bookingId, scrollToBottom]);
+  }, [bookingId, readPeople, scrollToBottom]);
 
   const handleSend = async () => {
     const text = inputText.trim();
@@ -248,7 +339,13 @@ export default function ChatWindow({
                   const openClientCard = staffViewer && msg.senderRole === 'client' && !isOwn;
                   const openManagerCard =
                     (msg.senderRole === 'manager' || msg.senderRole === 'admin') && !isOwn;
-                  const avatar = <Avatar name={msg.senderName} size="sm" />;
+                  const kind = bubbleRead(msg, currentUserId, viewerIsClient);
+                  const src = kind === 'session'
+                    ? photoSrc(currentUserAvatar)
+                    : kind === 'manager' || kind === 'client'
+                      ? otherAvatars[msg.senderId]
+                      : undefined;
+                  const avatar = <Avatar name={msg.senderName} size="sm" src={src} />;
                   return (
                     <motion.div
                       key={msg.id}
