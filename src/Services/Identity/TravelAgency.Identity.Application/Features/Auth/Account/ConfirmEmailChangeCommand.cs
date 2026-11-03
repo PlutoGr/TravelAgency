@@ -38,7 +38,7 @@ public sealed class ConfirmEmailChangeCommandHandler(
         if (!string.IsNullOrWhiteSpace(command.RefreshToken))
         {
             var refresh = await refreshTokens.GetByTokenAsync(command.RefreshToken, cancellationToken);
-            if (refresh is { IsActive: true } && refresh.UserId == user.Id)
+            if (refresh is not null && refresh.IsActiveAt(clock) && refresh.UserId == user.Id)
                 keep = refresh.Id;
         }
 

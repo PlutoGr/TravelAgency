@@ -19,9 +19,17 @@ public class RefreshToken
     /// <summary>SHA-256 (hex) токена, который заменил этот, либо null.</summary>
     public string? ReplacedByToken { get; private set; }
 
-    public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+    public bool IsExpired => IsExpiredAt(TimeProvider.System);
     public bool IsRevoked => RevokedAt != null;
-    public bool IsActive => !IsRevoked && !IsExpired;
+    public bool IsActive => IsActiveAt(TimeProvider.System);
+
+    public bool IsExpiredAt(TimeProvider clock)
+    {
+        ArgumentNullException.ThrowIfNull(clock);
+        return clock.GetUtcNow().UtcDateTime >= ExpiresAt;
+    }
+
+    public bool IsActiveAt(TimeProvider clock) => !IsRevoked && !IsExpiredAt(clock);
 
     private RefreshToken() { }
 

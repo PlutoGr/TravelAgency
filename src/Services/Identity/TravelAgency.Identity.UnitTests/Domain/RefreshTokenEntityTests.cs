@@ -98,6 +98,31 @@ public class RefreshTokenEntityTests
     }
 
     [Fact]
+    public void IsExpiredAt_And_IsActiveAt_FollowTheSuppliedClock()
+    {
+        var expires = new DateTime(2026, 11, 3, 12, 0, 0, DateTimeKind.Utc);
+        var token = RefreshToken.Create(Guid.NewGuid(), "t", expires);
+        var before = new FixedClock(new DateTimeOffset(2026, 11, 2, 12, 0, 0, TimeSpan.Zero));
+        var exact = new FixedClock(new DateTimeOffset(expires, TimeSpan.Zero));
+        var after = new FixedClock(new DateTimeOffset(2026, 11, 3, 12, 0, 1, TimeSpan.Zero));
+
+        token.IsExpiredAt(before).Should().BeFalse();
+        token.IsActiveAt(before).Should().BeTrue();
+        token.IsExpiredAt(exact).Should().BeTrue();
+        token.IsActiveAt(exact).Should().BeFalse();
+        token.IsExpiredAt(after).Should().BeTrue();
+        token.IsActiveAt(after).Should().BeFalse();
+
+        token.Revoke();
+        token.IsActiveAt(before).Should().BeFalse();
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    [Fact]
     public void Revoke_SetsRevokedAtToUtcNow()
     {
         var token = RefreshToken.Create(Guid.NewGuid(), "t", DateTime.UtcNow.AddDays(7));
