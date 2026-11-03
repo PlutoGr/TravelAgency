@@ -176,6 +176,8 @@ export default function ChatWindow({
     getMessages(bookingId)
       .then((data) => {
         if (cancelled) return;
+        // Ответы, стартовавшие до истории, держат прежний token и после обнуления seq снова совпали бы с новым чтением.
+        alive.current += 1;
         cards.current = new Map();
         avatarSeq.current = new Map();
         setOtherAvatars({});

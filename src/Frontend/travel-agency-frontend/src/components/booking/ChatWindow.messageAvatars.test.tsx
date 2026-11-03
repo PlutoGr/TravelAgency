@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -480,5 +480,76 @@ describe('ChatWindow message avatars', () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(getMe).not.toHaveBeenCalled();
     expect(getManagerCard).not.toHaveBeenCalled();
+  });
+
+  it('ранний ответ после загрузки истории не затирает фото и не расходится с окном', async () => {
+    const user = userEvent.setup();
+    let resolveHistory: (feed: ChatMessage[]) => void = () => {};
+    vi.mocked(getMessages).mockImplementation(
+      () => new Promise((resolve) => {
+        resolveHistory = resolve;
+      }),
+    );
+    let rejectEarly: (error: Error) => void = () => {};
+    const early = new Promise<never>((_resolve, reject) => {
+      rejectEarly = reject;
+    });
+    let managerCalls = 0;
+    vi.mocked(getManagerCard).mockImplementation((id: string) => {
+      managerCalls += 1;
+      if (managerCalls === 1) return early;
+      return Promise.resolve({
+        id,
+        displayName: 'Марина Иванова',
+        avatarUrl: MARINA_PHOTO,
+      });
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard/bookings/booking-1']}>
+        <div className="h-[600px]">
+          <ChatWindow
+            bookingId="booking-1"
+            currentUserId={SELF}
+            currentUserName="Илья Петров"
+            currentUserRole="client"
+          />
+        </div>
+      </MemoryRouter>,
+    );
+
+    push(message({
+      id: 'live',
+      senderId: MARINA,
+      senderName: 'Марина Иванова',
+      senderRole: 'manager',
+      text: 'уже в ленте',
+      createdAt: '2026-04-02T08:05:00Z',
+    }));
+    expect(managerCalls).toBe(1);
+
+    resolveHistory([
+      message({
+        id: 'marina',
+        senderId: MARINA,
+        senderName: 'Марина Иванова',
+        senderRole: 'manager',
+        text: 'Здравствуйте',
+      }),
+    ]);
+
+    const list = await screen.findByTestId('chat-message-list');
+    expect(await within(list).findByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
+
+    await act(async () => {
+      rejectEarly(new Error('network'));
+    });
+    expect(within(list).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
+    expect(within(list).queryByText('МИ')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
+    expect(within(dialog).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', MARINA_PHOTO);
+    expect(managerCalls).toBe(2);
   });
 });
