@@ -9,4 +9,4 @@ Before development, always. Крупная only. Малая writes this section 
 
 An epic has no «Тест-кейсы» section; owner epic acceptance uses its «Бизнес и сценарии» ([epic demo](13-epic-acceptance.md)).
 
-**Exit gate:** «Полное ТЗ» holds: «Бизнес и сценарии», «Архитектура» and «Тест-кейсы» visible, no empty «Выбрано» for this slice ([gates](README.md#gates)). Then set `статус: разработка` ([Разработка](09-development.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура and Разбиение.
+**Exit gate:** «Полное ТЗ» holds: «Бизнес и сценарии», «Архитектура» and «Тест-кейсы» visible, no empty «Выбрано» for this slice ([gates](README.md#gates)). Then set `статус: разработка` ([Разработка](09-development.md)). [Owner stage approval](../orchestrator.md#owner-stage-approval) applies to epic Бизнес-анализ, epic Архитектура, Разбиение and feature and bug-feature Аналитика, not to feature Архитектура.

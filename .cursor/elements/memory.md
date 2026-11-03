@@ -44,7 +44,7 @@ An “orchestrator review” is `none` with `Next` = full review. Use that shape
 ## Question
 `-`, or exactly one of:
 - an owner question: `<question> (asked: <issue comment or chat>)`, with ` agent <id>` appended when a cloud run ended `RESULT blocked` on it (the reply goes to that run);
-- stage approval (epic only): the value starts with exactly one of `approve BA #NN` (Бизнес-анализ), `approve epic architecture #NN` (Архитектура), `approve split #NN` (Разбиение). The usual ` (asked: chat)` may follow the token. Cleared only by the owner's yes to that published stage ([owner stage approval](../orchestrator.md#owner-stage-approval)). A no or an edit request keeps the value: the issue stays in the column, the section is reworked, and the digest is sent again. Feature and bug-feature columns do not use this token;
+- stage approval: the value starts with exactly one of `approve BA #NN` (epic Бизнес-анализ), `approve epic architecture #NN` (epic Архитектура), `approve split #NN` (Разбиение), `approve feature BA #NN` (feature and bug-feature Аналитика). The usual ` (asked: chat)` may follow the token. Cleared only by the owner's yes to that published stage ([owner stage approval](../orchestrator.md#owner-stage-approval)). A no or an edit request keeps the value: the issue stays in the column, the section is reworked, and the digest is sent again. Feature and bug-feature rows use only `approve feature BA #NN`, and only on Аналитика;
 - `epic demo` (the owner demo ask, [epic demo](../lifecycle/13-epic-acceptance.md));
 - `create Status «Демо»` (the Project Status option is missing);
 - the [repair row](#repair-row) ask;

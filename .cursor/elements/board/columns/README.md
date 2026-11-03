@@ -23,4 +23,4 @@ One project «Задачи», one Status field, one shared option list, every op
 | Готово | `статус: готово` | all | [done.md](done.md) |
 | Удержание | `статус: удержание` | all | [on-hold.md](on-hold.md) |
 
-Common to every column: one label at a time; advance only through the exit gate of the current column; leaving epic Бизнес-анализ, epic Архитектура or Разбиение also waits for [owner stage approval](../../../orchestrator.md#owner-stage-approval); feature and bug-feature columns advance when the orchestrator accepts the stage; a cloud agent never moves anything.
+Common to every column: one label at a time; advance only through the exit gate of the current column; leaving epic Бизнес-анализ, epic Архитектура, Разбиение or feature and bug-feature Аналитика also waits for [owner stage approval](../../../orchestrator.md#owner-stage-approval); feature and bug-feature columns Архитектура, Тест-кейсы, Разработка and Приёмка advance when the orchestrator accepts the stage; a cloud agent never moves anything.
