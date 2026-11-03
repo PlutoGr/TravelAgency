@@ -1,6 +1,7 @@
 export const AVATAR_ACCEPT = 'image/jpeg,image/png,image/webp';
 export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 export const AVATAR_UPLOAD_ERROR = 'Не удалось загрузить аватар. Попробуйте ещё раз.';
+export const AVATAR_OPEN_ERROR = 'Не удалось открыть фото. Попробуйте ещё раз.';
 export const PASSWORD_HINT = 'Минимум 8 символов, заглавная, строчная буква и цифра';
 
 const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
