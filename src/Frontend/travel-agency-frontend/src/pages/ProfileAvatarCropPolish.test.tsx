@@ -632,11 +632,12 @@ describe('Avatar crop polish', () => {
     let mode: 'status' | 'empty' | 'throw' | 'ok' = 'status';
     vi.stubGlobal('fetch', async () => {
       if (mode === 'status') return new Response('Not Found', { status: 404, statusText: 'Not Found' });
-      if (mode === 'empty') return new Response(new Blob([]), { status: 200 });
+      if (mode === 'empty') return new Response(new Uint8Array(0), { status: 200 });
+      if (mode === 'throw') return new Response(Uint8Array.from([9]), { status: 200 });
       return new Response(Uint8Array.from([1, 2, 3, 4]), { status: 200 });
     });
-    vi.stubGlobal('createImageBitmap', async () => {
-      if (mode === 'throw') throw new Error('decode');
+    vi.stubGlobal('createImageBitmap', async (blob: Blob) => {
+      if (blob.size === 1) throw new Error('decode');
       return bitmap(256, 256);
     });
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar');
@@ -644,14 +645,14 @@ describe('Avatar crop polish', () => {
 
     async function fail() {
       fireEvent.click(screen.getByRole('button', { name: 'Изменить положение фото' }));
-      expect(await screen.findByRole('alert')).toHaveTextContent(OPEN_ERROR);
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Изменить положение фото' })).toBeEnabled());
+      expect(screen.getByRole('alert')).toHaveTextContent(OPEN_ERROR);
       expect(screen.queryByRole('dialog', { name: 'Обрезка фото' })).not.toBeInTheDocument();
       expect(screen.queryByText('Not Found')).not.toBeInTheDocument();
       expect(screen.queryByText('404')).not.toBeInTheDocument();
       expect(screen.queryByText('decode')).not.toBeInTheDocument();
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
       expect(uploadAvatar).not.toHaveBeenCalled();
-      expect(screen.getByRole('button', { name: 'Изменить положение фото' })).toBeEnabled();
     }
 
     await fail();
@@ -668,7 +669,9 @@ describe('Avatar crop polish', () => {
 
     mode = 'status';
     fireEvent.click(screen.getByRole('button', { name: 'Изменить положение фото' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(OPEN_ERROR);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Изменить положение фото' })).toBeEnabled());
+    expect(screen.getByRole('alert')).toHaveTextContent(OPEN_ERROR);
+    expect(screen.queryByRole('dialog', { name: 'Обрезка фото' })).not.toBeInTheDocument();
     mode = 'ok';
     chooseFile(jpegFile());
     expect(await screen.findByRole('dialog', { name: 'Обрезка фото' })).toBeInTheDocument();
