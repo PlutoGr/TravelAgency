@@ -1,5 +1,5 @@
 # 08 Test cases (column Тест-кейсы)
-Entered only for a Крупная feature whose `Тесты` is `сначала сценарии` ([kind and test policy](05-epic-split.md#kind-and-test-policy)). Every other feature writes the policy line inside [Архитектура](07-feature-architecture.md) (Малая with `сначала сценарии` adds a short scenario list there) and does not take this label.
+Entered only for a Крупная feature whose `Тесты` is `сначала сценарии` ([kind and test policy](05-epic-split.md#kind-and-test-policy)). Every other feature writes the policy line inside [Архитектура](07-feature-architecture.md) (Малая with `сначала сценарии` adds a short scenario list there) and does not take this label. An item already in this column when this rule set took effect stays and is finished here ([in-flight](README.md#gates)). Do not refuse that run for a missing `Тесты` tag.
 
 **Entry:** that Крупная architecture is accepted and no «Решения» row for this slice has an empty «Выбрано» ([decisions log](../elements/wiki/decisions-log.md)). The test designer refuses the column otherwise.
 

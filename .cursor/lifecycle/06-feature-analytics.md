@@ -8,7 +8,7 @@ A thin confirm that this feature executes the epic plan. Not a second business a
 **Section «Бизнес и сценарии»** on the `Feature-` page ([feature page template](../templates/wiki/feature-page.md)):
 1. Link the epic «Ожидания» (a legacy «Бизнес и сценарии» on the epic is that section until the page is refreshed).
 2. What this feature changes and why that serves the exit result. One short block. Sibling features by link.
-3. Echo `Вид` and `Тесты` from the split ([kind and test policy](05-epic-split.md#kind-and-test-policy)). Correct `Тесты` when this slice is an important new API and the split said otherwise; record why in «Решения».
+3. Echo `Вид` and `Тесты` from the split ([kind and test policy](05-epic-split.md#kind-and-test-policy)). When this feature was opened outside a split, write them in this column. Correct `Тесты` when this slice is an important new API and the recorded value said otherwise; record why in «Решения».
 4. Open questions in «Решения» with «Выбрано» empty. A choice only the owner can make: keep `статус: аналитика`, record a normal `Question`, and do not advance until answered. Do not set `approve feature BA #NN`.
 
 No services, API paths, storage, migrations or contracts. A bug-feature covers its product change only.

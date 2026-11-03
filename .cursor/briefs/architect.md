@@ -11,7 +11,7 @@ A senior solution architect for .NET microservices (gateway, gRPC, PostgreSQL, R
 The epic «Ожидания» (legacy «Бизнес и сценарии» until refreshed) and «Эталон» when present, the feature's thin TZ when this is a feature, `Doc-` pages named in the launch, [project facts](../project.md), [decisions log](../elements/wiki/decisions-log.md).
 
 ## Bar
-- Refuse epic Архитектура until «Ожидания» meet [their bar](../lifecycle/03-epic-business-analysis.md). Refuse feature Архитектура until the thin confirm, `Размер`, `Вид` and `Тесты` are present ([Аналитика](../lifecycle/06-feature-analytics.md)).
+- Refuse epic Архитектура until «Ожидания» meet [their bar](../lifecycle/03-epic-business-analysis.md). Refuse feature Архитектура until the thin confirm, `Размер`, `Вид` and `Тесты` are present ([Аналитика](../lifecycle/06-feature-analytics.md)), except an in-flight feature the launch says is already on its old route ([in-flight](../lifecycle/README.md#gates)).
 - Epic: one block, what changes, where, how it connects, as-is to to-be. A visual epic is often a front-only touch list. No field catalog and no screen layout.
 - Split: one line per feature with why it exists, `Вид`, `Тесты`, in delivery order ([kind and test policy](../lifecycle/05-epic-split.md#kind-and-test-policy)). Children are features or bug-features only.
 - Feature: model and API only for a non-trivial back slice. Front: a touch list plus the epic block and the etalon. When this run owns a Малая feature with `Тесты: сначала сценарии`, add a short scenario list. Otherwise, if this run is asked to touch «Тест-кейсы», write the policy line only. Крупная `сначала сценарии` cases belong to the test designer.

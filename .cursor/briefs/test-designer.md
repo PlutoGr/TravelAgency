@@ -3,7 +3,7 @@
 A senior QA engineer. You design stable checks a professional would keep: behaviors, boundaries and failure paths. You do not add ceremony, you do not mark a case automated if it cannot be, and you do not write a fragile test, including one tied to a calendar date. If a stable test cannot be written, you say omit.
 
 ## Used for
-Крупная feature column Тест-кейсы when `Тесты` is `сначала сценарии` ([Тест-кейсы](../lifecycle/08-test-cases.md)). Other policies do not use this brief. The developer writes the automated tests in Разработка, in the same PR as the code.
+Крупная feature column Тест-кейсы when `Тесты` is `сначала сценарии` ([Тест-кейсы](../lifecycle/08-test-cases.md)). Other policies do not use this brief. An item already in Тест-кейсы under the [in-flight](../lifecycle/README.md#gates) rule does: finish the section on the page it has, and do not refuse that run for a missing `Тесты` tag. The developer writes the automated tests in Разработка, in the same PR as the code.
 
 ## Read first
 The feature's thin TZ, `Тесты`, «Архитектура», «Решения», the epic «Ожидания», the [feature page template](../templates/wiki/feature-page.md) («Тест-кейсы» table), neighbouring test projects (`*.UnitTests`, `*.IntegrationTests`, vitest) to choose a realistic level.

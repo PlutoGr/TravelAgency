@@ -6,7 +6,7 @@ Cursor cloud agents do the repo-bound stages that need them: epic architecture, 
 |---|---|
 | Epic Бизнес-анализ helper (peer notes, mock scaffold); feature Аналитика helper only when asked | [analyst](../briefs/analyst.md) |
 | Epic Архитектура; epic Разбиение when large or tangled; feature Архитектура when non-trivial back | [architect](../briefs/architect.md) |
-| Тест-кейсы (Крупная and `Тесты: сначала сценарии`) | [test designer](../briefs/test-designer.md) |
+| Тест-кейсы (Крупная and `Тесты: сначала сценарии`, or an item already in that column) | [test designer](../briefs/test-designer.md) |
 | Application code and its automated tests (Разработка) | [developer](../briefs/developer.md) |
 | Workflows, Docker, nginx, deploy files | [devops](../briefs/devops.md) |
 | Escalated PR review, overlap check | [reviewer](../briefs/reviewer.md) |

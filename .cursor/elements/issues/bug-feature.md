@@ -1,5 +1,5 @@
 # Bug-feature
-A Feature with label `bug`. Same page sections, the feature route for its size, a `Feature-` page. Opened only for a substantial change: add or remove a field, change a screen, or change a business rule. Decision table: [bugs](../../lifecycle/bugs.md).
+A Feature with label `bug`. Same page sections, the feature route for its `Размер` and `Тесты`, a `Feature-` page. Opened only for a substantial change: add or remove a field, change a screen, or change a business rule. Decision table: [bugs](../../lifecycle/bugs.md).
 
 - **Template:** [bug-feature-issue](../../templates/github/bug-feature-issue.md); page [feature-page](../../templates/wiki/feature-page.md).
 - **Parent:** the current epic when a feature of that epic caused it; the [standing backlog #8](../../project.md#standing-backlog) when unrelated.
