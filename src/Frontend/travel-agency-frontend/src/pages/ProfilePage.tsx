@@ -4,15 +4,16 @@ import toast from 'react-hot-toast';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { Avatar, Button, Card, Input, Tabs } from '@/components/ui';
+import AvatarCropDialog from '@/components/profile/AvatarCropDialog';
 import ManagerShortCard from '@/components/booking/ManagerShortCard';
 import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
 import { getManagerCard } from '@/api/managerCard';
 import { authFormError } from '@/domain/authFormErrors';
 import { ACCOUNT_TEXT } from '@/domain/accountLinks';
+import { inspectAvatarFile, type AvatarBitmap } from '@/domain/avatarCrop';
 import {
-  avatarFileError,
   AVATAR_ACCEPT,
-  AVATAR_UPLOAD_ERROR,
+  avatarUploadMessage,
   profileCardPayload,
   profileProblemFields,
   type ProfileField,
@@ -61,10 +62,14 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [crop, setCrop] = useState<{ token: number; image: AvatarBitmap } | null>(null);
+  const [cropSaving, setCropSaving] = useState(false);
+  const [cropError, setCropError] = useState<string | undefined>();
   const [clientViewOpen, setClientViewOpen] = useState(false);
   const loadSavedCard = useCallback((id: string) => getManagerCard(id), []);
   // Поколение запросов аватара: устаревший ответ загрузки или удаления не применяется.
   const avatarRevision = useRef(0);
+  const readGeneration = useRef(0);
 
   if (storeUser !== formSource) {
     const cardChanged = cardSnapshot(storeUser) !== cardSnapshot(formSource);
@@ -81,7 +86,14 @@ export default function ProfilePage() {
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
+  function closeCrop() {
+    crop?.image.close?.();
+    setCrop(null);
+    setCropError(undefined);
+  }
+
   async function handleSave() {
+    if (crop) return;
     setFormError(undefined);
     const { payload, errors } = profileCardPayload(form);
     setFieldErrors(errors);
@@ -127,28 +139,52 @@ export default function ProfilePage() {
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (!file || crop) return;
 
-    const problem = avatarFileError(file);
-    if (problem) {
-      setAvatarError(problem);
-      return;
-    }
-
-    setAvatarError(undefined);
+    const generation = ++readGeneration.current;
     setAvatarBusy(true);
+    try {
+      const result = await inspectAvatarFile(file);
+      if (generation !== readGeneration.current) {
+        if (result.ok) result.image.close?.();
+        return;
+      }
+      if (!result.ok) {
+        setAvatarError(result.message);
+        return;
+      }
+      setAvatarError(undefined);
+      setCropError(undefined);
+      setCrop({ token: generation, image: result.image });
+    } finally {
+      if (generation === readGeneration.current) setAvatarBusy(false);
+    }
+  }
+
+  async function handleCropSave(file: File) {
+    setCropSaving(true);
+    setAvatarBusy(true);
+    setCropError(undefined);
     const revision = ++avatarRevision.current;
     try {
       const updated = await uploadAvatar(file);
+      if (revision !== avatarRevision.current) return;
       applyAvatar(updated, revision);
+      crop?.image.close?.();
+      setCrop(null);
     } catch (err) {
-      setAvatarError(profileProblemFields(err).file ?? AVATAR_UPLOAD_ERROR);
+      if (revision !== avatarRevision.current) return;
+      setCropError(avatarUploadMessage(err));
     } finally {
-      setAvatarBusy(false);
+      if (revision === avatarRevision.current) {
+        setCropSaving(false);
+        setAvatarBusy(false);
+      }
     }
   }
 
   async function handleDeleteAvatar() {
+    if (crop) return;
     setAvatarError(undefined);
     setAvatarBusy(true);
     const revision = ++avatarRevision.current;
@@ -173,6 +209,7 @@ export default function ProfilePage() {
   }
 
   const fullName = `${storeUser.firstName} ${storeUser.lastName}`;
+  const photoLocked = avatarBusy || crop !== null;
 
   return (
     <PageTransition>
@@ -198,7 +235,7 @@ export default function ProfilePage() {
                         size="sm"
                         variant="secondary"
                         onClick={openFilePicker}
-                        disabled={avatarBusy}
+                        disabled={photoLocked}
                       >
                         Заменить
                       </Button>
@@ -207,7 +244,7 @@ export default function ProfilePage() {
                         size="sm"
                         variant="ghost"
                         onClick={handleDeleteAvatar}
-                        disabled={avatarBusy}
+                        disabled={photoLocked}
                       >
                         Удалить фото
                       </Button>
@@ -218,7 +255,7 @@ export default function ProfilePage() {
                       size="sm"
                       variant="secondary"
                       onClick={openFilePicker}
-                      disabled={avatarBusy}
+                      disabled={photoLocked}
                     >
                       Загрузить фото
                     </Button>
@@ -239,7 +276,7 @@ export default function ProfilePage() {
               className="hidden"
               tabIndex={-1}
               aria-hidden="true"
-              disabled={avatarBusy}
+              disabled={crop !== null}
               onChange={handleFile}
             />
 
@@ -296,6 +333,16 @@ export default function ProfilePage() {
               <p role="alert" className="mt-4 text-sm text-red-500">
                 {formError}
               </p>
+            )}
+            {crop && (
+              <AvatarCropDialog
+                key={crop.token}
+                image={crop.image}
+                saving={cropSaving}
+                error={cropError}
+                onCancel={closeCrop}
+                onSave={handleCropSave}
+              />
             )}
           </Card>
         ) : (

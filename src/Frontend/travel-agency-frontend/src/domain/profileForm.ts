@@ -5,12 +5,15 @@ export const PASSWORD_HINT = 'Минимум 8 символов, заглавн�
 
 const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PHONE_E164 = /^\+[1-9]\d{1,14}$/;
+const CYRILLIC = /[\u0400-\u04FF]/;
 
 const NAME_ERROR = 'Укажите имя длиной от 1 до 100 символов.';
 const LAST_NAME_ERROR = 'Укажите фамилию длиной от 1 до 100 символов.';
 const PHONE_ERROR = 'Телефон должен быть в формате E.164, например +79991234567, или пустым.';
-const AVATAR_TYPE_ERROR = 'Подходят JPG, PNG или WebP.';
-const AVATAR_SIZE_ERROR = 'Файл больше 5 МБ.';
+export const AVATAR_TYPE_ERROR = 'Подходят JPG, PNG или WebP.';
+export const AVATAR_SIZE_ERROR = 'Файл больше 5 МБ.';
+export const AVATAR_RATIO_ERROR =
+  'Фото слишком вытянутое. Длинная сторона не должна быть больше короткой более чем в 3 раза.';
 
 export type ProfileField = 'firstName' | 'lastName' | 'phone';
 
@@ -70,6 +73,32 @@ function texts(value: unknown): string[] {
     if (typeof item === 'string' && item.trim()) result.push(item.trim());
   }
   return result;
+}
+
+/** Первая непустая кириллическая строка из `errors` (порядок ключей ответа), затем из `detail`. */
+export function avatarUploadMessage(error: unknown): string {
+  const data = responseData(error);
+  return firstCyrillic(data) ?? AVATAR_UPLOAD_ERROR;
+}
+
+function firstCyrillic(data: unknown): string | undefined {
+  if (typeof data !== 'object' || data === null) return undefined;
+  if ('errors' in data) {
+    const errors = (data as { errors?: unknown }).errors;
+    if (typeof errors === 'object' && errors !== null && !Array.isArray(errors)) {
+      for (const value of Object.values(errors)) {
+        for (const text of texts(value)) {
+          if (CYRILLIC.test(text)) return text;
+        }
+      }
+    }
+  }
+  if ('detail' in data) {
+    for (const text of texts((data as { detail?: unknown }).detail)) {
+      if (CYRILLIC.test(text)) return text;
+    }
+  }
+  return undefined;
 }
 
 export function profileProblemFields(error: unknown): ProfileFieldErrors & { file?: string } {

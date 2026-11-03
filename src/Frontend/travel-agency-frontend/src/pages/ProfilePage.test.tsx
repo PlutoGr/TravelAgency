@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
@@ -14,6 +14,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import { AVATAR_MAX_BYTES, PASSWORD_HINT } from '@/domain/profileForm';
 import { useAuthStore } from '@/store/authStore';
 import { renderPage } from '@/test/render';
+import { clearAvatarDraws, installAvatarCanvas, setAvatarToBlob } from '@/test/avatarCanvas';
 import type { User } from '@/types';
 
 vi.mock('react-hot-toast', () => ({
@@ -88,11 +89,28 @@ function chooseFile(file: File) {
   fireEvent.change(fileInput(), { target: { files: [file] } });
 }
 
+const JPEG_MAGIC = [0xff, 0xd8, 0xff, 0x00];
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const WEBP_MAGIC = [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50];
+
 function imageFile(name: string, type: string, size = 8): File {
-  const file = new File([Uint8Array.from({ length: Math.min(size, 16) }, () => 1)], name, { type });
+  const bytes = type === 'image/png' ? PNG_MAGIC : type === 'image/webp' ? WEBP_MAGIC : JPEG_MAGIC;
+  const file = new File([Uint8Array.from(bytes)], name, { type });
   Object.defineProperty(file, 'size', { value: size });
   return file;
 }
+
+async function chooseAndSave(file: File) {
+  chooseFile(file);
+  const dialog = await screen.findByRole('dialog', { name: 'Обрезка фото' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить фото' }));
+}
+
+const restoreAvatarCanvas = installAvatarCanvas();
+
+afterAll(() => {
+  restoreAvatarCanvas();
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -144,6 +162,9 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    clearAvatarDraws();
+    setAvatarToBlob('jpeg');
+    vi.stubGlobal('createImageBitmap', async () => ({ width: 64, height: 64, close: () => {} }));
     useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
   });
 
@@ -326,10 +347,13 @@ describe('ProfilePage', () => {
     renderShell();
 
     const file = imageFile('face.jpg', 'image/jpeg');
-    chooseFile(file);
+    await chooseAndSave(file);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Загрузить фото' })).toBeDisabled());
-    expect(uploadAvatar).toHaveBeenCalledWith(file);
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
+    const sent = uploadAvatar.mock.calls[0][0] as File;
+    expect(sent.name).toBe('avatar.jpg');
+    expect(sent.type).toBe('image/jpeg');
+    expect(sent).not.toBe(file);
     expect(deleteAvatar).not.toHaveBeenCalled();
 
     gate.resolve({ ...user, avatar: MEDIA });
@@ -347,23 +371,29 @@ describe('ProfilePage', () => {
 
     const replacement = imageFile('next.png', 'image/png');
     uploadAvatar.mockResolvedValue({ ...user, avatar: `${MEDIA}-2` });
-    chooseFile(replacement);
+    await chooseAndSave(replacement);
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(2));
-    expect(uploadAvatar).toHaveBeenLastCalledWith(replacement);
+    const resent = uploadAvatar.mock.calls[1][0] as File;
+    expect(resent.name).toBe('avatar.jpg');
+    expect(resent.type).toBe('image/jpeg');
+    expect(resent).not.toBe(replacement);
     expect(deleteAvatar).not.toHaveBeenCalled();
     expect(fileInput()).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp');
   });
 
-  it('ТК-9 accepts webp up to 5 MiB and does not crop the file', async () => {
+  it('ТК-9 opens the crop for a 5 MiB webp and does not post the original file', async () => {
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockResolvedValue({
       ...user,
       avatar: MEDIA,
     });
     renderProfile();
     const webp = imageFile('face.webp', 'image/webp', AVATAR_MAX_BYTES);
-    chooseFile(webp);
-    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith(webp));
-    expect(screen.queryByText('Обрезать')).not.toBeInTheDocument();
+    await chooseAndSave(webp);
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
+    const sent = uploadAvatar.mock.calls[0][0] as File;
+    expect(sent).not.toBe(webp);
+    expect(sent.name).toBe('avatar.jpg');
+    expect(sent.type).toBe('image/jpeg');
   });
 
   it('ТК-10 deletes the photo and shows initials without a second read', async () => {
@@ -401,7 +431,7 @@ describe('ProfilePage', () => {
     setField('Имя', 'Мария');
     setField('Фамилия', 'Ковалева');
     setField('Телефон', '+79991112233');
-    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
     uploadGate.resolve({
@@ -481,7 +511,7 @@ describe('ProfilePage', () => {
     setField('Фамилия', 'Ковалева');
     setField('Телефон', '+79991112233');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
     expect(uploadAvatar).toHaveBeenCalledTimes(1);
@@ -528,7 +558,7 @@ describe('ProfilePage', () => {
 
     const lateAvatar = deferred<User>();
     uploadAvatar.mockReturnValue(lateAvatar.promise);
-    chooseFile(imageFile('next.png', 'image/png'));
+    await chooseAndSave(imageFile('next.png', 'image/png'));
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(2));
     lateAvatar.resolve({
       ...user,
@@ -551,22 +581,26 @@ describe('ProfilePage', () => {
     });
   });
 
-  it('keeps the newer photo when the avatar request starts before save and returns first', async () => {
-    const saveGate = deferred<User>();
+  it('keeps the draft while the crop is open and applies it after the photo is saved', async () => {
     const uploadGate = deferred<User>();
-    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockReturnValue(saveGate.promise);
+    const updateProfile = vi.spyOn(authApi, 'updateProfile').mockResolvedValue({
+      ...user,
+      firstName: 'Мария',
+      lastName: 'Ковалева',
+      phone: '+79991112233',
+      avatar: MEDIA,
+    });
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar').mockReturnValue(uploadGate.promise);
     renderProfile();
 
     setField('Имя', 'Мария');
     setField('Фамилия', 'Ковалева');
     setField('Телефон', '+79991112233');
-    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(uploadAvatar).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledTimes(1));
-
+    fireEvent.click(screen.getByRole('button', { name: (name) => name === 'Сохранить' }));
+    expect(updateProfile).not.toHaveBeenCalled();
     uploadGate.resolve({
       ...user,
       firstName: 'Старое',
@@ -580,7 +614,6 @@ describe('ProfilePage', () => {
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Анна',
       lastName: 'Смирнова',
@@ -588,18 +621,9 @@ describe('ProfilePage', () => {
       avatar: MEDIA,
     });
 
-    saveGate.resolve({
-      ...user,
-      firstName: 'Мария',
-      lastName: 'Ковалева',
-      phone: '+79991112233',
-      avatar: undefined,
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Профиль успешно обновлён'));
     expect(screen.getByLabelText('Имя')).toHaveValue('Мария');
-    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ковалева');
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+79991112233');
-    expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Мария Ковалева' })).toHaveAttribute('src', MEDIA);
     expect(useAuthStore.getState().user).toMatchObject({
       firstName: 'Мария',
@@ -609,7 +633,7 @@ describe('ProfilePage', () => {
     });
   });
 
-  it('ТК-11 rejects an empty file, a foreign type and a file over 5 MiB before upload', () => {
+  it('ТК-11 rejects an empty file, a foreign type and a file over 5 MiB before upload', async () => {
     useAuthStore.setState({
       user: { ...user, avatar: MEDIA },
       isAuthenticated: true,
@@ -620,16 +644,16 @@ describe('ProfilePage', () => {
 
     chooseFile(imageFile('empty.jpg', 'image/jpeg', 0));
     expect(uploadAvatar).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('Подходят JPG, PNG или WebP.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Подходят JPG, PNG или WebP.');
     expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
 
     chooseFile(imageFile('anim.gif', 'image/gif', 20));
     expect(uploadAvatar).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('Подходят JPG, PNG или WebP.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Подходят JPG, PNG или WebP.');
 
     chooseFile(imageFile('big.jpg', 'image/jpeg', AVATAR_MAX_BYTES + 1));
     expect(uploadAvatar).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('Файл больше 5 МБ.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Файл больше 5 МБ.');
     expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
   });
 
@@ -650,7 +674,7 @@ describe('ProfilePage', () => {
       },
     });
     renderProfile();
-    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Подходят JPG, PNG или WebP.');
     expect(screen.queryByText('File content is not an image.')).not.toBeInTheDocument();
@@ -662,7 +686,7 @@ describe('ProfilePage', () => {
         data: { detail: 'File content is not an image.' },
       },
     });
-    chooseFile(imageFile('face.png', 'image/png'));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить фото' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Не удалось загрузить аватар. Попробуйте ещё раз.',
     );
@@ -677,15 +701,20 @@ describe('ProfilePage', () => {
       isLoading: false,
     });
     const uploadAvatar = vi.spyOn(authApi, 'uploadAvatar');
-    renderProfile();
-
-    for (const error of [
+    const errors = [
       new Error('network'),
       { response: { status: 400, data: { detail: 'Upload failed upstream.' } } },
       { response: { status: 403, data: { detail: 'Forbidden.' } } },
-    ]) {
-      uploadAvatar.mockRejectedValueOnce(error);
-      chooseFile(imageFile('face.webp', 'image/webp'));
+    ];
+    renderProfile();
+    uploadAvatar.mockRejectedValueOnce(errors[0]);
+    await chooseAndSave(imageFile('face.webp', 'image/webp'));
+
+    for (const error of errors) {
+      if (error !== errors[0]) {
+        uploadAvatar.mockRejectedValueOnce(error);
+        fireEvent.click(screen.getByRole('button', { name: 'Сохранить фото' }));
+      }
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Не удалось загрузить аватар. Попробуйте ещё раз.',
       );
@@ -693,8 +722,7 @@ describe('ProfilePage', () => {
       expect(screen.queryByText('Forbidden.')).not.toBeInTheDocument();
       expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA);
       expect(screen.queryByLabelText('Город')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Заменить' })).toBeEnabled();
-      expect(screen.getByRole('button', { name: 'Удалить фото' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Сохранить фото' })).toBeEnabled();
     }
   });
 
@@ -818,6 +846,9 @@ describe('ProfilePage session', () => {
     vi.clearAllMocks();
     clearSessionSignal();
     markSessionPresent();
+    clearAvatarDraws();
+    setAvatarToBlob('jpeg');
+    vi.stubGlobal('createImageBitmap', async () => ({ width: 64, height: 64, close: () => {} }));
     useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
     setAuthSessionHandler(() => {
       useAuthStore.getState().markSessionExpired();
@@ -896,7 +927,7 @@ describe('ProfilePage session', () => {
     };
 
     renderProfile();
-    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
 
     await waitFor(() => expect(screen.getByRole('img', { name: 'Анна Смирнова' })).toHaveAttribute('src', MEDIA));
     expect(refresh).toBe(1);
@@ -963,7 +994,7 @@ describe('ProfilePage session', () => {
     expect(screen.getByTestId('location').textContent).toBe('/dashboard/profile');
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
     await waitFor(() => expect(calls).toContain('patch /auth/me'));
-    chooseFile(imageFile('face.jpg', 'image/jpeg'));
+    await chooseAndSave(imageFile('face.jpg', 'image/jpeg'));
     await waitFor(() => expect(calls).toContain('post /auth/me/avatar'));
     fireEvent.click(screen.getByRole('button', { name: 'Удалить фото' }));
     await waitFor(() => expect(calls).toContain('delete /auth/me/avatar'));
