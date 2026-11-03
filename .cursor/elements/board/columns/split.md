@@ -5,4 +5,4 @@
 - **Leave:** → В работе after owner yes to `approve split #NN`, when the first child leaves Очередь, in that yes turn ([Разбиение](../../../lifecycle/05-epic-split.md)).
 - **Owner question:** stay in this column; record the `Question` in [memory](../../memory.md#question); do not advance until the answer is recorded.
 - **Who moves:** orchestrator.
-- **Required:** each split line has `Вид`, `Тесты`, a `Feature-` page and a child issue in Очередь with «Приоритет».
+- **Required:** each split line has `Вид`, `Тесты`, a `Feature-` page and a child issue in Очередь with «Приоритет»; each UI feature the epic «Эталон» covers links it on its page.

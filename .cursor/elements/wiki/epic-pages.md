@@ -10,7 +10,7 @@
 | «Решения» | whenever a question is open | [decisions log](decisions-log.md) |
 | «Разбиение» | Разбиение | [Разбиение](../../lifecycle/05-epic-split.md) |
 
-- The working blocks are wishes, then expectations (with the etalon when the epic is visual), then architecture, then the feature list. A legacy heading «Бизнес и сценарии» is «Ожидания» until the page is next edited.
+- The working blocks are wishes, then expectations (with «Эталон» when the epic changes screens), then architecture, then the feature list. A legacy heading «Бизнес и сценарии» is «Ожидания» until the page is next edited.
 - Fill the current column's section, plus «Решения» rows when a question is open; do not fill later sections. If only the owner can decide, pause in place (same column) and record it in [memory](../memory.md). No status line. No «Тест-кейсы» section.
-- Not a screen specification; does not unlock feature code. The etalon is a static mock reference, not feature code. No child analysis pages: the child is a Feature.
+- Not a screen specification; does not unlock feature code. «Эталон» is a clickable mock reference in `mocks/<NN>/` ([screen mock](../../lifecycle/03-epic-business-analysis.md#screen-mock)), not feature code. No child analysis pages: the child is a Feature.
 - «сделано» with links is added in the same step as the close after owner acceptance ([done](../board/columns/done.md)).

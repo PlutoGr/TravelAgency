@@ -94,7 +94,7 @@ Read logs and status freely. Any server change, manual deploy or rollback needs 
 - A process gap is fixed in the live artifacts and, if the rule was wrong or silent, in this package in the same delivery. Before shipping a process change, scan related rules, templates and automations so nothing diverges.
 
 ### 5.16 Objectivity in delivery
-- Epic Бизнес-анализ is a live conversation with the owner that fixes «Ожидания». A visual epic has an approved static mock before that column exits ([Бизнес-анализ](lifecycle/03-epic-business-analysis.md)).
+- Epic Бизнес-анализ is a live conversation with the owner that fixes «Ожидания». An epic whose result changes screens has an approved clickable mock («Эталон») before that column exits; a feature opened outside a split gets one in Аналитика ([screen mock](lifecycle/03-epic-business-analysis.md#screen-mock)).
 - At split, record `Вид` and `Тесты` on every child ([kind and test policy](lifecycle/05-epic-split.md#kind-and-test-policy)). Feature Аналитика only confirms them.
 - Приёмка is a light check. Deep manual only for auth, money, security, or a visual that must match the etalon. Honest comparison to the expectations is the epic demo ([Приёмка](lifecycle/11-deploy-and-acceptance.md), [epic demo](lifecycle/13-epic-acceptance.md)).
 - `Doc-` stays a thin skeleton. Omit a page when the behavior it describes did not change ([Doc- pages](elements/wiki/doc-pages.md)).
