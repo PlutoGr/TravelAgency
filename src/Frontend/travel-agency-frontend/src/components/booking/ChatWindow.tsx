@@ -423,7 +423,7 @@ export default function ChatWindow({
                               type="button"
                               className={clsx(
                                 'block w-full cursor-pointer text-xs font-medium',
-                                isOwn ? 'text-right text-primary' : 'text-warm-gray',
+                                isOwn ? 'text-right text-primary' : 'text-left text-warm-gray',
                               )}
                               aria-label={cardButtonName(openCard, signature)}
                               onClick={openThisCard}

@@ -458,7 +458,8 @@ describe('ChatWindow names and pointer', () => {
     });
     const [circle, name] = screen.getAllByRole('button', { name: 'Карточка менеджера, Марина Иванова' });
     expect(circle).toHaveClass('cursor-pointer');
-    expect(name).toHaveClass('cursor-pointer');
+    expect(name).toHaveClass('cursor-pointer', 'text-left');
+    expect(name).not.toHaveClass('text-right');
     expect(circle).toHaveAttribute('type', 'button');
     expect(name).toHaveAttribute('type', 'button');
     expect(name.textContent).toBe('Марина Иванова');
@@ -483,7 +484,7 @@ describe('ChatWindow names and pointer', () => {
     });
     const [clientCircle, clientName] = screen.getAllByRole('button', { name: 'Карточка клиента, Анна Соколова' });
     expect(clientCircle).toHaveClass('cursor-pointer');
-    expect(clientName).toHaveClass('cursor-pointer');
+    expect(clientName).toHaveClass('cursor-pointer', 'text-left');
     clientName.focus();
     await user.keyboard(' ');
     expect(await screen.findByRole('dialog', { name: 'Карточка клиента' })).toBeInTheDocument();
