@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ChatMessage } from '@/types';
 import { getMessages, sendMessage } from '@/api/chat';
+import { getClientCard } from '@/api/clientCards';
+import { getManagerCard } from '@/api/managerCard';
 import ChatWindow from './ChatWindow';
 
 vi.mock('@/api/chat', () => ({
@@ -12,7 +14,26 @@ vi.mock('@/api/chat', () => ({
   disconnectChat: vi.fn(),
 }));
 
+vi.mock('@/api/managerCard', () => ({
+  getManagerCard: vi.fn(),
+}));
+
+vi.mock('@/api/clientCards', () => ({
+  getClientCard: vi.fn(),
+}));
+
 const BOOKING_ID = 'booking-1';
+
+beforeEach(() => {
+  vi.mocked(getManagerCard).mockResolvedValue({ id: 'manager-1', displayName: 'Марина' });
+  vi.mocked(getClientCard).mockResolvedValue({
+    id: 'client-1',
+    displayName: 'Илья',
+    email: 'ilya@example.com',
+    bookings: [],
+    notes: [],
+  });
+});
 
 function longHistory(count = 40): ChatMessage[] {
   return Array.from({ length: count }, (_, index) => {

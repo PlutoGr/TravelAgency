@@ -277,6 +277,7 @@ export default function ManagerBookingDetailPage() {
                     user ? `${user.firstName} ${user.lastName}` : ''
                   }
                   currentUserRole="manager"
+                  currentUserAvatar={user?.avatar}
                 />
               </div>
               {/* Quick replies */}

@@ -7,6 +7,9 @@ import MyBookingsPage from './MyBookingsPage';
 import BookingDetailPage from './BookingDetailPage';
 import ManagerBookingDetailPage from './ManagerBookingDetailPage';
 import { getManagerCard } from '@/api/managerCard';
+import { getMessages } from '@/api/chat';
+import { useAuthStore } from '@/store/authStore';
+import type { ChatMessage } from '@/types';
 import { BOOKING_WITH_PROPOSAL_JSON, TOUR_CARD_JSON, parseBookingJson } from '@/test/bookingDtoJson';
 
 const { mockApiClient } = vi.hoisted(() => ({
@@ -65,6 +68,8 @@ function installBooking(body: Record<string, unknown>) {
 describe('manager row on booking pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getMessages).mockResolvedValue([]);
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
     vi.mocked(getManagerCard).mockResolvedValue({
       id: MANAGER_ID,
       displayName: 'Марина Иванова',
@@ -218,6 +223,125 @@ describe('manager row on booking pages', () => {
     );
     expect(await screen.findByText('Чат с клиентом')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Менеджер/ })).not.toBeInTheDocument();
+    expect(getManagerCard).not.toHaveBeenCalled();
+  });
+
+  it('кружок, строка и окно берут один src, свой кружок берёт аватар сессии', async () => {
+    const user = userEvent.setup();
+    const photo = '/api/v1/media/files/file-1/a256';
+    const selfPhoto = '/api/v1/media/files/self/a256';
+    useAuthStore.setState({
+      user: {
+        id: 'self-client',
+        email: 'ilya@example.com',
+        firstName: 'Илья',
+        lastName: 'Петров',
+        phone: '',
+        avatar: selfPhoto,
+        role: 'client',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+    installBooking({
+      ...booking,
+      assignedManagerId: MANAGER_ID,
+      assignedManagerName: 'Марина Иванова',
+    });
+    vi.mocked(getMessages).mockResolvedValue([
+      {
+        id: 'own',
+        bookingId: String(booking.id),
+        senderId: 'self-client',
+        senderName: 'Илья Петров',
+        senderRole: 'client',
+        text: 'Я на месте',
+        createdAt: '2026-04-02T08:00:00Z',
+      },
+      {
+        id: 'marina',
+        bookingId: String(booking.id),
+        senderId: MANAGER_ID,
+        senderName: 'Марина Иванова',
+        senderRole: 'manager',
+        text: 'Здравствуйте',
+        createdAt: '2026-04-02T08:01:00Z',
+      },
+    ] satisfies ChatMessage[]);
+
+    renderAt(
+      `/dashboard/bookings/${booking.id}`,
+      '/dashboard/bookings/:id',
+      <BookingDetailPage />,
+    );
+
+    const row = await screen.findByRole('button', { name: /Менеджер/ });
+    const list = await screen.findByTestId('chat-message-list');
+    expect(await within(row).findByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', photo);
+    expect(await within(list).findByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', photo);
+    expect(within(list).getByRole('img', { name: 'Илья Петров' })).toHaveAttribute('src', selfPhoto);
+    expect(screen.getByText('Здравствуйте')).not.toHaveTextContent(photo);
+
+    await user.click(screen.getByRole('button', { name: 'Карточка менеджера, Марина Иванова' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
+    expect(within(dialog).getByRole('img', { name: 'Марина Иванова' })).toHaveAttribute('src', photo);
+  });
+});
+
+describe('session avatar on the manager booking chat', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getMessages).mockResolvedValue([]);
+    vi.mocked(getManagerCard).mockResolvedValue({
+      id: MANAGER_ID,
+      displayName: 'Марина Иванова',
+      avatarUrl: '/api/v1/media/files/file-1/a256',
+    });
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+  });
+
+  it('передаёт аватар сессии в свой кружок, не запрашивая карточку менеджера', async () => {
+    const selfPhoto = '/api/v1/media/files/self/a256';
+    useAuthStore.setState({
+      user: {
+        id: 'self-admin',
+        email: 'admin@example.com',
+        firstName: 'Админ',
+        lastName: 'Админов',
+        phone: '',
+        avatar: selfPhoto,
+        role: 'admin',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+    installBooking({
+      ...booking,
+      assignedManagerId: MANAGER_ID,
+      assignedManagerName: 'Марина Иванова',
+    });
+    vi.mocked(getMessages).mockResolvedValue([
+      {
+        id: 'own',
+        bookingId: String(booking.id),
+        senderId: 'self-admin',
+        senderName: 'Админ Админов',
+        senderRole: 'admin',
+        text: 'Проверяю заявку',
+        createdAt: '2026-04-02T08:00:00Z',
+      },
+    ] satisfies ChatMessage[]);
+
+    renderAt(
+      `/manager/bookings/${booking.id}`,
+      '/manager/bookings/:id',
+      <ManagerBookingDetailPage />,
+    );
+
+    const list = await screen.findByTestId('chat-message-list');
+    expect(await within(list).findByRole('img', { name: 'Админ Админов' })).toHaveAttribute('src', selfPhoto);
     expect(getManagerCard).not.toHaveBeenCalled();
   });
 });
