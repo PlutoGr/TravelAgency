@@ -4,8 +4,8 @@ Active project automations post GitHub comments as `cursor`. They are the first-
 ## Inventory (keep Active)
 | Automation | When | Gate |
 |---|---|---|
-| `TA: PR review` | PR open/push | before merge: process, format, Doc-, obvious bugs |
-| `TA: Find vulnerabilities` | PR open/push | before merge: security findings (comment only) |
+| `TA: PR review` | PR open/push; exits at once on a docs-only PR | before merge: process, format, Doc-, obvious bugs |
+| `TA: Find vulnerabilities` | PR open/push; exits at once on a docs-only PR | before merge: security findings (comment only) |
 | Bugbot (From Cursor) | every push | before merge: bug findings; Autofix Off; scope this repo only |
 | `TA: CI failed triage` | checks failed | before merge: only if CI was red; confirm green again |
 | `TA: Doc- after merge` | PR merged | after merge: Doc- gap → issue or wiki fix |
@@ -23,11 +23,12 @@ A missing or disabled routine is a blocker: report it to the owner ([escalation]
 ## Depth by size
 The inventory stays Active. Depth follows the feature. Do not disable a bot to go faster.
 - Крупная, or any change to auth, money, security, migrations or public contracts: read every finding and close it properly. Escalation review stays as in [review §3](../lifecycle/10-review-and-merge.md#3-escalation-review).
-- Малая polish (copy, visual, docs, `Тесты: без новых`, a small diff): still wait until automations finish. The [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) does not change. A non-blocking nit is one line «не блокирует» and is not re-dug. Do not launch a second reviewer for noise. A validated security or bug finding still blocks.
+- Малая polish with code (copy, visual, `Тесты: без новых`, a small diff): still wait until automations finish. The [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) does not change. A non-blocking nit is one line «не блокирует» and is not re-dug. Do not launch a second reviewer for noise. A validated security or bug finding still blocks.
 - The orchestrator may defer non-blocking noise to a backlog note.
+- [Docs-only PR](../lifecycle/10-review-and-merge.md#ready-predicate): no wait for Automations or Bugbot; `TA: PR review` and `TA: Find vulnerabilities` exit at once (their dashboard prompts start with that rule; owner-managed). Bugbot stays as configured. A late finding is read when convenient and fixed in a follow-up PR only if valid.
 
 ## Handling
-- Before merge: wait until CI and automations have finished, read every finding including medium and lower, reply on each thread ([review replies](../templates/github/review-replies.md), [review and merge](../lifecycle/10-review-and-merge.md#1-cloud-agent-until-ready)). A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
+- Before merge: wait until CI and automations have finished (a [docs-only PR](../lifecycle/10-review-and-merge.md#ready-predicate) waits only for CI and Secret scan), read every finding including medium and lower, reply on each thread ([review replies](../templates/github/review-replies.md), [review and merge](../lifecycle/10-review-and-merge.md#1-cloud-agent-until-ready)). A finding a newer commit already fixed still gets «исправлено» with the head sha, not a new debate.
 - Do not merge while a blocker is open (format, Doc- line, red CI, a validated security or bug finding without a finished reply).
 - Do not re-do the same checklist in a second pass; escalate only per [escalation review](../lifecycle/10-review-and-merge.md#3-escalation-review).
 - After merge: `TA: Doc- after merge` per [Doc- after merge](../lifecycle/12-docs-after-merge.md).

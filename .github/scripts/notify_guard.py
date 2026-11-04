@@ -62,6 +62,10 @@ def _winner(latest):
     )
 
 
+def _passed(name, run):
+    return run.get("conclusion") == "success"
+
+
 def decide_pr(check_runs, extra, sha, pr_head, suite_id):
     """skip, либо send с полями result и failed_checks.
 
@@ -84,11 +88,7 @@ def decide_pr(check_runs, extra, sha, pr_head, suite_id):
     winner = _winner(latest)
     if _suite_id(winner) != trigger:
         return {"action": "skip", "reason": "not-latest-suite"}
-    failed = [
-        name
-        for name in names
-        if latest[name].get("conclusion") != "success"
-    ]
+    failed = [name for name in names if not _passed(name, latest[name])]
     return {
         "action": "send",
         "result": "red" if failed else "green",
