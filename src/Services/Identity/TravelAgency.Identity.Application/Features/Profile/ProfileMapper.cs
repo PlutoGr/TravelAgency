@@ -24,7 +24,11 @@ public static class ProfileMapper
         new(
             user.Id,
             user.DisplayName,
-            BuildAvatarUrl(user.AvatarMediaFileId));
+            BuildAvatarUrl(user.AvatarMediaFileId),
+            user.Position,
+            user.TourismSince,
+            user.About,
+            ManagerCardText.ReadTags(user.TagsJson));
 
     public static string? BuildAvatarUrl(Guid? mediaFileId) =>
         mediaFileId is null
