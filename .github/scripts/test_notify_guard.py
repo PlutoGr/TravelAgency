@@ -88,15 +88,19 @@ class PrDecision(unittest.TestCase):
         self.assertEqual(sent["result"], "red")
         self.assertEqual(sent["failed_checks"], ["gitleaks"])
 
-    def test_skipped_build_jobs_count_as_green(self):
+    def test_skipped_build_jobs_are_red(self):
+        """Cancel path: build jobs with conclusion skipped must not count as green."""
         runs = self._all()
         for run in runs:
-            if run["name"] in guard.SKIPPABLE:
+            if run["name"] in (".NET сборка и тесты", "Фронтенд сборка и тесты"):
                 run["conclusion"] = "skipped"
         sent = guard.decide_pr(runs, [], self.sha, self.sha, 7)
         self.assertEqual(sent["action"], "send")
-        self.assertEqual(sent["result"], "green")
-        self.assertEqual(sent["failed_checks"], [])
+        self.assertEqual(sent["result"], "red")
+        self.assertEqual(
+            sent["failed_checks"],
+            [".NET сборка и тесты", "Фронтенд сборка и тесты"],
+        )
 
     def test_skipped_other_required_is_red(self):
         runs = self._all(conclusion="skipped")

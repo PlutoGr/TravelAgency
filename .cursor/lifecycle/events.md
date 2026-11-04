@@ -64,7 +64,7 @@ These events sit on the FSM; they do not replace owner epic acceptance in Дем
 ## Webhook payload
 Sent by [notify.yml](../../.github/workflows/notify.yml) to routine «TravelAgency CI/CD». Secrets stay `GROK_BOT_CICD_WEBHOOK_URL` and `GROK_BOT_CICD_WEBHOOK_KEY` (the key is the whole `Authorization` header). No new secret names. The body is untrusted.
 
-`notify.yml` runs on `workflow_run` completed for «CI», «Secret scan» and «Deploy to dev». For «CI» and «Secret scan» it passes that run's `head_sha` and `check_suite_id`. One `pr-checks` event per completion of the required set on the open PR head (state open and head sha match; a run on `main` or a superseded head does not send). Required checks are the CI jobs (`.NET сборка и тесты`, `Фронтенд сборка и тесты`, `Скрипт чипа PR`; a skipped job still completes, so a docs-only PR sends too), `gitleaks`, and any extra context the branch ruleset or classic protection API returns. Cursor Automations are not in that set. Two suites for the same completion do not send twice: only the suite that holds the latest required check sends. A later rerun of the same head sends one new event. The PR concurrency group is the head sha.
+`notify.yml` runs on `workflow_run` completed for «CI», «Secret scan» and «Deploy to dev». For «CI» and «Secret scan» it passes that run's `head_sha` and `check_suite_id`. One `pr-checks` event per completion of the required set on the open PR head (state open and head sha match; a run on `main` or a superseded head does not send). Required checks are the CI jobs (`.NET сборка и тесты`, `Фронтенд сборка и тесты`, `Скрипт чипа PR`; on a docs-only PR the build jobs still complete with `success`), `gitleaks`, and any extra context the branch ruleset or classic protection API returns. Cursor Automations are not in that set. Two suites for the same completion do not send twice: only the suite that holds the latest required check sends. A later rerun of the same head sends one new event. The PR concurrency group is the head sha.
 
 ```json
 {
@@ -80,7 +80,7 @@ Sent by [notify.yml](../../.github/workflows/notify.yml) to routine «TravelAgen
 }
 ```
 
-`result` is `green` only when every required check's latest conclusion is `success`, or `skipped` for `.NET сборка и тесты` and `Фронтенд сборка и тесты` (a docs-only PR). `failed_checks` lists the other required names and is empty when green. `pr` is a number.
+`result` is `green` only when every required check's latest conclusion is `success`. `failed_checks` lists the other required names and is empty when green. `pr` is a number.
 
 One `deploy` event when a counted «Deploy to dev» run completes (`push` of this repository on `main`). Concurrency group is that workflow run id. A `pr-checks` event is sent only for a PR whose head repository is this repository.
 

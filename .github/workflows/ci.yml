@@ -2,9 +2,9 @@
 # Проверка pull request: сборка и тесты .NET и фронтенда. Ничего не публикует и не деплоит.
 # Деплой на dev только из main (deploy.yml).
 # PR только с документацией (.cursor/**, *.md вне src/ и .github/, docs/**)
-# сборку и тесты не запускает: задачи пропускаются через if, имена не меняются,
-# пропуск засчитывается обязательной проверке как успех. Решение по списку
-# файлов, .github/scripts/ci_changes.py. Ручной запуск проверяет всё.
+# не пропускает задачи сборки через job-level if: обе задачи всё равно стартуют
+# (if: !cancelled()) и завершаются success коротким путём без сборки.
+# Решение по списку файлов, .github/scripts/ci_changes.py. Ручной запуск проверяет всё.
 # =====================================================================
 name: CI
 
@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   # Есть ли в PR код. Ошибка классификации не пропускает сборку: задачи ниже
-  # запускаются, если changes не завершился успехом.
+  # запускают полный путь, если changes не завершился успехом.
   changes:
     name: Изменения кода
     runs-on: ubuntu-latest
@@ -54,39 +54,55 @@ jobs:
   dotnet:
     name: .NET сборка и тесты
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Только документация
+        if: needs.changes.result == 'success' && needs.changes.outputs.code == 'false'
+        run: echo "PR только с документацией — сборка и тесты .NET не нужны"
+
       - name: Checkout
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Установка .NET 10 SDK
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
       - name: dotnet restore
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         run: dotnet restore TravelAgency.sln
 
       - name: dotnet build
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         run: dotnet build TravelAgency.sln -c Release --no-restore
 
       - name: dotnet test
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         run: dotnet test TravelAgency.sln -c Release --no-build --verbosity normal
 
   frontend:
     name: Фронтенд сборка и тесты
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: src/Frontend/travel-agency-frontend
     steps:
+      - name: Только документация
+        if: needs.changes.result == 'success' && needs.changes.outputs.code == 'false'
+        working-directory: ${{ github.workspace }}
+        run: echo "PR только с документацией — сборка и тесты фронтенда не нужны"
+
       - name: Checkout
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Установка Node.js
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -94,13 +110,16 @@ jobs:
           cache-dependency-path: src/Frontend/travel-agency-frontend/package-lock.json
 
       - name: npm ci
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         run: npm ci
 
       # tsc + vite build
       - name: Сборка
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         run: npm run build
 
       - name: Тесты (vitest)
+        if: needs.changes.result != 'success' || needs.changes.outputs.code != 'false'
         run: npx vitest run
 
   closed-by:
