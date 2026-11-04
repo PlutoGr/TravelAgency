@@ -23,7 +23,7 @@ public class ManagerCardIntegrationTests : IClassFixture<CustomWebApplicationFac
 
     private static readonly string[] ForbiddenKeys =
     [
-        "email", "phone", "city", "about", "tourismSince", "languages", "specialization",
+        "email", "phone", "city", "languages", "specialization",
         "role", "firstName", "lastName", "createdAt", "notes",
         "blockedAt", "blockReason", "blockedByUserId", "isBlocked"
     ];

@@ -5,7 +5,9 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Xunit;
+using TravelAgency.Gateway.Configuration;
 using TravelAgency.Shared.Contracts.Authorization;
 using Yarp.ReverseProxy.Configuration;
 
@@ -765,6 +767,66 @@ public class YarpRoutingIntegrationTests : IClassFixture<YarpRoutingFixture>
         Assert.DoesNotContain("displayName", body, StringComparison.Ordinal);
         var added = _fixture.MockServer.RequestPaths.Skip(before);
         Assert.DoesNotContain(added, path => path.Contains("manager-card", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ManagerCard_Patch_ProxiesThroughAuthRouteWithoutTokenCookies()
+    {
+        var proxy = _fixture.Factory.Services.GetRequiredService<IProxyConfigProvider>().GetConfig();
+        var cardRoutes = proxy.Routes.Where(route =>
+            (route.Match.Path ?? string.Empty).Contains("manager-card", StringComparison.OrdinalIgnoreCase)
+            || route.RouteId.Contains("manager-card", StringComparison.OrdinalIgnoreCase)).ToList();
+        var cardRoute = Assert.Single(cardRoutes);
+        Assert.Equal("manager-card-route", cardRoute.RouteId);
+        Assert.Equal(new[] { "GET" }, cardRoute.Match.Methods);
+        Assert.Contains(proxy.Routes, route => route.RouteId == "auth-route");
+
+        var settings = _fixture.Factory.Services.GetRequiredService<IOptions<AuthRouteSettings>>().Value;
+        Assert.DoesNotContain(
+            settings.TokenResponsePaths,
+            path => path.Contains("manager-card", StringComparison.OrdinalIgnoreCase));
+
+        var id = Guid.NewGuid();
+        var client = CreateClientForRole(AppRoles.Manager);
+        var before = _fixture.MockServer.RequestPaths.Count;
+        var rejected = await client.PatchAsync(
+            $"/api/v1/users/{id}/manager-card",
+            new StringContent("{}", Encoding.UTF8, "application/json"));
+        Assert.NotEqual(HttpStatusCode.OK, rejected.StatusCode);
+        var rejectedBody = await rejected.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("displayName", rejectedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            _fixture.MockServer.RequestPaths.Skip(before),
+            path => path.Contains("manager-card", StringComparison.Ordinal));
+
+        const string upstreamPath = "/identity/me/manager-card";
+        const string card = """{"id":"3f1c2a0e-7b4d-4e1a-9c2f-6a8b0d1e2f30","displayName":"Анна Соколова","position":"Старший менеджер по турам","tourismSince":2013,"about":"Подбираю поездки под даты и состав.","tags":["Турция","Горнолыжные туры"]}""";
+        string? seenRoute = null;
+        _fixture.MockServer.Scripts[upstreamPath] = async context =>
+        {
+            seenRoute = context.Request.Headers[Helpers.SelectedRouteHeaderTransformProvider.HeaderName].ToString();
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync(card);
+        };
+        try
+        {
+            var response = await client.PatchAsync(
+                "/api/v1/auth/me/manager-card",
+                new StringContent(card, Encoding.UTF8, "application/json"));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(card, await response.Content.ReadAsStringAsync());
+            Assert.Equal("auth-route", seenRoute);
+            Assert.False(response.Headers.Contains("Set-Cookie"));
+            Assert.DoesNotContain(
+                response.Headers.Concat(response.Content.Headers),
+                header => header.Key.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(upstreamPath, _fixture.MockServer.RequestPaths);
+        }
+        finally
+        {
+            _fixture.MockServer.Scripts.TryRemove(upstreamPath, out _);
+        }
     }
 
     [Fact]

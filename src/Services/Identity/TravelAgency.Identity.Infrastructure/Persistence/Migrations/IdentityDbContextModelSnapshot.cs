@@ -240,6 +240,10 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("About")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<Guid?>("AvatarMediaFileId")
                         .HasColumnType("uuid");
 
@@ -283,6 +287,10 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("Position")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -292,6 +300,12 @@ namespace TravelAgency.Identity.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasDefaultValue(0L);
+
+                    b.Property<string>("TagsJson")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("TourismSince")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

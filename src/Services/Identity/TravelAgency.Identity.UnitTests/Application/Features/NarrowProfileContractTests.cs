@@ -26,17 +26,20 @@ public class NarrowProfileContractTests
         withPhoto.Phone.Should().Be("+79991234567");
         withoutPhoto.Phone.Should().BeNull();
         typeof(User).GetProperty("City").Should().BeNull();
-        typeof(User).GetProperty("About").Should().BeNull();
-        typeof(User).GetProperty("TourismSince").Should().BeNull();
         typeof(User).GetProperty("LanguagesJson").Should().BeNull();
         typeof(User).GetProperty("Specialization").Should().BeNull();
         typeof(User).GetProperty("Passport").Should().BeNull();
         typeof(User).GetMethod("UpdateManagerProfile").Should().BeNull();
         typeof(User).GetMethod("GetLanguages").Should().BeNull();
         typeof(User).GetField("MaxCityLength").Should().BeNull();
-        typeof(User).GetField("MaxAboutLength").Should().BeNull();
         typeof(User).GetField("MaxSpecializationLength").Should().BeNull();
-        typeof(User).GetField("MinTourismSinceYear").Should().BeNull();
+        User.MaxPositionLength.Should().Be(60);
+        User.MaxAboutLength.Should().Be(1000);
+        User.MinTourismSinceYear.Should().Be(1980);
+        withPhoto.Position.Should().BeNull();
+        withPhoto.TourismSince.Should().BeNull();
+        withPhoto.About.Should().BeNull();
+        withPhoto.TagsJson.Should().BeNull();
 
         var dto = ProfileMapper.ToDto(withPhoto);
         dto.Should().BeEquivalentTo(new UserProfileDto(
@@ -53,8 +56,19 @@ public class NarrowProfileContractTests
         card.Id.Should().Be(withPhoto.Id);
         card.DisplayName.Should().Be("Марина Иванова");
         card.AvatarUrl.Should().Be(ProfileMapper.BuildAvatarUrl(avatarId));
-        JsonSerializer.Serialize(ProfileMapper.ToPublicCard(withoutPhoto))
-            .Should().NotContain("avatarUrl");
+        card.Position.Should().BeNull();
+        card.TourismSince.Should().BeNull();
+        card.About.Should().BeNull();
+        card.Tags.Should().BeEmpty();
+        var emptyCard = JsonSerializer.Serialize(
+            ProfileMapper.ToPublicCard(withoutPhoto),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        emptyCard.Should().NotContain("avatarUrl");
+        using var emptyDoc = JsonDocument.Parse(emptyCard);
+        emptyDoc.RootElement.GetProperty("position").ValueKind.Should().Be(JsonValueKind.Null);
+        emptyDoc.RootElement.GetProperty("tourismSince").ValueKind.Should().Be(JsonValueKind.Null);
+        emptyDoc.RootElement.GetProperty("about").ValueKind.Should().Be(JsonValueKind.Null);
+        emptyDoc.RootElement.GetProperty("tags").GetArrayLength().Should().Be(0);
 
         UserSummaryResponse.Descriptor.Fields.InDeclarationOrder()
             .Select(field => field.Name)

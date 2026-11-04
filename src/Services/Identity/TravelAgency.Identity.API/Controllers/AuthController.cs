@@ -8,10 +8,12 @@ using TravelAgency.Identity.Application.Features.Auth.Commands.Logout;
 using TravelAgency.Identity.Application.Features.Auth.Commands.RefreshToken;
 using TravelAgency.Identity.Application.Features.Auth.Commands.Register;
 using TravelAgency.Identity.Application.Features.Profile.Commands.DeleteAvatar;
+using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateManagerCard;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UpdateProfile;
 using TravelAgency.Identity.Application.Features.Profile.Commands.UploadAvatar;
 using TravelAgency.Identity.Application.Features.Profile.Queries.GetProfile;
 using TravelAgency.Shared.Contracts.Abstractions;
+using TravelAgency.Shared.Contracts.Authorization;
 
 namespace TravelAgency.Identity.API.Controllers;
 
@@ -90,6 +92,20 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
         var result = await _mediator.Send(new UpdateProfileCommand(request), ct);
+        return Ok(result);
+    }
+
+    [HttpPatch("me/manager-card")]
+    [Authorize(Policy = AuthPolicies.RequireManagerOrAdmin)]
+    [ProducesResponseType(typeof(ManagerPublicCardDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateManagerCard([FromBody] UpdateManagerCardRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UpdateManagerCardCommand(request), ct);
+        Response.Headers.CacheControl = "no-store";
         return Ok(result);
     }
 

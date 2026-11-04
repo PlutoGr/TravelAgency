@@ -92,7 +92,7 @@ public class IdentityGrpcServiceTests
             .Select(field => field.JsonName)
             .Should().NotContain("phone");
         typeof(ManagerPublicCardDto).GetProperties().Select(property => property.Name)
-            .Should().BeEquivalentTo("Id", "DisplayName", "AvatarUrl");
+            .Should().BeEquivalentTo("Id", "DisplayName", "AvatarUrl", "Position", "TourismSince", "About", "Tags");
         typeof(ManagerPublicCardDto).GetProperty("Phone").Should().BeNull();
         typeof(ManagerPublicCardDto).GetProperty("Email").Should().BeNull();
     }

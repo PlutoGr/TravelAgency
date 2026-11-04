@@ -11,8 +11,17 @@ public class User
     public string FirstName { get; private set; } = null!;
     public string LastName { get; private set; } = null!;
     public string? Phone { get; private set; }
+    public string? Position { get; private set; }
+    public int? TourismSince { get; private set; }
+    public string? About { get; private set; }
+    public string? TagsJson { get; private set; }
     public Guid? AvatarMediaFileId { get; private set; }
     public const int MaxBlockReasonLength = 500;
+    public const int MaxPositionLength = 60;
+    public const int MaxAboutLength = 1000;
+    public const int MinTourismSinceYear = 1980;
+    public const int MaxTagLength = 30;
+    public const int MaxTagCount = 10;
 
     public UserRole Role { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -66,6 +75,22 @@ public class User
         LastName = lastName;
         Phone = string.IsNullOrEmpty(phone) ? null : phone;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateManagerCard(string? position, int? tourismSince, string? about, string? tagsJson, DateTime utcNow)
+    {
+        if (position is { Length: > MaxPositionLength })
+            throw new IdentityDomainException("Position is too long.");
+        if (about is { Length: > MaxAboutLength })
+            throw new IdentityDomainException("About is too long.");
+        if (tourismSince is int year && (year < MinTourismSinceYear || year > utcNow.Year))
+            throw new IdentityDomainException("Tourism since is out of range.");
+
+        Position = position;
+        TourismSince = tourismSince;
+        About = about;
+        TagsJson = tagsJson;
+        UpdatedAt = utcNow;
     }
 
     public void SetAvatar(Guid mediaFileId)
