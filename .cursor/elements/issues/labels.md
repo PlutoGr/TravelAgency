@@ -6,7 +6,6 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 |---|---|---|
 | `статус: очередь` | Очередь | all; nobody is on it |
 | `статус: бизнес-анализ` | Бизнес-анализ | epic |
-| `статус: аналитика` | Аналитика | none (retired; not a route). A card found with it moves forward by the [in-flight rule](../../lifecycle/README.md#gates). Retire the label once no open issue uses it |
 | `статус: архитектура` | Архитектура | epic. A feature found with it moves forward by the [in-flight rule](../../lifecycle/README.md#gates) |
 | `статус: разбиение` | Разбиение | epic |
 | `статус: тест-кейсы` | Тест-кейсы | Крупная feature with `Тесты: сначала сценарии`, including bug-feature. Every other feature goes to Разработка at [take](../../lifecycle/README.md#take) and does not take the label. An item already in this column under the [in-flight rule](../../lifecycle/README.md#gates) keeps the label |
@@ -17,7 +16,7 @@ Created in the repo before first use by the orchestrator, who alone sets them; t
 | `статус: готово` | Готово | closed after acceptance or as not planned |
 | `статус: удержание` | Удержание | paused |
 
-Column rules: [columns](../board/columns/README.md). Set only a label whose «Applies to» includes the issue. An epic never gets `статус: аналитика`, `статус: тест-кейсы`, `статус: разработка` or `статус: приёмка`. A feature or bug-feature never gets `статус: аналитика`, `статус: архитектура`, `статус: бизнес-анализ`, `статус: разбиение`, `статус: в работе` or `статус: демо`. Create the label `статус: демо` in the repo before first use; the board Status option «Демо» is a project setting and waits for the owner's yes ([orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first)); until it exists, an epic whose last child closed stays in В работе ([epic demo](../../lifecycle/13-epic-acceptance.md)); retire obsolete `статус: на ревью` and `статус: аналитика` once no open card uses them. Do not retire `статус: архитектура`: epics still use it.
+Column rules: [columns](../board/columns/README.md). Set only a label whose «Applies to» includes the issue. An epic never gets `статус: тест-кейсы`, `статус: разработка` or `статус: приёмка`. A feature or bug-feature never gets `статус: архитектура`, `статус: бизнес-анализ`, `статус: разбиение`, `статус: в работе` or `статус: демо`. Create the label `статус: демо` in the repo before first use; the board Status option «Демо» is a project setting and waits for the owner's yes ([orchestrator §6](../../orchestrator.md#6-powers-act-and-report-vs-ask-first)); until it exists, an epic whose last child closed stays in В работе ([epic demo](../../lifecycle/13-epic-acceptance.md)). Label `статус: аналитика` is deleted (was the retired feature column). Retire obsolete `статус: на ревью` once no open card uses it. Do not retire `статус: архитектура`: epics still use it.
 
 ## Type labels (one on create)
 | Label | Use |
