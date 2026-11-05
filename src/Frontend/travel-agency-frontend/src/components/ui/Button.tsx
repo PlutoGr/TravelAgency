@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import clsx from "clsx";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "terracotta" | "ghost" | "danger";
+type ButtonVariant = "primary" | "secondary" | "terracotta" | "ghost" | "danger" | "ink";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
@@ -13,6 +13,7 @@ interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
   fullWidth?: boolean;
+  pill?: boolean;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
@@ -26,6 +27,7 @@ const variantStyles: Record<ButtonVariant, string> = {
     "text-dark hover:bg-sand",
   danger:
     "bg-red-500 text-white hover:bg-red-600 active:bg-red-700",
+  ink: "bg-[#1c1915] text-[#f3eee6] shadow-none hover:bg-[#31402c] active:bg-[#241f1a]",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -41,6 +43,7 @@ export default function Button({
   leftIcon,
   rightIcon,
   fullWidth = false,
+  pill = false,
   children,
   disabled,
   className,
@@ -61,7 +64,8 @@ export default function Button({
       whileTap={disabled || isLoading ? undefined : { scale: 0.98 }}
       disabled={disabled || isLoading}
       className={clsx(
-        "inline-flex items-center justify-center font-heading font-semibold rounded-[12px] transition-colors cursor-pointer",
+        "inline-flex items-center justify-center font-heading font-semibold transition-colors cursor-pointer",
+        pill ? "rounded-full" : "rounded-[12px]",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         variantStyles[variant],
         sizeStyles[size],

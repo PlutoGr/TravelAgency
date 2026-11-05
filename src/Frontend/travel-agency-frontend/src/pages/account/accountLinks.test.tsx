@@ -399,6 +399,8 @@ describe('account pages and settings', () => {
       const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { success: true } });
       const logout = vi.spyOn(useAuthStore.getState(), 'logout');
       const view = renderAt('/dashboard/profile', <ProfilePage />);
+      const accountTab = screen.queryByRole('tab', { name: 'Аккаунт' });
+      if (accountTab) await user.click(accountTab);
       const account = screen.getByRole('region', { name: 'Вход в аккаунт' });
       expect(within(account).getByText('••••••••')).toHaveTextContent('••••••••');
       expect(within(account).queryByText('Появится позже')).not.toBeInTheDocument();
@@ -521,72 +523,16 @@ describe('account pages and settings', () => {
       expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
       expect(screen.queryByText('Смена адреса - на вкладке «Настройки».')).not.toBeInTheDocument();
 
-      await user.click(within(account).getByRole('button', { name: 'Сменить email' }));
-      const email = await screen.findByRole('dialog', { name: 'Сменить email' });
-      expect(within(email).getByText('anna@example.com')).toBeInTheDocument();
-      expect(within(email).queryByLabelText('Текущий email')).not.toBeInTheDocument();
-      const fields = within(email).getAllByLabelText(/email|пароль/i);
-      expect(fields.map((field) => (field as HTMLInputElement).labels?.[0]?.textContent)).toEqual([
-        'Новый email',
-        'Текущий пароль',
-      ]);
-      expect(within(email).queryByRole('link', { name: 'Забыли пароль?' })).not.toBeInTheDocument();
-
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(within(email).getByText(ACCOUNT_TEXT.emailInvalid)).toBeInTheDocument();
+      expect(within(account).queryByRole('button', { name: 'Сменить email' })).not.toBeInTheDocument();
+      expect(within(account).getByText(/сменить его самостоятельно нельзя/)).toBeInTheDocument();
       expect(post).not.toHaveBeenCalled();
-
-      post.mockRejectedValueOnce({
-        response: { status: 400, data: { code: 'EmailUnchanged', detail: 'Email is unchanged.', errors: { Email: ['same'] } } },
-      });
-      await user.type(within(email).getByLabelText('Новый email'), 'not-an-email');
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(within(email).getByText(ACCOUNT_TEXT.emailInvalid)).toBeInTheDocument();
-      expect(post).not.toHaveBeenCalled();
-
-      await user.clear(within(email).getByLabelText('Новый email'));
-      await user.type(within(email).getByLabelText('Новый email'), 'Anna@Example.com');
-      await user.type(within(email).getByLabelText('Текущий пароль'), 'Password1');
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(await within(email).findByText(ACCOUNT_TEXT.emailUnchanged)).toBeInTheDocument();
-      expect(post).toHaveBeenCalled();
-      expect(within(email).queryByText('same')).not.toBeInTheDocument();
-      expect(within(account).getByText('anna@example.com')).toBeInTheDocument();
-
-      post.mockRejectedValueOnce({
-        response: { status: 400, data: { code: 'CurrentPasswordInvalid', detail: 'Wrong password.' } },
-      });
-      await user.clear(within(email).getByLabelText('Новый email'));
-      await user.type(within(email).getByLabelText('Новый email'), 'next@example.com');
-      await user.clear(within(email).getByLabelText('Текущий пароль'));
-      await user.type(within(email).getByLabelText('Текущий пароль'), 'Password1');
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(await within(email).findByText(ACCOUNT_TEXT.currentInvalid)).toBeInTheDocument();
-      expect(within(account).getByText('anna@example.com')).toBeInTheDocument();
-
-      post.mockRejectedValueOnce(new Error('network'));
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(await within(email).findByText(ACCOUNT_TEXT.requestFailed)).toBeInTheDocument();
-
-      post.mockRejectedValueOnce({ response: { status: 429, data: { detail: 'Too many' } } });
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(await within(email).findByText(ACCOUNT_TEXT.requestFailed)).toBeInTheDocument();
-      expect(within(email).queryByText('Too many')).not.toBeInTheDocument();
-
-      post.mockResolvedValueOnce({ data: { message: ACCOUNT_TEXT.emailSent } });
-      await user.clear(within(email).getByLabelText('Новый email'));
-      await user.type(within(email).getByLabelText('Новый email'), 'next@example.com');
-      await user.clear(within(email).getByLabelText('Текущий пароль'));
-      await user.type(within(email).getByLabelText('Текущий пароль'), 'Password1');
-      await user.click(within(email).getByRole('button', { name: 'Сменить email' }));
-      expect(await within(account).findByText(ACCOUNT_TEXT.emailSent)).toBeInTheDocument();
-      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Сменить email' })).not.toBeInTheDocument());
-      expect(within(account).getByText('anna@example.com')).toBeInTheDocument();
       expect(screen.queryByText(/ожидает подтверждения/i)).not.toBeInTheDocument();
       view.unmount();
     }
 
     renderAt('/dashboard/profile', <ProfilePage />);
+    const accountTab = screen.queryByRole('tab', { name: 'Аккаунт' });
+    if (accountTab) await user.click(accountTab);
     const personal = screen.getByRole('region', { name: 'Личные данные' });
     expect(within(personal).queryByText('anna@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText('Смена адреса - на вкладке «Настройки».')).not.toBeInTheDocument();
@@ -594,7 +540,7 @@ describe('account pages and settings', () => {
       expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
     }
     expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Редактировать' }));
+    await user.click(screen.getByRole('button', { name: 'Изменить' }));
     expect(screen.getByLabelText('Имя')).toHaveValue('Анна');
     expect(screen.getByLabelText('Фамилия')).toHaveValue('Смирнова');
     expect(screen.getByLabelText('Телефон')).toHaveValue('+79990000000');
@@ -617,7 +563,7 @@ describe('account pages and settings', () => {
     );
     expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Сменить пароль' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Редактировать' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Изменить' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Личные данные' })).not.toBeInTheDocument();
   });
 

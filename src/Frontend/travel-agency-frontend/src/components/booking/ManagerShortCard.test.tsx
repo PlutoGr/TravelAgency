@@ -107,7 +107,7 @@ describe('ManagerShortCard', () => {
 
     const second = renderCard(async () => fullCard, path);
     expect(await screen.findByText('Марина Иванова')).toBeInTheDocument();
-    const backdrop = document.querySelector('.backdrop-blur-sm');
+    const backdrop = document.querySelector('[data-card-overlay]');
     expect(backdrop).toBeTruthy();
     await user.click(backdrop as Element);
     expect(second.onClose).toHaveBeenCalledTimes(1);

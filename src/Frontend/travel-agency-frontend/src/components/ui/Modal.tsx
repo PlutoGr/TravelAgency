@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import CloseButton from "./CloseButton";
 
 type ModalSize = "sm" | "md" | "lg";
+type ModalOverlay = "blur" | "solid";
 
 interface ModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface ModalProps {
   children: ReactNode;
   size?: ModalSize;
   dialogLabel?: string;
+  /** Профили: сплошная заливка. Размытие остаётся у остальных окон сайта. */
+  overlay?: ModalOverlay;
 }
 
 const sizeStyles: Record<ModalSize, string> = {
@@ -29,6 +32,7 @@ export default function Modal({
   children,
   size = "md",
   dialogLabel,
+  overlay = "blur",
 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -58,7 +62,12 @@ export default function Modal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-dark/40 backdrop-blur-sm"
+            data-overlay=""
+            className={
+              overlay === "solid"
+                ? "absolute inset-0 bg-[#1c1915]/45"
+                : "absolute inset-0 bg-dark/40 backdrop-blur-sm"
+            }
             onClick={onClose}
           />
 

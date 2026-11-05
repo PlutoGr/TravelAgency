@@ -1,14 +1,16 @@
-import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { PageTransition } from '@/components/common';
 import { Breadcrumbs } from '@/components/layout';
 import { Avatar, Button, Input, Modal } from '@/components/ui';
 import AvatarCropDialog from '@/components/profile/AvatarCropDialog';
-import ManagerShortCard from '@/components/booking/ManagerShortCard';
+import ManagerCardWorkspace from '@/components/profile/ManagerCardWorkspace';
 import { deleteAvatar, updateProfile, uploadAvatar } from '@/api/auth';
-import { getManagerCard } from '@/api/managerCard';
+import { getManagerCard, updateManagerCard, type ManagerPublicCard } from '@/api/managerCard';
 import { authFormError } from '@/domain/authFormErrors';
 import { inspectAvatarFile, loadStraight, type AvatarBitmap } from '@/domain/avatarCrop';
+import { managerCardProblemFields, type ManagerCardWrite } from '@/domain/managerCardForm';
 import {
   AVATAR_ACCEPT,
   AVATAR_OPEN_ERROR,
@@ -18,7 +20,7 @@ import {
   type ProfileField,
   type ProfileFieldErrors,
 } from '@/domain/profileForm';
-import { ProfileEmailForm, ProfilePasswordForm } from './ProfileSettingsAccount';
+import { ProfilePasswordForm } from './ProfileSettingsAccount';
 import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types';
 
@@ -28,6 +30,9 @@ const BREADCRUMBS = [
 ];
 
 const PASSWORD_MASK = '••••••••';
+const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
+const panel =
+  'max-w-full w-full shrink-0 rounded-[28px] border border-[#30281c]/10 bg-[#fffcf8] p-6 shadow-[0_24px_60px_#30241214]';
 
 function formFrom(person: User | null) {
   return {
@@ -37,7 +42,13 @@ function formFrom(person: User | null) {
   };
 }
 
+function initialTab(search: string): 'card' | 'account' {
+  const tab = new URLSearchParams(search).get('tab');
+  return tab === 'settings' || tab === 'account' ? 'account' : 'card';
+}
+
 export default function ProfilePage() {
+  const location = useLocation();
   const storeUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const isStaff = storeUser?.role === 'manager' || storeUser?.role === 'admin';
@@ -53,22 +64,29 @@ export default function ProfilePage() {
   const [cropSaving, setCropSaving] = useState(false);
   const [cropError, setCropError] = useState<string | undefined>();
   const [personalOpen, setPersonalOpen] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [clientViewOpen, setClientViewOpen] = useState(false);
   const [accountNotice, setAccountNotice] = useState<string | undefined>();
-  const loadSavedCard = useCallback((id: string) => getManagerCard(id), []);
-  // Поколение запросов аватара: устаревший ответ загрузки или удаления не применяется.
+  const [accountBusy, setAccountBusyState] = useState(false);
+  const [tab, setTab] = useState<'card' | 'account'>(() => initialTab(location.search));
+  const [card, setCard] = useState<ManagerPublicCard | null>(null);
+  const [cardPhase, setCardPhase] = useState<'idle' | 'loading' | 'error' | 'ready'>('idle');
+  const [cardReload, setCardReload] = useState(0);
   const avatarRevision = useRef(0);
   const readGeneration = useRef(0);
   const savingRef = useRef(false);
   const accountBusyRef = useRef(false);
+  const cardSeq = useRef(0);
+  const userId = storeUser?.id;
+  const avatar = storeUser?.avatar;
+  const firstName = storeUser?.firstName;
+  const lastName = storeUser?.lastName;
 
-  const dialogOpen = personalOpen || emailOpen || passwordOpen || clientViewOpen;
-  const windowBusy = dialogOpen || crop !== null || avatarBusy || isSaving || accountBusyRef.current;
+  const dialogOpen = personalOpen || passwordOpen;
+  const windowBusy = dialogOpen || crop !== null || avatarBusy || isSaving || accountBusy;
 
   function setAccountBusy(busy: boolean) {
     accountBusyRef.current = busy;
+    setAccountBusyState(busy);
   }
 
   function closePersonal() {
@@ -76,11 +94,6 @@ export default function ProfilePage() {
     setPersonalOpen(false);
     setFieldErrors({});
     setFormError(undefined);
-  }
-
-  function closeEmail() {
-    if (accountBusyRef.current) return;
-    setEmailOpen(false);
   }
 
   function closePassword() {
@@ -97,21 +110,10 @@ export default function ProfilePage() {
     setPersonalOpen(true);
   }
 
-  function openEmail() {
-    if (windowBusy) return;
-    setAccountNotice(undefined);
-    setEmailOpen(true);
-  }
-
   function openPassword() {
     if (windowBusy) return;
     setAccountNotice(undefined);
     setPasswordOpen(true);
-  }
-
-  function openClientView() {
-    if (!isStaff || windowBusy) return;
-    setClientViewOpen(true);
   }
 
   function handleChange(field: ProfileField, value: string) {
@@ -124,6 +126,41 @@ export default function ProfilePage() {
     setCrop(null);
     setCropError(undefined);
   }
+
+  const showCard = isStaff && tab === 'card';
+
+  useEffect(() => {
+    if (!showCard || !userId) return;
+    let cancelled = false;
+    const seq = ++cardSeq.current;
+    getManagerCard(userId).then(
+      (value) => {
+        if (cancelled || seq !== cardSeq.current) return;
+        setCard(value);
+        setCardPhase('ready');
+      },
+      () => {
+        if (cancelled || seq !== cardSeq.current) return;
+        setCardPhase((current) => (current === 'ready' ? current : 'error'));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [showCard, userId, avatar, firstName, lastName, cardReload]);
+
+  const saveCard = useCallback(async (payload: ManagerCardWrite) => {
+    try {
+      const updated = await updateManagerCard(payload);
+      setCard(updated);
+      setCardPhase('ready');
+      toast.success('Визитка сохранена');
+    } catch (err) {
+      const fields = managerCardProblemFields(err);
+      if (fields.position || fields.tourismSince || fields.about || fields.tags) throw fields;
+      throw { form: authFormError(err, 'profile').text };
+    }
+  }, []);
 
   async function handleSave(event?: FormEvent) {
     event?.preventDefault();
@@ -274,117 +311,188 @@ export default function ProfilePage() {
 
   const fullName = `${storeUser.firstName} ${storeUser.lastName}`;
   const photoLocked = avatarBusy || crop !== null || dialogOpen || isSaving;
+  const showAccount = !isStaff || tab === 'account';
 
   return (
     <PageTransition>
       <div className="space-y-6">
         <Breadcrumbs items={BREADCRUMBS} />
 
-        <h1 className="font-heading text-2xl font-bold text-dark">Профиль</h1>
-
-        <div className="flex flex-wrap items-start justify-start gap-6">
-          <section aria-label="Личные данные" className="max-w-full shrink-0 rounded-[16px] bg-white p-6 shadow-card">
-            <h2 className="font-heading text-lg font-semibold text-dark">Личные данные</h2>
-            <div className="mt-6 flex min-w-0 flex-col items-start gap-5 sm:flex-row">
-              <Avatar src={storeUser.avatar} name={fullName} size="xl" />
-              <div className="min-w-0 w-full sm:w-auto sm:flex-1">
-                <p className="break-words font-heading text-lg font-semibold text-dark">{fullName}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {storeUser.avatar ? (
-                    <>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="shrink-0"
-                        onClick={openFilePicker}
-                        disabled={photoLocked}
-                      >
-                        Заменить
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="shrink-0"
-                        onClick={handleReframe}
-                        disabled={photoLocked}
-                      >
-                        Изменить положение фото
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="shrink-0"
-                        onClick={handleDeleteAvatar}
-                        disabled={photoLocked}
-                      >
-                        Удалить фото
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="shrink-0"
-                      onClick={openFilePicker}
-                      disabled={photoLocked}
-                    >
-                      Загрузить фото
-                    </Button>
-                  )}
-                </div>
-                {avatarError && (
-                  <p role="alert" className="mt-2 text-sm text-red-500">
-                    {avatarError}
-                  </p>
-                )}
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-warm-gray">Телефон</p>
-                  {storeUser.phone ? <p className="mt-1 text-sm text-dark">{storeUser.phone}</p> : null}
-                </div>
-                <div className="mt-4 flex flex-col items-start gap-2">
-                  <Button type="button" onClick={openPersonal}>
-                    Редактировать
-                  </Button>
-                  {isStaff && (
-                    <Button type="button" onClick={openClientView}>
-                      Как меня видит клиент
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section aria-label="Вход в аккаунт" className="max-w-full shrink-0 rounded-[16px] bg-white p-6 shadow-card">
-            <h2 className="font-heading text-lg font-semibold text-dark">Вход в аккаунт</h2>
-            <div className="mt-6 space-y-5">
-              <div>
-                <p className="text-xs font-medium text-warm-gray">Email</p>
-                <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <p className="text-sm text-dark">{storeUser.email}</p>
-                  <Button type="button" size="sm" variant="secondary" onClick={openEmail}>
-                    Сменить email
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-warm-gray">Пароль</p>
-                <p className="mt-1 text-sm tracking-widest text-dark">{PASSWORD_MASK}</p>
-                <p className="mt-1 text-xs text-warm-gray">Длина не показана.</p>
-                <div className="mt-3">
-                  <Button type="button" size="sm" variant="secondary" onClick={openPassword}>
-                    Сменить пароль
-                  </Button>
-                </div>
-              </div>
-              {accountNotice && <p className="text-sm text-dark">{accountNotice}</p>}
-            </div>
-          </section>
+        <div>
+          <h1 className="text-4xl font-medium text-[#1c1915]" style={serif}>
+            Профиль
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-[#5c564e]">
+            {isStaff
+              ? 'Визитка, которую видят клиенты, и настройки вашего аккаунта.'
+              : 'Ваши данные и вход в аккаунт.'}
+          </p>
         </div>
+
+        {isStaff ? (
+          <div role="tablist" aria-label="Разделы профиля" className="flex flex-wrap gap-2">
+            {(
+              [
+                ['card', 'Визитка для клиентов'],
+                ['account', 'Аккаунт'],
+              ] as const
+            ).map(([id, label]) => {
+              const selected = tab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`profile-tab-${id}`}
+                  aria-selected={selected}
+                  aria-controls={`profile-panel-${id}`}
+                  tabIndex={selected ? 0 : -1}
+                  className={
+                    selected
+                      ? 'rounded-full bg-[#1c1915] px-4 py-2 text-sm font-semibold text-[#f3eee6]'
+                      : 'rounded-full border border-[#30281c]/10 bg-[#fffcf8] px-4 py-2 text-sm font-medium text-[#3a342c]'
+                  }
+                  onClick={() => setTab(id)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+                    event.preventDefault();
+                    setTab(id === 'card' ? 'account' : 'card');
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {showCard ? (
+          <div role="tabpanel" id="profile-panel-card" aria-labelledby="profile-tab-card">
+            <ManagerCardWorkspace
+              personName={fullName}
+              avatarUrl={storeUser.avatar}
+              card={card}
+              phase={cardPhase}
+              locked={windowBusy}
+              onRetry={() => {
+                setCardPhase('loading');
+                setCardReload((value) => value + 1);
+              }}
+              onSave={saveCard}
+            />
+          </div>
+        ) : null}
+
+        {showAccount ? (
+          <div
+            role={isStaff ? 'tabpanel' : undefined}
+            id={isStaff ? 'profile-panel-account' : undefined}
+            aria-labelledby={isStaff ? 'profile-tab-account' : undefined}
+            className="flex flex-col flex-wrap items-start gap-6"
+          >
+            <section aria-label="Личные данные" className={panel}>
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="text-3xl font-medium text-[#1c1915]" style={serif}>
+                  Личные данные
+                </h2>
+                <Button type="button" variant="ghost" size="sm" onClick={openPersonal}>
+                  Изменить
+                </Button>
+              </div>
+              <p className="mt-2 text-sm text-[#5c564e]">
+                {isStaff
+                  ? 'Фото и имя видят клиенты в вашей визитке. Телефон клиентам не показывается.'
+                  : 'Так к вам будут обращаться менеджеры.'}
+              </p>
+              <div className="mt-6 flex min-w-0 flex-col items-start gap-5 sm:flex-row">
+                <Avatar src={storeUser.avatar} name={fullName} size="xl" />
+                <div className="min-w-0 w-full sm:w-auto sm:flex-1">
+                  <p className="text-sm font-medium text-[#1c1915]">Фото профиля</p>
+                  <p className="text-sm text-[#5c564e]">
+                    {storeUser.avatar ? 'JPG или PNG до 5 МБ' : 'Фото не загружено. JPG или PNG до 5 МБ'}
+                  </p>
+                  <p className="mt-3 break-words font-heading text-lg font-semibold text-[#1c1915]">{fullName}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {storeUser.avatar ? (
+                      <>
+                        <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={openFilePicker} disabled={photoLocked}>
+                          Заменить
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="shrink-0"
+                          aria-label="Изменить положение фото"
+                          onClick={handleReframe}
+                          disabled={photoLocked}
+                        >
+                          Положение фото
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 text-[#8e3a34]"
+                          aria-label="Удалить фото"
+                          onClick={handleDeleteAvatar}
+                          disabled={photoLocked}
+                        >
+                          Удалить
+                        </Button>
+                      </>
+                    ) : (
+                      <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={openFilePicker} disabled={photoLocked}>
+                        Загрузить фото
+                      </Button>
+                    )}
+                  </div>
+                  {avatarError && (
+                    <p role="alert" className="mt-2 text-sm text-red-500">
+                      {avatarError}
+                    </p>
+                  )}
+                  <div className="mt-4 border-t border-[#30281c]/10 pt-4">
+                    <p className="text-xs font-medium text-[#7a7268]">Телефон</p>
+                    {storeUser.phone ? <p className="mt-1 text-sm text-[#1c1915]">{storeUser.phone}</p> : null}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section aria-label="Вход в аккаунт" className={panel}>
+              <h2 className="text-3xl font-medium text-[#1c1915]" style={serif}>
+                Вход в аккаунт
+              </h2>
+              <p className="mt-2 text-sm text-[#5c564e]">Данные для входа на сайт.</p>
+              <div className="mt-6 space-y-5">
+                <div className="border-t border-[#30281c]/10 pt-4">
+                  <p className="text-xs font-medium text-[#7a7268]">Email</p>
+                  <p className="mt-1 text-sm text-[#1c1915]">{storeUser.email}</p>
+                  <p className="mt-1 text-xs text-[#5c564e]">
+                    Email — ваш логин, сменить его самостоятельно нельзя. Если нужно, напишите в поддержку.
+                  </p>
+                </div>
+                <div className="border-t border-[#30281c]/10 pt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-[#7a7268]">Пароль</p>
+                      <p className="mt-1 text-sm tracking-widest text-[#1c1915]">{PASSWORD_MASK}</p>
+                      <p className="mt-1 text-xs text-[#5c564e]">Длина не показана.</p>
+                    </div>
+                    <Button type="button" size="sm" variant="ghost" onClick={openPassword}>
+                      Сменить пароль
+                    </Button>
+                  </div>
+                </div>
+                {accountNotice && <p className="text-sm text-[#1c1915]">{accountNotice}</p>}
+                <p className="border-t border-[#30281c]/10 pt-4 text-sm text-[#5c564e]">
+                  Связанные аккаунты Google, VK и Telegram появятся позже.
+                </p>
+              </div>
+            </section>
+          </div>
+        ) : null}
 
         <input
           ref={fileInputRef}
@@ -397,7 +505,7 @@ export default function ProfilePage() {
           onChange={handleFile}
         />
 
-        <Modal isOpen={personalOpen} onClose={closePersonal} title="Личные данные" dialogLabel="Личные данные">
+        <Modal isOpen={personalOpen} onClose={closePersonal} title="Личные данные" dialogLabel="Личные данные" overlay="solid">
           <form className="space-y-4" onSubmit={handleSave}>
             <Input
               label="Имя"
@@ -421,7 +529,7 @@ export default function ProfilePage() {
               <Button type="button" variant="ghost" onClick={closePersonal}>
                 Отмена
               </Button>
-              <Button type="submit" isLoading={isSaving}>
+              <Button type="submit" variant="ink" pill isLoading={isSaving}>
                 Сохранить
               </Button>
             </div>
@@ -433,18 +541,7 @@ export default function ProfilePage() {
           </form>
         </Modal>
 
-        <Modal isOpen={emailOpen} onClose={closeEmail} title="Сменить email" dialogLabel="Сменить email">
-          <ProfileEmailForm
-            currentEmail={storeUser.email}
-            onSucceeded={(message) => {
-              setEmailOpen(false);
-              setAccountNotice(message);
-            }}
-            onBusy={setAccountBusy}
-          />
-        </Modal>
-
-        <Modal isOpen={passwordOpen} onClose={closePassword} title="Сменить пароль" dialogLabel="Сменить пароль">
+        <Modal isOpen={passwordOpen} onClose={closePassword} title="Сменить пароль" dialogLabel="Сменить пароль" overlay="solid">
           <ProfilePasswordForm
             onSucceeded={(message) => {
               setPasswordOpen(false);
@@ -453,14 +550,6 @@ export default function ProfilePage() {
             onBusy={setAccountBusy}
           />
         </Modal>
-
-        {clientViewOpen && isStaff && (
-          <ManagerShortCard
-            userId={storeUser.id}
-            onClose={() => setClientViewOpen(false)}
-            loadCard={loadSavedCard}
-          />
-        )}
 
         {crop && (
           <AvatarCropDialog

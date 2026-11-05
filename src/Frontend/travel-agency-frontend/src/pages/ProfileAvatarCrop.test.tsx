@@ -175,6 +175,8 @@ describe('Profile avatar crop', () => {
       });
       uploadAvatar.mockClear();
       const view = renderShell();
+      const account = screen.queryByRole('tab', { name: 'Аккаунт' });
+      if (account) fireEvent.click(account);
 
       chooseFile(fileOf('first', visit.type, visit.bytes, AVATAR_MAX_BYTES));
       await waitFor(() => expect(screen.getByRole('button', { name: visit.label })).toBeDisabled());
@@ -298,7 +300,7 @@ describe('Profile avatar crop', () => {
       () => fireEvent.click(screen.getByRole('button', { name: 'Закрыть' })),
       () => {
         const dialog = screen.getByRole('dialog', { name: 'Обрезка фото' });
-        const backdrop = dialog.parentElement?.querySelector('.backdrop-blur-sm');
+        const backdrop = dialog.parentElement?.querySelector('[data-overlay]');
         if (!(backdrop instanceof HTMLElement)) throw new Error('backdrop missing');
         fireEvent.click(backdrop);
       },
@@ -318,7 +320,7 @@ describe('Profile avatar crop', () => {
     }
 
     const dialog = await openCrop(file);
-    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
     expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Удалить фото' }));
     chooseFile(jpegFile('other.jpg'));
@@ -510,7 +512,7 @@ describe('Profile avatar crop', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }));
     fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }));
     fireEvent.keyDown(document, { key: 'Escape' });
-    const backdrop = dialog.parentElement?.querySelector('.backdrop-blur-sm');
+    const backdrop = dialog.parentElement?.querySelector('[data-overlay]');
     if (backdrop instanceof HTMLElement) fireEvent.click(backdrop);
     expect(screen.getByRole('dialog', { name: 'Обрезка фото' })).toBeInTheDocument();
 

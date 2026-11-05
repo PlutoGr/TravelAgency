@@ -47,12 +47,14 @@ function renderProfile(path = '/dashboard/profile') {
 }
 
 function openPersonal() {
-  fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+  const account = screen.queryByRole('tab', { name: 'Аккаунт' });
+  if (account) fireEvent.click(account);
+  fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
   return screen.getByRole('dialog', { name: 'Личные данные' });
 }
 
 function backdropOf(dialog: HTMLElement): HTMLElement {
-  const backdrop = dialog.parentElement?.querySelector('.backdrop-blur-sm');
+  const backdrop = dialog.parentElement?.querySelector('[data-overlay]');
   if (!(backdrop instanceof HTMLElement)) throw new Error('backdrop missing');
   return backdrop;
 }
@@ -241,16 +243,9 @@ describe('profile cabinet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-    fireEvent.click(within(fresh).getByRole('button', { name: 'Сменить email' }));
-    const email = await screen.findByRole('dialog', { name: 'Сменить email' });
-    fireEvent.change(within(email).getByLabelText('Новый email'), { target: { value: 'next@example.com' } });
-    fireEvent.change(within(email).getByLabelText('Текущий пароль'), { target: { value: 'OldPassword1' } });
-    fireEvent.click(within(email).getByRole('button', { name: 'Сменить email' }));
-    expect(await within(fresh).findByText(ACCOUNT_TEXT.emailSent)).toBeInTheDocument();
-    expect(within(fresh).queryByText(ACCOUNT_TEXT.passwordChanged)).not.toBeInTheDocument();
-    expect(screen.getAllByText(ACCOUNT_TEXT.emailSent)).toHaveLength(1);
-    expect(requestEmailChange).toHaveBeenCalledWith('next@example.com', 'OldPassword1');
+    expect(within(fresh).queryByRole('button', { name: 'Сменить email' })).not.toBeInTheDocument();
     expect(within(fresh).getByText(user.email)).toBeInTheDocument();
+    expect(requestEmailChange).not.toHaveBeenCalled();
   });
 
   it('ТК-17 opens only one window and does not publish the draft', async () => {
@@ -269,9 +264,8 @@ describe('profile cabinet', () => {
     expect(screen.getByRole('button', { name: /Анна/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Черновик/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Сменить email' }));
     fireEvent.click(screen.getByRole('button', { name: 'Сменить пароль' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Как меня видит клиент' }));
+    expect(screen.queryByRole('button', { name: 'Сменить email' })).not.toBeInTheDocument();
     const input = document.querySelector('input[type="file"]');
     if (!(input instanceof HTMLInputElement)) throw new Error('file input missing');
     fireEvent.change(input, { target: { files: [new File(['x'], 'face.jpg', { type: 'image/jpeg' })] } });
