@@ -13,7 +13,7 @@ The `Feature-` page, the parent epic «Ожидания» and «Архитект
 - Follow the feature's `Тесты` ([kind and test policy](../lifecycle/05-epic-split.md#kind-and-test-policy)). `сначала сценарии`: write the tests first, then the code, in this same PR. `поправить существующие`: adjust the named tests. `без новых`: add no new automated tests. Fragile tests are forbidden, including tests tied to a calendar date; if a stable test cannot be written, omit it and say so. Do not open a tests-only PR.
 - **Frontend** (`Вид: фронт`, and any UI in a mixed slice): hierarchy, clarity, accessible names and focus, empty and error states. When this repo has a visual styleguide or tokens, follow them. Until that guide exists, match the current site or make it clearer, and do not leave it worse. When the page names «Эталон», implement the changed pages to that mock (wiki repo `mocks/<NN>/`, open `index.html` locally): it is the visual acceptance reference (layout, content, states, clicks) and wins over a new decoration. Build it with the app's own components and data flow; do not copy its markup or fake data blindly. A needed deviation is a question, not a silent change. The mock does not replace the feature's tests.
 - **Backend** (`Вид: бэк`, and any API in a mixed slice): clean architecture, clean code, boundaries and errors explicit. Tests where the policy says so. No shortcut the neighbouring code would not accept.
-- Implement the feature «Архитектура». Do not add product scope the epic expectations and the thin TZ did not justify.
+- Implement the epic «Архитектура» for this slice. The feature input is the thin TZ. Do not add a feature architecture section. Do not add product scope the epic expectations and the thin TZ did not justify.
 - Minimal diff, no drive-by refactor, no libraries just in case.
 - Watch CI and Automations at the depth of the feature ([depth by size](../elements/automations.md#depth-by-size)). Fix red CI that belongs to this PR. Answer bot findings. Report ready only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds.
 - Commits and PR per templates; «Задача» `#NN` only. «Документация» is «вики не затронута» unless the thin `Doc-` skeleton must change. Малая that names a page also includes the short draft. Крупная names the page only. Do not publish the wiki.
@@ -24,7 +24,7 @@ The `Feature-` page, the parent epic «Ожидания» and «Архитект
 - No `closes`/`fix`/`fixes`, no `addCloseIssueReferences`, no closedBy.
 
 ## When blocked
-A deviation from the page is needed, the page is ambiguous, or the architecture blocks a clean or secure solution: stop that part and raise a [question](../templates/agents/question.md) with a proposed «Решения» row. Do not code around the page.
+A deviation from the page is needed, the page is ambiguous, or the epic architecture does not cover a clean or secure solution: stop that part and raise a [question](../templates/agents/question.md) with a proposed «Решения» row. That last case is an [epic architecture gap](../lifecycle/04-epic-architecture.md#gap). Do not code around the page and do not invent a feature architecture section.
 
 ## Deliverable and report
 A regular PR into `main` from the branch in the launch, marked ready only when the [ready predicate](../lifecycle/10-review-and-merge.md#ready-predicate) holds; [agent report](../templates/agents/agent-report.md) with PR URL, head sha, what changed, tests, Automations status, smells, open doubts.

@@ -6,7 +6,7 @@ A senior QA engineer. You design stable checks a professional would keep: behavi
 Крупная feature column Тест-кейсы when `Тесты` is `сначала сценарии` ([Тест-кейсы](../lifecycle/08-test-cases.md)). Other policies do not use this brief. An item already in Тест-кейсы under the [in-flight](../lifecycle/README.md#gates) rule does: finish the section on the page it has, and do not refuse that run for a missing `Тесты` tag. The developer writes the automated tests in Разработка, in the same PR as the code.
 
 ## Read first
-The feature's thin TZ, `Тесты`, «Архитектура», «Решения», the epic «Ожидания», the [feature page template](../templates/wiki/feature-page.md) («Тест-кейсы» table), neighbouring test projects (`*.UnitTests`, `*.IntegrationTests`, vitest) to choose a realistic level.
+The feature's thin TZ, `Тесты`, «Решения», the epic «Ожидания» and «Архитектура» (that block is the architecture input), the [feature page template](../templates/wiki/feature-page.md) («Тест-кейсы» table), neighbouring test projects (`*.UnitTests`, `*.IntegrationTests`, vitest) to choose a realistic level.
 
 ## Bar
 - Each case: id (`ТК-1`), precondition, steps, expected result, level (unit / integration / e2e / ручная на dev), automated yes/no. Pick the level this feature needs.
@@ -20,7 +20,7 @@ The feature's thin TZ, `Тесты`, «Архитектура», «Решени�
 - Acceptance on dev is not yours: the orchestrator runs it. Dev credentials, if ever given, only by file path, never printed.
 
 ## When blocked
-A criterion that cannot be tested, a missing error path, a contradiction between the TZ and the architecture: raise a [question](../templates/agents/question.md) with a proposed «Решения» row.
+A criterion that cannot be tested, a missing error path, a contradiction between the TZ and the epic architecture: raise a [question](../templates/agents/question.md) with a proposed «Решения» row. A missing architecture is an [epic architecture gap](../lifecycle/04-epic-architecture.md#gap), not a feature section.
 
 ## Deliverable and report
 Ready Russian «Тест-кейсы» table in the [agent report](../templates/agents/agent-report.md). No wiki push.

@@ -28,9 +28,9 @@ On that finish wake the orchestrator clears `Agent` in memory, writes `Waiting o
 - «Задача» is `#NN` (unless Dependabot or «без задачи»). Do not require a closedBy chip while the issue is open.
 
 ## 3. Escalation review
-The only list. Other files point here and do not copy it. Writing this feature's own «Архитектура» or «Решения» is not a trigger.
+The only list. Other files point here and do not copy it. Writing the epic «Архитектура» or a «Решения» row is not a trigger.
 
-Record `Размер` at analytics ([size](06-feature-analytics.md#size)) from what is already visible. Крупная when any holds:
+Record `Размер` at split, or at take for a feature opened outside a split ([size](05-epic-split.md#size)), from what is already visible. Крупная when any holds:
 - the work touches auth, secrets, payments, infra, migrations, public API contracts, or runtime or network dependencies;
 - the work crosses services;
 - the owner asks for the larger route.

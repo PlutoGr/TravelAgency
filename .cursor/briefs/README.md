@@ -3,8 +3,8 @@ A brief defines who a cloud agent is for one launch. It is not a separate bot. E
 
 | Brief | Role |
 |---|---|
-| [analyst.md](analyst.md) | senior product analyst: narrow helper for epic expectations or a thin feature confirm; not the default author |
-| [architect.md](architect.md) | senior solution architect: epic Архитектура and Разбиение, feature Архитектура |
+| [analyst.md](analyst.md) | senior product analyst: narrow helper for epic expectations, or a short note on a feature TZ when asked; not the default author |
+| [architect.md](architect.md) | senior solution architect: epic Архитектура and Разбиение only |
 | [test-designer.md](test-designer.md) | senior QA engineer: Тест-кейсы |
 | [developer.md](developer.md) | senior full-stack developer: application code and tests |
 | [devops.md](devops.md) | senior DevOps engineer: CI, Docker, nginx, deploy files |
