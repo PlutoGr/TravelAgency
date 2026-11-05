@@ -31,12 +31,15 @@ describe('getManagerCard', () => {
       id: 'user-1',
       displayName: 'Марина Иванова',
       avatarUrl: '/api/v1/media/files/file-1/a256',
+      position: null,
+      tourismSince: 2018,
+      about: '  Первая строка  ',
+      tags: [],
     });
     expect(card).not.toHaveProperty('email');
     expect(card).not.toHaveProperty('phone');
-    expect(card).not.toHaveProperty('about');
-    expect(card).not.toHaveProperty('tourismSince');
     expect(card).not.toHaveProperty('languages');
     expect(card).not.toHaveProperty('specialization');
+    expect(card).not.toHaveProperty('city');
   });
 });

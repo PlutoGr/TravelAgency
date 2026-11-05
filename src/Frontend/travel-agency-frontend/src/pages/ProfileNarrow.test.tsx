@@ -50,12 +50,11 @@ describe('narrow profile', () => {
     expect(within(account).getByText('marina@example.com')).toBeInTheDocument();
     expect(within(account).getByText('••••••••')).toBeInTheDocument();
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(screen.queryByText('Настройки')).not.toBeInTheDocument();
     expect(screen.queryByText('Смена адреса - на вкладке «Настройки».')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Сохранить' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Редактировать' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Сменить email' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Изменить' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Сменить email' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Сменить пароль' })).toBeInTheDocument();
     expect(screen.queryByText('не указано')).not.toBeInTheDocument();
     expect(screen.queryByText('Появится позже')).not.toBeInTheDocument();
@@ -63,9 +62,11 @@ describe('narrow profile', () => {
     for (const label of removed) {
       expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
     }
-    const preview = screen.queryByRole('button', { name: 'Как меня видит клиент' });
-    if (role === 'client') expect(preview).not.toBeInTheDocument();
-    else expect(preview).toBeEnabled();
+    if (role === 'client') expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    else {
+      expect(screen.getByRole('tab', { name: 'Аккаунт' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'Визитка для клиентов' })).toBeInTheDocument();
+    }
   });
 
   it('opens the saved card, not the draft, and refreshes after save', async () => {
@@ -84,26 +85,26 @@ describe('narrow profile', () => {
     });
     renderPage(<ProfilePage />, '/dashboard/profile');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Аккаунт' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
     fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Черновик' } });
     expect(screen.getByText('Марина Иванова')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Как меня видит клиент' }));
-    expect(screen.queryByRole('dialog', { name: 'Карточка менеджера' })).not.toBeInTheDocument();
-    expect(getManagerCard).not.toHaveBeenCalled();
+    expect(screen.queryByText('Черновик')).not.toBeInTheDocument();
+    const callsWhileDraft = vi.mocked(getManagerCard).mock.calls.length;
+    expect(callsWhileDraft).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Как меня видит клиент' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Карточка менеджера' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Визитка для клиентов' }));
+    const card = await screen.findByTestId('manager-card-name');
     expect(getManagerCard).toHaveBeenCalledWith('user-1');
-    expect(within(dialog).getByTestId('manager-card-name')).toHaveTextContent('Марина Иванова');
-    expect(within(dialog).queryByText('Черновик')).not.toBeInTheDocument();
-    expect(within(dialog).queryByText('+79991234567')).not.toBeInTheDocument();
-    expect(within(dialog).queryByText('marina@example.com')).not.toBeInTheDocument();
+    expect(card).toHaveTextContent('Марина Иванова');
+    expect(screen.queryByText('Черновик')).not.toBeInTheDocument();
+    expect(screen.queryByText('+79991234567')).not.toBeInTheDocument();
+    expect(screen.queryByText('marina@example.com')).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Закрыть' }));
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Карточка менеджера' })).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Аккаунт' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
     fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Анна' } });
     fireEvent.change(screen.getByLabelText('Фамилия'), { target: { value: 'Смирнова' } });
     fireEvent.change(screen.getByLabelText('Телефон'), { target: { value: '+79991234567' } });
@@ -119,8 +120,9 @@ describe('narrow profile', () => {
       id: 'user-1',
       displayName: 'Анна Смирнова',
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Как меня видит клиент' }));
+    const beforeRefresh = vi.mocked(getManagerCard).mock.calls.length;
+    fireEvent.click(screen.getByRole('tab', { name: 'Визитка для клиентов' }));
     expect(await screen.findByTestId('manager-card-name')).toHaveTextContent('Анна Смирнова');
-    expect(getManagerCard).toHaveBeenCalledTimes(2);
+    expect(getManagerCard).toHaveBeenCalledTimes(beforeRefresh + 1);
   });
 });

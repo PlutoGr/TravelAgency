@@ -427,6 +427,8 @@ describe('Avatar crop polish', () => {
       const deleteAvatar = vi.spyOn(authApi, 'deleteAvatar');
       const getMe = vi.spyOn(authApi, 'getMe');
       const view = renderProfile();
+      const account = screen.queryByRole('tab', { name: 'Аккаунт' });
+      if (account) fireEvent.click(account);
       const input = fileInput();
       const click = vi.spyOn(input, 'click');
       const replace = screen.getByRole('button', { name: 'Заменить' });
@@ -611,7 +613,7 @@ describe('Avatar crop polish', () => {
       () => fireEvent.click(screen.getByRole('button', { name: 'Закрыть' })),
       () => {
         const node = dialog();
-        const backdrop = node.parentElement?.querySelector('.backdrop-blur-sm');
+        const backdrop = node.parentElement?.querySelector('[data-overlay]');
         if (!(backdrop instanceof HTMLElement)) throw new Error('backdrop missing');
         fireEvent.click(backdrop);
       },

@@ -75,7 +75,9 @@ function renderShell(path = '/dashboard/profile') {
 }
 
 function openPersonal() {
-  fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+  const account = screen.queryByRole('tab', { name: 'Аккаунт' });
+  if (account) fireEvent.click(account);
+  fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
 }
 
 function setField(label: string, value: string) {
@@ -562,7 +564,7 @@ describe('ProfilePage', () => {
 
     chooseFile(imageFile('face.jpg', 'image/jpeg'));
     expect(await screen.findByRole('dialog', { name: 'Обрезка фото' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
     expect(screen.queryByRole('dialog', { name: 'Личные данные' })).not.toBeInTheDocument();
     expect(updateProfile).not.toHaveBeenCalled();
 
@@ -760,8 +762,9 @@ describe('ProfilePage', () => {
   it('показывает кнопку карточки менеджера на том же экране', () => {
     signIn(managerUser);
     renderProfile('/dashboard/profile?tab=settings');
-    expect(screen.getByRole('button', { name: 'Как меня видит клиент' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Визитка для клиентов' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Аккаунт' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('button', { name: 'Сменить email' })).not.toBeInTheDocument();
     expect(screen.queryByText('Появится позже')).not.toBeInTheDocument();
   });
 

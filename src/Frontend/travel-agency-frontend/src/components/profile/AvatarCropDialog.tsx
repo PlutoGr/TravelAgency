@@ -254,6 +254,7 @@ export default function AvatarCropDialog({
       size="lg"
       title={DIALOG_NAME}
       dialogLabel={DIALOG_NAME}
+      overlay="solid"
       onClose={locked ? () => {} : onCancel}
     >
       <div
