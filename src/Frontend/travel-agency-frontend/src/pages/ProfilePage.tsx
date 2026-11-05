@@ -160,6 +160,8 @@ export default function ProfilePage() {
   const saveCard = useCallback(async (payload: ManagerCardWrite) => {
     try {
       const updated = await updateManagerCard(payload);
+      // Чтение, начатое до сохранения, не должно затереть этот ответ.
+      cardSeq.current += 1;
       hadCard.current = true;
       setCard(updated);
       setCardPhase('ready');
