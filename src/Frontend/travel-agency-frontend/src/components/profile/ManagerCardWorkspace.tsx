@@ -22,6 +22,7 @@ type ManagerCardWorkspaceProps = {
   avatarUrl?: string;
   card: ManagerPublicCard | null;
   phase: 'idle' | 'loading' | 'error' | 'ready';
+  refreshError?: string;
   locked: boolean;
   onRetry: () => void;
   onSave: (payload: ManagerCardWrite) => Promise<void>;
@@ -59,6 +60,7 @@ export default function ManagerCardWorkspace({
   avatarUrl,
   card,
   phase,
+  refreshError,
   locked,
   onRetry,
   onSave,
@@ -81,8 +83,8 @@ export default function ManagerCardWorkspace({
     (card?.tags?.length ?? 0) > 0,
   ];
   const doneCount = filled.filter(Boolean).length;
-  const previewName = card?.displayName || personName;
-  const previewAvatar = avatarUrl || card?.avatarUrl;
+  const previewName = personName;
+  const previewAvatar = avatarUrl;
 
   function openEditor() {
     if (locked || saving || !card) return;
@@ -363,6 +365,11 @@ export default function ManagerCardWorkspace({
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#6e7f62]" />
               Так вашу визитку видит клиент
             </p>
+            {refreshError ? (
+              <p role="alert" className="mb-3 text-sm text-red-500">
+                {refreshError}
+              </p>
+            ) : null}
             {face}
           </>
         ) : null}

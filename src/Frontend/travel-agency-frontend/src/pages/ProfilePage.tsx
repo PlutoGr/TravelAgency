@@ -71,11 +71,13 @@ export default function ProfilePage() {
   const [card, setCard] = useState<ManagerPublicCard | null>(null);
   const [cardPhase, setCardPhase] = useState<'idle' | 'loading' | 'error' | 'ready'>('idle');
   const [cardReload, setCardReload] = useState(0);
+  const [refreshError, setRefreshError] = useState<string | undefined>();
   const avatarRevision = useRef(0);
   const readGeneration = useRef(0);
   const savingRef = useRef(false);
   const accountBusyRef = useRef(false);
   const cardSeq = useRef(0);
+  const hadCard = useRef(false);
   const userId = storeUser?.id;
   const avatar = storeUser?.avatar;
   const firstName = storeUser?.firstName;
@@ -136,12 +138,18 @@ export default function ProfilePage() {
     getManagerCard(userId).then(
       (value) => {
         if (cancelled || seq !== cardSeq.current) return;
+        hadCard.current = true;
         setCard(value);
         setCardPhase('ready');
+        setRefreshError(undefined);
       },
       () => {
         if (cancelled || seq !== cardSeq.current) return;
-        setCardPhase((current) => (current === 'ready' ? current : 'error'));
+        if (hadCard.current) {
+          setRefreshError('Не удалось обновить визитку.');
+          return;
+        }
+        setCardPhase('error');
       },
     );
     return () => {
@@ -152,8 +160,10 @@ export default function ProfilePage() {
   const saveCard = useCallback(async (payload: ManagerCardWrite) => {
     try {
       const updated = await updateManagerCard(payload);
+      hadCard.current = true;
       setCard(updated);
       setCardPhase('ready');
+      setRefreshError(undefined);
       toast.success('Визитка сохранена');
     } catch (err) {
       const fields = managerCardProblemFields(err);
@@ -366,15 +376,17 @@ export default function ProfilePage() {
           </div>
         ) : null}
 
-        {showCard ? (
-          <div role="tabpanel" id="profile-panel-card" aria-labelledby="profile-tab-card">
+        {isStaff ? (
+          <div role="tabpanel" id="profile-panel-card" aria-labelledby="profile-tab-card" hidden={tab !== 'card'}>
             <ManagerCardWorkspace
               personName={fullName}
               avatarUrl={storeUser.avatar}
               card={card}
               phase={cardPhase}
+              refreshError={refreshError}
               locked={windowBusy}
               onRetry={() => {
+                setRefreshError(undefined);
                 setCardPhase('loading');
                 setCardReload((value) => value + 1);
               }}
