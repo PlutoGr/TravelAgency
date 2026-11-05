@@ -1,11 +1,11 @@
 # Cloud agents
-Cursor cloud agents do the repo-bound stages that need them: epic architecture, a large split, non-trivial feature architecture, test cases when the policy says so, code and tests, CI and Docker edits, escalated review, a `Doc-` draft when the skeleton must change, rules audits, and a narrow analysis helper. The orchestrator writes initial wishes, runs live epic expectations with the owner, a thin feature confirm, a simple split, a front or docs note, and the test-policy line. Launch prompts stay short: role, goal, links, bar. Do not paste the methodology into a launch. The orchestrator itself also does what needs the server, secrets, chat history, merge, board labels, wiki publish, or acceptance on dev. Never both on the same artifact. Cloud-first under the unified subscription (2026-10-28): no usage-mode matrix, no scheduled limits refresh.
+Cursor cloud agents do the repo-bound stages that need them: epic architecture (including a gap found on a child), a large split, test cases when the policy says so, code and tests, CI and Docker edits, escalated review, a `Doc-` draft when the skeleton must change, rules audits, and a narrow analysis helper. The orchestrator writes initial wishes, runs live epic expectations with the owner, the thin feature TZ, a simple split, and the test-policy line. Launch prompts stay short: role, goal, links, bar. Do not paste the methodology into a launch. The orchestrator itself also does what needs the server, secrets, chat history, merge, board labels, wiki publish, or acceptance on dev. Never both on the same artifact. Cloud-first under the unified subscription (2026-10-28): no usage-mode matrix, no scheduled limits refresh.
 
 ## Which brief
 | Stage or job | Brief |
 |---|---|
-| Epic Бизнес-анализ helper (peer notes, mock scaffold); feature Аналитика helper only when asked | [analyst](../briefs/analyst.md) |
-| Epic Архитектура; epic Разбиение when large or tangled; feature Архитектура when non-trivial back | [architect](../briefs/architect.md) |
+| Epic Бизнес-анализ helper (peer notes, mock scaffold); a short note on a feature TZ only when asked | [analyst](../briefs/analyst.md) |
+| Epic Архитектура, including a gap found on a child; epic Разбиение when large or tangled | [architect](../briefs/architect.md) |
 | Тест-кейсы (Крупная and `Тесты: сначала сценарии`, or an item already in that column) | [test designer](../briefs/test-designer.md) |
 | Application code and its automated tests (Разработка) | [developer](../briefs/developer.md) |
 | Workflows, Docker, nginx, deploy files | [devops](../briefs/devops.md) |
