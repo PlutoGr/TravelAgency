@@ -4,8 +4,10 @@
 Не код (PR только из таких файлов — «только документация»):
 - всё под `.cursor/`;
 - всё под `docs/` в корне (текст и картинки документации);
-- любой файл `*.md` вне `src/` и `.github/` (`AGENTS.md`, `README.md` и т. п.).
-Всё остальное — код: исходники и `*.md` под `src/`, всё под `.github/`,
+- любой файл `*.md` вне `src/` (включая `.github/**/*.md`);
+- формы `*.yml` и `*.yaml` под `.github/ISSUE_TEMPLATE/`.
+Всё остальное — код: исходники и `*.md` под `src/`, `.github/workflows/**`,
+`.github/scripts/**`, прочие файлы `.github/` (actions, dependabot),
 файлы пакетов, `global.json`, `*.sln`, Dockerfile, деплой, скрипты.
 Пустой список считается кодом: при сомнении сборка и тесты запускаются.
 
@@ -14,14 +16,17 @@
 
 import sys
 
-CODE_DIRS = ("src/", ".github/")
 DOCS_DIRS = (".cursor/", "docs/")
+GITHUB_ISSUE_FORMS = ".github/ISSUE_TEMPLATE/"
+GITHUB_ISSUE_FORM_SUFFIXES = (".yml", ".yaml")
 
 
 def is_docs_path(path):
     if path.startswith(DOCS_DIRS):
         return True
-    return path.endswith(".md") and not path.startswith(CODE_DIRS)
+    if path.endswith(".md") and not path.startswith("src/"):
+        return True
+    return path.startswith(GITHUB_ISSUE_FORMS) and path.endswith(GITHUB_ISSUE_FORM_SUFFIXES)
 
 
 def has_code(paths):

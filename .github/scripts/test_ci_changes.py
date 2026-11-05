@@ -18,6 +18,12 @@ class DocsPaths(unittest.TestCase):
             "deploy/README.md",
             "docs/notes.md",
             "docs/img/screen.png",
+            ".github/pull_request_template.md",
+            ".github/workflows/README.md",
+            ".github/scripts/notes.md",
+            ".github/ISSUE_TEMPLATE/bug.yml",
+            ".github/ISSUE_TEMPLATE/config.yml",
+            ".github/ISSUE_TEMPLATE/nested/form.yaml",
         ]
         self.assertFalse(changes.has_code(paths))
 
@@ -26,7 +32,12 @@ class DocsPaths(unittest.TestCase):
             "src/Gateway/README.md",
             "src/Services/Chat/Program.cs",
             ".github/workflows/ci.yml",
-            ".github/pull_request_template.md",
+            ".github/scripts/ci_changes.py",
+            ".github/scripts/test_ci_changes.py",
+            ".github/dependabot.yml",
+            ".github/actions/setup/action.yml",
+            ".github/ISSUE_TEMPLATE/helper.py",
+            ".github/ISSUE_TEMPLATE/notes.txt",
             "global.json",
             "TravelAgency.sln",
             "Directory.Build.props",
@@ -61,7 +72,18 @@ class DocsPaths(unittest.TestCase):
             return out.stdout.strip()
 
         self.assertEqual(run(".cursor/a.md\nAGENTS.md\n"), "false")
+        self.assertEqual(
+            run(
+                ".github/ISSUE_TEMPLATE/bug.yml\n"
+                ".github/pull_request_template.md\n"
+            ),
+            "false",
+        )
         self.assertEqual(run("AGENTS.md\nsrc/x.cs\n"), "true")
+        self.assertEqual(
+            run(".github/ISSUE_TEMPLATE/bug.yml\n.github/workflows/ci.yml\n"),
+            "true",
+        )
         self.assertEqual(run(""), "true")
 
 
