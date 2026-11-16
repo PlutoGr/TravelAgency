@@ -55,6 +55,13 @@ updates:
     groups:
       docker-images:
         patterns: ["*"]
+    # Крупные обновления образов dotnet/sdk и dotnet/aspnet удерживаются
+    # до осознанной миграции на .NET 11; ignore снимается в этой миграции.
+    ignore:
+      - dependency-name: "dotnet/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet/aspnet"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions: версии actions в .github/workflows
   - package-ecosystem: github-actions
